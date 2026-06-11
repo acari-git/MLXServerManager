@@ -2,6 +2,7 @@ import SwiftUI
 
 struct StatusPanelView: View {
     let runtimeState: ModelRuntimeState
+    let onCheckPort: () -> Void
     let onStart: () -> Void
     let onStop: () -> Void
     let onRestart: () -> Void
@@ -15,6 +16,12 @@ struct StatusPanelView: View {
                 statusBadge
 
                 Spacer()
+
+                Button {
+                    onCheckPort()
+                } label: {
+                    Label("Check Port", systemImage: "network")
+                }
 
                 Button {
                     onStart()
@@ -42,7 +49,7 @@ struct StatusPanelView: View {
     private var statusBadge: some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(.secondary)
+                .fill(indicatorColor)
                 .frame(width: 9, height: 9)
             Text(runtimeState.title)
                 .font(.body.weight(.semibold))
@@ -50,6 +57,19 @@ struct StatusPanelView: View {
                 .foregroundStyle(.secondary)
         }
         .font(.callout)
+    }
+
+    private var indicatorColor: Color {
+        switch runtimeState {
+        case .stopped:
+            .secondary
+        case .checkingPort:
+            .orange
+        case .portAvailable:
+            .green
+        case .portBusy, .portCheckFailed:
+            .red
+        }
     }
 }
 
@@ -72,4 +92,3 @@ extension View {
         modifier(PanelStyle())
     }
 }
-

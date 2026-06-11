@@ -10,13 +10,18 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var logLines: [String] = [
         "[info] MLX Server Manager UI loaded.",
         "[info] Direct Mode selected. No proxy is configured.",
-        "[info] Server launch, port checks, and readiness checks are not implemented in Step 3."
+        "[info] Server launch and readiness checks are not implemented in Step 4."
     ]
 
     private let settingsStore: SettingsStore
+    private let portChecker: PortChecker
 
-    init(settingsStore: SettingsStore = SettingsStore()) {
+    init(
+        settingsStore: SettingsStore = SettingsStore(),
+        portChecker: PortChecker = PortChecker()
+    ) {
         self.settingsStore = settingsStore
+        self.portChecker = portChecker
         loadSettings()
         selectedModelID = models.first?.id
     }
@@ -54,15 +59,36 @@ final class AppViewModel: ObservableObject {
     }
 
     func startRequested() {
-        appendLog("[ui] Start requested. Server launch is intentionally not implemented in Step 3.")
+        appendLog("[ui] Start requested. Server launch is intentionally not implemented in Step 4.")
     }
 
     func stopRequested() {
-        appendLog("[ui] Stop requested. Server termination is intentionally not implemented in Step 3.")
+        appendLog("[ui] Stop requested. Server termination is intentionally not implemented in Step 4.")
     }
 
     func restartRequested() {
-        appendLog("[ui] Restart requested. Restart wiring is intentionally not implemented in Step 3.")
+        appendLog("[ui] Restart requested. Restart wiring is intentionally not implemented in Step 4.")
+    }
+
+    func checkPortRequested() {
+        let host = selectedModel?.host ?? settings.defaultHost
+        let port = selectedModel?.serverPort ?? settings.defaultPort
+        runtimeState = .checkingPort(host: host, port: port)
+
+        switch portChecker.check(host: host, port: port) {
+        case let .available(host, port):
+            runtimeState = .portAvailable(host: host, port: port)
+            appendLog("[port] port available: \(host):\(port)")
+        case let .busy(host, port):
+            runtimeState = .portBusy(host: host, port: port)
+            appendLog("[port] port busy: \(host):\(port)")
+        case let .invalidInput(message):
+            runtimeState = .portCheckFailed(host: host, port: port, message: message)
+            appendLog("[port] port check failed: \(message)")
+        case let .failed(host, port, message):
+            runtimeState = .portCheckFailed(host: host, port: port, message: message)
+            appendLog("[port] port check failed for \(host):\(port): \(message)")
+        }
     }
 
     func saveSettingsRequested() {
