@@ -29,7 +29,7 @@ logs/
 *.log
 
 # Model storage and model artifacts
-models/
+/models/
 *.safetensors
 *.gguf
 *.bin
@@ -39,4 +39,3 @@ models/
 # Temporary files
 tmp/
 *.tmp
-
