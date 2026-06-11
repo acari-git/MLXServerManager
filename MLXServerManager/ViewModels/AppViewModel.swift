@@ -10,21 +10,24 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var logLines: [String] = [
         "[info] MLX Server Manager UI loaded.",
         "[info] Direct Mode selected. No proxy is configured.",
-        "[info] Server launch is not implemented yet. Ready checks are available."
+        "[info] Start is available. Stop and Restart are not implemented yet."
     ]
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
     private let readyChecker: ReadyChecker
+    private let processManager: ModelProcessManager
 
     init(
         settingsStore: SettingsStore = SettingsStore(),
         portChecker: PortChecker = PortChecker(),
-        readyChecker: ReadyChecker = ReadyChecker()
+        readyChecker: ReadyChecker = ReadyChecker(),
+        processManager: ModelProcessManager = ModelProcessManager()
     ) {
         self.settingsStore = settingsStore
         self.portChecker = portChecker
         self.readyChecker = readyChecker
+        self.processManager = processManager
         loadSettings()
         selectedModelID = models.first?.id
     }
@@ -62,15 +65,87 @@ final class AppViewModel: ObservableObject {
     }
 
     func startRequested() {
-        appendLog("[ui] Start requested. Server launch is intentionally not implemented in Step 4.")
+        guard let selectedModel else {
+            let message = "No model is selected."
+            runtimeState = .error(message: message)
+            appendLog("[start] failed: \(message)")
+            return
+        }
+
+        let host = selectedModel.host
+        let port = selectedModel.serverPort
+        appendLog("[start] requested for \(selectedModel.modelID) at \(host):\(port)")
+        appendLog("[start] checking port before launch: \(host):\(port)")
+        runtimeState = .checkingPort(host: host, port: port)
+
+        switch portChecker.check(host: host, port: port) {
+        case .available:
+            appendLog("[start] port available: \(host):\(port)")
+        case .busy:
+            runtimeState = .portBusy(host: host, port: port)
+            appendLog("[start] port busy: \(host):\(port). Start cancelled.")
+            return
+        case let .invalidInput(message):
+            runtimeState = .portCheckFailed(host: host, port: port, message: message)
+            appendLog("[start] port check failed: \(message)")
+            return
+        case let .failed(_, _, message):
+            runtimeState = .portCheckFailed(host: host, port: port, message: message)
+            appendLog("[start] port check failed for \(host):\(port): \(message)")
+            return
+        }
+
+        let request = ModelLaunchRequest(
+            executablePath: settings.mlxServerExecutablePath,
+            modelID: selectedModel.modelID,
+            host: host,
+            port: port
+        )
+
+        runtimeState = .starting(host: host, port: port)
+
+        do {
+            let launchResult = try processManager.start(
+                request: request,
+                outputHandler: { [weak self] line in
+                    Task { @MainActor in
+                        self?.appendLog(line)
+                    }
+                },
+                terminationHandler: { [weak self] status in
+                    Task { @MainActor in
+                        self?.appendLog("[process] managed server exited with status \(status)")
+                    }
+                }
+            )
+
+            appendLog("[start] command: \(launchResult.commandSummary)")
+            appendLog("[start] pid: \(launchResult.processIdentifier)")
+            runtimeState = .loading(
+                host: host,
+                port: port,
+                processIdentifier: launchResult.processIdentifier
+            )
+
+            Task {
+                await waitForReadyAfterStart(
+                    host: host,
+                    port: port,
+                    processIdentifier: launchResult.processIdentifier
+                )
+            }
+        } catch {
+            runtimeState = .error(message: error.localizedDescription)
+            appendLog("[start] failed: \(error.localizedDescription)")
+        }
     }
 
     func stopRequested() {
-        appendLog("[ui] Stop requested. Server termination is intentionally not implemented in Step 4.")
+        appendLog("[ui] Stop requested. Stop is not implemented in Step 6.")
     }
 
     func restartRequested() {
-        appendLog("[ui] Restart requested. Restart wiring is intentionally not implemented in Step 4.")
+        appendLog("[ui] Restart requested. Restart is not implemented in Step 6.")
     }
 
     func checkPortRequested() {
@@ -155,7 +230,11 @@ final class AppViewModel: ObservableObject {
     ) {
         switch result {
         case let .ready(url, statusCode):
-            runtimeState = .ready(host: fallbackHost, port: fallbackPort)
+            runtimeState = .ready(
+                host: fallbackHost,
+                port: fallbackPort,
+                processIdentifier: processManager.managedProcessIdentifier
+            )
             appendLog("[ready] ready: \(url.absoluteString) returned HTTP \(statusCode)")
         case let .notReady(url, statusCode):
             runtimeState = .readyCheckFailed(
@@ -186,6 +265,51 @@ final class AppViewModel: ObservableObject {
             )
             appendLog("[ready] timed out: \(url.absoluteString)")
         }
+    }
+
+    private func waitForReadyAfterStart(
+        host: String,
+        port: Int,
+        processIdentifier: Int32
+    ) async {
+        appendLog("[ready] waiting for http://\(host):\(port)/v1/models")
+
+        for attempt in 1...10 {
+            let result = await readyChecker.check(host: host, port: port)
+
+            switch result {
+            case let .ready(url, statusCode):
+                runtimeState = .ready(
+                    host: host,
+                    port: port,
+                    processIdentifier: processIdentifier
+                )
+                appendLog("[ready] ready after start: \(url.absoluteString) returned HTTP \(statusCode)")
+                return
+            case let .notReady(url, statusCode):
+                appendLog("[ready] attempt \(attempt) not ready: \(url.absoluteString) returned HTTP \(statusCode)")
+            case let .invalidInput(message):
+                runtimeState = .readyCheckFailed(host: host, port: port, message: message)
+                appendLog("[ready] ready check failed: \(message)")
+                return
+            case let .failed(url, message):
+                appendLog("[ready] attempt \(attempt) failed for \(url?.absoluteString ?? "\(host):\(port)"): \(message)")
+            case let .timedOut(url):
+                appendLog("[ready] attempt \(attempt) timed out: \(url.absoluteString)")
+            }
+
+            do {
+                try await Task.sleep(nanoseconds: 1_000_000_000)
+            } catch {
+                runtimeState = .unknown(message: "Ready wait was cancelled.")
+                appendLog("[ready] wait cancelled.")
+                return
+            }
+        }
+
+        let message = "Ready check did not succeed after launch."
+        runtimeState = .unknown(message: message)
+        appendLog("[ready] \(message)")
     }
 
     private var connectionConfigBuilder: ConnectionConfigBuilder {

@@ -70,18 +70,16 @@ struct StatusPanelView: View {
         switch runtimeState {
         case .stopped:
             .secondary
-        case .checkingPort:
+        case .starting, .loading, .checkingPort:
             .orange
-        case .portAvailable:
+        case .portAvailable, .ready:
             .green
-        case .portBusy, .portCheckFailed:
-            .red
         case .checkingReady:
             .orange
-        case .ready:
-            .green
-        case .readyCheckFailed:
+        case .portBusy, .portCheckFailed, .readyCheckFailed, .error:
             .red
+        case .unknown:
+            .yellow
         }
     }
 }
