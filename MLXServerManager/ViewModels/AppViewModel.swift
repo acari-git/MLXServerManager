@@ -10,18 +10,21 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var logLines: [String] = [
         "[info] MLX Server Manager UI loaded.",
         "[info] Direct Mode selected. No proxy is configured.",
-        "[info] Server launch and readiness checks are not implemented in Step 4."
+        "[info] Server launch is not implemented yet. Ready checks are available."
     ]
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
+    private let readyChecker: ReadyChecker
 
     init(
         settingsStore: SettingsStore = SettingsStore(),
-        portChecker: PortChecker = PortChecker()
+        portChecker: PortChecker = PortChecker(),
+        readyChecker: ReadyChecker = ReadyChecker()
     ) {
         self.settingsStore = settingsStore
         self.portChecker = portChecker
+        self.readyChecker = readyChecker
         loadSettings()
         selectedModelID = models.first?.id
     }
@@ -91,6 +94,18 @@ final class AppViewModel: ObservableObject {
         }
     }
 
+    func checkReadyRequested() {
+        let host = selectedModel?.host ?? settings.defaultHost
+        let port = selectedModel?.serverPort ?? settings.defaultPort
+        runtimeState = .checkingReady(host: host, port: port)
+        appendLog("[ready] checking: http://\(host):\(port)/v1/models")
+
+        Task {
+            let result = await readyChecker.check(host: host, port: port)
+            handleReadyCheckResult(result, fallbackHost: host, fallbackPort: port)
+        }
+    }
+
     func saveSettingsRequested() {
         do {
             try settingsStore.save(settings: settings, models: models)
@@ -130,6 +145,46 @@ final class AppViewModel: ObservableObject {
             settings = .defaults
             models = ModelConfig.defaults
             appendLog("[settings] Failed to load settings. Using defaults: \(error.localizedDescription)")
+        }
+    }
+
+    private func handleReadyCheckResult(
+        _ result: ReadyCheckResult,
+        fallbackHost: String,
+        fallbackPort: Int
+    ) {
+        switch result {
+        case let .ready(url, statusCode):
+            runtimeState = .ready(host: fallbackHost, port: fallbackPort)
+            appendLog("[ready] ready: \(url.absoluteString) returned HTTP \(statusCode)")
+        case let .notReady(url, statusCode):
+            runtimeState = .readyCheckFailed(
+                host: fallbackHost,
+                port: fallbackPort,
+                message: "HTTP \(statusCode)"
+            )
+            appendLog("[ready] not ready: \(url.absoluteString) returned HTTP \(statusCode)")
+        case let .invalidInput(message):
+            runtimeState = .readyCheckFailed(
+                host: fallbackHost,
+                port: fallbackPort,
+                message: message
+            )
+            appendLog("[ready] ready check failed: \(message)")
+        case let .failed(url, message):
+            runtimeState = .readyCheckFailed(
+                host: fallbackHost,
+                port: fallbackPort,
+                message: message
+            )
+            appendLog("[ready] ready check failed for \(url?.absoluteString ?? "\(fallbackHost):\(fallbackPort)"): \(message)")
+        case let .timedOut(url):
+            runtimeState = .readyCheckFailed(
+                host: fallbackHost,
+                port: fallbackPort,
+                message: "Timed out"
+            )
+            appendLog("[ready] timed out: \(url.absoluteString)")
         }
     }
 

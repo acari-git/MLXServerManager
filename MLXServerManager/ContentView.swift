@@ -34,6 +34,7 @@ struct ContentView: View {
                         StatusPanelView(
                             runtimeState: viewModel.runtimeState,
                             onCheckPort: viewModel.checkPortRequested,
+                            onCheckReady: viewModel.checkReadyRequested,
                             onStart: viewModel.startRequested,
                             onStop: viewModel.stopRequested,
                             onRestart: viewModel.restartRequested

@@ -3,6 +3,7 @@ import SwiftUI
 struct StatusPanelView: View {
     let runtimeState: ModelRuntimeState
     let onCheckPort: () -> Void
+    let onCheckReady: () -> Void
     let onStart: () -> Void
     let onStop: () -> Void
     let onRestart: () -> Void
@@ -21,6 +22,12 @@ struct StatusPanelView: View {
                     onCheckPort()
                 } label: {
                     Label("Check Port", systemImage: "network")
+                }
+
+                Button {
+                    onCheckReady()
+                } label: {
+                    Label("Check Ready", systemImage: "checkmark.seal")
                 }
 
                 Button {
@@ -68,6 +75,12 @@ struct StatusPanelView: View {
         case .portAvailable:
             .green
         case .portBusy, .portCheckFailed:
+            .red
+        case .checkingReady:
+            .orange
+        case .ready:
+            .green
+        case .readyCheckFailed:
             .red
         }
     }

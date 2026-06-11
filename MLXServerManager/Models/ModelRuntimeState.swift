@@ -6,6 +6,9 @@ enum ModelRuntimeState: Hashable {
     case portAvailable(host: String, port: Int)
     case portBusy(host: String, port: Int)
     case portCheckFailed(host: String, port: Int, message: String)
+    case checkingReady(host: String, port: Int)
+    case ready(host: String, port: Int)
+    case readyCheckFailed(host: String, port: Int, message: String)
 
     var title: String {
         switch self {
@@ -19,6 +22,12 @@ enum ModelRuntimeState: Hashable {
             "Port Busy"
         case .portCheckFailed:
             "Port Check Failed"
+        case .checkingReady:
+            "Checking Ready"
+        case .ready:
+            "Ready"
+        case .readyCheckFailed:
+            "Ready Check Failed"
         }
     }
 
@@ -34,6 +43,12 @@ enum ModelRuntimeState: Hashable {
             "\(host):\(port) is already in use. Start is still not implemented."
         case let .portCheckFailed(host, port, message):
             "Could not check \(host):\(port): \(message)"
+        case let .checkingReady(host, port):
+            "Checking http://\(host):\(port)/v1/models."
+        case let .ready(host, port):
+            "OpenAI-compatible endpoint is responding at \(host):\(port)."
+        case let .readyCheckFailed(host, port, message):
+            "Ready check failed for \(host):\(port): \(message)"
         }
     }
 
@@ -48,6 +63,12 @@ enum ModelRuntimeState: Hashable {
         case let .portBusy(host, port):
             "\(host):\(port)"
         case let .portCheckFailed(host, port, _):
+            "\(host):\(port)"
+        case let .checkingReady(host, port):
+            "\(host):\(port)"
+        case let .ready(host, port):
+            "\(host):\(port)"
+        case let .readyCheckFailed(host, port, _):
             "\(host):\(port)"
         }
     }
