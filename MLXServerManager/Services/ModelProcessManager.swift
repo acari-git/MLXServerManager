@@ -12,6 +12,12 @@ struct ModelLaunchResult: Equatable {
     let commandSummary: String
 }
 
+enum ModelStopResult: Equatable {
+    case notRunning
+    case stopped(processIdentifier: Int32, terminationStatus: Int32, usedInterrupt: Bool)
+    case timedOut(processIdentifier: Int32)
+}
+
 enum ModelProcessManagerError: LocalizedError, Equatable {
     case executablePathMissing
     case executableNotFound(String)
@@ -92,10 +98,12 @@ final class ModelProcessManager {
         configurePipe(stdoutPipe, label: "stdout", outputHandler: outputHandler)
         configurePipe(stderrPipe, label: "stderr", outputHandler: outputHandler)
 
-        process.terminationHandler = { process in
-            stdoutPipe.fileHandleForReading.readabilityHandler = nil
-            stderrPipe.fileHandleForReading.readabilityHandler = nil
-            terminationHandler(process.terminationStatus)
+        process.terminationHandler = { [weak self] process in
+            let terminationStatus = process.terminationStatus
+            Task { @MainActor in
+                self?.clearManagedProcessIfMatching(process)
+                terminationHandler(terminationStatus)
+            }
         }
 
         do {
@@ -114,6 +122,49 @@ final class ModelProcessManager {
             processIdentifier: process.processIdentifier,
             commandSummary: commandSummary(for: request, executablePath: executablePath)
         )
+    }
+
+    func stop(
+        gracefulTimeout: TimeInterval = 5,
+        interruptTimeout: TimeInterval = 2
+    ) async -> ModelStopResult {
+        guard let process else {
+            return .notRunning
+        }
+
+        guard process.isRunning else {
+            clearManagedProcessIfMatching(process)
+            return .notRunning
+        }
+
+        let processIdentifier = process.processIdentifier
+        process.terminate()
+
+        if await waitForExit(process, timeout: gracefulTimeout) {
+            let terminationStatus = process.terminationStatus
+            clearManagedProcessIfMatching(process)
+            return .stopped(
+                processIdentifier: processIdentifier,
+                terminationStatus: terminationStatus,
+                usedInterrupt: false
+            )
+        }
+
+        if process.isRunning {
+            process.interrupt()
+        }
+
+        if await waitForExit(process, timeout: interruptTimeout) {
+            let terminationStatus = process.terminationStatus
+            clearManagedProcessIfMatching(process)
+            return .stopped(
+                processIdentifier: processIdentifier,
+                terminationStatus: terminationStatus,
+                usedInterrupt: true
+            )
+        }
+
+        return .timedOut(processIdentifier: processIdentifier)
     }
 
     private func configurePipe(
@@ -172,6 +223,32 @@ final class ModelProcessManager {
     private func resetPipeCounters() {
         stdoutLineCount = 0
         stderrLineCount = 0
+    }
+
+    private func waitForExit(_ process: Process, timeout: TimeInterval) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+
+        while process.isRunning, Date() < deadline {
+            do {
+                try await Task.sleep(nanoseconds: 100_000_000)
+            } catch {
+                return !process.isRunning
+            }
+        }
+
+        return !process.isRunning
+    }
+
+    private func clearManagedProcessIfMatching(_ process: Process) {
+        guard self.process === process else {
+            return
+        }
+
+        stdoutPipe?.fileHandleForReading.readabilityHandler = nil
+        stderrPipe?.fileHandleForReading.readabilityHandler = nil
+        self.process = nil
+        stdoutPipe = nil
+        stderrPipe = nil
     }
 
     private func commandSummary(for request: ModelLaunchRequest, executablePath: String) -> String {

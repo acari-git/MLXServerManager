@@ -70,7 +70,7 @@ struct StatusPanelView: View {
         switch runtimeState {
         case .stopped:
             .secondary
-        case .starting, .loading, .checkingPort:
+        case .starting, .loading, .stopping, .checkingPort:
             .orange
         case .portAvailable, .ready:
             .green

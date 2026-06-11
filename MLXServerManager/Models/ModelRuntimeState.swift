@@ -4,6 +4,7 @@ enum ModelRuntimeState: Hashable {
     case stopped
     case starting(host: String, port: Int)
     case loading(host: String, port: Int, processIdentifier: Int32)
+    case stopping(processIdentifier: Int32)
     case checkingPort(host: String, port: Int)
     case portAvailable(host: String, port: Int)
     case portBusy(host: String, port: Int)
@@ -22,6 +23,8 @@ enum ModelRuntimeState: Hashable {
             "Starting"
         case .loading:
             "Loading"
+        case .stopping:
+            "Stopping"
         case .checkingPort:
             "Checking Port"
         case .portAvailable:
@@ -51,6 +54,8 @@ enum ModelRuntimeState: Hashable {
             "Starting managed mlx_lm.server for \(host):\(port)."
         case let .loading(host, port, processIdentifier):
             "Managed process pid \(processIdentifier) is loading at \(host):\(port)."
+        case let .stopping(processIdentifier):
+            "Stopping managed mlx_lm.server process pid \(processIdentifier)."
         case let .checkingPort(host, port):
             "Checking whether \(host):\(port) can be used before launch."
         case let .portAvailable(host, port):
@@ -84,6 +89,8 @@ enum ModelRuntimeState: Hashable {
             "\(host):\(port)"
         case let .loading(host, port, processIdentifier):
             "\(host):\(port), pid \(processIdentifier)"
+        case let .stopping(processIdentifier):
+            "pid \(processIdentifier)"
         case let .checkingPort(host, port):
             "\(host):\(port)"
         case let .portAvailable(host, port):

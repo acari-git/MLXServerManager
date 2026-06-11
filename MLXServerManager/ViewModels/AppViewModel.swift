@@ -10,7 +10,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var logLines: [String] = [
         "[info] MLX Server Manager UI loaded.",
         "[info] Direct Mode selected. No proxy is configured.",
-        "[info] Start is available. Stop and Restart are not implemented yet."
+        "[info] Start and Stop are available. Restart is not implemented yet."
     ]
 
     private let settingsStore: SettingsStore
@@ -141,11 +141,24 @@ final class AppViewModel: ObservableObject {
     }
 
     func stopRequested() {
-        appendLog("[ui] Stop requested. Stop is not implemented in Step 6.")
+        guard let processIdentifier = processManager.managedProcessIdentifier else {
+            runtimeState = .stopped
+            appendLog("[stop] managed process is not running.")
+            return
+        }
+
+        let endpoint = endpointForCurrentRuntimeState()
+        runtimeState = .stopping(processIdentifier: processIdentifier)
+        appendLog("[stop] requested for managed pid \(processIdentifier)")
+
+        Task {
+            let result = await processManager.stop()
+            await handleStopResult(result, host: endpoint.host, port: endpoint.port)
+        }
     }
 
     func restartRequested() {
-        appendLog("[ui] Restart requested. Restart is not implemented in Step 6.")
+        appendLog("[ui] Restart requested. Restart is not implemented in Step 7.")
     }
 
     func checkPortRequested() {
@@ -275,10 +288,25 @@ final class AppViewModel: ObservableObject {
         appendLog("[ready] waiting for http://\(host):\(port)/v1/models")
 
         for attempt in 1...10 {
+            guard processManager.managedProcessIdentifier == processIdentifier else {
+                appendLog("[ready] wait ended because managed process is no longer running.")
+                return
+            }
+
+            if case .stopping = runtimeState {
+                appendLog("[ready] wait cancelled because stop was requested.")
+                return
+            }
+
             let result = await readyChecker.check(host: host, port: port)
 
             switch result {
             case let .ready(url, statusCode):
+                guard processManager.managedProcessIdentifier == processIdentifier else {
+                    appendLog("[ready] ready response ignored because managed process is no longer running.")
+                    return
+                }
+
                 runtimeState = .ready(
                     host: host,
                     port: port,
@@ -310,6 +338,97 @@ final class AppViewModel: ObservableObject {
         let message = "Ready check did not succeed after launch."
         runtimeState = .unknown(message: message)
         appendLog("[ready] \(message)")
+    }
+
+    private func handleStopResult(
+        _ result: ModelStopResult,
+        host: String,
+        port: Int
+    ) async {
+        switch result {
+        case .notRunning:
+            runtimeState = .stopped
+            appendLog("[stop] managed process is not running.")
+        case let .stopped(processIdentifier, terminationStatus, usedInterrupt):
+            if usedInterrupt {
+                appendLog("[stop] interrupt was sent after graceful timeout for pid \(processIdentifier).")
+            }
+            appendLog("[stop] stopped managed pid \(processIdentifier) with status \(terminationStatus).")
+
+            if await waitForPortRelease(host: host, port: port) {
+                runtimeState = .stopped
+            } else {
+                runtimeState = .portBusy(host: host, port: port)
+                appendLog("[stop] warning: port still busy after waiting for release: \(host):\(port)")
+            }
+        case let .timedOut(processIdentifier):
+            let message = "Stop timed out for managed pid \(processIdentifier)."
+            runtimeState = .error(message: message)
+            appendLog("[stop] \(message)")
+        }
+    }
+
+    private func waitForPortRelease(host: String, port: Int) async -> Bool {
+        appendLog("[stop] waiting for port release: \(host):\(port)")
+
+        for _ in 1...20 {
+            switch portChecker.check(host: host, port: port) {
+            case .available:
+                appendLog("[stop] port released: \(host):\(port)")
+                return true
+            case .busy:
+                break
+            case let .invalidInput(message):
+                appendLog("[stop] warning: port release check failed: \(message)")
+                return false
+            case let .failed(_, _, message):
+                appendLog("[stop] warning: port release check failed for \(host):\(port): \(message)")
+                return false
+            }
+
+            do {
+                try await Task.sleep(nanoseconds: 500_000_000)
+            } catch {
+                appendLog("[stop] warning: port release wait cancelled.")
+                return false
+            }
+        }
+
+        switch portChecker.check(host: host, port: port) {
+        case .available:
+            appendLog("[stop] port released: \(host):\(port)")
+            return true
+        case .busy:
+            return false
+        case let .invalidInput(message):
+            appendLog("[stop] warning: final port release check failed: \(message)")
+            return false
+        case let .failed(_, _, message):
+            appendLog("[stop] warning: final port release check failed for \(host):\(port): \(message)")
+            return false
+        }
+    }
+
+    private func endpointForCurrentRuntimeState() -> (host: String, port: Int) {
+        switch runtimeState {
+        case let .starting(host, port),
+             let .checkingPort(host, port),
+             let .portAvailable(host, port),
+             let .portBusy(host, port),
+             let .checkingReady(host, port):
+            return (host, port)
+        case let .loading(host, port, _),
+             let .ready(host, port, _):
+            return (host, port)
+        case let .portCheckFailed(host, port, _),
+             let .readyCheckFailed(host, port, _):
+            return (host, port)
+        case .stopped, .stopping, .error, .unknown:
+            return (
+                selectedModel?.host ?? settings.defaultHost,
+                selectedModel?.serverPort ?? settings.defaultPort
+            )
+        }
     }
 
     private var connectionConfigBuilder: ConnectionConfigBuilder {
