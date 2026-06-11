@@ -1,6 +1,6 @@
 import Foundation
 
-enum ModelStatus: String, Hashable {
+enum ModelStatus: String, Codable, Hashable {
     case verified = "Verified"
     case candidate = "Candidate"
 
@@ -13,4 +13,3 @@ enum ModelStatus: String, Hashable {
         }
     }
 }
-

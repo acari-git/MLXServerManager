@@ -10,13 +10,14 @@ struct ModelDetailView: View {
 
             if let model {
                 DetailGrid(rows: [
-                    ("Model ID", model.id),
+                    ("Model ID", model.modelID),
                     ("Display Name", model.displayName),
                     ("Family", model.family),
                     ("Quantization", model.quantization),
                     ("Context", model.contextWindow),
                     ("Local Name", model.localName),
-                    ("Status", "\(model.status.rawValue) - \(model.status.detail)"),
+                    ("Endpoint", "\(model.host):\(model.serverPort)"),
+                    ("Thinking", model.enableThinking ? "Enabled" : "Disabled"),
                     ("Notes", model.notes)
                 ])
             } else {
@@ -49,4 +50,3 @@ struct DetailGrid: View {
         }
     }
 }
-

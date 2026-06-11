@@ -1,13 +1,35 @@
 import Foundation
 
-struct ModelConfig: Identifiable, Hashable {
-    let id: String
-    let displayName: String
-    let family: String
-    let quantization: String
-    let contextWindow: String
-    let localName: String
-    let status: ModelStatus
-    let notes: String
-}
+struct ModelConfig: Codable, Identifiable, Hashable {
+    var modelID: String
+    var displayName: String
+    var family: String
+    var quantization: String
+    var localName: String
+    var host: String
+    var serverPort: Int
+    var enableThinking: Bool
+    var notes: String
 
+    var id: String {
+        modelID
+    }
+
+    var contextWindow: String {
+        "Configured by mlx_lm.server"
+    }
+
+    static let defaults: [ModelConfig] = [
+        ModelConfig(
+            modelID: "unsloth/Qwen3.6-35B-A3B-UD-MLX-4bit",
+            displayName: "Qwen3.6 35B A3B UD 4-bit",
+            family: "Qwen3.6",
+            quantization: "4-bit",
+            localName: "Qwen3.6-35B-A3B-UD-MLX-4bit",
+            host: "127.0.0.1",
+            serverPort: 8080,
+            enableThinking: true,
+            notes: "Primary Direct Mode model profile confirmed for local MLX use."
+        )
+    ]
+}

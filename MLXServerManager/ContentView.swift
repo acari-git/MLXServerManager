@@ -25,6 +25,12 @@ struct ContentView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
+                        SettingsPanelView(
+                            executablePath: $viewModel.settings.mlxServerExecutablePath,
+                            settingsDirectoryPath: viewModel.settingsDirectoryPath,
+                            onSave: viewModel.saveSettingsRequested
+                        )
+
                         StatusPanelView(
                             runtimeState: viewModel.runtimeState,
                             onStart: viewModel.startRequested,
@@ -89,4 +95,3 @@ struct ContentView: View {
 #Preview {
     ContentView()
 }
-
