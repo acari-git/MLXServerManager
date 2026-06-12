@@ -32,6 +32,12 @@ struct ContentView: View {
                             onRunDiagnostics: viewModel.runDiagnosticsRequested
                         )
 
+                        DiagnosticsPanelView(
+                            results: viewModel.diagnosticsResults,
+                            didRun: viewModel.diagnosticsDidRun,
+                            summaryText: viewModel.diagnosticsSummaryText
+                        )
+
                         StatusPanelView(
                             runtimeState: viewModel.runtimeState,
                             memoryUsageText: viewModel.memoryUsageText,

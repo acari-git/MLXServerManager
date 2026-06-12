@@ -10,6 +10,8 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var runtimeState: ModelRuntimeState = .stopped
     @Published private(set) var memoryUsageGB: Double?
     @Published private(set) var logText: String
+    @Published private(set) var diagnosticsResults: [DiagnosticsResult] = []
+    @Published private(set) var diagnosticsDidRun = false
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
@@ -93,6 +95,16 @@ final class AppViewModel: ObservableObject {
         } catch {
             return "Application Support directory unavailable"
         }
+    }
+
+    var diagnosticsSummaryText: String {
+        guard diagnosticsDidRun else {
+            return "Not run"
+        }
+
+        let failureCount = diagnosticsResults.filter { $0.status == .fail }.count
+        let warningCount = diagnosticsResults.filter { $0.status == .warning }.count
+        return "\(failureCount) failure(s), \(warningCount) warning(s)"
     }
 
     func startRequested() {
@@ -211,6 +223,9 @@ final class AppViewModel: ObservableObject {
                 settings: settings,
                 selectedModel: selectedModel
             )
+
+            diagnosticsResults = results
+            diagnosticsDidRun = true
 
             for result in results {
                 appendLog(result.logLine)
