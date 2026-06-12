@@ -129,21 +129,41 @@ Documentation and code must not hardcode user-specific absolute paths.
 
 Manual tests should cover:
 
-- Edit `modelID` and save.
-- Edit `displayName` and save.
-- Edit `host` and save.
-- Edit `serverPort` and save.
-- Toggle `enableThinking` and save.
-- Edit `notes` and save.
-- Cancel edits and confirm saved values are restored.
-- Confirm empty `modelID` cannot be saved.
-- Confirm empty `host` cannot be saved.
-- Confirm invalid port cannot be saved.
+- Open `Edit Profile` from the selected model detail area.
+- Change `displayName` and click `Save Profile`.
+- Change `modelID` and click `Save Profile`.
+- Change `host` and click `Save Profile`.
+- Change `serverPort` and click `Save Profile`.
+- Toggle `enableThinking` on and off, then click `Save Profile`.
+- Edit `notes` and click `Save Profile`.
+- Leave `displayName` empty and confirm the saved value is filled with `modelID`.
+- Leave `modelID` empty and confirm save fails.
+- Leave `host` empty and confirm save fails.
+- Set `serverPort` to `0` and confirm save fails.
+- Set `serverPort` to `65536` and confirm save fails.
+- Set `serverPort` to `abc` and confirm save fails.
+- Change fields and click `Cancel`, then confirm changes are not saved.
+- Confirm save failures are shown in the editor and written to Logs.
+- Confirm saved edits appear in Model detail.
+- Confirm Connection Settings reflect saved `host`, `serverPort`, and `modelID`.
+- Confirm Copy Base URL reflects saved `host` and `serverPort`.
+- Confirm Copy Model ID reflects saved `modelID`.
+- Confirm Copy OpenAI-compatible config reflects saved values.
+- Confirm Copy `curl /v1/models` reflects saved `host` and `serverPort`.
+- Confirm Copy `curl /v1/chat/completions` reflects saved `host`, `serverPort`, and `modelID`.
+- Change `serverPort`, save, and confirm Start launches on the new port.
+- Stop the managed server and confirm the port is released.
+- Restore the original port after Stop and confirm it can be saved.
+- While the managed server is running, confirm `modelID`, `host`, and `serverPort` changes are blocked.
+- While the managed server is running, confirm `displayName`, `enableThinking`, and `notes` can still be saved.
+- Confirm Start, Stop, and Restart still work after profile edits.
 - Confirm saved edits persist after app restart.
-- Confirm Connection Settings and copy actions reflect saved edits.
-- Confirm Start uses saved `modelID`, `host`, and `serverPort`.
-- Confirm runtime-affecting fields are guarded while a managed process is running.
+- Confirm edits are written to local `models.json`.
+- Confirm `models.json` is not included in Git status or commits.
 - Confirm editing does not call `/v1/chat/completions`.
 - Confirm editing does not run inference.
 - Confirm editing does not launch `mlx_lm.server`.
 - Confirm editing does not stop external processes.
+- Confirm editing does not use `pkill`, `killall`, or `pgrep`.
+- Confirm Direct Mode is maintained with no Proxy and no Chat UI.
+- Confirm documentation and code do not include user-specific fixed paths.

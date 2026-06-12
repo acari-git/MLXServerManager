@@ -49,6 +49,37 @@ Target service behavior without launching the full UI:
 - Confirm diagnostics do not launch `mlx_lm.server`.
 - Confirm diagnostics do not stop external processes.
 
+## v0.3 Model Profile Editing Manual Tests
+
+- Open `Edit Profile` from the selected model detail area.
+- Change `displayName`, click `Save Profile`, and confirm Model detail updates.
+- Change `modelID`, click `Save Profile`, and confirm Model detail and Copy Model ID update.
+- Change `host`, click `Save Profile`, and confirm Base URL and copy actions update.
+- Change `serverPort`, click `Save Profile`, and confirm Base URL and copy actions update.
+- Toggle `enableThinking` on and off, click `Save Profile`, and confirm Model detail updates.
+- Edit `notes`, click `Save Profile`, and confirm Model detail updates.
+- Leave `displayName` empty, save, and confirm it is filled with `modelID`.
+- Leave `modelID` empty and confirm save fails with a UI message and Logs entry.
+- Leave `host` empty and confirm save fails with a UI message and Logs entry.
+- Set `serverPort` to `0`, `65536`, and `abc`; confirm each save fails.
+- Change fields and click `Cancel`; confirm changes are not saved.
+- Confirm saved edits persist after app restart.
+- Confirm Connection Settings, Copy Config, Copy `curl /v1/models`, and Copy `curl /v1/chat/completions` reflect saved values.
+- Change `serverPort`, save, and confirm Start launches the managed server on the new port.
+- Stop the managed server and restore the original port.
+- While the managed server is running, confirm `modelID`, `host`, and `serverPort` changes are blocked.
+- While the managed server is running, confirm `displayName`, `enableThinking`, and `notes` can still be saved.
+- Confirm Start, Stop, and Restart still work after model profile edits.
+- Confirm profile edits are saved to local `models.json`.
+- Confirm `models.json` is not included in Git status or commits.
+- Confirm profile editing does not send `/v1/chat/completions`.
+- Confirm profile editing does not run model inference.
+- Confirm profile editing does not launch `mlx_lm.server`.
+- Confirm profile editing does not stop external processes.
+- Confirm `pkill`, `killall`, and `pgrep` are not used.
+- Confirm Direct Mode is maintained with no Proxy and no Chat UI.
+- Confirm no user-specific fixed paths are added to Swift code or docs.
+
 ## Performance Guardrails
 
 - Direct Mode must not proxy inference traffic.

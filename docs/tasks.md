@@ -112,12 +112,24 @@
    - Disable runtime-affecting fields while a managed process is running, or show that Restart is required.
    - Prefer disabling `modelID`, `host`, and `serverPort` while running for v0.3.
 9. Add manual test checklist.
-   - Valid edits save and persist.
-   - Invalid `modelID`, `host`, and `serverPort` do not save.
-   - Connection Settings and copy actions refresh.
-   - Start uses saved edited values.
-   - Running-process guard prevents confusing edits.
+   - `Edit Profile` opens from Model detail.
+   - `displayName`, `modelID`, `host`, `serverPort`, `enableThinking`, and `notes` save successfully.
+   - Empty `displayName` is filled with `modelID`.
+   - Empty `modelID` does not save.
+   - Empty `host` does not save.
+   - Invalid ports `0`, `65536`, and `abc` do not save.
+   - `Cancel` does not save draft changes.
+   - Model detail updates after save.
+   - Connection Settings, Copy Config, and copied curl text refresh after save.
+   - Start uses saved edited `modelID`, `host`, and `serverPort`.
+   - Changed `serverPort` can be used for Start and restored after Stop.
+   - Running-process guard blocks `modelID`, `host`, and `serverPort` changes while a managed server is running.
+   - `displayName`, `enableThinking`, and `notes` can still save while a managed server is running.
+   - Start, Stop, and Restart continue to work after profile edits.
+   - Edits are saved to local `models.json`, which remains outside Git.
    - Editing does not call `/v1/chat/completions`, run inference, launch `mlx_lm.server`, or stop external processes.
+   - Editing does not use `pkill`, `killall`, or `pgrep`.
+   - Direct Mode, no Proxy, and no Chat UI are maintained.
 10. Keep deferred items out of v0.3.
     - Multiple model add/delete, multiple simultaneous servers, Hugging Face download manager, model file deletion, Proxy, Chat UI, LAN Web UI, App Intents, and Auto unload stay out of scope.
 
