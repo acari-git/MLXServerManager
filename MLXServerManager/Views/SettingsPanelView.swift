@@ -4,6 +4,7 @@ struct SettingsPanelView: View {
     @Binding var executablePath: String
     let settingsDirectoryPath: String
     let onSave: () -> Void
+    let onRunDiagnostics: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -27,6 +28,12 @@ struct SettingsPanelView: View {
                 }
                 .buttonStyle(.borderedProminent)
 
+                Button {
+                    onRunDiagnostics()
+                } label: {
+                    Label("Run Diagnostics", systemImage: "stethoscope")
+                }
+
                 Text(settingsDirectoryPath)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -38,4 +45,3 @@ struct SettingsPanelView: View {
         .panelStyle()
     }
 }
-

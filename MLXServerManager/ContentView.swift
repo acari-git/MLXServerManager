@@ -28,7 +28,8 @@ struct ContentView: View {
                         SettingsPanelView(
                             executablePath: $viewModel.settings.mlxServerExecutablePath,
                             settingsDirectoryPath: viewModel.settingsDirectoryPath,
-                            onSave: viewModel.saveSettingsRequested
+                            onSave: viewModel.saveSettingsRequested,
+                            onRunDiagnostics: viewModel.runDiagnosticsRequested
                         )
 
                         StatusPanelView(

@@ -16,6 +16,7 @@ final class AppViewModel: ObservableObject {
     private let readyChecker: ReadyChecker
     private let processManager: ModelProcessManager
     private let memoryMonitor: MemoryMonitor
+    private let setupDiagnostics: SetupDiagnostics
     private var logBuffer: LogBuffer
     private var memoryMonitorTask: Task<Void, Never>?
 
@@ -31,13 +32,19 @@ final class AppViewModel: ObservableObject {
         portChecker: PortChecker? = nil,
         readyChecker: ReadyChecker? = nil,
         processManager: ModelProcessManager? = nil,
-        memoryMonitor: MemoryMonitor? = nil
+        memoryMonitor: MemoryMonitor? = nil,
+        setupDiagnostics: SetupDiagnostics? = nil
     ) {
         self.settingsStore = settingsStore ?? SettingsStore()
         self.portChecker = portChecker ?? PortChecker()
         self.readyChecker = readyChecker ?? ReadyChecker()
         self.processManager = processManager ?? ModelProcessManager()
         self.memoryMonitor = memoryMonitor ?? MemoryMonitor()
+        self.setupDiagnostics = setupDiagnostics ?? SetupDiagnostics(
+            settingsStore: self.settingsStore,
+            portChecker: self.portChecker,
+            readyChecker: self.readyChecker
+        )
         self.logBuffer = LogBuffer(initialLines: Self.initialLogLines)
         self.logText = logBuffer.text
         loadSettings()
@@ -189,6 +196,29 @@ final class AppViewModel: ObservableObject {
             appendLog("[settings] Saved settings.json and models.json to \(settingsDirectoryPath).")
         } catch {
             appendLog("[settings] Failed to save settings: \(error.localizedDescription)")
+        }
+    }
+
+    func runDiagnosticsRequested() {
+        let selectedModel = selectedModel
+        let host = selectedModel?.host ?? settings.defaultHost
+        let port = selectedModel?.serverPort ?? settings.defaultPort
+
+        appendLog("[diagnostics] running setup diagnostics for \(host):\(port)")
+
+        Task {
+            let results = await setupDiagnostics.run(
+                settings: settings,
+                selectedModel: selectedModel
+            )
+
+            for result in results {
+                appendLog(result.logLine)
+            }
+
+            let failedCount = results.filter { $0.status == .fail }.count
+            let warningCount = results.filter { $0.status == .warning }.count
+            appendLog("[diagnostics] completed with \(failedCount) failure(s), \(warningCount) warning(s).")
         }
     }
 
