@@ -221,7 +221,8 @@ final class AppViewModel: ObservableObject {
         Task {
             let results = await setupDiagnostics.run(
                 settings: settings,
-                selectedModel: selectedModel
+                selectedModel: selectedModel,
+                managedProcessIdentifier: processManager.managedProcessIdentifier
             )
 
             diagnosticsResults = results

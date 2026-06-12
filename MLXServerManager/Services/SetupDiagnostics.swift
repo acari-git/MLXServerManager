@@ -18,7 +18,11 @@ struct SetupDiagnostics {
         self.fileManager = fileManager
     }
 
-    func run(settings: AppSettings, selectedModel: ModelConfig?) async -> [DiagnosticsResult] {
+    func run(
+        settings: AppSettings,
+        selectedModel: ModelConfig?,
+        managedProcessIdentifier: Int32?
+    ) async -> [DiagnosticsResult] {
         let endpoint = endpoint(settings: settings, selectedModel: selectedModel)
         var results: [DiagnosticsResult] = []
 
@@ -26,7 +30,13 @@ struct SetupDiagnostics {
         results.append(hostResult(endpoint.host))
         results.append(portResult(endpoint.port))
         results.append(storageResult())
-        results.append(portAvailabilityResult(host: endpoint.host, port: endpoint.port))
+        results.append(
+            portAvailabilityResult(
+                host: endpoint.host,
+                port: endpoint.port,
+                managedProcessIdentifier: managedProcessIdentifier
+            )
+        )
         results.append(await readyResult(host: endpoint.host, port: endpoint.port))
 
         return results
@@ -183,7 +193,11 @@ struct SetupDiagnostics {
         }
     }
 
-    private func portAvailabilityResult(host: String, port: Int) -> DiagnosticsResult {
+    private func portAvailabilityResult(
+        host: String,
+        port: Int,
+        managedProcessIdentifier: Int32?
+    ) -> DiagnosticsResult {
         switch portChecker.check(host: host, port: port) {
         case let .available(host, port):
             return DiagnosticsResult(
@@ -193,11 +207,22 @@ struct SetupDiagnostics {
                 detail: "\(host):\(port)"
             )
         case let .busy(host, port):
+            let message: String
+            let detail: String
+
+            if let managedProcessIdentifier {
+                message = "Port is busy because the managed server is running."
+                detail = "\(host):\(port), pid \(managedProcessIdentifier)"
+            } else {
+                message = "Port is busy. Another process may be using this port."
+                detail = "\(host):\(port)"
+            }
+
             return DiagnosticsResult(
                 check: .portAvailability,
                 status: .warning,
-                message: "Port is busy. An external process may already be using it if no managed process is attached.",
-                detail: "\(host):\(port)"
+                message: message,
+                detail: detail
             )
         case let .invalidInput(message):
             return DiagnosticsResult(
