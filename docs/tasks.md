@@ -77,6 +77,10 @@
     - Busy external port.
     - Available port.
     - Managed server Ready through `/v1/models`.
+    - Stopped-server diagnostics: Port availability `pass`, Ready check `warning`.
+    - Running managed-server diagnostics: Port availability `warning` with managed-server message, Ready check `pass`.
+    - Diagnostics UI and Logs show matching results.
+    - Diagnostics do not call `/v1/chat/completions`, run inference, launch `mlx_lm.server`, or stop external processes.
 12. Keep deferred items out of v0.2.
     - Menu bar quick actions move to v0.3 or later.
     - LAN Web UI, App Intents, Auto unload, Proxy, Chat UI, and multiple server management stay out of scope.

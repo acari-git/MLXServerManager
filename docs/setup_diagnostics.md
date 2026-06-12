@@ -175,10 +175,47 @@ Manual tests should cover:
 - missing executable path
 - non-executable file
 - valid executable path
-- safe help probe success
 - invalid port
 - busy port from an external process
 - available port
 - managed server ready through `/v1/models`
 - settings storage path display
 - no app-side inference request
+
+### v0.2 Manual Checklist
+
+Use this checklist for the implemented v0.2 Setup Diagnostics flow.
+
+1. Start the app with no managed server running.
+2. Click `Run Diagnostics`.
+3. Confirm `Port availability` is `pass` when the selected host and port are free.
+4. Confirm `Ready check` is `warning` while the server is stopped.
+5. Confirm Diagnostics UI shows the same results as Logs.
+6. Set a valid `mlx_lm.server executable path`.
+7. Click `Run Diagnostics`.
+8. Confirm executable path `configured`, `exists`, and `executable` checks are `pass`.
+9. Enter an executable path that does not exist.
+10. Click `Run Diagnostics`.
+11. Confirm executable path `exists` and `executable` checks are `fail`.
+12. Clear the executable path field.
+13. Click `Run Diagnostics`.
+14. Confirm executable path `configured`, `exists`, and `executable` checks are `fail`.
+15. Restore the valid executable path.
+16. Click `Run Diagnostics`.
+17. Confirm the summary returns to `0 failure(s)` when all required settings are valid.
+18. Click `Start`.
+19. Confirm the managed server reaches Ready through `/v1/models`.
+20. Click `Run Diagnostics` while the managed server is running.
+21. Confirm `Port availability` is `warning`.
+22. Confirm the message says `Port is busy because the managed server is running.`
+23. Confirm the detail includes the managed pid.
+24. Confirm `Ready check` is `pass`.
+25. Confirm Diagnostics UI and Logs both show the improved port message.
+26. Click `Restart`.
+27. Confirm Restart still stops the managed process, releases the port, starts a new pid, and reaches Ready.
+28. Click `Stop`.
+29. Confirm Stop still releases the port.
+30. Confirm diagnostics do not call `/v1/chat/completions`.
+31. Confirm diagnostics do not run model inference.
+32. Confirm diagnostics do not launch `mlx_lm.server`.
+33. Confirm diagnostics do not stop external processes.
