@@ -55,3 +55,42 @@ The app may launch, stop, restart, monitor, and display connection details for t
 - Multi-host orchestration.
 
 The `/v1/chat/completions` curl text is a copy-only helper for external clients. Readiness checks must continue to use `/v1/models`.
+
+## v0.2 Setup Diagnostics Requirements
+
+v0.2 should add Setup Diagnostics while preserving Direct Mode:
+
+```text
+OpenAI-compatible client -> mlx_lm.server
+```
+
+Setup Diagnostics should help users confirm that the configured `mlx_lm.server executable path`, selected model, host, and port are usable before Start.
+
+Functional requirements:
+
+- Check whether the executable path is configured.
+- Check whether the configured executable path exists.
+- Check whether the configured executable path is executable.
+- Run a safe probe such as `--help` with a short timeout.
+- Validate host and port values.
+- Reuse Port Check to determine whether the configured port is available.
+- If the port is busy and no managed process is attached, explain that an external process may be using it.
+- Confirm required Start settings are present.
+- Reuse Ready Check through `GET /v1/models` after a managed server starts.
+- Show the resolved storage location for `settings.json` and `models.json`.
+- Write diagnostics results to Logs.
+- Add a Diagnostics panel or `Run Diagnostics` button in the UI.
+
+v0.2 non-goals:
+
+- Proxy mode.
+- Chat UI.
+- Running `/v1/chat/completions` from the app.
+- Running inference as a diagnostic.
+- Stopping external `mlx_lm.server` processes.
+- Menu bar quick actions.
+- LAN Web UI.
+- App Intents.
+- Auto unload.
+- Hugging Face download manager.
+- Multiple simultaneous server management.
