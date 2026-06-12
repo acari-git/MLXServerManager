@@ -11,14 +11,14 @@ Recommended areas:
 - Configuration summary for host, port, model, and command.
 - Connection panel with copy action.
 - Memory usage panel.
-- Log panel.
+- Log panel with Clear Logs.
 
 ## Controls
 
 - Start is enabled when the server is not running and no blocking validation error exists.
 - Stop is enabled when the managed process is running.
 - Restart is enabled when the managed process is running or in a recoverable failed state.
-- Copy connection config is enabled when host and port are valid.
+- Copy connection config and curl examples are enabled when host and port are valid.
 
 ## Status Display
 
@@ -26,7 +26,8 @@ Use clear operational states:
 
 - Stopped
 - Starting
-- Waiting for readiness
+- Loading
+- Checking readiness
 - Ready
 - Stopping
 - Failed
@@ -36,9 +37,12 @@ Use clear operational states:
 
 The UI should expose:
 
-- Base URL, for example `http://127.0.0.1:8000/v1`
+- Base URL, for example `http://127.0.0.1:8080/v1`
 - API key placeholder if clients require one
 - Model identifier as reported or configured
+- OpenAI-compatible JSON config
+- `curl /v1/models`
+- `curl /v1/chat/completions` as copied example text only
 
 ## What to Avoid
 
@@ -47,4 +51,4 @@ The UI should expose:
 - Marketing-style landing page
 - Proxy configuration in v0.1
 - Controls for non-MLX inference backends
-
+- Sending chat completion requests from the app

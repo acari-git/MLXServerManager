@@ -19,7 +19,7 @@ The app may launch, stop, monitor, and display connection details for the server
 - Do not put `Process` launch, termination, pipe handling, port probing, or polling logic directly inside SwiftUI views.
 - Keep SwiftUI views focused on rendering state and sending user intents.
 - Put process control behind services or controllers that can be tested without UI.
-- Do not hardcode user-specific paths such as `/Users/yoinkun`.
+- Do not hardcode user-specific absolute paths.
 - Do not commit `.venv`, `models`, `logs`, `.env`, `HF_TOKEN`, or model files.
 - Preserve the ability to add App Intents, LAN Web UI, Proxy mode, and automatic unload later.
 
@@ -30,9 +30,9 @@ Implement only:
 - Start / Stop / Restart
 - Ready checks
 - Port conflict checks
+- Settings persistence
 - Memory usage display
 - OpenAI-compatible connection config copy
-- Log display
+- Log display and Clear Logs
 
 Do not add chat UI or alternate inference backend support unless the product scope changes explicitly.
-
