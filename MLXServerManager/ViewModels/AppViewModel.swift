@@ -2,32 +2,39 @@ import AppKit
 import Combine
 import Foundation
 
+@MainActor
 final class AppViewModel: ObservableObject {
     @Published var settings: AppSettings = .defaults
     @Published var models: [ModelConfig] = ModelConfig.defaults
     @Published var selectedModelID: ModelConfig.ID?
     @Published private(set) var runtimeState: ModelRuntimeState = .stopped
+    @Published private(set) var memoryUsageGB: Double?
     @Published private(set) var logLines: [String] = [
         "[info] MLX Server Manager UI loaded.",
         "[info] Direct Mode selected. No proxy is configured.",
-        "[info] Start, Stop, and Restart are available."
+        "[info] Start, Stop, and Restart are available.",
+        "[info] Memory monitoring starts after managed process launch."
     ]
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
     private let readyChecker: ReadyChecker
     private let processManager: ModelProcessManager
+    private let memoryMonitor: MemoryMonitor
+    private var memoryMonitorTask: Task<Void, Never>?
 
     init(
-        settingsStore: SettingsStore = SettingsStore(),
-        portChecker: PortChecker = PortChecker(),
-        readyChecker: ReadyChecker = ReadyChecker(),
-        processManager: ModelProcessManager = ModelProcessManager()
+        settingsStore: SettingsStore? = nil,
+        portChecker: PortChecker? = nil,
+        readyChecker: ReadyChecker? = nil,
+        processManager: ModelProcessManager? = nil,
+        memoryMonitor: MemoryMonitor? = nil
     ) {
-        self.settingsStore = settingsStore
-        self.portChecker = portChecker
-        self.readyChecker = readyChecker
-        self.processManager = processManager
+        self.settingsStore = settingsStore ?? SettingsStore()
+        self.portChecker = portChecker ?? PortChecker()
+        self.readyChecker = readyChecker ?? ReadyChecker()
+        self.processManager = processManager ?? ModelProcessManager()
+        self.memoryMonitor = memoryMonitor ?? MemoryMonitor()
         loadSettings()
         selectedModelID = models.first?.id
     }
@@ -46,6 +53,14 @@ final class AppViewModel: ObservableObject {
 
     var apiKeyPlaceholder: String {
         settings.apiKeyPlaceholder
+    }
+
+    var memoryUsageText: String {
+        guard let memoryUsageGB else {
+            return "Memory: Not running"
+        }
+
+        return String(format: "Memory: %.2f GB", memoryUsageGB)
     }
 
     var copyableConfig: String {
@@ -240,6 +255,7 @@ final class AppViewModel: ObservableObject {
 
             appendLog("[\(logPrefix)] command: \(launchResult.commandSummary)")
             appendLog("[\(logPrefix)] pid: \(launchResult.processIdentifier)")
+            startMemoryMonitoring(processIdentifier: launchResult.processIdentifier)
             runtimeState = .loading(
                 host: host,
                 port: port,
@@ -396,10 +412,12 @@ final class AppViewModel: ObservableObject {
     ) async -> Bool {
         switch result {
         case .notRunning:
+            stopMemoryMonitoring()
             runtimeState = .stopped
             appendLog("[\(logPrefix)] managed process is not running.")
             return true
         case let .stopped(processIdentifier, terminationStatus, usedInterrupt):
+            stopMemoryMonitoring()
             if usedInterrupt {
                 appendLog("[\(logPrefix)] interrupt was sent after graceful timeout for pid \(processIdentifier).")
             }
@@ -485,6 +503,72 @@ final class AppViewModel: ObservableObject {
                 selectedModel?.host ?? settings.defaultHost,
                 selectedModel?.serverPort ?? settings.defaultPort
             )
+        }
+    }
+
+    private func startMemoryMonitoring(processIdentifier: Int32) {
+        stopMemoryMonitoring(resetUsage: true)
+
+        appendLog("[memory] monitoring managed pid \(processIdentifier).")
+        let monitor = memoryMonitor
+
+        memoryMonitorTask = Task { [weak self, monitor] in
+            while !Task.isCancelled {
+                let result = await monitor.currentUsage(processIdentifier: processIdentifier)
+                let shouldContinue = await MainActor.run {
+                    self?.handleMemoryMonitorResult(
+                        result,
+                        processIdentifier: processIdentifier
+                    ) ?? false
+                }
+
+                guard shouldContinue, !Task.isCancelled else {
+                    return
+                }
+
+                do {
+                    try await Task.sleep(nanoseconds: 4_000_000_000)
+                } catch {
+                    return
+                }
+            }
+        }
+    }
+
+    private func stopMemoryMonitoring(resetUsage: Bool = true) {
+        memoryMonitorTask?.cancel()
+        memoryMonitorTask = nil
+
+        if resetUsage {
+            memoryUsageGB = nil
+        }
+    }
+
+    private func handleMemoryMonitorResult(
+        _ result: MemoryMonitorResult,
+        processIdentifier: Int32
+    ) -> Bool {
+        guard processManager.managedProcessIdentifier == processIdentifier else {
+            memoryUsageGB = nil
+            appendLog("[memory] monitoring stopped because managed pid changed.")
+            return false
+        }
+
+        switch result {
+        case let .usage(snapshot):
+            memoryUsageGB = snapshot.gigabytes
+            return true
+        case let .notRunning(processIdentifier):
+            memoryUsageGB = nil
+            appendLog("[memory] warning: managed pid \(processIdentifier) is no longer reporting RSS.")
+            return false
+        case let .invalidInput(message):
+            memoryUsageGB = nil
+            appendLog("[memory] warning: \(message)")
+            return false
+        case let .failed(processIdentifier, message):
+            appendLog("[memory] warning: failed to read RSS for pid \(processIdentifier): \(message)")
+            return true
         }
     }
 

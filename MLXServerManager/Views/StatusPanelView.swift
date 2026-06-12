@@ -2,6 +2,7 @@ import SwiftUI
 
 struct StatusPanelView: View {
     let runtimeState: ModelRuntimeState
+    let memoryUsageText: String
     let onCheckPort: () -> Void
     let onCheckReady: () -> Void
     let onStart: () -> Void
@@ -14,7 +15,10 @@ struct StatusPanelView: View {
                 .font(.headline)
 
             HStack(spacing: 12) {
-                statusBadge
+                VStack(alignment: .leading, spacing: 6) {
+                    statusBadge
+                    memoryBadge
+                }
 
                 Spacer()
 
@@ -64,6 +68,12 @@ struct StatusPanelView: View {
                 .foregroundStyle(.secondary)
         }
         .font(.callout)
+    }
+
+    private var memoryBadge: some View {
+        Label(memoryUsageText, systemImage: "memorychip")
+            .font(.caption)
+            .foregroundStyle(.secondary)
     }
 
     private var indicatorColor: Color {

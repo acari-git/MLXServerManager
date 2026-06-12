@@ -49,7 +49,7 @@ enum ModelRuntimeState: Hashable {
     var detail: String {
         switch self {
         case .stopped:
-            "mlx_lm.server is not running. Start is available; Stop and Restart are not implemented yet."
+            "mlx_lm.server is not running. Start, Stop, and Restart are available."
         case let .starting(host, port):
             "Starting managed mlx_lm.server for \(host):\(port)."
         case let .loading(host, port, processIdentifier):
