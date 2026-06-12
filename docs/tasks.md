@@ -85,6 +85,42 @@
     - Menu bar quick actions move to v0.3 or later.
     - LAN Web UI, App Intents, Auto unload, Proxy, Chat UI, and multiple server management stay out of scope.
 
+## v0.3 Planned: Model Profile Editing
+
+1. Define model profile editing requirements.
+   - Editable fields: `modelID`, `displayName`, `host`, `serverPort`, `enableThinking`, and `notes`.
+   - Keep multiple profile add/delete out of scope.
+2. Add editable draft state.
+   - Create a draft from the selected `ModelConfig`.
+   - Avoid writing to saved model state on every keystroke.
+3. Add validation for `modelID`, `host`, and `serverPort`.
+   - Reject empty `modelID`.
+   - Reject empty `host`.
+   - Reject ports outside 1 through 65535.
+4. Add edit UI.
+   - Keep it within the existing model detail or settings area.
+   - Avoid a large layout rewrite.
+5. Add save and cancel actions.
+   - Save valid edits to `models.json`.
+   - Cancel should restore the last saved values.
+   - Log save success and validation failures.
+6. Refresh connection config after save.
+   - Base URL, Model ID, JSON config, and copied curl text should reflect saved edits.
+7. Ensure Start uses saved profile values.
+   - Use edited `modelID`, `host`, and `serverPort` for the next launch.
+8. Add running-process guard.
+   - Disable runtime-affecting fields while a managed process is running, or show that Restart is required.
+   - Prefer disabling `modelID`, `host`, and `serverPort` while running for v0.3.
+9. Add manual test checklist.
+   - Valid edits save and persist.
+   - Invalid `modelID`, `host`, and `serverPort` do not save.
+   - Connection Settings and copy actions refresh.
+   - Start uses saved edited values.
+   - Running-process guard prevents confusing edits.
+   - Editing does not call `/v1/chat/completions`, run inference, launch `mlx_lm.server`, or stop external processes.
+10. Keep deferred items out of v0.3.
+    - Multiple model add/delete, multiple simultaneous servers, Hugging Face download manager, model file deletion, Proxy, Chat UI, LAN Web UI, App Intents, and Auto unload stay out of scope.
+
 ## Later
 
 - Unit tests for services where practical.

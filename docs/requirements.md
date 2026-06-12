@@ -94,3 +94,51 @@ v0.2 non-goals:
 - Auto unload.
 - Hugging Face download manager.
 - Multiple simultaneous server management.
+
+## v0.3 Model Profile Editing Requirements
+
+v0.3 should add Model profile editing while preserving Direct Mode:
+
+```text
+OpenAI-compatible client -> mlx_lm.server
+```
+
+Model profile editing should let users update the selected model configuration from the UI and persist valid edits to `models.json`.
+
+Functional requirements:
+
+- Edit `modelID`.
+- Edit `displayName`.
+- Edit `host`.
+- Edit `serverPort`.
+- Toggle `enableThinking`.
+- Edit `notes`.
+- Save valid edits to `models.json`.
+- Cancel unsaved edits.
+- Reject empty `modelID`.
+- Reject empty `host`.
+- Reject `serverPort` values outside 1 through 65535.
+- Refresh Connection Settings, Copy Config, and copied curl commands after save.
+- Use edited `modelID`, `host`, and `serverPort` for Start.
+- Warn or guard before changing runtime-affecting fields while a managed process is running.
+
+Recommended running-process behavior:
+
+- Disable `modelID`, `host`, and `serverPort` edits while a managed process is running.
+- Explain that those fields can be edited after Stop.
+- Keep metadata-only edits optional if they do not imply the running server changed.
+
+v0.3 non-goals:
+
+- Adding or deleting multiple model profiles.
+- Multiple simultaneous server management.
+- Hugging Face download manager.
+- Model file deletion.
+- Proxy mode.
+- Chat UI.
+- LAN Web UI.
+- App Intents.
+- Auto unload.
+- Running `/v1/chat/completions` from the app.
+- Launching `mlx_lm.server` from profile editing.
+- Stopping external processes from profile editing.
