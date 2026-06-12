@@ -7,6 +7,8 @@ struct ConnectionSettingsView: View {
     let onCopyBaseURL: () -> Void
     let onCopyModelID: () -> Void
     let onCopyConfig: () -> Void
+    let onCopyModelsCurl: () -> Void
+    let onCopyChatCompletionsCurl: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -19,27 +21,42 @@ struct ConnectionSettingsView: View {
                 ("API Key", apiKeyPlaceholder)
             ])
 
-            HStack(spacing: 10) {
-                Button {
-                    onCopyBaseURL()
-                } label: {
-                    Label("Copy Base URL", systemImage: "link")
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Button {
+                        onCopyBaseURL()
+                    } label: {
+                        Label("Copy Base URL", systemImage: "link")
+                    }
+
+                    Button {
+                        onCopyModelID()
+                    } label: {
+                        Label("Copy Model ID", systemImage: "doc.on.doc")
+                    }
+
+                    Button {
+                        onCopyConfig()
+                    } label: {
+                        Label("Copy Config", systemImage: "square.and.arrow.up")
+                    }
                 }
 
-                Button {
-                    onCopyModelID()
-                } label: {
-                    Label("Copy Model ID", systemImage: "doc.on.doc")
-                }
+                HStack(spacing: 10) {
+                    Button {
+                        onCopyModelsCurl()
+                    } label: {
+                        Label("Copy curl /v1/models", systemImage: "terminal")
+                    }
 
-                Button {
-                    onCopyConfig()
-                } label: {
-                    Label("Copy Config", systemImage: "square.and.arrow.up")
+                    Button {
+                        onCopyChatCompletionsCurl()
+                    } label: {
+                        Label("Copy curl /v1/chat/completions", systemImage: "terminal")
+                    }
                 }
             }
         }
         .panelStyle()
     }
 }
-

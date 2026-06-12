@@ -72,6 +72,14 @@ final class AppViewModel: ObservableObject {
         connectionConfigBuilder.configText(modelID: selectedModelIdentifier)
     }
 
+    var modelsCurlCommand: String {
+        connectionConfigBuilder.modelsCurlCommand()
+    }
+
+    var chatCompletionsCurlCommand: String {
+        connectionConfigBuilder.chatCompletionsCurlCommand(modelID: selectedModelIdentifier)
+    }
+
     var settingsDirectoryPath: String {
         do {
             return try settingsStore.settingsDirectoryURL.path
@@ -197,6 +205,16 @@ final class AppViewModel: ObservableObject {
     func copyConfig() {
         copyToPasteboard(copyableConfig)
         appendLog("[ui] Copied OpenAI-compatible config.")
+    }
+
+    func copyModelsCurl() {
+        copyToPasteboard(modelsCurlCommand)
+        appendLog("[ui] Copied OpenAI-compatible curl /v1/models command.")
+    }
+
+    func copyChatCompletionsCurl() {
+        copyToPasteboard(chatCompletionsCurlCommand)
+        appendLog("[ui] Copied OpenAI-compatible curl /v1/chat/completions command.")
     }
 
     func clearLogsRequested() {

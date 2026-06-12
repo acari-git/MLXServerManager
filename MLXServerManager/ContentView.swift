@@ -49,7 +49,9 @@ struct ContentView: View {
                             apiKeyPlaceholder: viewModel.apiKeyPlaceholder,
                             onCopyBaseURL: viewModel.copyBaseURL,
                             onCopyModelID: viewModel.copyModelID,
-                            onCopyConfig: viewModel.copyConfig
+                            onCopyConfig: viewModel.copyConfig,
+                            onCopyModelsCurl: viewModel.copyModelsCurl,
+                            onCopyChatCompletionsCurl: viewModel.copyChatCompletionsCurl
                         )
 
                         LogView(
