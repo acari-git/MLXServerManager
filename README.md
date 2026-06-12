@@ -97,4 +97,4 @@ The app stores runtime configuration under the user's Application Support direct
 
 These files are local runtime state and should not be committed. Model directories, model artifacts, logs, virtual environments, `.env`, and `HF_TOKEN` must also stay out of Git.
 
-See `docs/` and `contracts/` for requirements, architecture, UI, testing, and behavioral contracts.
+See `docs/` and `contracts/` for requirements, architecture, UI, testing, and behavioral contracts. Before publishing or distributing v0.1, use the [v0.1 release verification checklist](docs/v0.1_checklist.md).
