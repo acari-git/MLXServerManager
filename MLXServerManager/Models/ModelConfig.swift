@@ -33,3 +33,51 @@ struct ModelConfig: Codable, Identifiable, Hashable {
         )
     ]
 }
+
+struct ModelProfileDraft: Equatable {
+    var originalModelID: String
+    var displayName: String
+    var modelID: String
+    var host: String
+    var serverPortText: String
+    var enableThinking: Bool
+    var notes: String
+
+    static let empty = ModelProfileDraft(
+        originalModelID: "",
+        displayName: "",
+        modelID: "",
+        host: "",
+        serverPortText: "",
+        enableThinking: false,
+        notes: ""
+    )
+
+    init(model: ModelConfig) {
+        self.originalModelID = model.modelID
+        self.displayName = model.displayName
+        self.modelID = model.modelID
+        self.host = model.host
+        self.serverPortText = String(model.serverPort)
+        self.enableThinking = model.enableThinking
+        self.notes = model.notes
+    }
+
+    private init(
+        originalModelID: String,
+        displayName: String,
+        modelID: String,
+        host: String,
+        serverPortText: String,
+        enableThinking: Bool,
+        notes: String
+    ) {
+        self.originalModelID = originalModelID
+        self.displayName = displayName
+        self.modelID = modelID
+        self.host = host
+        self.serverPortText = serverPortText
+        self.enableThinking = enableThinking
+        self.notes = notes
+    }
+}

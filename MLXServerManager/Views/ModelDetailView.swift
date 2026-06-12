@@ -2,11 +2,23 @@ import SwiftUI
 
 struct ModelDetailView: View {
     let model: ModelConfig?
+    let onEditProfile: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Selected Model")
-                .font(.headline)
+            HStack {
+                Text("Selected Model")
+                    .font(.headline)
+
+                Spacer()
+
+                Button {
+                    onEditProfile()
+                } label: {
+                    Label("Edit Profile", systemImage: "pencil")
+                }
+                .disabled(model == nil)
+            }
 
             if let model {
                 DetailGrid(rows: [

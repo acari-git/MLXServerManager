@@ -71,6 +71,11 @@ struct SettingsStore {
         try save(models, to: try modelsFileURL)
     }
 
+    func save(models: [ModelConfig]) throws {
+        try ensureSettingsDirectoryExists()
+        try save(models, to: try modelsFileURL)
+    }
+
     private func loadSettings() throws -> (value: AppSettings, usedDefault: Bool) {
         let url = try settingsFileURL
         guard fileManager.fileExists(atPath: url.path) else {

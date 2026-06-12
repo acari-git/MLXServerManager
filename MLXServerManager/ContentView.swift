@@ -48,7 +48,20 @@ struct ContentView: View {
                             onRestart: viewModel.restartRequested
                         )
 
-                        ModelDetailView(model: viewModel.selectedModel)
+                        ModelDetailView(
+                            model: viewModel.selectedModel,
+                            onEditProfile: viewModel.editProfileRequested
+                        )
+
+                        if viewModel.isProfileEditorPresented {
+                            ModelProfileEditorView(
+                                draft: $viewModel.profileEditorDraft,
+                                message: viewModel.profileEditorMessage,
+                                runtimeFieldsLocked: viewModel.isManagedProcessRunning,
+                                onSave: viewModel.saveProfileEditing,
+                                onCancel: viewModel.cancelProfileEditing
+                            )
+                        }
 
                         ConnectionSettingsView(
                             baseURL: viewModel.baseURL,

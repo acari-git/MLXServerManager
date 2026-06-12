@@ -2,6 +2,11 @@ import AppKit
 import Combine
 import Foundation
 
+private enum ProfileValidationResult {
+    case valid(ModelConfig)
+    case invalid(String)
+}
+
 @MainActor
 final class AppViewModel: ObservableObject {
     @Published var settings: AppSettings = .defaults
@@ -12,6 +17,9 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var logText: String
     @Published private(set) var diagnosticsResults: [DiagnosticsResult] = []
     @Published private(set) var diagnosticsDidRun = false
+    @Published var profileEditorDraft: ModelProfileDraft = .empty
+    @Published private(set) var isProfileEditorPresented = false
+    @Published private(set) var profileEditorMessage: String?
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
@@ -105,6 +113,10 @@ final class AppViewModel: ObservableObject {
         let failureCount = diagnosticsResults.filter { $0.status == .fail }.count
         let warningCount = diagnosticsResults.filter { $0.status == .warning }.count
         return "\(failureCount) failure(s), \(warningCount) warning(s)"
+    }
+
+    var isManagedProcessRunning: Bool {
+        processManager.managedProcessIdentifier != nil
     }
 
     func startRequested() {
@@ -235,6 +247,61 @@ final class AppViewModel: ObservableObject {
             let failedCount = results.filter { $0.status == .fail }.count
             let warningCount = results.filter { $0.status == .warning }.count
             appendLog("[diagnostics] completed with \(failedCount) failure(s), \(warningCount) warning(s).")
+        }
+    }
+
+    func editProfileRequested() {
+        guard let selectedModel else {
+            profileEditorMessage = "No model is selected."
+            appendLog("[profile] edit failed: No model is selected.")
+            return
+        }
+
+        profileEditorDraft = ModelProfileDraft(model: selectedModel)
+        profileEditorMessage = nil
+        isProfileEditorPresented = true
+        appendLog("[profile] editing \(selectedModel.modelID)")
+    }
+
+    func cancelProfileEditing() {
+        profileEditorDraft = .empty
+        profileEditorMessage = nil
+        isProfileEditorPresented = false
+        appendLog("[profile] edit cancelled.")
+    }
+
+    func saveProfileEditing() {
+        guard isProfileEditorPresented else {
+            return
+        }
+
+        guard let index = models.firstIndex(where: { $0.modelID == profileEditorDraft.originalModelID }) else {
+            let message = "Selected model profile no longer exists."
+            profileEditorMessage = message
+            appendLog("[profile] save failed: \(message)")
+            return
+        }
+
+        let existingModel = models[index]
+
+        switch validatedProfileDraft(profileEditorDraft, existingModel: existingModel) {
+        case let .valid(updatedModel):
+            models[index] = updatedModel
+            selectedModelID = updatedModel.id
+
+            do {
+                try settingsStore.save(models: models)
+                profileEditorDraft = ModelProfileDraft(model: updatedModel)
+                profileEditorMessage = nil
+                isProfileEditorPresented = false
+                appendLog("[profile] saved \(updatedModel.modelID) to models.json.")
+            } catch {
+                profileEditorMessage = error.localizedDescription
+                appendLog("[profile] save failed: \(error.localizedDescription)")
+            }
+        case let .invalid(message):
+            profileEditorMessage = message
+            appendLog("[profile] save failed: \(message)")
         }
     }
 
@@ -641,6 +708,45 @@ final class AppViewModel: ObservableObject {
             appendLog("[memory] warning: failed to read RSS for pid \(processIdentifier): \(message)")
             return true
         }
+    }
+
+    private func validatedProfileDraft(
+        _ draft: ModelProfileDraft,
+        existingModel: ModelConfig
+    ) -> ProfileValidationResult {
+        let modelID = draft.modelID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let displayName = draft.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let host = draft.host.trimmingCharacters(in: .whitespacesAndNewlines)
+        let portText = draft.serverPortText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !modelID.isEmpty else {
+            return .invalid("Model ID is required.")
+        }
+
+        guard !host.isEmpty else {
+            return .invalid("Host is required.")
+        }
+
+        guard let port = Int(portText), (1...65_535).contains(port) else {
+            return .invalid("Port must be between 1 and 65535.")
+        }
+
+        let changesRuntimeTarget = modelID != existingModel.modelID
+            || host != existingModel.host
+            || port != existingModel.serverPort
+
+        if isManagedProcessRunning && changesRuntimeTarget {
+            return .invalid("Stop the managed server before changing modelID, host, or port.")
+        }
+
+        var updatedModel = existingModel
+        updatedModel.displayName = displayName.isEmpty ? modelID : displayName
+        updatedModel.modelID = modelID
+        updatedModel.host = host
+        updatedModel.serverPort = port
+        updatedModel.enableThinking = draft.enableThinking
+        updatedModel.notes = draft.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        return .valid(updatedModel)
     }
 
     private var connectionConfigBuilder: ConnectionConfigBuilder {
