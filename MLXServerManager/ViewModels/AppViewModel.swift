@@ -9,19 +9,22 @@ final class AppViewModel: ObservableObject {
     @Published var selectedModelID: ModelConfig.ID?
     @Published private(set) var runtimeState: ModelRuntimeState = .stopped
     @Published private(set) var memoryUsageGB: Double?
-    @Published private(set) var logLines: [String] = [
-        "[info] MLX Server Manager UI loaded.",
-        "[info] Direct Mode selected. No proxy is configured.",
-        "[info] Start, Stop, and Restart are available.",
-        "[info] Memory monitoring starts after managed process launch."
-    ]
+    @Published private(set) var logText: String
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
     private let readyChecker: ReadyChecker
     private let processManager: ModelProcessManager
     private let memoryMonitor: MemoryMonitor
+    private var logBuffer: LogBuffer
     private var memoryMonitorTask: Task<Void, Never>?
+
+    private static let initialLogLines = [
+        "[info] MLX Server Manager UI loaded.",
+        "[info] Direct Mode selected. No proxy is configured.",
+        "[info] Start, Stop, and Restart are available.",
+        "[info] Memory monitoring starts after managed process launch."
+    ]
 
     init(
         settingsStore: SettingsStore? = nil,
@@ -35,6 +38,8 @@ final class AppViewModel: ObservableObject {
         self.readyChecker = readyChecker ?? ReadyChecker()
         self.processManager = processManager ?? ModelProcessManager()
         self.memoryMonitor = memoryMonitor ?? MemoryMonitor()
+        self.logBuffer = LogBuffer(initialLines: Self.initialLogLines)
+        self.logText = logBuffer.text
         loadSettings()
         selectedModelID = models.first?.id
     }
@@ -65,10 +70,6 @@ final class AppViewModel: ObservableObject {
 
     var copyableConfig: String {
         connectionConfigBuilder.configText(modelID: selectedModelIdentifier)
-    }
-
-    var logText: String {
-        logLines.joined(separator: "\n")
     }
 
     var settingsDirectoryPath: String {
@@ -196,6 +197,12 @@ final class AppViewModel: ObservableObject {
     func copyConfig() {
         copyToPasteboard(copyableConfig)
         appendLog("[ui] Copied OpenAI-compatible config.")
+    }
+
+    func clearLogsRequested() {
+        logBuffer.clear()
+        syncLogText()
+        appendLog("[info] logs cleared")
     }
 
     private func startManagedServer(logPrefix: String) async -> Bool {
@@ -583,7 +590,12 @@ final class AppViewModel: ObservableObject {
     }
 
     private func appendLog(_ line: String) {
-        logLines.append(line)
+        logBuffer.append(line)
+        syncLogText()
+    }
+
+    private func syncLogText() {
+        logText = logBuffer.text
     }
 
     private func copyToPasteboard(_ value: String) {

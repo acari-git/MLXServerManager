@@ -2,11 +2,22 @@ import SwiftUI
 
 struct LogView: View {
     let text: String
+    let onClear: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Logs")
-                .font(.headline)
+            HStack {
+                Text("Logs")
+                    .font(.headline)
+
+                Spacer()
+
+                Button {
+                    onClear()
+                } label: {
+                    Label("Clear Logs", systemImage: "trash")
+                }
+            }
 
             ScrollView {
                 Text(text)
@@ -27,4 +38,3 @@ struct LogView: View {
         .panelStyle()
     }
 }
-

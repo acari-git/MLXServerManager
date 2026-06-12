@@ -52,7 +52,10 @@ struct ContentView: View {
                             onCopyConfig: viewModel.copyConfig
                         )
 
-                        LogView(text: viewModel.logText)
+                        LogView(
+                            text: viewModel.logText,
+                            onClear: viewModel.clearLogsRequested
+                        )
                     }
                     .padding(20)
                     .frame(maxWidth: .infinity, alignment: .leading)
