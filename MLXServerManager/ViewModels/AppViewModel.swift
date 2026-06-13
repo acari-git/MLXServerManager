@@ -11,7 +11,12 @@ private enum ProfileValidationResult {
 final class AppViewModel: ObservableObject {
     @Published var settings: AppSettings = .defaults
     @Published var models: [ModelConfig] = ModelConfig.defaults
-    @Published var selectedModelID: ModelConfig.ID?
+    @Published var selectedModelID: ModelConfig.ID? {
+        didSet {
+            handleSelectedModelChange(from: oldValue)
+        }
+    }
+    @Published private(set) var runningModelID: ModelConfig.ID?
     @Published private(set) var runtimeState: ModelRuntimeState = .stopped
     @Published private(set) var memoryUsageGB: Double?
     @Published private(set) var logText: String
@@ -79,6 +84,24 @@ final class AppViewModel: ObservableObject {
         selectedModel?.modelID ?? "No model selected"
     }
 
+    var runningModelText: String {
+        guard let runningModelID else {
+            return "Running Model: Not running"
+        }
+
+        return "Running Model: \(runningModelID)"
+    }
+
+    var restartRequired: Bool {
+        guard isManagedProcessRunning,
+              let runningModelID,
+              let selectedModelID = selectedModel?.id else {
+            return false
+        }
+
+        return selectedModelID != runningModelID
+    }
+
     var apiKeyPlaceholder: String {
         settings.apiKeyPlaceholder
     }
@@ -137,6 +160,7 @@ final class AppViewModel: ObservableObject {
 
     func stopRequested() {
         guard let processIdentifier = processManager.managedProcessIdentifier else {
+            clearRunningModel(logPrefix: "stop")
             runtimeState = .stopped
             appendLog("[stop] managed process is not running.")
             return
@@ -573,6 +597,7 @@ final class AppViewModel: ObservableObject {
             appendLog("[\(logPrefix)] command: \(launchResult.commandSummary)")
             appendLog("[\(logPrefix)] pid: \(launchResult.processIdentifier)")
             startMemoryMonitoring(processIdentifier: launchResult.processIdentifier)
+            setRunningModelID(selectedModel.id, logPrefix: logPrefix)
             runtimeState = .loading(
                 host: host,
                 port: port,
@@ -730,11 +755,13 @@ final class AppViewModel: ObservableObject {
         switch result {
         case .notRunning:
             stopMemoryMonitoring()
+            clearRunningModel(logPrefix: logPrefix)
             runtimeState = .stopped
             appendLog("[\(logPrefix)] managed process is not running.")
             return true
         case let .stopped(processIdentifier, terminationStatus, usedInterrupt):
             stopMemoryMonitoring()
+            clearRunningModel(logPrefix: logPrefix)
             if usedInterrupt {
                 appendLog("[\(logPrefix)] interrupt was sent after graceful timeout for pid \(processIdentifier).")
             }
@@ -821,6 +848,45 @@ final class AppViewModel: ObservableObject {
                 selectedModel?.serverPort ?? settings.defaultPort
             )
         }
+    }
+
+    private func handleSelectedModelChange(from oldValue: ModelConfig.ID?) {
+        guard oldValue != selectedModelID else {
+            return
+        }
+
+        guard let selectedModel else {
+            appendLog("[model] selected model cleared.")
+            return
+        }
+
+        appendLog("[model] selected modelID: \(selectedModel.modelID)")
+        logRestartRequiredIfNeeded()
+    }
+
+    private func setRunningModelID(_ modelID: ModelConfig.ID, logPrefix: String) {
+        runningModelID = modelID
+        appendLog("[\(logPrefix)] running modelID: \(modelID)")
+        logRestartRequiredIfNeeded()
+    }
+
+    private func clearRunningModel(logPrefix: String) {
+        guard runningModelID != nil else {
+            return
+        }
+
+        runningModelID = nil
+        appendLog("[\(logPrefix)] running model cleared.")
+    }
+
+    private func logRestartRequiredIfNeeded() {
+        guard restartRequired,
+              let runningModelID,
+              let selectedModel else {
+            return
+        }
+
+        appendLog("[model] selected model differs from running model. Restart required to apply selected model. selected: \(selectedModel.modelID), running: \(runningModelID)")
     }
 
     private func startMemoryMonitoring(processIdentifier: Int32) {
