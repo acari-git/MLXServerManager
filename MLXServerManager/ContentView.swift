@@ -38,7 +38,8 @@ struct ContentView: View {
                         DiagnosticsPanelView(
                             results: viewModel.diagnosticsResults,
                             didRun: viewModel.diagnosticsDidRun,
-                            summaryText: viewModel.diagnosticsSummaryText
+                            summaryText: viewModel.diagnosticsSummaryText,
+                            onCopySummary: viewModel.copyDiagnosticsSummaryRequested
                         )
 
                         StatusPanelView(

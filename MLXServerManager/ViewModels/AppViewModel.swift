@@ -145,9 +145,10 @@ final class AppViewModel: ObservableObject {
             return "Not run"
         }
 
+        let passCount = diagnosticsResults.filter { $0.status == .pass }.count
         let failureCount = diagnosticsResults.filter { $0.status == .fail }.count
         let warningCount = diagnosticsResults.filter { $0.status == .warning }.count
-        return "\(failureCount) failure(s), \(warningCount) warning(s)"
+        return "\(passCount) pass(es), \(warningCount) warning(s), \(failureCount) failure(s)"
     }
 
     var menuBarTitle: String {
@@ -559,6 +560,19 @@ final class AppViewModel: ObservableObject {
             appendLog("[info] copied logs to clipboard")
         } else {
             appendLog("[error] failed to copy logs to clipboard")
+        }
+    }
+
+    func copyDiagnosticsSummaryRequested() {
+        guard diagnosticsDidRun, !diagnosticsResults.isEmpty else {
+            appendLog("[warning] No diagnostics results to copy.")
+            return
+        }
+
+        if copyToPasteboard(diagnosticsSummaryCopyText()) {
+            appendLog("[info] copied diagnostics summary to clipboard")
+        } else {
+            appendLog("[error] failed to copy diagnostics summary to clipboard")
         }
     }
 
@@ -1073,6 +1087,29 @@ final class AppViewModel: ObservableObject {
     private func syncLogText() {
         logText = logBuffer.text
         logEntries = logBuffer.entries
+    }
+
+    private func diagnosticsSummaryCopyText() -> String {
+        var lines = [
+            "MLX Server Manager Diagnostics Summary",
+            diagnosticsSummaryText,
+            "",
+            "Checks:"
+        ]
+
+        lines.append(
+            contentsOf: diagnosticsResults.map { result in
+                var line = "- [\(result.status.rawValue)] \(result.check.title): \(result.message)"
+
+                if let detail = result.detail, !detail.isEmpty {
+                    line += " (\(detail))"
+                }
+
+                return line
+            }
+        )
+
+        return lines.joined(separator: "\n")
     }
 
     @discardableResult
