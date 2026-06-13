@@ -497,8 +497,12 @@
    - Run Diagnostics, Start, Ready Check, copy connection settings, configure a client, Stop or Restart.
 4. Add v1.0 manual regression checklist.
    - Clean Git status.
+   - `git diff --check` passes.
+   - `v1.0.0` tag does not exist yet.
+   - `v0.1.0` through `v0.9.0` tags exist.
    - Debug and Release builds.
    - Start, Stop, Restart, Port Check, Ready Check, Diagnostics, Logs, model profiles, model switching, menu bar actions, and connection copy.
+   - Forbidden files and personal fixed paths are absent.
 5. Add release note template.
    - Mention v1.0 stable release.
    - Mention Direct Mode, managed `mlx_lm.server`, model profiles, diagnostics/logging, unsigned zip asset, known limitations, and safety boundaries.
@@ -508,6 +512,7 @@
 7. Prepare unsigned zip asset verification.
    - Use `ditto -c -k --norsrc --noextattr --keepParent`.
    - Confirm zip contents, size, unzip launch, and no forbidden files.
+   - Confirm `settings.json`, `models.json`, model files, `.env`, `HF_TOKEN`, `.dSYM`, DerivedData, logs, Hugging Face cache, and AppleDouble `._*` metadata files are not included.
 8. Prepare v1.0 tag.
    - Confirm docs and stable scope match implemented behavior.
    - Confirm Direct Mode, no Proxy, and no Chat UI are maintained.

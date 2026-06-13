@@ -402,9 +402,14 @@ Target service behavior without launching the full UI:
 
 ## v1.0 Stable Verification Checklist
 
+Use this checklist before creating a `v1.0.0` tag or publishing a release asset.
+
 ### Repository State
 
 - Confirm `git status --short --untracked-files=all` is clean before final verification.
+- Confirm `git diff --check` reports no whitespace or conflict-marker problems.
+- Confirm the `v1.0.0` tag does not exist yet.
+- Confirm tags `v0.1.0` through `v0.9.0` exist.
 - Confirm forbidden files are not tracked:
   - `.app`
   - `.zip`
@@ -418,42 +423,137 @@ Target service behavior without launching the full UI:
   - build artifacts
 - Confirm README, docs, AGENTS, and Swift code do not contain personal fixed paths.
 
+### Final Verification Commands
+
+Use commands like these from the repository root. Replace `<personal-path>` with any local personal path pattern that must not appear in committed files.
+
+```sh
+git status --short --untracked-files=all
+git log --oneline --decorate -60
+git tag --list
+git diff --check
+git ls-files '*.app' '*.zip' '*.dSYM' settings.json models.json '*.safetensors' '*.gguf' '*.bin' '.env' HF_TOKEN models logs .venv
+grep -R -n "<personal-path>" README.md docs AGENTS.md MLXServerManager || true
+grep -R -n "pkill\\|killall\\|pgrep" MLXServerManager || true
+grep -R -n "/v1/chat/completions" MLXServerManager || true
+```
+
+The `/v1/chat/completions` grep should show only copy-related UI or log text. Ready and Diagnostics code should continue to use `/v1/models`.
+
 ### Builds
 
 - Confirm Debug build ends with `BUILD SUCCEEDED`.
 - Confirm Release build ends with `BUILD SUCCEEDED`.
 - Confirm build outputs remain outside Git.
 
-### Runtime Regression
+Example Debug build:
 
-- Confirm Start launches the selected model profile.
+```sh
+xcodebuild \
+  -project MLXServerManager.xcodeproj \
+  -scheme MLXServerManager \
+  -configuration Debug \
+  -derivedDataPath /tmp/MLXServerManagerDerivedData \
+  CODE_SIGNING_ALLOWED=NO \
+  build
+```
+
+Example Release build:
+
+```sh
+xcodebuild \
+  -project MLXServerManager.xcodeproj \
+  -scheme MLXServerManager \
+  -configuration Release \
+  -derivedDataPath /tmp/MLXServerManagerReleaseDerivedData \
+  CODE_SIGNING_ALLOWED=NO \
+  build
+```
+
+### Core Runtime
+
+- Confirm Start launches the selected managed `mlx_lm.server`.
 - Confirm Stop stops only the app-managed process.
 - Confirm Restart uses Stop -> port release wait -> Start.
 - Confirm Port Check works.
 - Confirm Ready Check uses `/v1/models`.
-- Confirm Run Diagnostics works.
-- Confirm Copy Diagnostics Summary works.
-- Confirm Copy Logs works.
+- Confirm the app does not execute `/v1/chat/completions`.
+- Confirm Stop and Restart do not stop external `mlx_lm.server` processes.
+
+### Settings and Profiles
+
+- Confirm `mlx_lm.server executable path` is saved and restored.
 - Confirm Add Profile works.
 - Confirm Edit Profile works.
-- Confirm Delete Profile removes only saved profile data.
-- Confirm Model switching shows Restart-required state when selected and running models differ.
+- Confirm Delete Profile works.
+- Confirm last profile deletion is blocked.
+- Confirm dangerous runtime-affecting profile changes are blocked while running.
+- Confirm selected model and running model are displayed separately.
+- Confirm Restart-required state appears when selected and running models differ.
 - Confirm Restart applies the selected model.
-- Confirm menu bar Start, Stop, Restart, Run Diagnostics, Open App, and Quit actions work.
-- Confirm Connection Settings copy Base URL, Model ID, JSON config, `curl /v1/models`, and example `curl /v1/chat/completions`.
+
+### Connection Settings
+
+- Confirm Copy Base URL works.
+- Confirm Copy Model ID works.
+- Confirm OpenAI-compatible config copy works.
+- Confirm Copy `curl /v1/models` works.
+- Confirm Copy `curl /v1/chat/completions` copies text only and the app does not execute it.
+- Confirm Connection Settings follow the selected model.
+
+### Diagnostics and Logs
+
+- Confirm Run Diagnostics works.
+- Confirm `No diagnostics run yet.` appears before the first diagnostics run.
+- Confirm Diagnostics summary shows pass, warning, and failure counts.
+- Confirm Copy Diagnostics Summary works.
+- Confirm LogView remains readable.
+- Confirm Copy Logs works.
+- Confirm Clear Logs works.
+- Confirm the bounded log buffer behavior remains intact.
+
+### Menu Bar
+
+- Confirm menu bar Start works.
+- Confirm menu bar Stop works.
+- Confirm menu bar Restart works.
+- Confirm menu bar Run Diagnostics works.
+- Confirm menu bar Open App brings the app window forward.
+- Confirm menu bar Quit exits normally.
+- Confirm menu bar title has minimal Restart-required display when selected and running models differ.
 
 ### Distribution
 
 - Confirm unsigned Release zip asset creation uses `ditto -c -k --norsrc --noextattr --keepParent`.
+- Confirm Release build `.app` exists before zipping.
 - Confirm zip contents are limited to `MLXServerManager.app/`.
 - Confirm zip does not contain runtime settings, model profiles, model files, Hugging Face cache, logs, secrets, `.dSYM`, DerivedData, or AppleDouble `._*` metadata files.
 - Confirm unzip launch verification works from a temporary directory.
 - Confirm the verification app process exits and no verification process remains.
+- Confirm the GitHub Release asset is the unsigned zip.
+- Confirm release notes state unsigned app, no notarization, and possible Gatekeeper warnings.
+
+Example zip creation:
+
+```sh
+cd /tmp/MLXServerManagerReleaseDerivedData/Build/Products/Release
+ditto -c -k --norsrc --noextattr --keepParent \
+  MLXServerManager.app \
+  /tmp/MLXServerManager-v1.0.0-unsigned.zip
+```
+
+Example zip verification:
+
+```sh
+unzip -l /tmp/MLXServerManager-v1.0.0-unsigned.zip
+du -h /tmp/MLXServerManager-v1.0.0-unsigned.zip
+unzip -l /tmp/MLXServerManager-v1.0.0-unsigned.zip | grep -E 'settings.json|models.json|\\.safetensors|\\.gguf|\\.bin|\\.env|HF_TOKEN|\\.dSYM|DerivedData|logs|__MACOSX|/\\._' || true
+```
 
 ### Safety and Non-Goals
 
 - Confirm Direct Mode is maintained.
 - Confirm the app does not execute `/v1/chat/completions`.
 - Confirm Diagnostics are limited to `/v1/models` readiness.
-- Confirm no Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, model download, model deletion, Hugging Face cache deletion, multiple concurrent server management, telemetry, analytics, crash reporting, external log sending, cloud logging, persistent file logging, notarization, DMG, App Store distribution, Homebrew cask, auto updater, CI/CD, or GitHub Actions release automation is introduced.
+- Confirm no Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, model downloader, model deletion, Hugging Face cache deletion, multiple concurrent server management, RAG, embedding manager, tool-call translation, telemetry, analytics, crash reporting, external log sending, cloud logging, persistent file logging, notarization, Developer ID signing, DMG, CI/CD, GitHub Actions release automation, App Store distribution, Homebrew cask, or auto updater is introduced.
 - Confirm Swift code does not use `pkill`, `killall`, or `pgrep`.
