@@ -23,6 +23,8 @@ final class AppViewModel: ObservableObject {
     @Published var addProfileDraft: ModelProfileDraft = .empty
     @Published private(set) var isAddProfilePresented = false
     @Published private(set) var addProfileMessage: String?
+    @Published var isDeleteProfileConfirmationPresented = false
+    @Published private(set) var profileDeletionMessage: String?
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
@@ -32,6 +34,7 @@ final class AppViewModel: ObservableObject {
     private let setupDiagnostics: SetupDiagnostics
     private var logBuffer: LogBuffer
     private var memoryMonitorTask: Task<Void, Never>?
+    private var pendingDeleteModelID: ModelConfig.ID?
 
     private static let initialLogLines = [
         "[info] MLX Server Manager UI loaded.",
@@ -330,6 +333,119 @@ final class AppViewModel: ObservableObject {
         case let .invalid(message):
             addProfileMessage = message
             appendLog("[profile] add failed: \(message)")
+        }
+    }
+
+    func deleteProfileRequested() {
+        guard let selectedModel else {
+            let message = "No model is selected."
+            profileDeletionMessage = message
+            appendLog("[profile] delete failed: \(message)")
+            return
+        }
+
+        guard models.count > 1 else {
+            let message = "At least one model profile is required."
+            profileDeletionMessage = message
+            appendLog("[profile] delete failed: \(message)")
+            return
+        }
+
+        guard !isManagedProcessRunning else {
+            let message = "Stop the managed server before deleting profiles."
+            profileDeletionMessage = message
+            appendLog("[profile] delete failed: \(message)")
+            return
+        }
+
+        pendingDeleteModelID = selectedModel.id
+        profileDeletionMessage = nil
+        isDeleteProfileConfirmationPresented = true
+        appendLog("[profile] delete confirmation requested for \(selectedModel.modelID).")
+    }
+
+    func cancelDeleteProfile() {
+        pendingDeleteModelID = nil
+        isDeleteProfileConfirmationPresented = false
+        appendLog("[profile] delete cancelled.")
+    }
+
+    func confirmDeleteProfile() {
+        guard let pendingDeleteModelID else {
+            let message = "No model profile is pending deletion."
+            profileDeletionMessage = message
+            isDeleteProfileConfirmationPresented = false
+            appendLog("[profile] delete failed: \(message)")
+            return
+        }
+
+        guard models.count > 1 else {
+            let message = "At least one model profile is required."
+            profileDeletionMessage = message
+            isDeleteProfileConfirmationPresented = false
+            appendLog("[profile] delete failed: \(message)")
+            return
+        }
+
+        guard !isManagedProcessRunning else {
+            let message = "Stop the managed server before deleting profiles."
+            profileDeletionMessage = message
+            isDeleteProfileConfirmationPresented = false
+            appendLog("[profile] delete failed: \(message)")
+            return
+        }
+
+        guard let index = models.firstIndex(where: { $0.id == pendingDeleteModelID }) else {
+            let message = "Selected model profile no longer exists."
+            profileDeletionMessage = message
+            isDeleteProfileConfirmationPresented = false
+            appendLog("[profile] delete failed: \(message)")
+            return
+        }
+
+        let deletedModel = models[index]
+        var nextModels = models
+        nextModels.remove(at: index)
+
+        guard let fallbackModel = nextModels.first else {
+            let message = "At least one model profile is required."
+            profileDeletionMessage = message
+            isDeleteProfileConfirmationPresented = false
+            appendLog("[profile] delete failed: \(message)")
+            return
+        }
+
+        do {
+            try settingsStore.save(models: nextModels)
+            models = nextModels
+
+            let shouldSelectFallback = selectedModelID == deletedModel.id
+                || selectedModelID.map { selectedID in
+                    !nextModels.contains { $0.id == selectedID }
+                } ?? true
+
+            if shouldSelectFallback {
+                selectedModelID = fallbackModel.id
+                appendLog("[profile] deleted \(deletedModel.modelID) from models.json.")
+                appendLog("[profile] selected fallback profile \(fallbackModel.modelID).")
+            } else {
+                appendLog("[profile] deleted \(deletedModel.modelID) from models.json.")
+            }
+
+            profileEditorDraft = .empty
+            profileEditorMessage = nil
+            isProfileEditorPresented = false
+            addProfileDraft = .empty
+            addProfileMessage = nil
+            isAddProfilePresented = false
+            profileDeletionMessage = nil
+            self.pendingDeleteModelID = nil
+            isDeleteProfileConfirmationPresented = false
+        } catch {
+            profileDeletionMessage = error.localizedDescription
+            self.pendingDeleteModelID = nil
+            isDeleteProfileConfirmationPresented = false
+            appendLog("[profile] delete failed: \(error.localizedDescription)")
         }
     }
 

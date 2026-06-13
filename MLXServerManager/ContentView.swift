@@ -51,7 +51,9 @@ struct ContentView: View {
 
                         ModelDetailView(
                             model: viewModel.selectedModel,
-                            onEditProfile: viewModel.editProfileRequested
+                            deletionMessage: viewModel.profileDeletionMessage,
+                            onEditProfile: viewModel.editProfileRequested,
+                            onDeleteProfile: viewModel.deleteProfileRequested
                         )
 
                         if viewModel.isProfileEditorPresented {
@@ -104,6 +106,21 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 900, minHeight: 620)
+        .confirmationDialog(
+            "Delete Model Profile?",
+            isPresented: $viewModel.isDeleteProfileConfirmationPresented,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Profile", role: .destructive) {
+                viewModel.confirmDeleteProfile()
+            }
+
+            Button("Cancel", role: .cancel) {
+                viewModel.cancelDeleteProfile()
+            }
+        } message: {
+            Text("This removes only the saved profile. Model files and Hugging Face cache are not deleted.")
+        }
     }
 
     private var statusHeader: some View {

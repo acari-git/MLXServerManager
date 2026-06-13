@@ -2,7 +2,9 @@ import SwiftUI
 
 struct ModelDetailView: View {
     let model: ModelConfig?
+    let deletionMessage: String?
     let onEditProfile: () -> Void
+    let onDeleteProfile: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -12,12 +14,26 @@ struct ModelDetailView: View {
 
                 Spacer()
 
-                Button {
-                    onEditProfile()
-                } label: {
-                    Label("Edit Profile", systemImage: "pencil")
+                HStack(spacing: 10) {
+                    Button {
+                        onEditProfile()
+                    } label: {
+                        Label("Edit Profile", systemImage: "pencil")
+                    }
+
+                    Button(role: .destructive) {
+                        onDeleteProfile()
+                    } label: {
+                        Label("Delete Profile", systemImage: "trash")
+                    }
                 }
                 .disabled(model == nil)
+            }
+
+            if let deletionMessage, !deletionMessage.isEmpty {
+                Label(deletionMessage, systemImage: "exclamationmark.triangle")
+                    .font(.callout)
+                    .foregroundStyle(.red)
             }
 
             if let model {
