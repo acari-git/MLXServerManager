@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var viewModel = AppViewModel()
+    @ObservedObject var viewModel: AppViewModel
 
     var body: some View {
         VStack(spacing: 0) {
@@ -121,5 +121,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    ContentView(viewModel: AppViewModel())
 }

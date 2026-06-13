@@ -116,4 +116,19 @@ enum ModelRuntimeState: Hashable {
         }
     }
 
+    var menuBarStatus: String {
+        switch self {
+        case .stopped, .portAvailable:
+            "stopped"
+        case .starting, .loading, .checkingPort, .checkingReady:
+            "starting"
+        case .ready:
+            "ready"
+        case .stopping:
+            "stopping"
+        case .portBusy, .portCheckFailed, .readyCheckFailed, .error, .unknown:
+            "failed"
+        }
+    }
+
 }

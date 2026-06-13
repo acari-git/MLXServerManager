@@ -115,6 +115,10 @@ final class AppViewModel: ObservableObject {
         return "\(failureCount) failure(s), \(warningCount) warning(s)"
     }
 
+    var menuBarTitle: String {
+        "MLX: \(runtimeState.menuBarStatus)"
+    }
+
     var isManagedProcessRunning: Bool {
         processManager.managedProcessIdentifier != nil
     }
