@@ -394,3 +394,81 @@ Safety requirements:
 - `pkill`, `killall`, and `pgrep` must not be used.
 - Model files, Hugging Face cache, and local model directories must not be deleted.
 - `settings.json`, `models.json`, model files, `.app` bundles, and build artifacts must stay outside Git.
+
+## v0.8 Logging and Diagnostics Requirements
+
+v0.8 should improve Logs and Setup Diagnostics usability while preserving Direct Mode:
+
+```text
+OpenAI-compatible client -> mlx_lm.server
+```
+
+Functional requirements:
+
+- Improve Logs readability.
+- Make log categories and severity easier to see.
+- Keep bounded log history.
+- Keep Clear Logs.
+- Improve Logs copy behavior.
+- Improve Diagnostics result readability.
+- Improve Diagnostics summary clarity.
+- Make Diagnostics warnings and failures easier to find.
+- Organize executable path, Port Check, Ready Check, and storage path results.
+- Make Start, Stop, and Restart log sequences easier to follow.
+- Make profile add/edit/delete and model switching logs easier to follow.
+- Provide manual troubleshooting checklist guidance.
+
+Recommended log categories:
+
+- `info`
+- `warning`
+- `error`
+- `start`
+- `stop`
+- `restart`
+- `diagnostics`
+- `profile`
+- `switching`
+- `ready`
+- `port`
+- `memory`
+- `process`
+- `settings`
+
+v0.8 non-goals:
+
+- Remote log sending.
+- Telemetry.
+- Crash reporting service.
+- Analytics.
+- External log collection service integration.
+- Cloud logging.
+- File-persistent logs.
+- Automatic log upload.
+- Proxy mode.
+- Chat UI.
+- LAN Web UI.
+- App Intents.
+- Auto unload.
+- Hugging Face download manager.
+- Model download.
+- Model file deletion.
+- Multiple simultaneous server management.
+- CI/CD.
+- Notarization.
+- DMG creation.
+- App Store distribution.
+
+Safety requirements:
+
+- Logs and Diagnostics must not add a proxy or change the inference route.
+- Logs and Diagnostics must not run model inference.
+- Logs and Diagnostics must not start `mlx_lm.server` automatically.
+- The app must not send `/v1/chat/completions`.
+- Diagnostics must keep Ready Check limited to `/v1/models`.
+- Stop must target only the managed process held by this app.
+- External processes must not be stopped.
+- `pkill`, `killall`, and `pgrep` must not be used.
+- Model files, Hugging Face cache, and local model directories must not be deleted.
+- `settings.json`, `models.json`, model files, `.app` bundles, and build artifacts must stay outside Git.
+- Runtime logs may display user-selected local paths, but docs and Swift code must not hardcode personal paths.

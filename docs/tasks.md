@@ -386,6 +386,50 @@
 13. Keep deferred items out of v0.7.
     - Multiple simultaneous server management, multiple model launches, Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, Hugging Face download manager, model download, model file deletion, automated model existence checks, RAG, embedding management, tool-call translation, CI/CD, notarization, DMG creation, and App Store distribution stay out of scope.
 
+## v0.8 Planned: Logging and Diagnostics Usability
+
+1. Define logging and diagnostics requirements.
+   - Preserve Direct Mode, no Proxy, and no Chat UI.
+   - Keep diagnostics safe and local.
+2. Standardize log categories and levels.
+   - Use categories such as `info`, `warning`, `error`, `start`, `stop`, `restart`, `diagnostics`, `profile`, and `switching`.
+   - Keep existing bounded log behavior.
+3. Improve LogView readability.
+   - Keep the existing LogView structure.
+   - Improve text scanning first.
+   - Treat color, icons, filter, and search as optional.
+4. Add Copy Logs action.
+   - Copy current bounded logs to the pasteboard.
+   - Do not upload logs or send them externally.
+   - Preserve Clear Logs.
+5. Improve Diagnostics summary.
+   - Make failure and warning counts easy to scan.
+   - Show what to inspect next when a check fails or warns.
+6. Improve Diagnostics warning/error visibility.
+   - Make `pass`, `warning`, and `fail` easy to distinguish.
+   - Keep executable path, Port Check, Ready Check, and storage path checks organized.
+7. Improve Start/Stop/Restart log consistency.
+   - Make command summary, pid, port release, Ready Check, and Stop result easy to follow.
+   - Do not log secrets.
+8. Improve profile and switching log consistency.
+   - Make add/edit/delete outcomes easy to follow.
+   - Make selected model, running model, and Restart-required logs easy to follow.
+9. Add manual test checklist.
+   - Logs are readable and bounded.
+   - Copy Logs works.
+   - Clear Logs still works.
+   - Diagnostics summary shows failure and warning counts.
+   - Diagnostics warnings and failures are easy to find.
+   - Start/Stop/Restart logs are understandable.
+   - Profile and switching logs are understandable.
+   - Logs and diagnostics do not call `/v1/chat/completions`, run inference, start `mlx_lm.server` automatically, upload data, delete model files, stop external processes, or use `pkill`, `killall`, or `pgrep`.
+10. Prepare v0.8 tag.
+    - Confirm docs and UI behavior match the logging and diagnostics policy.
+    - Confirm Direct Mode, no Proxy, and no Chat UI are maintained.
+    - Confirm runtime files, model files, `.app` bundles, and build artifacts stay outside Git.
+11. Keep deferred items out of v0.8.
+    - Remote log sending, telemetry, crash reporting service, analytics, external log collection, cloud logging, file-persistent logs, automatic log upload, Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, Hugging Face download manager, model download, model file deletion, multiple simultaneous server management, CI/CD, notarization, DMG creation, and App Store distribution stay out of scope.
+
 ## Later
 
 - Unit tests for services where practical.
