@@ -246,6 +246,74 @@
 10. Keep deferred items out of v0.5.
     - Notarization, Apple Developer Program formal distribution, DMG creation, Sparkle, Homebrew cask, App Store, CI/CD, GitHub Actions, model bundling, automatic `mlx-lm` installation, Hugging Face download manager, Proxy, Chat UI, LAN Web UI, App Intents, and Auto unload stay out of scope.
 
+## v0.6 Planned: Model Profile Management
+
+1. Define model profile management requirements.
+   - Add profiles from the UI.
+   - Delete profiles from the UI.
+   - Persist add and delete results to `models.json`.
+   - Keep multiple simultaneous server management out of scope.
+2. Define add profile draft defaults.
+   - Start with an empty `modelID`.
+   - Fill empty `displayName` from `modelID` on save.
+   - Default host to `127.0.0.1`.
+   - Default port to the app default, usually `8080`.
+   - Default `enableThinking` to `false`.
+   - Default `notes` to empty.
+3. Add profile validation.
+   - Reject empty `modelID`.
+   - Reject empty `host`.
+   - Reject invalid ports outside 1 through 65535.
+   - Reject duplicate `modelID` values for v0.6.
+   - Log validation failures.
+4. Add profile UI.
+   - Place `Add Profile` near the model list.
+   - Reuse or extend the existing profile editor flow.
+   - Select the newly added profile after save.
+   - Refresh Model detail, Connection Settings, Copy Config, and copied curl text.
+5. Add delete profile confirmation.
+   - Place `Delete Profile` near selected model detail or profile editing.
+   - Require confirmation before deletion.
+   - Make clear that profile deletion does not delete model files.
+6. Add delete guard for the last profile.
+   - Prevent deleting the final remaining profile.
+   - Show a UI message and Logs entry when blocked.
+7. Add delete guard while a managed server is running.
+   - Prevent deleting the running selected profile.
+   - Explain that the managed server must be stopped before deleting the running profile.
+   - Allow only deletions that do not affect the running process.
+8. Add selected model fallback after deletion.
+   - Select the next profile when possible.
+   - Otherwise select the previous profile.
+   - Otherwise select the only remaining profile.
+   - Never leave the app with no selected profile while profiles exist.
+9. Persist changes to `models.json`.
+   - Save after valid add.
+   - Save after confirmed delete.
+   - Log save success and failure.
+   - Keep `models.json` outside Git.
+10. Add manual test checklist.
+    - Add Profile opens a draft editor.
+    - Empty `modelID` and empty `host` fail validation.
+    - Invalid ports `0`, `65536`, and `abc` fail validation.
+    - Duplicate `modelID` fails validation.
+    - Valid add saves and selects the new profile.
+    - Delete Profile shows confirmation.
+    - Cancel delete preserves the profile.
+    - Confirm delete removes only the profile entry.
+    - Last profile cannot be deleted.
+    - Running selected profile cannot be deleted.
+    - Selection fallback works after deletion.
+    - Profile add/delete does not delete model files or Hugging Face cache.
+    - Profile add/delete does not call `/v1/chat/completions`, run inference, launch `mlx_lm.server`, or stop external processes.
+    - Direct Mode, no Proxy, and no Chat UI are maintained.
+11. Prepare v0.6 tag.
+    - Confirm docs are consistent with Direct Mode.
+    - Confirm profile management modifies only `models.json` profile data.
+    - Confirm runtime files, model files, `.app` bundles, and build artifacts stay outside Git.
+12. Keep deferred items out of v0.6.
+    - Multiple simultaneous server management, multiple model launches, model file deletion, Hugging Face download manager, model download, automated model existence checks, Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, CI/CD, notarization, DMG creation, and App Store distribution stay out of scope.
+
 ## Later
 
 - Unit tests for services where practical.
@@ -255,7 +323,6 @@
 - More advanced resource graphs.
 - App Intents for start, stop, restart, and status.
 - Hugging Face download manager.
-- Multiple simultaneous server management.
 - Presets for frequently used model configurations.
 - DMG or zip packaging.
 - Notarization.

@@ -259,3 +259,75 @@ Safety requirements:
 - App Sandbox rationale must stay tied to local managed process control.
 - Stop must target only the managed process held by this app.
 - Distribution docs must not recommend `pkill`, `killall`, or `pgrep`.
+
+## v0.6 Model Profile Management Requirements
+
+v0.6 should add model profile add and delete operations while preserving Direct Mode:
+
+```text
+OpenAI-compatible client -> mlx_lm.server
+```
+
+The goal is to let users manage multiple saved model profiles in `models.json` without introducing multiple simultaneous server management.
+
+Functional requirements:
+
+- Add a new model profile from the UI.
+- Delete an existing model profile from the UI.
+- Persist added profiles to `models.json`.
+- Persist deleted profile results to `models.json`.
+- Select the newly added profile after successful save.
+- Switch to a safe fallback profile if the selected profile is deleted.
+- Keep at least one model profile.
+- Define and enforce duplicate `modelID` behavior.
+- Define default values for `displayName`, `modelID`, `host`, `serverPort`, `enableThinking`, and `notes`.
+- Show a confirmation UI before deleting a profile.
+- Block deleting the last remaining profile.
+- Block deleting the running selected profile while a managed server is active.
+- Ensure deleting a profile removes only `models.json` profile data.
+
+Recommended add defaults:
+
+- `modelID`: empty until the user enters a value.
+- `displayName`: empty draft, filled with `modelID` on save if still empty.
+- `host`: `127.0.0.1`.
+- `serverPort`: app default port, usually `8080`.
+- `enableThinking`: `false`.
+- `notes`: empty.
+
+Recommended duplicate behavior:
+
+- Reject duplicate `modelID` values in v0.6.
+- Show the validation error in the UI and Logs.
+- Consider separate stable profile IDs before allowing duplicate `modelID` values later.
+
+v0.6 non-goals:
+
+- Multiple simultaneous server management.
+- Multiple model launches at the same time.
+- Model file deletion.
+- Hugging Face download manager.
+- Model download.
+- Automated model existence checks.
+- Proxy mode.
+- Chat UI.
+- LAN Web UI.
+- App Intents.
+- Auto unload.
+- CI/CD.
+- Notarization.
+- DMG creation.
+- App Store distribution.
+- Running `/v1/chat/completions` from the app.
+
+Safety requirements:
+
+- Profile add/delete must not run model inference.
+- Profile add/delete must not launch `mlx_lm.server`.
+- Delete must only remove saved profile data from `models.json`.
+- Delete must not remove model files, Hugging Face cache, or local model directories.
+- Stop must target only the managed process held by this app.
+- External processes must not be stopped.
+- `pkill`, `killall`, and `pgrep` must not be used.
+- `settings.json`, `models.json`, model files, `.app` bundles, and build artifacts must stay outside Git.
+- Examples should use placeholders such as `<model-id>` and `<path-to-model>`.
