@@ -279,13 +279,11 @@
    - Prevent deleting the final remaining profile.
    - Show a UI message and Logs entry when blocked.
 7. Add delete guard while a managed server is running.
-   - Prevent deleting the running selected profile.
-   - Explain that the managed server must be stopped before deleting the running profile.
-   - Allow only deletions that do not affect the running process.
+   - Block Delete Profile while any managed server is running.
+   - Explain that the managed server must be stopped before deleting profiles.
+   - Avoid ambiguity between selected UI profile and active runtime profile.
 8. Add selected model fallback after deletion.
-   - Select the next profile when possible.
-   - Otherwise select the previous profile.
-   - Otherwise select the only remaining profile.
+   - Select the first remaining profile after deleting the selected profile.
    - Never leave the app with no selected profile while profiles exist.
 9. Persist changes to `models.json`.
    - Save after valid add.
@@ -293,19 +291,31 @@
    - Log save success and failure.
    - Keep `models.json` outside Git.
 10. Add manual test checklist.
+    - Add Profile button is visible.
     - Add Profile opens a draft editor.
+    - Cancel add preserves the current profile list.
     - Empty `modelID` and empty `host` fail validation.
     - Invalid ports `0`, `65536`, and `abc` fail validation.
     - Duplicate `modelID` fails validation.
-    - Valid add saves and selects the new profile.
+    - Empty `displayName` is filled with `modelID`.
+    - Valid add saves to `models.json`.
+    - Valid add selects the new profile while stopped.
+    - Valid add while running does not auto-select and does not affect the running server.
     - Delete Profile shows confirmation.
+    - Delete confirmation explains that only the saved profile is removed.
+    - Delete confirmation explains that model files and Hugging Face cache are not deleted.
     - Cancel delete preserves the profile.
     - Confirm delete removes only the profile entry.
     - Last profile cannot be deleted.
-    - Running selected profile cannot be deleted.
+    - Delete is blocked while a managed server is running.
     - Selection fallback works after deletion.
+    - Model detail, Connection Settings, Copy Config, and copied curl text refresh after add/delete.
+    - Logs show add/delete success, failures, and fallback selection.
+    - Edit Profile, Start, Stop, Restart, Run Diagnostics, menu bar quick actions, and Release build checks still work.
     - Profile add/delete does not delete model files or Hugging Face cache.
+    - Profile add/delete does not download models.
     - Profile add/delete does not call `/v1/chat/completions`, run inference, launch `mlx_lm.server`, or stop external processes.
+    - Profile add/delete does not use `pkill`, `killall`, or `pgrep`.
     - Direct Mode, no Proxy, and no Chat UI are maintained.
 11. Prepare v0.6 tag.
     - Confirm docs are consistent with Direct Mode.

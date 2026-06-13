@@ -129,6 +129,67 @@ Target service behavior without launching the full UI:
 - Treat xcodebuild multiple-destination notes, bitcode strip skip without signing, and App Intents metadata extraction skip as non-blocking when the build succeeds.
 - Do not require `osascript` window-name inspection; `open`, process existence, and normal quit are sufficient for this checklist.
 
+## v0.6 Model Profile Management Manual Tests
+
+### Add Profile
+
+- Confirm the Add Profile button is visible near the model list.
+- Click Add Profile and confirm the Add Profile UI opens.
+- Click Cancel and confirm no profile is saved.
+- Leave `modelID` empty and confirm save fails with a UI message and Logs entry.
+- Leave `host` empty and confirm save fails with a UI message and Logs entry.
+- Set `serverPort` to `0`, `65536`, and `abc`; confirm each save fails.
+- Use a duplicate `modelID` and confirm save fails.
+- Leave `displayName` empty, save a valid profile, and confirm it is filled with `modelID`.
+- Save a valid new `modelID` and confirm save succeeds.
+- Confirm the new profile is added to local `models.json`.
+- While stopped, confirm the added profile is selected automatically.
+- Confirm Model detail updates to the added profile.
+- Confirm Connection Settings, Copy Config, Copy `curl /v1/models`, and Copy `curl /v1/chat/completions` reflect the added profile when selected.
+- While a managed server is running, add a valid profile and confirm it is not auto-selected.
+- While a managed server is running, confirm Add Profile does not affect the existing running server.
+- Confirm Logs show add success and add failures.
+
+### Delete Profile
+
+- Confirm the Delete Profile button is visible near selected model detail.
+- Click Delete Profile and confirm a confirmation dialog appears.
+- Confirm the dialog says only the saved profile is removed.
+- Confirm the dialog says model files and Hugging Face cache are not deleted.
+- Click Cancel and confirm no profile is deleted.
+- Confirm Delete removes only the profile entry from `models.json`.
+- Confirm model files are not deleted.
+- Confirm Hugging Face cache is not deleted.
+- Confirm the last remaining profile cannot be deleted.
+- Confirm Delete Profile is blocked while a managed server is running.
+- Delete the selected profile while stopped and confirm the first remaining profile is selected.
+- Confirm Model detail updates to the fallback profile after delete.
+- Confirm Connection Settings, Copy Config, Copy `curl /v1/models`, and Copy `curl /v1/chat/completions` update to the fallback profile after delete.
+- Confirm Logs show delete success, delete failures, and the fallback model ID.
+
+### Regression
+
+- Confirm Edit Profile still works after Add/Delete Profile.
+- Confirm Start, Stop, and Restart still work after Add/Delete Profile.
+- Confirm Run Diagnostics still works after Add/Delete Profile.
+- Confirm Menu bar quick actions still work after Add/Delete Profile.
+- Confirm Release build instructions still produce a working build.
+
+### Safety
+
+- Confirm Add/Delete Profile changes only saved profile data in `models.json`.
+- Confirm Add/Delete Profile does not delete model files.
+- Confirm Add/Delete Profile does not delete Hugging Face cache.
+- Confirm Add/Delete Profile does not download models.
+- Confirm Add/Delete Profile does not launch `mlx_lm.server`.
+- Confirm Add/Delete Profile does not stop external processes.
+- Confirm `pkill`, `killall`, and `pgrep` are not used.
+- Confirm Add/Delete Profile does not run model inference.
+- Confirm Add/Delete Profile does not send `/v1/chat/completions`.
+- Confirm Direct Mode is maintained with no Proxy and no Chat UI.
+- Confirm `settings.json`, `models.json`, and model files are not included in Git status or commits.
+- Confirm no user-specific fixed paths are added to Swift code or docs.
+
 ## Performance Guardrails
 
 - Direct Mode must not proxy inference traffic.
