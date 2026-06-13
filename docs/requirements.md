@@ -484,7 +484,7 @@ OpenAI-compatible client -> mlx_lm.server
 Functional documentation requirements:
 
 - Document Release build creation for an unsigned local-use `.app`.
-- Document `.app` zip creation with `ditto -c -k --keepParent`.
+- Document `.app` zip creation with `ditto -c -k --norsrc --noextattr --keepParent`.
 - Document how to verify the zip contents with `unzip -l`.
 - Document how to verify zip size with `du -h`.
 - Document how to verify `.app`, `.zip`, `.dSYM`, derived data, runtime settings, secrets, and model files are not tracked by Git.
@@ -529,3 +529,77 @@ Safety requirements:
 - `.app`, `.zip`, `.dSYM`, derived data, and build artifacts must stay outside Git.
 - `settings.json`, `models.json`, model files, `.env`, and `HF_TOKEN` must stay outside Git.
 - Documentation must not include personal fixed paths.
+
+## v1.0 Stable Scope Documentation Requirements
+
+v1.0 should document the stable product scope while preserving Direct Mode:
+
+```text
+OpenAI-compatible client -> mlx_lm.server
+```
+
+Functional documentation requirements:
+
+- Clarify that MLX Server Manager is a pure `mlx_lm.server` manager.
+- Clarify that the app is not in the inference request path.
+- Clarify that OpenAI-compatible clients connect directly to `mlx_lm.server`.
+- Document the target users for local MLX / `mlx-lm` and OpenAI-compatible clients.
+- Document the first-run workflow from `mlx-lm` setup through Start, Ready Check, connection copy, and Stop or Restart.
+- Document the v1.0 stable scope:
+  - Start, Stop, and Restart for managed `mlx_lm.server`.
+  - Managed-process-only Stop and Restart.
+  - Port availability check.
+  - Ready Check via `/v1/models`.
+  - Settings save and restore.
+  - Model profile add, edit, delete, and switching.
+  - Restart-required state.
+  - Menu bar quick actions.
+  - Logs readability and Copy Logs.
+  - Diagnostics summary and Copy Diagnostics Summary.
+  - OpenAI-compatible connection settings copy.
+  - Unsigned zip asset documentation.
+- Document known limitations.
+- Document v1.0 release note guidance.
+- Document v1.0 manual regression checklist.
+
+v1.0 non-goals:
+
+- Proxy mode.
+- Chat UI.
+- LAN Web UI.
+- App Intents.
+- Auto unload.
+- Hugging Face download manager.
+- Model download.
+- Model deletion.
+- Hugging Face cache deletion.
+- Multiple concurrent server management.
+- Multiple model simultaneous launch.
+- RAG.
+- Embedding manager.
+- Tool-call translation.
+- Telemetry.
+- Analytics.
+- Crash reporting.
+- External log sending.
+- Cloud logging.
+- Persistent file logging.
+- Notarization.
+- Developer ID signing.
+- DMG.
+- App Store distribution.
+- Homebrew cask.
+- Auto updater.
+- CI/CD or GitHub Actions release automation.
+
+Safety requirements:
+
+- Direct Mode must remain the only supported mode.
+- The app must not execute `/v1/chat/completions`.
+- Diagnostics must remain limited to safe checks and `/v1/models`.
+- Stop and Restart must target only the app-managed process.
+- Swift code must not use `pkill`, `killall`, or `pgrep`.
+- The app must not delete model files or Hugging Face cache.
+- The app must not handle secrets or tokens.
+- `.env`, `HF_TOKEN`, runtime settings, model files, `.app`, `.zip`, `.dSYM`, and build artifacts must stay outside Git.
+- Documentation and Swift code must not include personal fixed paths.

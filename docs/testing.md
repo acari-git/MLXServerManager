@@ -399,3 +399,61 @@ Target service behavior without launching the full UI:
 - User-specific absolute paths must not appear in source or committed configuration.
 - Local `127.0.0.1` usage is recommended for v0.1.
 - Do not expose the local server directly to the internet.
+
+## v1.0 Stable Verification Checklist
+
+### Repository State
+
+- Confirm `git status --short --untracked-files=all` is clean before final verification.
+- Confirm forbidden files are not tracked:
+  - `.app`
+  - `.zip`
+  - `.dSYM`
+  - `settings.json`
+  - `models.json`
+  - model files
+  - `.env`
+  - `HF_TOKEN`
+  - logs
+  - build artifacts
+- Confirm README, docs, AGENTS, and Swift code do not contain personal fixed paths.
+
+### Builds
+
+- Confirm Debug build ends with `BUILD SUCCEEDED`.
+- Confirm Release build ends with `BUILD SUCCEEDED`.
+- Confirm build outputs remain outside Git.
+
+### Runtime Regression
+
+- Confirm Start launches the selected model profile.
+- Confirm Stop stops only the app-managed process.
+- Confirm Restart uses Stop -> port release wait -> Start.
+- Confirm Port Check works.
+- Confirm Ready Check uses `/v1/models`.
+- Confirm Run Diagnostics works.
+- Confirm Copy Diagnostics Summary works.
+- Confirm Copy Logs works.
+- Confirm Add Profile works.
+- Confirm Edit Profile works.
+- Confirm Delete Profile removes only saved profile data.
+- Confirm Model switching shows Restart-required state when selected and running models differ.
+- Confirm Restart applies the selected model.
+- Confirm menu bar Start, Stop, Restart, Run Diagnostics, Open App, and Quit actions work.
+- Confirm Connection Settings copy Base URL, Model ID, JSON config, `curl /v1/models`, and example `curl /v1/chat/completions`.
+
+### Distribution
+
+- Confirm unsigned Release zip asset creation uses `ditto -c -k --norsrc --noextattr --keepParent`.
+- Confirm zip contents are limited to `MLXServerManager.app/`.
+- Confirm zip does not contain runtime settings, model profiles, model files, Hugging Face cache, logs, secrets, `.dSYM`, DerivedData, or AppleDouble `._*` metadata files.
+- Confirm unzip launch verification works from a temporary directory.
+- Confirm the verification app process exits and no verification process remains.
+
+### Safety and Non-Goals
+
+- Confirm Direct Mode is maintained.
+- Confirm the app does not execute `/v1/chat/completions`.
+- Confirm Diagnostics are limited to `/v1/models` readiness.
+- Confirm no Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, model download, model deletion, Hugging Face cache deletion, multiple concurrent server management, telemetry, analytics, crash reporting, external log sending, cloud logging, persistent file logging, notarization, DMG, App Store distribution, Homebrew cask, auto updater, CI/CD, or GitHub Actions release automation is introduced.
+- Confirm Swift code does not use `pkill`, `killall`, or `pgrep`.

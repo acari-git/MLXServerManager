@@ -478,6 +478,42 @@
 9. Keep deferred items out of v0.9.
    - Notarization, Developer ID signing, DMG creation, Sparkle, CI/CD, GitHub Actions, App Store distribution, Homebrew cask, installer creation, runtime settings bundling, model file bundling, Hugging Face cache bundling, Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, Hugging Face download manager, model download, model file deletion, and multiple simultaneous server management stay out of scope.
 
+## v1.0 Planned: Stable Scope and Release Readiness
+
+1. Update README and stable scope docs.
+   - Describe MLX Server Manager as a pure `mlx_lm.server` manager.
+   - State Direct Mode clearly.
+   - State that OpenAI-compatible clients connect directly to `mlx_lm.server`.
+   - State that the app is not a Chat UI, Proxy, alternate backend wrapper, model downloader, or multi-server orchestrator.
+2. Add known limitations docs.
+   - Document unsigned app, no notarization, and Gatekeeper warnings.
+   - Document that `mlx-lm`, model files, and Hugging Face cache are not bundled.
+   - Document that Ready Check is `/v1/models` only and the app does not test chat completions.
+   - Document that Stop and Restart affect only the app-managed process.
+3. Document first-run workflow.
+   - Prepare `mlx-lm`.
+   - Configure `mlx_lm.server executable path`.
+   - Configure a Model Profile.
+   - Run Diagnostics, Start, Ready Check, copy connection settings, configure a client, Stop or Restart.
+4. Add v1.0 manual regression checklist.
+   - Clean Git status.
+   - Debug and Release builds.
+   - Start, Stop, Restart, Port Check, Ready Check, Diagnostics, Logs, model profiles, model switching, menu bar actions, and connection copy.
+5. Add release note template.
+   - Mention v1.0 stable release.
+   - Mention Direct Mode, managed `mlx_lm.server`, model profiles, diagnostics/logging, unsigned zip asset, known limitations, and safety boundaries.
+6. Prepare final Debug and Release build verification.
+   - Confirm both builds succeed before tagging.
+   - Do not create build artifacts inside Git.
+7. Prepare unsigned zip asset verification.
+   - Use `ditto -c -k --norsrc --noextattr --keepParent`.
+   - Confirm zip contents, size, unzip launch, and no forbidden files.
+8. Prepare v1.0 tag.
+   - Confirm docs and stable scope match implemented behavior.
+   - Confirm Direct Mode, no Proxy, and no Chat UI are maintained.
+9. Keep deferred items out of v1.0.
+   - Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, Hugging Face download manager, model download, model deletion, Hugging Face cache deletion, multiple concurrent server management, multiple model simultaneous launch, RAG, embedding manager, tool-call translation, telemetry, analytics, crash reporting, external log sending, cloud logging, persistent file logging, notarization, Developer ID signing, DMG, App Store distribution, Homebrew cask, auto updater, CI/CD, and GitHub Actions release automation stay out of scope.
+
 ## Later
 
 - Unit tests for services where practical.

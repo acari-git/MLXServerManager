@@ -220,6 +220,41 @@ Notes:
 - Ready checks use /v1/models. The app does not send /v1/chat/completions.
 ```
 
+### v1.0 Release Note Template
+
+Use release notes similar to:
+
+```text
+MLX Server Manager v1.0.0
+
+Asset:
+- MLXServerManager-v1.0.0-unsigned.zip
+
+Stable scope:
+- Direct Mode: OpenAI-compatible client -> mlx_lm.server.
+- Start, Stop, and Restart for the app-managed mlx_lm.server process.
+- Port Check and Ready Check via /v1/models.
+- Settings save and restore.
+- Model profile add, edit, delete, and switching with Restart required.
+- Setup Diagnostics and diagnostics summary copy.
+- Readable Logs and Copy Logs.
+- Menu bar quick actions.
+- OpenAI-compatible connection settings copy.
+
+Known limitations:
+- This is an unsigned local-use macOS app bundle.
+- The app is not notarized and is not signed with Developer ID.
+- macOS Gatekeeper may warn when opening the app.
+- The app does not bundle mlx-lm, model files, Hugging Face cache, runtime settings, logs, or secrets.
+- Users must configure mlx_lm.server executable path in the app UI.
+- The app does not proxy inference traffic, does not provide Chat UI, and does not execute /v1/chat/completions.
+
+Safety:
+- Stop and Restart target only the process started by this app.
+- External mlx_lm.server processes are not stopped.
+- Runtime settings, model profiles, model files, Hugging Face cache, logs, secrets, .app bundles, zip files, dSYM files, and build artifacts are not included in Git.
+```
+
 ## Non-Goals
 
 - Notarization.
