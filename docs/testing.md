@@ -557,3 +557,50 @@ unzip -l /tmp/MLXServerManager-v1.0.0-unsigned.zip | grep -E 'settings.json|mode
 - Confirm Diagnostics are limited to `/v1/models` readiness.
 - Confirm no Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, model downloader, model deletion, Hugging Face cache deletion, multiple concurrent server management, RAG, embedding manager, tool-call translation, telemetry, analytics, crash reporting, external log sending, cloud logging, persistent file logging, notarization, Developer ID signing, DMG, CI/CD, GitHub Actions release automation, App Store distribution, Homebrew cask, or auto updater is introduced.
 - Confirm Swift code does not use `pkill`, `killall`, or `pgrep`.
+
+## v1.0.1 Maintenance Verification Checklist
+
+Use this checklist after v1.0.0 is tagged and the GitHub Release asset is available.
+
+### Release Asset Re-Download
+
+- Download `MLXServerManager-v1.0.0-unsigned.zip` from the GitHub Release in a browser.
+- Confirm the downloaded file name is `MLXServerManager-v1.0.0-unsigned.zip`.
+- Inspect the zip with `unzip -l`.
+- Confirm all zip entries are under `MLXServerManager.app/`.
+- Confirm the zip does not include `settings.json`, `models.json`, model files, `.env`, `HF_TOKEN`, `.dSYM`, DerivedData, logs, Hugging Face cache, `__MACOSX`, or AppleDouble `._*` metadata files.
+- Extract the zip to a temporary folder.
+- Launch the extracted app with `open -n`.
+- Quit the verification app process.
+- Confirm no verification process remains.
+
+### First-Run Documentation Review
+
+- Confirm README explains that users must provide `mlx-lm`.
+- Confirm README explains where to configure `mlx_lm.server executable path`.
+- Confirm README explains Model Profile fields.
+- Confirm README points users to Setup Diagnostics before Start.
+- Confirm Connection Settings copy actions are understandable.
+- Confirm Direct Mode and "app is not in the inference request path" are understandable.
+- Confirm known limitations are easy to find.
+
+### Lightweight Regression
+
+- Confirm Start works.
+- Confirm Stop targets only the app-managed process.
+- Confirm Restart works.
+- Confirm Port Check works.
+- Confirm Ready Check uses `/v1/models`.
+- Confirm Run Diagnostics works.
+- Confirm Logs remain readable.
+- Confirm Copy Logs and Clear Logs work.
+- Confirm Menu bar Start, Stop, Restart, Run Diagnostics, Open App, and Quit work.
+- Confirm Connection Settings copy actions work.
+
+### Maintenance Safety
+
+- Confirm v1.0.1 changes are limited to README/docs clarifications, small wording fixes, small error-message fixes, obvious bug fixes, or build/zip documentation corrections.
+- Confirm no new feature scope is introduced.
+- Confirm Direct Mode is maintained.
+- Confirm the app does not execute `/v1/chat/completions`.
+- Confirm no Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, model downloader, model deletion, Hugging Face cache deletion, multiple concurrent server management, automatic updates, DMG, notarization, CI/CD, GitHub Actions release automation, or App Store distribution is introduced.

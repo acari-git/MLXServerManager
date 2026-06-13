@@ -165,6 +165,7 @@ Do not hardcode user-specific absolute paths in source code or committed documen
 - Stable scope: [docs/stable_scope.md](docs/stable_scope.md)
 - Known limitations: [docs/known_limitations.md](docs/known_limitations.md)
 - v1.0 plan: [docs/v1.0_plan.md](docs/v1.0_plan.md)
+- v1.0.1 maintenance plan: [docs/v1.0.1_maintenance.md](docs/v1.0.1_maintenance.md)
 - Requirements: [docs/requirements.md](docs/requirements.md)
 - Architecture: [docs/architecture.md](docs/architecture.md)
 - Testing: [docs/testing.md](docs/testing.md)

@@ -187,6 +187,22 @@ Manual verification should use a temporary location:
 
 This launch verification must not require model inference and must not require `/v1/chat/completions`.
 
+## Release Asset Re-Download Verification
+
+For v1.0.1 maintenance, verify the published v1.0.0 GitHub Release asset after uploading it:
+
+1. Download `MLXServerManager-v1.0.0-unsigned.zip` from the GitHub Release in a browser.
+2. Confirm the downloaded zip name matches the release asset name.
+3. Inspect the downloaded zip with `unzip -l`.
+4. Confirm the zip contains only `MLXServerManager.app/` entries.
+5. Confirm the zip does not contain runtime settings, model profiles, model files, Hugging Face cache, logs, secrets, `.dSYM`, DerivedData, `__MACOSX`, or AppleDouble `._*` metadata files.
+6. Extract the zip into a temporary folder.
+7. Launch the extracted app with `open -n`.
+8. Quit the verification app process.
+9. Confirm no verification process remains.
+
+This is a verification of the published asset, not a new packaging method.
+
 ### Verified v0.9 Launch Result
 
 The v0.9 packaging verification confirmed:

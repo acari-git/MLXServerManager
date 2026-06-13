@@ -519,6 +519,40 @@
 9. Keep deferred items out of v1.0.
    - Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, Hugging Face download manager, model download, model deletion, Hugging Face cache deletion, multiple concurrent server management, multiple model simultaneous launch, RAG, embedding manager, tool-call translation, telemetry, analytics, crash reporting, external log sending, cloud logging, persistent file logging, notarization, Developer ID signing, DMG, App Store distribution, Homebrew cask, auto updater, CI/CD, and GitHub Actions release automation stay out of scope.
 
+## v1.0.1 Planned: Maintenance Verification
+
+1. Create maintenance plan.
+   - Keep v1.0.1 limited to light verification, docs clarifications, wording fixes, obvious bug fixes, and release asset verification.
+   - Do not add new product scope.
+2. Re-download and verify the v1.0.0 Release asset.
+   - Download `MLXServerManager-v1.0.0-unsigned.zip` from GitHub Release.
+   - Confirm the zip contains only `MLXServerManager.app/`.
+   - Confirm runtime settings, model files, secrets, `.dSYM`, DerivedData, logs, Hugging Face cache, and AppleDouble `._*` metadata are absent.
+   - Extract and launch with `open -n`.
+   - Quit the verification process and confirm no verification process remains.
+3. Review first-run documentation.
+   - Confirm users can find where to configure `mlx_lm.server executable path`.
+   - Confirm users can understand model profile setup.
+   - Confirm users can find Connection Settings copy actions.
+   - Confirm Direct Mode and "app is not in the inference request path" are clear.
+4. Review Gatekeeper notes.
+   - Confirm unsigned app, no notarization, and possible Gatekeeper warnings are visible.
+   - Clarify wording if users may misunderstand the unsigned local-use status.
+5. Run lightweight regression pass.
+   - Start, Stop, Restart, Port Check, Ready Check, Run Diagnostics, Logs, Menu bar, and Connection Settings.
+   - Confirm `/v1/chat/completions` remains copy-only text and is not executed by the app.
+6. Apply README/docs wording fixes if needed.
+   - Fix typos, omissions, and inconsistent wording.
+   - Keep changes small and release-focused.
+7. Prepare v1.0.1 final verification.
+   - Confirm Git status is clean.
+   - Confirm forbidden files are not tracked.
+   - Confirm Direct Mode, no Proxy, and no Chat UI are maintained.
+8. Prepare v1.0.1 tag.
+   - Tag only after asset re-download verification and lightweight regression pass.
+9. Keep deferred items out of v1.0.1.
+   - New features, large UI changes, Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, model downloader, model deletion, Hugging Face cache deletion, multiple concurrent server management, automatic updates, DMG, notarization, CI/CD, GitHub Actions release automation, App Store distribution, and Xcode project setting changes stay out of scope.
+
 ## Later
 
 - Unit tests for services where practical.
