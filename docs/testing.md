@@ -264,6 +264,58 @@ Target service behavior without launching the full UI:
 - Confirm `settings.json`, `models.json`, and model files are not included in Git status or commits.
 - Confirm no user-specific fixed paths are added to Swift code or docs.
 
+## v0.8 Logging and Diagnostics Manual Tests
+
+### Logs
+
+- Confirm Logs are displayed line by line.
+- Confirm `[start]`, `[stop]`, `[restart]`, `[diagnostics]`, `[profile]`, `[switching]`, `[warning]`, `[error]`, and `[info]` categories are easy to scan.
+- Confirm Start, Stop, and Restart logs still appear.
+- Confirm Run Diagnostics logs still appear.
+- Confirm Add, Edit, and Delete Profile logs still appear.
+- Confirm Model switching and Restart-required logs still appear.
+- Click `Clear Logs` and confirm it still works.
+- Confirm `[info] logs cleared` appears after Clear Logs.
+- Confirm the `Copy Logs` button is visible.
+- Click `Copy Logs` and confirm the current bounded log text is copied to the macOS clipboard.
+- Confirm `[info] copied logs to clipboard` appears after Copy Logs succeeds.
+- Confirm Copy Logs does not break when logs are empty or immediately after Clear Logs.
+
+### Diagnostics
+
+- Before running diagnostics, confirm `No diagnostics run yet.` is shown.
+- Before running diagnostics, click `Copy Diagnostics Summary` and confirm a warning is written to Logs.
+- Click `Run Diagnostics` and confirm Pass, Warning, and Failure counts are visible.
+- Confirm warnings and failures are visually easy to find.
+- Confirm each check row clearly shows `PASS`, `WARNING`, or `FAIL`.
+- Confirm the `Copy Diagnostics Summary` button is visible.
+- Click `Copy Diagnostics Summary` and confirm the clipboard text includes the summary and each check name, status, and message.
+- Confirm `[info] copied diagnostics summary to clipboard` appears after the copy succeeds.
+- Confirm Diagnostics still uses the existing checks.
+- Confirm Diagnostics Ready Check remains limited to `/v1/models`.
+- Confirm Diagnostics does not call `/v1/chat/completions`.
+
+### Regression
+
+- Confirm Start, Stop, and Restart still work.
+- Confirm Add, Edit, and Delete Profile still work.
+- Confirm Model switching and Restart-required behavior still work.
+- Confirm Menu bar quick actions still work.
+- Confirm Release build instructions still produce a working build.
+
+### Safety
+
+- Confirm no file-persistent logs are created.
+- Confirm there is no telemetry, analytics, crash reporting, or external log sending.
+- Confirm Logs and Diagnostics improvements do not run model inference.
+- Confirm the app does not send `/v1/chat/completions`.
+- Confirm Diagnostics does not start `mlx_lm.server`.
+- Confirm Diagnostics does not stop external processes.
+- Confirm `pkill`, `killall`, and `pgrep` are not used.
+- Confirm Direct Mode is maintained with no Proxy and no Chat UI.
+- Confirm `settings.json`, `models.json`, and model files are not included in Git status or commits.
+- Confirm no user-specific fixed paths are added to Swift code or docs.
+
 ## Performance Guardrails
 
 - Direct Mode must not proxy inference traffic.

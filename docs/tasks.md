@@ -397,13 +397,16 @@
 3. Improve LogView readability.
    - Keep the existing LogView structure.
    - Improve text scanning first.
-   - Treat color, icons, filter, and search as optional.
+   - Show existing log categories in a form that is easy to scan.
+   - Do not add filter or search in v0.8 Step 2.
 4. Add Copy Logs action.
    - Copy current bounded logs to the pasteboard.
+   - Log copy success and empty-log handling.
    - Do not upload logs or send them externally.
    - Preserve Clear Logs.
 5. Improve Diagnostics summary.
-   - Make failure and warning counts easy to scan.
+   - Make pass, warning, and failure counts easy to scan.
+   - Add Copy Diagnostics Summary for local clipboard troubleshooting.
    - Show what to inspect next when a check fails or warns.
 6. Improve Diagnostics warning/error visibility.
    - Make `pass`, `warning`, and `fail` easy to distinguish.
@@ -415,14 +418,20 @@
    - Make add/edit/delete outcomes easy to follow.
    - Make selected model, running model, and Restart-required logs easy to follow.
 9. Add manual test checklist.
-   - Logs are readable and bounded.
-   - Copy Logs works.
-   - Clear Logs still works.
-   - Diagnostics summary shows failure and warning counts.
+   - Logs are readable line by line and remain bounded.
+   - Categories such as `[start]`, `[stop]`, `[restart]`, `[diagnostics]`, `[profile]`, `[switching]`, `[warning]`, `[error]`, and `[info]` are easy to scan.
+   - Copy Logs works and logs `[info] copied logs to clipboard`.
+   - Copy Logs does not break when logs are empty or immediately after Clear Logs.
+   - Clear Logs still works and logs `[info] logs cleared`.
+   - Diagnostics shows `No diagnostics run yet.` before the first run.
+   - Copy Diagnostics Summary warns when no diagnostics results exist.
+   - Diagnostics summary shows pass, warning, and failure counts.
    - Diagnostics warnings and failures are easy to find.
+   - Each Diagnostics row clearly shows `PASS`, `WARNING`, or `FAIL`.
+   - Copy Diagnostics Summary copies summary plus each check name, status, and message.
    - Start/Stop/Restart logs are understandable.
    - Profile and switching logs are understandable.
-   - Logs and diagnostics do not call `/v1/chat/completions`, run inference, start `mlx_lm.server` automatically, upload data, delete model files, stop external processes, or use `pkill`, `killall`, or `pgrep`.
+   - Logs and diagnostics do not call `/v1/chat/completions`, run inference, start `mlx_lm.server` automatically, upload data, create file-persistent logs, delete model files, stop external processes, or use `pkill`, `killall`, or `pgrep`.
 10. Prepare v0.8 tag.
     - Confirm docs and UI behavior match the logging and diagnostics policy.
     - Confirm Direct Mode, no Proxy, and no Chat UI are maintained.
