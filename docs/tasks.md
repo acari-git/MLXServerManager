@@ -439,6 +439,43 @@
 11. Keep deferred items out of v0.8.
     - Remote log sending, telemetry, crash reporting service, analytics, external log collection, cloud logging, file-persistent logs, automatic log upload, Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, Hugging Face download manager, model download, model file deletion, multiple simultaneous server management, CI/CD, notarization, DMG creation, and App Store distribution stay out of scope.
 
+## v0.9 Planned: Unsigned Zip Distribution
+
+1. Define distribution requirements.
+   - Preserve Direct Mode, no Proxy, and no Chat UI.
+   - Keep packaging independent from model inference.
+2. Define unsigned Release asset policy.
+   - Treat the asset as an unsigned local-use build.
+   - State that the zip contains only `MLXServerManager.app`.
+   - State that runtime settings, model profiles, model files, Hugging Face cache, logs, and secrets are not included.
+3. Document zip creation commands.
+   - Reuse the Release `xcodebuild` command.
+   - Document `ditto -c -k --keepParent`.
+   - Use `/tmp/MLXServerManagerReleaseDerivedData` as an example temporary DerivedData path.
+4. Document Release asset contents verification.
+   - Use `unzip -l` to confirm zip contents.
+   - Use `du -h` to confirm zip size.
+   - Use `git ls-files` to confirm `.app`, `.zip`, `.dSYM`, build artifacts, runtime settings, secrets, and model files are not tracked.
+5. Document local launch verification after unzip.
+   - Unzip into a temporary location.
+   - Launch with `open -n`.
+   - Confirm app startup, menu bar item, main window, and normal quit.
+   - Do not require model inference or `/v1/chat/completions`.
+6. Add release note template.
+   - Explain unsigned local-use status.
+   - Explain Gatekeeper, quarantine, signing, and notarization caveats.
+   - State Direct Mode and no Chat UI.
+7. Add final v0.9 verification checklist.
+   - Release build succeeds.
+   - Zip contains only the app bundle.
+   - No runtime settings, secrets, model files, `.app`, `.zip`, `.dSYM`, or build artifacts are tracked by Git.
+   - Direct Mode, no Proxy, and no Chat UI are maintained.
+8. Prepare v0.9 tag.
+   - Confirm docs and Release asset policy match.
+   - Confirm v0.9 does not perform notarization, DMG creation, CI/CD, GitHub Actions, App Store distribution, model download, or model file deletion.
+9. Keep deferred items out of v0.9.
+   - Notarization, Developer ID signing, DMG creation, Sparkle, CI/CD, GitHub Actions, App Store distribution, Homebrew cask, installer creation, runtime settings bundling, model file bundling, Hugging Face cache bundling, Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, Hugging Face download manager, model download, model file deletion, and multiple simultaneous server management stay out of scope.
+
 ## Later
 
 - Unit tests for services where practical.

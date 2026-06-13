@@ -472,3 +472,60 @@ Safety requirements:
 - Model files, Hugging Face cache, and local model directories must not be deleted.
 - `settings.json`, `models.json`, model files, `.app` bundles, and build artifacts must stay outside Git.
 - Runtime logs may display user-selected local paths, but docs and Swift code must not hardcode personal paths.
+
+## v0.9 Unsigned Zip Distribution Requirements
+
+v0.9 should document unsigned `.app` zip packaging and GitHub Release asset policy while preserving Direct Mode:
+
+```text
+OpenAI-compatible client -> mlx_lm.server
+```
+
+Functional documentation requirements:
+
+- Document Release build creation for an unsigned local-use `.app`.
+- Document `.app` zip creation with `ditto -c -k --keepParent`.
+- Document how to verify the zip contents with `unzip -l`.
+- Document how to verify zip size with `du -h`.
+- Document how to verify `.app`, `.zip`, `.dSYM`, derived data, runtime settings, secrets, and model files are not tracked by Git.
+- State that the GitHub Release asset should contain the zipped app bundle only.
+- State that runtime settings, model profiles, model files, Hugging Face cache, logs, and secrets must not be included.
+- Provide release note guidance for unsigned local-use builds.
+- Explain Gatekeeper, quarantine, signing, and notarization caveats.
+
+v0.9 non-goals:
+
+- Notarization.
+- Developer ID signing.
+- DMG creation.
+- Sparkle or other automatic updates.
+- CI/CD.
+- GitHub Actions.
+- App Store distribution.
+- Homebrew cask.
+- Installer creation.
+- Runtime settings bundling.
+- Model file bundling.
+- Hugging Face cache bundling.
+- Proxy mode.
+- Chat UI.
+- LAN Web UI.
+- App Intents.
+- Auto unload.
+- Hugging Face download manager.
+- Model download.
+- Model file deletion.
+- Multiple simultaneous server management.
+
+Safety requirements:
+
+- Distribution packaging must not add a proxy or change the inference route.
+- Packaging verification must not run model inference.
+- Packaging verification must not start `mlx_lm.server`.
+- The app must not send `/v1/chat/completions`.
+- Stop must target only the managed process held by this app.
+- External processes must not be stopped.
+- `pkill`, `killall`, and `pgrep` must not be used.
+- `.app`, `.zip`, `.dSYM`, derived data, and build artifacts must stay outside Git.
+- `settings.json`, `models.json`, model files, `.env`, and `HF_TOKEN` must stay outside Git.
+- Documentation must not include personal fixed paths.

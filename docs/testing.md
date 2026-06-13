@@ -316,6 +316,67 @@ Target service behavior without launching the full UI:
 - Confirm `settings.json`, `models.json`, and model files are not included in Git status or commits.
 - Confirm no user-specific fixed paths are added to Swift code or docs.
 
+## v0.9 Unsigned Zip Distribution Manual Tests
+
+### Release Build
+
+- Confirm `git status --short --untracked-files=all` is clean before packaging.
+- Run the documented Release `xcodebuild` command with `CODE_SIGNING_ALLOWED=NO`.
+- Confirm the Release build ends with `BUILD SUCCEEDED`.
+- Confirm `MLXServerManager.app` exists under the Release build products directory.
+- Confirm `.app`, `.dSYM`, derived data, and build artifacts are not tracked by Git.
+
+### Zip Creation
+
+- Create the unsigned zip with `ditto -c -k --keepParent`.
+- Confirm the zip file is created in a temporary or release staging location outside Git.
+- Confirm the zip size with `du -h`.
+- Confirm `.zip` files are not tracked by Git.
+
+### Zip Contents
+
+- Inspect the zip with `unzip -l`.
+- Confirm the zip contains `MLXServerManager.app/`.
+- Confirm the zip does not contain `settings.json`.
+- Confirm the zip does not contain `models.json`.
+- Confirm the zip does not contain model files or model directories.
+- Confirm the zip does not contain Hugging Face cache.
+- Confirm the zip does not contain `.env` or `HF_TOKEN`.
+- Confirm the zip does not contain `.dSYM` or derived data.
+
+### Launch After Unzip
+
+- Unzip the asset into a temporary location.
+- Confirm `MLXServerManager.app` exists after unzip.
+- Launch the app with `open -n`.
+- Confirm the app starts.
+- Confirm the menu bar item appears.
+- Confirm the main window opens.
+- Confirm runtime settings are not bundled.
+- Configure `mlx_lm.server executable path` in the app UI if needed.
+- Run Setup Diagnostics if local runtime settings are available.
+- Quit the app normally.
+
+### GitHub Release Asset Notes
+
+- Confirm the intended Release asset is the unsigned zip only.
+- Confirm release notes state the app is unsigned and not notarized.
+- Confirm release notes mention Gatekeeper and quarantine caveats.
+- Confirm release notes state runtime settings, model profiles, model files, Hugging Face cache, logs, and secrets are not included.
+- Confirm release notes state Direct Mode remains `OpenAI-compatible client -> mlx_lm.server`.
+
+### Safety
+
+- Confirm packaging does not run model inference.
+- Confirm packaging does not start `mlx_lm.server`.
+- Confirm the app does not send `/v1/chat/completions`.
+- Confirm external processes are not stopped.
+- Confirm `pkill`, `killall`, and `pgrep` are not used.
+- Confirm Direct Mode is maintained with no Proxy and no Chat UI.
+- Confirm no notarization, Developer ID signing, DMG creation, CI/CD, GitHub Actions, App Store distribution, Homebrew cask, or installer creation is performed in v0.9.
+- Confirm no model download, model file deletion, Hugging Face cache deletion, or multiple simultaneous server management is introduced.
+- Confirm no personal fixed paths are added to docs or Swift code.
+
 ## Performance Guardrails
 
 - Direct Mode must not proxy inference traffic.
