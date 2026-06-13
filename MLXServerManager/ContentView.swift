@@ -19,7 +19,8 @@ struct ContentView: View {
             HSplitView {
                 ModelListView(
                     models: viewModel.models,
-                    selectedModelID: $viewModel.selectedModelID
+                    selectedModelID: $viewModel.selectedModelID,
+                    onAddProfile: viewModel.addProfileRequested
                 )
                 .frame(minWidth: 260, idealWidth: 300, maxWidth: 360)
 
@@ -56,10 +57,28 @@ struct ContentView: View {
                         if viewModel.isProfileEditorPresented {
                             ModelProfileEditorView(
                                 draft: $viewModel.profileEditorDraft,
+                                title: "Edit Model Profile",
+                                saveButtonTitle: "Save Profile",
+                                noticeMessage: nil,
                                 message: viewModel.profileEditorMessage,
                                 runtimeFieldsLocked: viewModel.isManagedProcessRunning,
                                 onSave: viewModel.saveProfileEditing,
                                 onCancel: viewModel.cancelProfileEditing
+                            )
+                        }
+
+                        if viewModel.isAddProfilePresented {
+                            ModelProfileEditorView(
+                                draft: $viewModel.addProfileDraft,
+                                title: "Add Model Profile",
+                                saveButtonTitle: "Save New Profile",
+                                noticeMessage: viewModel.isManagedProcessRunning
+                                    ? "Saving a new profile will not change the running managed server. Stop the managed server before switching runtime profile."
+                                    : nil,
+                                message: viewModel.addProfileMessage,
+                                runtimeFieldsLocked: false,
+                                onSave: viewModel.saveNewProfile,
+                                onCancel: viewModel.cancelAddProfile
                             )
                         }
 

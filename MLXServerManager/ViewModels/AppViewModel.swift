@@ -20,6 +20,9 @@ final class AppViewModel: ObservableObject {
     @Published var profileEditorDraft: ModelProfileDraft = .empty
     @Published private(set) var isProfileEditorPresented = false
     @Published private(set) var profileEditorMessage: String?
+    @Published var addProfileDraft: ModelProfileDraft = .empty
+    @Published private(set) var isAddProfilePresented = false
+    @Published private(set) var addProfileMessage: String?
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
@@ -261,6 +264,9 @@ final class AppViewModel: ObservableObject {
             return
         }
 
+        addProfileDraft = .empty
+        addProfileMessage = nil
+        isAddProfilePresented = false
         profileEditorDraft = ModelProfileDraft(model: selectedModel)
         profileEditorMessage = nil
         isProfileEditorPresented = true
@@ -272,6 +278,59 @@ final class AppViewModel: ObservableObject {
         profileEditorMessage = nil
         isProfileEditorPresented = false
         appendLog("[profile] edit cancelled.")
+    }
+
+    func addProfileRequested() {
+        profileEditorDraft = .empty
+        profileEditorMessage = nil
+        isProfileEditorPresented = false
+        addProfileDraft = ModelProfileDraft.newProfile(
+            defaultHost: settings.defaultHost,
+            defaultPort: settings.defaultPort
+        )
+        addProfileMessage = nil
+        isAddProfilePresented = true
+        appendLog("[profile] adding new model profile.")
+    }
+
+    func cancelAddProfile() {
+        addProfileDraft = .empty
+        addProfileMessage = nil
+        isAddProfilePresented = false
+        appendLog("[profile] add cancelled.")
+    }
+
+    func saveNewProfile() {
+        guard isAddProfilePresented else {
+            return
+        }
+
+        switch validatedNewProfileDraft(addProfileDraft) {
+        case let .valid(newModel):
+            let nextModels = models + [newModel]
+
+            do {
+                try settingsStore.save(models: nextModels)
+                models = nextModels
+                addProfileDraft = .empty
+                addProfileMessage = nil
+                isAddProfilePresented = false
+
+                if isManagedProcessRunning {
+                    appendLog("[profile] added \(newModel.modelID) to models.json.")
+                    appendLog("[profile] Profile added. Stop the managed server before switching runtime profile.")
+                } else {
+                    selectedModelID = newModel.id
+                    appendLog("[profile] added and selected \(newModel.modelID).")
+                }
+            } catch {
+                addProfileMessage = error.localizedDescription
+                appendLog("[profile] add failed: \(error.localizedDescription)")
+            }
+        case let .invalid(message):
+            addProfileMessage = message
+            appendLog("[profile] add failed: \(message)")
+        }
     }
 
     func saveProfileEditing() {
@@ -751,6 +810,44 @@ final class AppViewModel: ObservableObject {
         updatedModel.enableThinking = draft.enableThinking
         updatedModel.notes = draft.notes.trimmingCharacters(in: .whitespacesAndNewlines)
         return .valid(updatedModel)
+    }
+
+    private func validatedNewProfileDraft(_ draft: ModelProfileDraft) -> ProfileValidationResult {
+        let modelID = draft.modelID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let displayName = draft.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let host = draft.host.trimmingCharacters(in: .whitespacesAndNewlines)
+        let portText = draft.serverPortText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !modelID.isEmpty else {
+            return .invalid("Model ID is required.")
+        }
+
+        guard !host.isEmpty else {
+            return .invalid("Host is required.")
+        }
+
+        guard let port = Int(portText), (1...65_535).contains(port) else {
+            return .invalid("Port must be between 1 and 65535.")
+        }
+
+        guard !models.contains(where: { $0.modelID == modelID }) else {
+            return .invalid("A model profile with this Model ID already exists.")
+        }
+
+        let localName = modelID.split(separator: "/").last.map(String.init) ?? modelID
+        return .valid(
+            ModelConfig(
+                modelID: modelID,
+                displayName: displayName.isEmpty ? modelID : displayName,
+                family: "Custom",
+                quantization: "User configured",
+                localName: localName,
+                host: host,
+                serverPort: port,
+                enableThinking: draft.enableThinking,
+                notes: draft.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+            )
+        )
     }
 
     private var connectionConfigBuilder: ConnectionConfigBuilder {

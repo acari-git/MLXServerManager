@@ -3,13 +3,26 @@ import SwiftUI
 struct ModelListView: View {
     let models: [ModelConfig]
     @Binding var selectedModelID: ModelConfig.ID?
+    let onAddProfile: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Models")
-                .font(.headline)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
+            HStack {
+                Text("Models")
+                    .font(.headline)
+
+                Spacer()
+
+                Button {
+                    onAddProfile()
+                } label: {
+                    Label("Add Profile", systemImage: "plus")
+                }
+                .labelStyle(.iconOnly)
+                .help("Add Profile")
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
 
             Divider()
 
@@ -29,4 +42,3 @@ struct ModelListView: View {
         .background(Color(nsColor: .underPageBackgroundColor))
     }
 }
-

@@ -53,6 +53,18 @@ struct ModelProfileDraft: Equatable {
         notes: ""
     )
 
+    static func newProfile(defaultHost: String, defaultPort: Int) -> ModelProfileDraft {
+        ModelProfileDraft(
+            originalModelID: "",
+            displayName: "",
+            modelID: "",
+            host: defaultHost,
+            serverPortText: String(defaultPort),
+            enableThinking: false,
+            notes: ""
+        )
+    }
+
     init(model: ModelConfig) {
         self.originalModelID = model.modelID
         self.displayName = model.displayName

@@ -2,6 +2,9 @@ import SwiftUI
 
 struct ModelProfileEditorView: View {
     @Binding var draft: ModelProfileDraft
+    let title: String
+    let saveButtonTitle: String
+    let noticeMessage: String?
     let message: String?
     let runtimeFieldsLocked: Bool
     let onSave: () -> Void
@@ -10,7 +13,7 @@ struct ModelProfileEditorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Edit Model Profile")
+                Text(title)
                     .font(.headline)
 
                 Spacer()
@@ -25,10 +28,16 @@ struct ModelProfileEditorView: View {
                     Button {
                         onSave()
                     } label: {
-                        Label("Save Profile", systemImage: "square.and.arrow.down")
+                        Label(saveButtonTitle, systemImage: "square.and.arrow.down")
                     }
                     .buttonStyle(.borderedProminent)
                 }
+            }
+
+            if let noticeMessage, !noticeMessage.isEmpty {
+                Label(noticeMessage, systemImage: "info.circle")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
 
             if runtimeFieldsLocked {
