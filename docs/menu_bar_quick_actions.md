@@ -102,20 +102,32 @@ OpenAI-compatible client -> mlx_lm.server
 
 Manual tests should cover:
 
-- Confirm the menu bar status item appears.
-- Confirm status shows stopped before Start.
-- Start from the menu bar and confirm the main window reaches Ready.
-- Confirm status changes through starting and ready.
-- Stop from the menu bar and confirm only the managed process stops.
-- Confirm status returns to stopped after Stop.
-- Restart from the menu bar and confirm Stop, port release, Start, and Ready still work.
-- Run Diagnostics from the menu bar and confirm Diagnostics UI and Logs update.
-- Open the main app window from the menu bar.
-- Open or view Connection Settings from the menu bar.
-- Quit from the menu bar.
+- Launch the app and confirm a macOS menu bar item appears.
+- Confirm the initial menu bar title is `MLX: stopped`.
+- Confirm the main window and menu bar show the same managed server status.
+- Open the menu bar item and confirm Base URL is visible.
+- Open the menu bar item and confirm Model ID is visible.
+- Click `Open App` and confirm the main app window is shown and activated.
+- Click `Start` from the menu bar and confirm the managed server starts.
+- Confirm the main window status changes from starting to ready after Start.
+- Confirm the menu bar title changes to `MLX: ready` after Start.
+- Click `Run Diagnostics` from the menu bar and confirm the main window Diagnostics panel updates.
+- Confirm Logs include the diagnostics run started from the menu bar.
+- Click `Restart` from the menu bar and confirm Stop, port release, Start, and Ready still work.
+- Click `Stop` from the menu bar and confirm only the managed process stops.
+- Confirm the main window status returns to stopped after Stop.
+- Confirm the menu bar title returns to `MLX: stopped` after Stop.
+- Confirm Start, Stop, and Restart from the main window still work.
+- Click `Quit` from the menu bar and confirm the app exits normally.
+- Confirm menu bar actions reuse the existing `AppViewModel` actions.
+- Confirm no separate menu bar process manager exists.
 - Confirm menu bar actions do not call `/v1/chat/completions`.
 - Confirm menu bar actions do not run inference.
 - Confirm menu bar status display does not start `mlx_lm.server`.
+- Confirm menu bar actions do not insert the app into the inference path.
 - Confirm menu bar Stop does not stop external server processes.
+- Confirm Stop targets only the managed process.
 - Confirm `pkill`, `killall`, and `pgrep` are not used.
 - Confirm Direct Mode is maintained with no Proxy and no Chat UI.
+- Confirm `settings.json`, `models.json`, and model files are not included in Git status or commits.
+- Confirm no user-specific fixed paths are added to Swift code or docs.

@@ -80,6 +80,37 @@ Target service behavior without launching the full UI:
 - Confirm Direct Mode is maintained with no Proxy and no Chat UI.
 - Confirm no user-specific fixed paths are added to Swift code or docs.
 
+## v0.4 Menu Bar Quick Actions Manual Tests
+
+- Launch the app and confirm a macOS menu bar item appears.
+- Confirm the initial menu bar title is `MLX: stopped`.
+- Confirm the main window and menu bar show the same status.
+- Open the menu bar item and confirm Base URL is visible.
+- Open the menu bar item and confirm Model ID is visible.
+- Click `Open App` and confirm the main window is shown and activated.
+- Click `Start` from the menu bar and confirm the managed server starts.
+- Confirm the main window changes from starting to ready after Start.
+- Confirm the menu bar title changes to `MLX: ready` after Start.
+- Click `Run Diagnostics` from the menu bar and confirm Diagnostics and Logs update in the main window.
+- Click `Restart` from the menu bar and confirm Stop, port release, Start, and Ready still work.
+- Click `Stop` from the menu bar and confirm only the managed process stops.
+- Confirm the main window returns to stopped after Stop.
+- Confirm the menu bar title returns to `MLX: stopped` after Stop.
+- Confirm Start, Stop, and Restart from the main window still work.
+- Click `Quit` from the menu bar and confirm the app exits normally.
+- Confirm menu bar actions reuse existing `AppViewModel` actions.
+- Confirm there is no separate menu bar process management logic.
+- Confirm menu bar actions do not send `/v1/chat/completions`.
+- Confirm menu bar actions do not run model inference.
+- Confirm menu bar status display does not start `mlx_lm.server`.
+- Confirm menu bar actions do not enter the inference path.
+- Confirm menu bar Stop does not stop external processes.
+- Confirm Stop targets only the managed process.
+- Confirm `pkill`, `killall`, and `pgrep` are not used.
+- Confirm Direct Mode is maintained with no Proxy and no Chat UI.
+- Confirm `settings.json`, `models.json`, and model files are not included in Git status or commits.
+- Confirm no user-specific fixed paths are added to Swift code or docs.
+
 ## Performance Guardrails
 
 - Direct Mode must not proxy inference traffic.

@@ -164,14 +164,27 @@
    - Decide whether managed processes are left running or stopped on quit before implementation.
    - Never stop external `mlx_lm.server` processes.
 8. Add manual test checklist.
-   - Menu bar item appears.
-   - Status updates for stopped, starting, ready, stopping, and failed states.
-   - Start, Stop, and Restart work from the menu bar.
-   - Run Diagnostics works from the menu bar.
-   - Open App and Connection Settings actions work.
-   - Quit works.
-   - Menu bar actions do not call `/v1/chat/completions`, run inference, start a server just for status, or stop external processes.
+   - App launch shows a macOS menu bar item.
+   - Initial menu bar title is `MLX: stopped`.
+   - Main window and menu bar show the same status.
+   - Menu bar shows Base URL and Model ID.
+   - `Open App` shows and activates the main window.
+   - Menu bar `Start` starts the managed server.
+   - Main window changes from starting to ready after menu bar Start.
+   - Menu bar title changes to `MLX: ready` after Start.
+   - Menu bar `Run Diagnostics` updates Diagnostics and Logs in the main window.
+   - Menu bar `Restart` preserves Stop, port release, Start, and Ready behavior.
+   - Menu bar `Stop` stops only the managed process.
+   - Main window and menu bar return to stopped after Stop.
+   - Main-window Start, Stop, and Restart still work.
+   - Menu bar `Quit` exits normally.
+   - Menu bar actions reuse existing `AppViewModel` actions.
+   - No separate menu bar process manager exists.
+   - Menu bar actions do not call `/v1/chat/completions`, run inference, start a server just for status, enter the inference path, or stop external processes.
+   - Stop targets only the managed process.
+   - `pkill`, `killall`, and `pgrep` are not used.
    - Direct Mode, no Proxy, and no Chat UI are maintained.
+   - `settings.json`, `models.json`, model files, and user-specific fixed paths stay out of Git.
 9. Keep deferred items out of v0.4.
    - New model add/delete, multiple simultaneous servers, Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, Hugging Face download manager, model download, model file deletion, full log viewer redesign, and notarization stay out of scope.
 
