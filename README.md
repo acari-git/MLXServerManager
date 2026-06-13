@@ -12,6 +12,31 @@ OpenAI-compatible client -> mlx_lm.server
 
 MLX Server Manager controls and observes the managed local server process, but it does not enter the inference request path. OpenAI-compatible clients connect directly to `mlx_lm.server`.
 
+## Quick Start
+
+1. Download `MLXServerManager-v1.0.0-unsigned.zip` from the GitHub Release.
+2. Extract the zip and confirm it contains `MLXServerManager.app`.
+3. Open the app.
+   - This is an unsigned, non-notarized local-use build.
+   - macOS may show a Gatekeeper warning such as "`MLXServerManager` is damaged and can't be opened".
+   - If you trust the Release asset, verify the zip contents and checksum before removing quarantine:
+
+     ```sh
+     xattr -dr com.apple.quarantine /path/to/MLXServerManager.app
+     open -n /path/to/MLXServerManager.app
+     ```
+
+4. In Settings, set the `mlx_lm.server executable path`.
+5. Configure or add a Model Profile.
+6. Run Setup Diagnostics.
+7. Press Start.
+8. Copy Base URL, Model ID, or JSON config from Connection Settings.
+9. Paste those values into an OpenAI-compatible client.
+
+You must provide your own `mlx-lm` environment, `mlx_lm.server` executable, and model files or Hugging Face cache. The app keeps Direct Mode: the client connects directly to `mlx_lm.server`; MLX Server Manager does not proxy inference traffic or run chat completions.
+
+See [docs/distribution.md](docs/distribution.md) for release asset and Gatekeeper details, and [docs/known_limitations.md](docs/known_limitations.md) for the full stable-scope boundary.
+
 ## Target Users
 
 - macOS users running local MLX / `mlx-lm`.

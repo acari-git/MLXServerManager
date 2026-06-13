@@ -233,6 +233,27 @@ For v1.0.1 maintenance, verify the published v1.0.0 GitHub Release asset after u
 
 This is a verification of the published asset, not a new packaging method.
 
+## First Launch From Release Asset
+
+For end-user first launch, keep the path short:
+
+1. Download `MLXServerManager-v1.0.0-unsigned.zip` from the GitHub Release.
+2. Extract the zip.
+3. Confirm the extracted app is `MLXServerManager.app`.
+4. If Gatekeeper blocks launch with a damaged-app warning, verify the asset source, zip contents, and checksum first.
+5. If the asset is trusted, remove quarantine from the extracted app:
+
+   ```sh
+   xattr -dr com.apple.quarantine /path/to/MLXServerManager.app
+   open -n /path/to/MLXServerManager.app
+   ```
+
+6. Configure `mlx_lm.server executable path` in Settings.
+7. Configure a Model Profile.
+8. Run Setup Diagnostics before Start.
+
+The app bundle does not include `mlx-lm`, runtime settings, model profiles, model files, Hugging Face cache, `.env`, or `HF_TOKEN`.
+
 ### Verified v0.9 Launch Result
 
 The v0.9 packaging verification confirmed:

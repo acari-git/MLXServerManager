@@ -13,6 +13,7 @@ This document lists known v1.0 limitations for MLX Server Manager.
 - The GitHub Release asset should be verified after download before broader announcement.
 - There is no DMG, installer, Homebrew cask, App Store build, automatic updater, or CI/CD release pipeline.
 - Users must decide whether to run an unsigned local build.
+- First launch may require users to verify the Release asset and then remove quarantine from the extracted app manually.
 
 ## Runtime Dependencies
 

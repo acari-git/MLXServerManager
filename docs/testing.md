@@ -579,6 +579,8 @@ Use this checklist after v1.0.0 is tagged and the GitHub Release asset is availa
 
 ### First-Run Documentation Review
 
+- Confirm README has a short Quick Start near the top.
+- Confirm the Quick Start covers Release asset download, zip extraction, Gatekeeper quarantine warning, app launch, Settings, Model Profile, Run Diagnostics, Start, and Connection Settings copy actions.
 - Confirm README explains that users must provide `mlx-lm`.
 - Confirm README explains where to configure `mlx_lm.server executable path`.
 - Confirm README explains Model Profile fields.
@@ -587,6 +589,42 @@ Use this checklist after v1.0.0 is tagged and the GitHub Release asset is availa
 - Confirm Direct Mode and "app is not in the inference request path" are understandable.
 - Confirm known limitations are easy to find.
 - Confirm the Gatekeeper quarantine warning and `xattr` recovery path are easy to find.
+
+## v1.0.2 Maintenance Verification Checklist
+
+Use this checklist for README first-run quick start maintenance.
+
+### Documentation Scope
+
+- Confirm v1.0.2 changes are README/docs only.
+- Confirm no Swift code changes are included.
+- Confirm no Xcode project setting changes are included.
+- Confirm no app binary, zip, tag, or release artifact is created.
+
+### README Quick Start
+
+- Confirm README includes a short Quick Start near the top.
+- Confirm the Quick Start starts with the GitHub Release asset download.
+- Confirm it names `MLXServerManager-v1.0.0-unsigned.zip`.
+- Confirm it explains zip extraction and app launch.
+- Confirm it warns that the app is unsigned and not notarized.
+- Confirm it explains the possible damaged-app Gatekeeper quarantine warning.
+- Confirm it says to verify the Release asset, zip contents, and checksum before using `xattr`.
+- Confirm the `xattr` command uses `/path/to/MLXServerManager.app` as a placeholder.
+- Confirm it explains that users must provide `mlx-lm`, `mlx_lm.server`, and model files or Hugging Face cache.
+- Confirm it covers Settings, Model Profile, Run Diagnostics, Start, and Connection Settings copy actions.
+- Confirm Direct Mode is short and clear.
+- Confirm details link to distribution and known limitations docs.
+
+### v1.0.2 Safety
+
+- Confirm no new feature scope is introduced.
+- Confirm Direct Mode is maintained.
+- Confirm the app is not described as a proxy or Chat UI.
+- Confirm the app does not execute `/v1/chat/completions`.
+- Confirm model downloader, auto updater, notarization, DMG, CI/CD, GitHub Actions release automation, Xcode project changes, and new app binary creation remain out of scope.
+- Confirm no personal fixed paths are added.
+- Confirm `.app`, `.zip`, `.dSYM`, build artifacts, settings, model profiles, model files, `.env`, and `HF_TOKEN` are not tracked.
 
 ### Lightweight Regression
 

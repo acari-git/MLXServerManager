@@ -555,6 +555,26 @@
 9. Keep deferred items out of v1.0.1.
    - New features, large UI changes, Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, model downloader, model deletion, Hugging Face cache deletion, multiple concurrent server management, automatic updates, DMG, notarization, CI/CD, GitHub Actions release automation, App Store distribution, and Xcode project setting changes stay out of scope.
 
+## v1.0.2 Planned: First-Run Quick Start Maintenance
+
+1. Improve README Quick Start.
+   - Add a short first-run path near the top of README.
+   - Cover Release asset download, zip extraction, Gatekeeper warning, app launch, Settings, Model Profile, Run Diagnostics, Start, and Connection Settings copy.
+2. Clarify Gatekeeper handling.
+   - Keep the damaged-app warning visible.
+   - State that users should verify the Release asset, zip contents, and checksum before using `xattr`.
+   - Use `/path/to/MLXServerManager.app` placeholders only.
+3. Clarify bundled dependency boundaries.
+   - State that `mlx-lm`, `mlx_lm.server`, model files, and Hugging Face cache are not bundled.
+4. Keep Direct Mode concise.
+   - State that the app is not in the inference path.
+   - State that OpenAI-compatible clients connect directly to `mlx_lm.server`.
+5. Link to detailed docs.
+   - Point README readers to distribution and known limitations docs.
+6. Keep v1.0.2 maintenance-only.
+   - No Swift code changes, UI changes, new features, Xcode project changes, app binaries, zip creation, or tag creation.
+   - Proxy, Chat UI, model downloader, auto updater, notarization, DMG, CI/CD, and GitHub Actions remain out of scope.
+
 ## Later
 
 - Unit tests for services where practical.
