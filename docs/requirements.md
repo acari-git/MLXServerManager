@@ -202,3 +202,60 @@ Safety requirements:
 - Menu bar actions must not stop external `mlx_lm.server` processes.
 - Menu bar actions must not use `pkill`, `killall`, or `pgrep`.
 - Menu bar actions must not add a proxy or change the inference route.
+
+## v0.5 Distribution Build Documentation Requirements
+
+v0.5 should document distribution build steps while preserving Direct Mode:
+
+```text
+OpenAI-compatible client -> mlx_lm.server
+```
+
+The goal is to help users build and run MLX Server Manager locally as a normal macOS app on their own Mac.
+
+Functional documentation requirements:
+
+- Explain Debug build and Release build differences.
+- Document manual build steps from Xcode.
+- Document CLI build steps with `xcodebuild`.
+- Document `.app` output locations.
+- Explain local personal-use assumptions.
+- Document Gatekeeper, signing, and notarization caveats.
+- Explain Apple Developer Program considerations for personal use.
+- Explain why App Sandbox is disabled.
+- Document prerequisites for launching and stopping `mlx_lm.server`.
+- State that `mlx_lm.server executable path` must be configured in the app UI.
+- Document where `settings.json` and `models.json` are stored.
+- State that model files are not bundled with the app.
+- Define GitHub Release asset policy for `.app` bundles.
+- Defer automatic packaging.
+
+v0.5 non-goals:
+
+- Performing notarization.
+- Apple Developer Program based formal distribution.
+- DMG creation.
+- Sparkle or other automatic updates.
+- Homebrew cask.
+- App Store distribution.
+- CI/CD.
+- GitHub Actions.
+- Bundling model files.
+- Automatic `mlx-lm` installation.
+- Hugging Face download manager.
+- Proxy mode.
+- Chat UI.
+- LAN Web UI.
+- App Intents.
+- Auto unload.
+
+Safety requirements:
+
+- Distribution docs must not add a proxy or change the inference route.
+- Distribution verification must not require model inference.
+- Model files must not be included in Git or release assets.
+- `settings.json`, `models.json`, `.app` bundles, and build artifacts must stay outside Git.
+- Examples should use placeholders such as `<path-to-mlx_lm.server>`.
+- App Sandbox rationale must stay tied to local managed process control.
+- Stop must target only the managed process held by this app.
+- Distribution docs must not recommend `pkill`, `killall`, or `pgrep`.

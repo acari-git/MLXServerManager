@@ -188,6 +188,54 @@
 9. Keep deferred items out of v0.4.
    - New model add/delete, multiple simultaneous servers, Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, Hugging Face download manager, model download, model file deletion, full log viewer redesign, and notarization stay out of scope.
 
+## v0.5 Planned: Distribution Build Documentation
+
+1. Define distribution build requirements.
+   - Document local personal-use build assumptions.
+   - Explain Debug build and Release build differences.
+   - Keep Direct Mode, no Proxy, and no Chat UI.
+2. Document Release build commands.
+   - Add Xcode manual build steps.
+   - Add `xcodebuild` Debug and Release examples.
+   - Document `.app` output locations.
+3. Add local app usage checklist.
+   - Configure `mlx_lm.server executable path` in the app UI.
+   - Run Setup Diagnostics.
+   - Confirm Start, Ready Check, Stop, Memory, and Menu bar quick actions.
+   - Keep verification independent from model inference.
+4. Add signing and Gatekeeper notes.
+   - Explain local builds for personal use.
+   - Explain Apple Developer Program limitations for formal distribution.
+   - State that notarization is not performed in v0.5.
+5. Document App Sandbox rationale.
+   - Explain why sandboxing is disabled for user-selected local process launch and managed Stop.
+   - Keep the scope limited to managed local process control.
+   - Do not recommend stopping external processes.
+6. Define release asset policy.
+   - Do not include model files.
+   - Do not include `settings.json` or `models.json`.
+   - Do not include derived data.
+   - Document caveats before attaching `.app` bundles to GitHub Releases.
+7. Add build artifact ignore policy.
+   - Keep `.app` bundles, derived data, logs, model files, `.env`, and `HF_TOKEN` out of Git.
+   - Use placeholders such as `<path-to-mlx_lm.server>` in docs.
+8. Add manual test checklist.
+   - Debug build succeeds.
+   - Release build succeeds.
+   - `.app` bundle exists in the expected build products directory.
+   - Local launch works.
+   - Setup Diagnostics works after configuring the executable path.
+   - Start, Stop, and Menu bar quick actions work.
+   - `/v1/chat/completions` is not sent by the app.
+   - No model inference is required for distribution verification.
+   - Runtime files, model files, and build artifacts are not staged.
+9. Prepare v0.5 tag.
+   - Confirm docs are consistent with Direct Mode.
+   - Confirm no Swift code or Xcode project settings changed for v0.5 Step 1.
+   - Confirm build artifact policy is documented before tagging.
+10. Keep deferred items out of v0.5.
+    - Notarization, Apple Developer Program formal distribution, DMG creation, Sparkle, Homebrew cask, App Store, CI/CD, GitHub Actions, model bundling, automatic `mlx-lm` installation, Hugging Face download manager, Proxy, Chat UI, LAN Web UI, App Intents, and Auto unload stay out of scope.
+
 ## Later
 
 - Unit tests for services where practical.
@@ -199,3 +247,6 @@
 - Hugging Face download manager.
 - Multiple simultaneous server management.
 - Presets for frequently used model configurations.
+- DMG or zip packaging.
+- Notarization.
+- Automated release workflows.
