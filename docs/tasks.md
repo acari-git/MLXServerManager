@@ -324,6 +324,61 @@
 12. Keep deferred items out of v0.6.
     - Multiple simultaneous server management, multiple model launches, model file deletion, Hugging Face download manager, model download, automated model existence checks, Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, CI/CD, notarization, DMG creation, and App Store distribution stay out of scope.
 
+## v0.7 Planned: Model Switching Improvements
+
+1. Define model switching requirements.
+   - Document selected model, running model, pending selection, and Restart-required behavior.
+   - Keep Direct Mode, no Proxy, and no Chat UI.
+2. Add selected model vs running model state.
+   - Store the selected profile separately from the profile snapshot used to start the managed process.
+   - Compare runtime fields: `modelID`, `host`, and `serverPort`.
+3. Add Restart-required state.
+   - Show `Restart required` when a managed server is running and selected runtime fields differ from running runtime fields.
+   - Do not treat metadata-only fields as runtime changes by themselves.
+4. Improve model list UI.
+   - Make selected profile state clear.
+   - Preserve existing add, edit, and delete behavior.
+5. Add running model display.
+   - Show the running profile while a managed process exists.
+   - Keep the display read-only and concise.
+6. Define switch while stopped behavior.
+   - Selecting a model while stopped updates Model detail and Connection Settings immediately.
+   - Start uses the selected profile.
+7. Define switch while running behavior.
+   - Allow selecting another profile while running.
+   - Do not stop, start, or restart automatically.
+   - Show `Restart required` when runtime fields differ.
+   - Log that the selected profile will apply after Restart.
+8. Implement restart-to-apply behavior.
+   - Restart uses the existing Stop -> port release wait -> Start flow.
+   - Restart starts the currently selected profile.
+   - Stop continues to target only the managed process.
+9. Maintain connection settings consistency.
+   - Keep Base URL, Model ID, Copy Config, and copied curl commands tied to the selected profile.
+   - Show running model separately when the active server differs.
+10. Add model switching logs.
+    - Log selection changes.
+    - Log selected/running mismatch.
+    - Log Restart-required state.
+    - Log Restart applying the selected profile.
+11. Add manual test checklist.
+    - Multiple profiles are visible and selectable.
+    - Stopped selection updates detail and connection copy output.
+    - Start uses the selected profile.
+    - Running selection does not stop or start the server.
+    - Running selection shows `Restart required` when runtime fields differ.
+    - Running model display remains accurate.
+    - Restart applies the selected profile and reaches Ready.
+    - Stop stops only the managed process.
+    - Add/Edit/Delete, Diagnostics, Menu bar actions, Debug build, and Release build continue to work.
+    - Model switching does not call `/v1/chat/completions`, run inference, delete model files, stop external processes, or use `pkill`, `killall`, or `pgrep`.
+12. Prepare v0.7 tag.
+    - Confirm docs and UI behavior match the selected/running model policy.
+    - Confirm Direct Mode, no Proxy, and no Chat UI are maintained.
+    - Confirm runtime files, model files, `.app` bundles, and build artifacts stay outside Git.
+13. Keep deferred items out of v0.7.
+    - Multiple simultaneous server management, multiple model launches, Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, Hugging Face download manager, model download, model file deletion, automated model existence checks, RAG, embedding management, tool-call translation, CI/CD, notarization, DMG creation, and App Store distribution stay out of scope.
+
 ## Later
 
 - Unit tests for services where practical.

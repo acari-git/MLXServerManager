@@ -258,7 +258,6 @@ Safety requirements:
 - Examples should use placeholders such as `<path-to-mlx_lm.server>`.
 - App Sandbox rationale must stay tied to local managed process control.
 - Stop must target only the managed process held by this app.
-- Distribution docs must not recommend `pkill`, `killall`, or `pgrep`.
 
 ## v0.6 Model Profile Management Requirements
 
@@ -331,3 +330,67 @@ Safety requirements:
 - `pkill`, `killall`, and `pgrep` must not be used.
 - `settings.json`, `models.json`, model files, `.app` bundles, and build artifacts must stay outside Git.
 - Examples should use placeholders such as `<model-id>` and `<path-to-model>`.
+
+## v0.7 Model Switching Requirements
+
+v0.7 should improve switching between multiple saved model profiles while preserving Direct Mode:
+
+```text
+OpenAI-compatible client -> mlx_lm.server
+```
+
+Functional requirements:
+
+- Make multiple model profiles easier to select.
+- Clearly show the selected model profile.
+- Track and display the running model profile when a managed server is active.
+- Distinguish selected profile settings from the profile currently used by the running managed process.
+- Apply model selection immediately while stopped.
+- Allow model selection while running without changing the active server immediately.
+- Show `Restart required` when selected runtime settings differ from the running profile.
+- Make Restart apply the selected profile through the existing Stop -> port release wait -> Start flow.
+- Keep Start using the selected profile.
+- Keep Stop limited to the managed process held by this app.
+- Keep Connection Settings, Copy Config, and copied curl commands following the selected profile.
+- Log model selection changes, running/selected mismatch, and Restart-required state.
+
+Recommended running-process behavior:
+
+- Allow selecting a different profile while a managed server is running.
+- Do not automatically stop, start, or restart `mlx_lm.server` on selection.
+- Treat selected `modelID`, `host`, or `serverPort` differences as `Restart required`.
+- Show the running model separately from the selected model.
+- Apply the selected profile only when the user explicitly presses Restart.
+
+v0.7 non-goals:
+
+- Multiple simultaneous server management.
+- Multiple model simultaneous startup.
+- Proxy mode.
+- Chat UI.
+- LAN Web UI.
+- App Intents.
+- Auto unload.
+- Hugging Face download manager.
+- Model download.
+- Model file deletion.
+- Automated model existence checks.
+- RAG.
+- Embedding management.
+- Tool-call translation.
+- CI/CD.
+- Notarization.
+- DMG creation.
+- App Store distribution.
+
+Safety requirements:
+
+- Model switching must not add a proxy or change the inference route.
+- Model switching must not run inference.
+- Selecting a profile must not start `mlx_lm.server`.
+- Restart must target only the managed process held by this app.
+- Stop must target only the managed process held by this app.
+- External processes must not be stopped.
+- `pkill`, `killall`, and `pgrep` must not be used.
+- Model files, Hugging Face cache, and local model directories must not be deleted.
+- `settings.json`, `models.json`, model files, `.app` bundles, and build artifacts must stay outside Git.
