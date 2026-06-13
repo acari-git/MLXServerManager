@@ -142,3 +142,63 @@ v0.3 non-goals:
 - Running `/v1/chat/completions` from the app.
 - Launching `mlx_lm.server` from profile editing.
 - Stopping external processes from profile editing.
+
+## v0.4 Menu Bar Quick Actions Requirements
+
+v0.4 should add Menu bar quick actions while preserving Direct Mode:
+
+```text
+OpenAI-compatible client -> mlx_lm.server
+```
+
+Menu bar quick actions should provide a lightweight shortcut surface for existing managed-server operations.
+
+Functional requirements:
+
+- Show a macOS menu bar status item.
+- Show current managed server status:
+  - `stopped`
+  - `starting`
+  - `ready`
+  - `stopping`
+  - `failed`
+- Start the managed server from the menu bar.
+- Stop the managed server from the menu bar.
+- Restart the managed server from the menu bar.
+- Run Setup Diagnostics from the menu bar.
+- Open or focus the main app window from the menu bar.
+- Open or expose Connection Settings from the menu bar.
+- Quit the app from the menu bar.
+- Reuse existing `AppViewModel`, process management, diagnostics, and connection settings behavior.
+
+UI requirements:
+
+- Keep the menu bar surface lightweight.
+- Use concise text or icons for status.
+- Keep detailed model editing, settings editing, and log review in the main window.
+- Do not require polished custom icons, launch-at-login behavior, or log viewer expansion in v0.4.
+
+v0.4 non-goals:
+
+- New model add/delete UI.
+- Multiple simultaneous server management.
+- Proxy mode.
+- Chat UI.
+- LAN Web UI.
+- App Intents.
+- Auto unload.
+- Hugging Face download manager.
+- Model download.
+- Model file deletion.
+- Running inference from the app.
+- Running `/v1/chat/completions` from the app.
+- Full log viewer redesign.
+- Distribution build and notarization.
+
+Safety requirements:
+
+- Menu bar status display must not start `mlx_lm.server`.
+- Stop must target only the managed process held by this app.
+- Menu bar actions must not stop external `mlx_lm.server` processes.
+- Menu bar actions must not use `pkill`, `killall`, or `pgrep`.
+- Menu bar actions must not add a proxy or change the inference route.

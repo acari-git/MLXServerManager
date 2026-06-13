@@ -133,14 +133,56 @@
 10. Keep deferred items out of v0.3.
     - Multiple model add/delete, multiple simultaneous servers, Hugging Face download manager, model file deletion, Proxy, Chat UI, LAN Web UI, App Intents, and Auto unload stay out of scope.
 
+## v0.4 Planned: Menu Bar Quick Actions
+
+1. Define menu bar requirements.
+   - Show managed server status in the macOS menu bar.
+   - Provide quick Start, Stop, Restart, Run Diagnostics, Open App, Connection Settings, and Quit actions.
+   - Keep the menu bar surface lightweight.
+2. Define menu bar app architecture.
+   - Reuse existing `AppViewModel` state and actions.
+   - Keep process control, diagnostics, port checks, and ready checks out of SwiftUI menu views.
+   - Avoid duplicating process management logic.
+3. Add status display.
+   - Map runtime state into `stopped`, `starting`, `ready`, `stopping`, and `failed`.
+   - Use text or a simple icon.
+   - Ensure status display itself does not start `mlx_lm.server`.
+4. Add Start, Stop, and Restart actions.
+   - Call the same behavior used by the main window buttons.
+   - Stop only the process held by this app.
+   - Do not use `pkill`, `killall`, or `pgrep`.
+5. Add Run Diagnostics action.
+   - Reuse existing Setup Diagnostics behavior.
+   - Do not call `/v1/chat/completions`.
+   - Do not run model inference.
+6. Add Open App and Connection Settings actions.
+   - Open or focus the main app window.
+   - Either focus the existing Connection Settings panel or show a compact read-only summary.
+   - Reuse existing connection config output if copy actions are added later.
+7. Define Quit behavior.
+   - Provide a normal app quit command.
+   - Decide whether managed processes are left running or stopped on quit before implementation.
+   - Never stop external `mlx_lm.server` processes.
+8. Add manual test checklist.
+   - Menu bar item appears.
+   - Status updates for stopped, starting, ready, stopping, and failed states.
+   - Start, Stop, and Restart work from the menu bar.
+   - Run Diagnostics works from the menu bar.
+   - Open App and Connection Settings actions work.
+   - Quit works.
+   - Menu bar actions do not call `/v1/chat/completions`, run inference, start a server just for status, or stop external processes.
+   - Direct Mode, no Proxy, and no Chat UI are maintained.
+9. Keep deferred items out of v0.4.
+   - New model add/delete, multiple simultaneous servers, Proxy, Chat UI, LAN Web UI, App Intents, Auto unload, Hugging Face download manager, model download, model file deletion, full log viewer redesign, and notarization stay out of scope.
+
 ## Later
 
 - Unit tests for services where practical.
-- App Intents for start, stop, restart, and status.
 - LAN Web UI.
 - Proxy mode as an explicit opt-in architecture.
 - Automatic unload policies.
 - More advanced resource graphs.
+- App Intents for start, stop, restart, and status.
 - Hugging Face download manager.
 - Multiple simultaneous server management.
 - Presets for frequently used model configurations.
