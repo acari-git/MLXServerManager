@@ -198,15 +198,19 @@
    - Add Xcode manual build steps.
    - Add `xcodebuild` Debug and Release examples.
    - Document `.app` output locations.
+   - Record the verified Release command using `/tmp/MLXServerManagerReleaseDerivedData` and `CODE_SIGNING_ALLOWED=NO`.
+   - Record the verified `BUILD SUCCEEDED` result.
 3. Add local app usage checklist.
    - Configure `mlx_lm.server executable path` in the app UI.
    - Run Setup Diagnostics.
    - Confirm Start, Ready Check, Stop, Memory, and Menu bar quick actions.
    - Keep verification independent from model inference.
+   - Confirm `open -n`, process existence, and normal quit for the Release `.app`.
 4. Add signing and Gatekeeper notes.
    - Explain local builds for personal use.
    - Explain Apple Developer Program limitations for formal distribution.
    - State that notarization is not performed in v0.5.
+   - State that `CODE_SIGNING_ALLOWED=NO` is an unsigned local verification build.
 5. Document App Sandbox rationale.
    - Explain why sandboxing is disabled for user-selected local process launch and managed Stop.
    - Keep the scope limited to managed local process control.
@@ -223,16 +227,22 @@
    - Debug build succeeds.
    - Release build succeeds.
    - `.app` bundle exists in the expected build products directory.
+   - Verified Release output example: `/tmp/MLXServerManagerReleaseDerivedData/Build/Products/Release/MLXServerManager.app`.
+   - Verified app bundle size example: `916K`.
    - Local launch works.
+   - Process existence can be confirmed after `open -n`.
+   - Normal quit works.
    - Setup Diagnostics works after configuring the executable path.
    - Start, Stop, and Menu bar quick actions work.
    - `/v1/chat/completions` is not sent by the app.
    - No model inference is required for distribution verification.
    - Runtime files, model files, and build artifacts are not staged.
+   - Window-name inspection through `osascript` is not required.
 9. Prepare v0.5 tag.
    - Confirm docs are consistent with Direct Mode.
    - Confirm no Swift code or Xcode project settings changed for v0.5 Step 1.
    - Confirm build artifact policy is documented before tagging.
+   - Confirm final Git status is clean after Release build verification.
 10. Keep deferred items out of v0.5.
     - Notarization, Apple Developer Program formal distribution, DMG creation, Sparkle, Homebrew cask, App Store, CI/CD, GitHub Actions, model bundling, automatic `mlx-lm` installation, Hugging Face download manager, Proxy, Chat UI, LAN Web UI, App Intents, and Auto unload stay out of scope.
 

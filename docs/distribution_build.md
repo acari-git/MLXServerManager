@@ -81,6 +81,22 @@ xcodebuild \
 
 Unsigned builds may not behave like a normal signed app when copied or launched outside the build environment.
 
+### Verified Release Build Command
+
+The following local verification command has been confirmed to finish with `BUILD SUCCEEDED`:
+
+```sh
+xcodebuild \
+  -project MLXServerManager.xcodeproj \
+  -scheme MLXServerManager \
+  -configuration Release \
+  -derivedDataPath /tmp/MLXServerManagerReleaseDerivedData \
+  CODE_SIGNING_ALLOWED=NO \
+  build
+```
+
+This is an unsigned local personal-use build check. It is not notarized and is not a formal distribution build.
+
 ## App Output Location
 
 With the example derived data path above, the app bundle is expected under:
@@ -91,7 +107,37 @@ With the example derived data path above, the app bundle is expected under:
 
 Replace `<configuration>` with `Debug` or `Release`.
 
+With the verified Release build command above, the observed app bundle path was:
+
+```text
+/tmp/MLXServerManagerReleaseDerivedData/Build/Products/Release/MLXServerManager.app
+```
+
+The observed app bundle size was:
+
+```text
+916K
+```
+
 Do not commit `.app` bundles, derived data, or other build artifacts.
+
+## Local Launch Verification
+
+The verified Release app bundle was launched with:
+
+```sh
+open -n /tmp/MLXServerManagerReleaseDerivedData/Build/Products/Release/MLXServerManager.app
+```
+
+The launch check confirmed:
+
+- `open -n` returned successfully.
+- `System Events` reported that the `MLXServerManager` process existed after launch.
+- The app could be quit normally through the app bundle identifier.
+- The final Git status was clean.
+- The generated `.app`, build artifacts, `settings.json`, `models.json`, and model files were not tracked by Git.
+
+Window-name inspection through `osascript` is not a required verification step because it may not respond consistently for this app. For v0.5 local Release verification, `open`, process existence, and normal quit are sufficient.
 
 ## Runtime Configuration
 
@@ -123,10 +169,14 @@ For personal local use, a developer may build and run the app on their own Mac f
 Important caveats:
 
 - A local unsigned or ad-hoc signed `.app` may trigger Gatekeeper warnings when moved between machines.
+- `CODE_SIGNING_ALLOWED=NO` Release builds are unsigned local verification builds for personal use.
 - Formal public distribution generally requires signing with an Apple Developer Program certificate.
 - Notarization is not performed in v0.5.
 - DMG or zip packaging is not automated in v0.5.
+- GitHub Release assets are not produced in v0.5.
 - App Store distribution is out of scope.
+
+During local CLI verification, `xcodebuild` may print non-blocking notes such as multiple destination selection, bitcode strip being skipped without signing, or App Intents metadata extraction being skipped when no App Intents dependency exists. These notes do not change the Release build result when the build ends with `BUILD SUCCEEDED`.
 
 v0.5 should document these constraints without claiming that the app is ready for formal public distribution.
 
@@ -156,8 +206,13 @@ Recommended policy:
 ## Local Use Checklist
 
 - Build Debug or Release locally.
+- Confirm Release build finishes with `BUILD SUCCEEDED`.
 - Confirm the `.app` bundle exists in the build products directory.
+- Confirm the `.app` bundle size with `du -sh`.
 - Launch the app locally.
+- Confirm `open -n` can launch the Release `.app`.
+- Confirm the `MLXServerManager` process exists after launch.
+- Confirm the app can quit normally.
 - Configure `mlx_lm.server executable path` with a local executable path.
 - Run Setup Diagnostics.
 - Start the managed server.
@@ -167,4 +222,5 @@ Recommended policy:
 - Confirm Menu bar quick actions still work.
 - Confirm the app does not send `/v1/chat/completions`.
 - Confirm no model inference is required for distribution verification.
-- Confirm `settings.json`, `models.json`, model files, and build artifacts are not staged in Git.
+- Confirm `.app` bundles and build artifacts are not staged or tracked in Git.
+- Confirm `settings.json`, `models.json`, and model files are not staged or tracked in Git.

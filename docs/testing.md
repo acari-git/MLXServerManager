@@ -111,6 +111,24 @@ Target service behavior without launching the full UI:
 - Confirm `settings.json`, `models.json`, and model files are not included in Git status or commits.
 - Confirm no user-specific fixed paths are added to Swift code or docs.
 
+## v0.5 Distribution Build Manual Tests
+
+- Confirm `git status --short --untracked-files=all` is clean before building.
+- Run the Release `xcodebuild` command with scheme `MLXServerManager`, configuration `Release`, derived data path `/tmp/MLXServerManagerReleaseDerivedData`, and `CODE_SIGNING_ALLOWED=NO`.
+- Confirm the Release build ends with `BUILD SUCCEEDED`.
+- Confirm the `.app` output path exists under `/tmp/MLXServerManagerReleaseDerivedData/Build/Products/Release/MLXServerManager.app`.
+- Confirm the `.app` size with `du -sh`; one verified local result was `916K`.
+- Launch the `.app` with `open -n`.
+- Confirm `System Events` can see the `MLXServerManager` process after launch.
+- Confirm the app can quit normally.
+- Confirm final `git status --short --untracked-files=all` is clean.
+- Confirm `.app` bundles and build artifacts are not tracked by Git.
+- Confirm `settings.json`, `models.json`, and model files are not tracked by Git.
+- Treat `CODE_SIGNING_ALLOWED=NO` as an unsigned personal-use local build check.
+- Confirm notarization, DMG creation, and GitHub Release asset creation are not part of v0.5.
+- Treat xcodebuild multiple-destination notes, bitcode strip skip without signing, and App Intents metadata extraction skip as non-blocking when the build succeeds.
+- Do not require `osascript` window-name inspection; `open`, process existence, and normal quit are sufficient for this checklist.
+
 ## Performance Guardrails
 
 - Direct Mode must not proxy inference traffic.
