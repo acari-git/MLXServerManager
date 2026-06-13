@@ -571,6 +571,9 @@ Use this checklist after v1.0.0 is tagged and the GitHub Release asset is availa
 - Confirm the zip does not include `settings.json`, `models.json`, model files, `.env`, `HF_TOKEN`, `.dSYM`, DerivedData, logs, Hugging Face cache, `__MACOSX`, or AppleDouble `._*` metadata files.
 - Extract the zip to a temporary folder.
 - Launch the extracted app with `open -n`.
+- If macOS reports that `MLXServerManager` is damaged and must be moved to the Trash, confirm docs explain this can be Gatekeeper quarantine for an unsigned, non-notarized app.
+- Before removing quarantine, confirm the asset name, zip contents, and checksum are verified.
+- If appropriate for local verification, remove quarantine with `xattr -dr com.apple.quarantine /path/to/MLXServerManager.app` and launch again with `open -n /path/to/MLXServerManager.app`.
 - Quit the verification app process.
 - Confirm no verification process remains.
 
@@ -583,6 +586,7 @@ Use this checklist after v1.0.0 is tagged and the GitHub Release asset is availa
 - Confirm Connection Settings copy actions are understandable.
 - Confirm Direct Mode and "app is not in the inference request path" are understandable.
 - Confirm known limitations are easy to find.
+- Confirm the Gatekeeper quarantine warning and `xattr` recovery path are easy to find.
 
 ### Lightweight Regression
 

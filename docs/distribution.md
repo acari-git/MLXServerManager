@@ -48,10 +48,39 @@ Users should be told:
 - The app is not signed with Developer ID.
 - macOS Gatekeeper may warn when opening the app.
 - Downloaded zip files may carry quarantine attributes.
+- Browser downloads may show "`MLXServerManager` is damaged and can't be opened" for an unsigned, non-notarized app.
 - The user is responsible for deciding whether to run the app.
 - Formal public distribution should use Developer ID signing and notarization in a future version.
 
 Do not describe the unsigned zip as a fully notarized or formally distributed macOS app.
+
+## Gatekeeper Quarantine Warning
+
+The v1.0.0 GitHub Release asset is an unsigned local macOS app build and is not notarized. When the zip is downloaded with Chrome, Safari, or another browser, macOS may attach a quarantine attribute to the extracted app.
+
+In that case macOS may show a warning such as:
+
+```text
+"MLXServerManager" is damaged and can't be opened. You should move it to the Trash.
+```
+
+This message does not always mean the zip or app bundle is actually corrupted. For this project it can be Gatekeeper blocking an unsigned, non-notarized local-use app.
+
+Before removing quarantine, verify that:
+
+- The file came from the expected GitHub Release asset.
+- The asset name matches the expected release asset.
+- The zip contents contain only `MLXServerManager.app/`.
+- The checksum matches the published checksum when one is available.
+
+After verifying the asset, a local user may remove the quarantine attribute from the extracted app:
+
+```sh
+xattr -dr com.apple.quarantine /path/to/MLXServerManager.app
+open -n /path/to/MLXServerManager.app
+```
+
+Use an actual local app path in place of `/path/to/MLXServerManager.app`. Do not remove quarantine from files that were not downloaded from the expected release source.
 
 ## Build Command
 
@@ -198,8 +227,9 @@ For v1.0.1 maintenance, verify the published v1.0.0 GitHub Release asset after u
 5. Confirm the zip does not contain runtime settings, model profiles, model files, Hugging Face cache, logs, secrets, `.dSYM`, DerivedData, `__MACOSX`, or AppleDouble `._*` metadata files.
 6. Extract the zip into a temporary folder.
 7. Launch the extracted app with `open -n`.
-8. Quit the verification app process.
-9. Confirm no verification process remains.
+8. If macOS reports that the app is damaged, treat it as a possible Gatekeeper quarantine warning for the unsigned app. Verify the asset and checksum before using `xattr -dr com.apple.quarantine`.
+9. Quit the verification app process.
+10. Confirm no verification process remains.
 
 This is a verification of the published asset, not a new packaging method.
 

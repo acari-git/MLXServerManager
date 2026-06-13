@@ -135,6 +135,7 @@ Qwen thinking behavior is controlled by the client request and model template be
 - The documented release asset is an unsigned local-use `.app` zip.
 - The app is not notarized and is not signed with Developer ID.
 - macOS Gatekeeper may warn when opening the app.
+- Browser-downloaded unsigned builds may show "`MLXServerManager` is damaged and can't be opened"; this can be Gatekeeper quarantine, not necessarily a broken zip or app. Verify the Release asset and checksum before removing quarantine.
 - The app does not bundle `mlx-lm`.
 - The app does not bundle models.
 - You must provide model files or Hugging Face cache separately.
@@ -148,6 +149,8 @@ Qwen thinking behavior is controlled by the client request and model template be
 - There is no automatic updater, DMG, installer, or CI/CD release pipeline.
 
 See [docs/known_limitations.md](docs/known_limitations.md) for the full list.
+
+If macOS blocks the unsigned app after download, see [docs/distribution.md](docs/distribution.md#gatekeeper-quarantine-warning) before running it.
 
 ## Configuration and Repository Hygiene
 

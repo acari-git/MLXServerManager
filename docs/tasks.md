@@ -538,6 +538,8 @@
 4. Review Gatekeeper notes.
    - Confirm unsigned app, no notarization, and possible Gatekeeper warnings are visible.
    - Clarify wording if users may misunderstand the unsigned local-use status.
+   - Document the observed "damaged and can't be opened" quarantine warning.
+   - Explain that users should verify the Release asset and checksum before removing quarantine with `xattr`.
 5. Run lightweight regression pass.
    - Start, Stop, Restart, Port Check, Ready Check, Run Diagnostics, Logs, Menu bar, and Connection Settings.
    - Confirm `/v1/chat/completions` remains copy-only text and is not executed by the app.

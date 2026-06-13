@@ -8,6 +8,8 @@ This document lists known v1.0 limitations for MLX Server Manager.
 - The app is not notarized.
 - The app is not signed with Developer ID.
 - macOS Gatekeeper may warn when opening the app.
+- Browser-downloaded builds may show a "damaged and can't be opened" warning because unsigned, non-notarized apps can be quarantined by macOS.
+- This warning does not always mean the zip or app bundle is actually corrupted; verify the Release asset and checksum before removing quarantine.
 - The GitHub Release asset should be verified after download before broader announcement.
 - There is no DMG, installer, Homebrew cask, App Store build, automatic updater, or CI/CD release pipeline.
 - Users must decide whether to run an unsigned local build.
