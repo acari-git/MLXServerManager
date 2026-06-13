@@ -190,6 +190,80 @@ Target service behavior without launching the full UI:
 - Confirm `settings.json`, `models.json`, and model files are not included in Git status or commits.
 - Confirm no user-specific fixed paths are added to Swift code or docs.
 
+## v0.7 Model Switching Manual Tests
+
+### Stopped State
+
+- Confirm `Running Model` shows `Not running` while the managed server is stopped.
+- Confirm the selected model shows a `Selected` label in the model list.
+- Confirm `Restart required` is not shown while stopped.
+- Select another profile and confirm Model detail updates.
+- Confirm Connection Settings, Copy Config, Copy `curl /v1/models`, and Copy `curl /v1/chat/completions` follow the selected model.
+
+### After Start
+
+- Click Start and confirm the selected model starts as the managed server.
+- Confirm Ready is reached through `/v1/models`.
+- Confirm `Running Model` changes to the launched `modelID`.
+- Confirm the running model shows a `Running` label in the model list.
+- Confirm `Restart required` is not shown when selected model and running model match.
+
+### Switching While Running
+
+- While the managed server is running, select a different model profile.
+- Confirm the selected model changes.
+- Confirm the running model does not change.
+- Confirm the running server does not switch immediately.
+- Confirm a second server is not started.
+- Confirm `Restart required` is shown when selected model and running model differ.
+- Confirm Model list shows `Restart required` on the selected profile.
+- Confirm Status panel shows `Restart required to apply selected model.`
+- Confirm Model detail shows Selected Model, Running Model, and Restart-required state.
+- If the menu bar title includes restart-required state, confirm it updates.
+- Confirm Connection Settings, Copy Config, Copy `curl /v1/models`, and Copy `curl /v1/chat/completions` follow the selected model.
+
+### After Restart
+
+- Click Restart and confirm the existing managed process is stopped.
+- Confirm Restart starts the selected model.
+- Confirm Ready is reached after Restart.
+- Confirm `Running Model` updates to the selected model.
+- Confirm `Restart required` disappears after the selected and running models match.
+- Confirm Stop still targets only the managed process.
+
+### After Stop
+
+- Click Stop and confirm `Running Model` returns to `Not running`.
+- Confirm `Restart required` disappears.
+- Confirm the selected model is preserved.
+
+### Regression
+
+- Confirm Add Profile still works after model switching.
+- Confirm Edit Profile still works after model switching.
+- Confirm Delete Profile still works after model switching.
+- Confirm Start, Stop, and Restart still work after model switching.
+- Confirm Run Diagnostics still works after model switching.
+- Confirm Menu bar quick actions still work after model switching.
+- Confirm Release build instructions still produce a working build.
+
+### Safety
+
+- Confirm model switching does not add multiple simultaneous server management.
+- Confirm model switching does not start multiple models at the same time.
+- Confirm selecting a model does not start `mlx_lm.server`.
+- Confirm model switching does not run model inference.
+- Confirm the app does not send `/v1/chat/completions`.
+- Confirm Restart and Stop target only the managed process.
+- Confirm external processes are not stopped.
+- Confirm `pkill`, `killall`, and `pgrep` are not used.
+- Confirm model files are not deleted.
+- Confirm Hugging Face cache is not deleted.
+- Confirm models are not downloaded.
+- Confirm Direct Mode is maintained with no Proxy and no Chat UI.
+- Confirm `settings.json`, `models.json`, and model files are not included in Git status or commits.
+- Confirm no user-specific fixed paths are added to Swift code or docs.
+
 ## Performance Guardrails
 
 - Direct Mode must not proxy inference traffic.

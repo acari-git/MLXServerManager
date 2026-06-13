@@ -363,15 +363,22 @@
     - Log Restart applying the selected profile.
 11. Add manual test checklist.
     - Multiple profiles are visible and selectable.
+    - Stopped state shows `Running Model: Not running`.
+    - Stopped state shows the selected profile with a `Selected` label.
+    - Stopped state does not show `Restart required`.
     - Stopped selection updates detail and connection copy output.
-    - Start uses the selected profile.
+    - Start uses the selected profile and marks it as the running model after Ready.
+    - Running profile shows a `Running` label in the model list.
+    - Running selection changes selected profile without changing the running server.
     - Running selection does not stop or start the server.
     - Running selection shows `Restart required` when runtime fields differ.
-    - Running model display remains accurate.
-    - Restart applies the selected profile and reaches Ready.
-    - Stop stops only the managed process.
+    - Model list, Status panel, Model detail, and menu bar title show Restart-required state where available.
+    - Connection Settings, Copy Config, and copied curl commands follow the selected profile.
+    - Restart applies the selected profile and clears Restart-required state after Ready.
+    - Stop clears the running model, preserves selected profile, and stops only the managed process.
     - Add/Edit/Delete, Diagnostics, Menu bar actions, Debug build, and Release build continue to work.
-    - Model switching does not call `/v1/chat/completions`, run inference, delete model files, stop external processes, or use `pkill`, `killall`, or `pgrep`.
+    - Model switching does not add multiple simultaneous server management or multiple model simultaneous startup.
+    - Model switching does not call `/v1/chat/completions`, run inference, launch from selection alone, delete model files, download models, stop external processes, or use `pkill`, `killall`, or `pgrep`.
 12. Prepare v0.7 tag.
     - Confirm docs and UI behavior match the selected/running model policy.
     - Confirm Direct Mode, no Proxy, and no Chat UI are maintained.

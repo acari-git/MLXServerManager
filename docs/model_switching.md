@@ -92,20 +92,66 @@ When a managed server is running a different profile, the UI should separately s
 
 ## Manual Test Checklist
 
+### Stopped State
+
 - Multiple profiles are visible in the model list.
-- The selected profile is visually clear.
-- While stopped, selecting a profile updates Model detail.
-- While stopped, Connection Settings and copied config follow the selected profile.
-- While stopped, Start uses the selected profile.
-- While running, selecting a different profile does not stop the server.
-- While running, selecting a different profile does not start another server.
-- While running, `Restart required` appears when runtime fields differ.
-- While running, the running model remains visible.
+- While stopped, `Running Model` shows `Not running`.
+- The selected profile shows a `Selected` label in the model list.
+- `Restart required` is not shown.
+- Selecting a profile updates Model detail.
+- Connection Settings, Copy Config, and copied curl commands follow the selected profile.
+- Start uses the selected profile.
+
+### After Start
+
+- Start launches the managed server with the selected profile.
+- After Ready, `Running Model` shows the launched `modelID`.
+- The running profile shows a `Running` label in the model list.
+- When selected profile and running profile match, `Restart required` is not shown.
+
+### Switching While Running
+
+- Selecting a different profile while running is allowed.
+- The selected profile changes.
+- The running profile does not change.
+- The running server does not switch immediately.
+- A second server is not started.
+- `Restart required` appears when selected profile and running profile differ.
+- Model list shows `Restart required` on the selected profile.
+- Status panel shows `Restart required to apply selected model.`
+- Model detail shows `Selected Model`, `Running Model`, and Restart-required state.
+- Menu bar title shows restart-required state when available.
+- Connection Settings, Copy Config, and copied curl commands follow the selected profile.
+
+### After Restart
+
 - Restart applies the selected profile and reaches Ready.
 - After Restart, the running model matches the selected profile.
+- `Restart required` disappears.
 - Stop stops only the managed process.
-- After Stop, Start uses the currently selected profile.
-- Logs explain profile selection and Restart-required state.
+
+### After Stop
+
+- After Stop, `Running Model` returns to `Not running`.
+- `Restart required` disappears.
+- The selected profile is preserved.
+- Start uses the currently selected profile.
+
+### Regression
+
+- Add Profile still works.
+- Edit Profile still works.
+- Delete Profile still works.
+- Start, Stop, and Restart still work.
+- Run Diagnostics still works.
+- Menu bar quick actions still work.
+- Release build instructions still work.
+
+### Logs
+
+- Logs explain profile selection.
+- Logs explain selected/running mismatch.
+- Logs explain Restart-required state.
 
 ## Safety Checklist
 
@@ -115,8 +161,12 @@ When a managed server is running a different profile, the UI should separately s
 - The app does not send `/v1/chat/completions`.
 - Model switching does not run inference.
 - Selecting a model does not start `mlx_lm.server`.
+- Multiple simultaneous server management is not added.
+- Multiple model simultaneous startup is not added.
 - Restart and Stop target only the managed process.
 - External processes are not stopped.
 - `pkill`, `killall`, and `pgrep` are not used.
 - Model files, Hugging Face cache, and local model directories are not deleted.
+- Models are not downloaded.
 - `settings.json`, `models.json`, model files, `.app` bundles, and build artifacts stay outside Git.
+- User-specific fixed paths are not added.
