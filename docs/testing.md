@@ -328,9 +328,10 @@ Target service behavior without launching the full UI:
 
 ### Zip Creation
 
-- Create the unsigned zip with `ditto -c -k --keepParent`.
+- Create the unsigned zip with `ditto -c -k --norsrc --noextattr --keepParent`.
 - Confirm the zip file is created in a temporary or release staging location outside Git.
 - Confirm the zip size with `du -h`.
+- For the verified v0.9 workflow, confirm `/tmp/MLXServerManager-v0.9.0-unsigned.zip` is `284K`.
 - Confirm `.zip` files are not tracked by Git.
 
 ### Zip Contents
@@ -343,6 +344,8 @@ Target service behavior without launching the full UI:
 - Confirm the zip does not contain Hugging Face cache.
 - Confirm the zip does not contain `.env` or `HF_TOKEN`.
 - Confirm the zip does not contain `.dSYM` or derived data.
+- Confirm the zip does not contain AppleDouble `._*` metadata files.
+- For the verified v0.9 workflow, confirm the zip entries are all under `MLXServerManager.app/`.
 
 ### Launch After Unzip
 
@@ -352,6 +355,8 @@ Target service behavior without launching the full UI:
 - Confirm the app starts.
 - Confirm the menu bar item appears.
 - Confirm the main window opens.
+- Confirm the verification process can be quit or terminated after the launch check.
+- Confirm no verification process remains running.
 - Confirm runtime settings are not bundled.
 - Configure `mlx_lm.server executable path` in the app UI if needed.
 - Run Setup Diagnostics if local runtime settings are available.
@@ -364,6 +369,7 @@ Target service behavior without launching the full UI:
 - Confirm release notes mention Gatekeeper and quarantine caveats.
 - Confirm release notes state runtime settings, model profiles, model files, Hugging Face cache, logs, and secrets are not included.
 - Confirm release notes state Direct Mode remains `OpenAI-compatible client -> mlx_lm.server`.
+- Confirm release notes state Ready checks use `/v1/models` and the app does not send `/v1/chat/completions`.
 
 ### Safety
 

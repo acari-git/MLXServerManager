@@ -75,24 +75,36 @@ Expected app path:
 
 This path is an example temporary DerivedData location, not a user-specific fixed path.
 
+### Verified v0.9 Build Result
+
+The v0.9 packaging verification confirmed:
+
+- Release build result: `BUILD SUCCEEDED`
+- App path: `/tmp/MLXServerManagerReleaseDerivedData/Build/Products/Release/MLXServerManager.app`
+- App size: `1.1M`
+
 ## Zip Creation
 
 Create a zip that keeps the `.app` bundle as the parent item:
 
 ```sh
-ditto -c -k --keepParent \
-  /tmp/MLXServerManagerReleaseDerivedData/Build/Products/Release/MLXServerManager.app \
-  /tmp/MLXServerManager-<version>-unsigned.zip
+cd /tmp/MLXServerManagerReleaseDerivedData/Build/Products/Release
+ditto -c -k --norsrc --noextattr --keepParent \
+  MLXServerManager.app \
+  /tmp/MLXServerManager-v0.9.0-unsigned.zip
 ```
 
-Replace `<version>` with the release version, such as `v0.9.0`.
+Use `--norsrc --noextattr` so the zip does not include AppleDouble `._*` metadata files.
+Do not use only `ditto -c -k --keepParent`; without `--norsrc --noextattr`, AppleDouble `._*` metadata files may be included.
+
+For a future release, replace `v0.9.0` with the release version.
 
 ## Zip Verification
 
 Confirm the zip contents:
 
 ```sh
-unzip -l /tmp/MLXServerManager-<version>-unsigned.zip
+unzip -l /tmp/MLXServerManager-v0.9.0-unsigned.zip
 ```
 
 Expected result:
@@ -101,11 +113,18 @@ Expected result:
 - The archive does not contain runtime settings.
 - The archive does not contain model files.
 - The archive does not contain `.dSYM` or derived data.
+- The archive does not contain AppleDouble `._*` metadata files.
 
 Confirm the zip size:
 
 ```sh
-du -h /tmp/MLXServerManager-<version>-unsigned.zip
+du -h /tmp/MLXServerManager-v0.9.0-unsigned.zip
+```
+
+The v0.9 packaging verification confirmed:
+
+```text
+284K /tmp/MLXServerManager-v0.9.0-unsigned.zip
 ```
 
 Confirm release artifacts are not tracked by Git:
@@ -129,6 +148,28 @@ git ls-files \
 
 The command should not list generated app bundles, zip files, runtime settings, secrets, or model files.
 
+### Verified v0.9 Zip Contents
+
+The v0.9 zip verification confirmed that the archive contained only entries under:
+
+```text
+MLXServerManager.app/
+```
+
+The zip did not include:
+
+- `settings.json`
+- `models.json`
+- model files
+- model directories
+- `.env`
+- `HF_TOKEN`
+- `.dSYM`
+- DerivedData
+- Hugging Face cache
+- logs
+- AppleDouble `._*` metadata files
+
 ## Local Launch Verification After Unzip
 
 Manual verification should use a temporary location:
@@ -146,6 +187,17 @@ Manual verification should use a temporary location:
 
 This launch verification must not require model inference and must not require `/v1/chat/completions`.
 
+### Verified v0.9 Launch Result
+
+The v0.9 packaging verification confirmed:
+
+- The zip was unzipped under `/tmp`.
+- `open -n` launched the unzipped `MLXServerManager.app`.
+- The launched app process was observed.
+- The verification process was terminated after the check.
+- No verification process was left running.
+- Git status remained clean after build, zip creation, unzip, launch, and quit checks.
+
 ## Release Note Template
 
 Use release notes similar to:
@@ -154,7 +206,7 @@ Use release notes similar to:
 MLX Server Manager <version>
 
 Asset:
-- MLXServerManager-<version>-unsigned.zip
+- MLXServerManager-v0.9.0-unsigned.zip
 
 Notes:
 - This is an unsigned local-use macOS app bundle.
@@ -165,6 +217,7 @@ Notes:
 - Configure mlx_lm.server executable path in the app UI after launch.
 - Direct Mode is unchanged: OpenAI-compatible client -> mlx_lm.server.
 - The app does not proxy inference traffic and does not provide Chat UI.
+- Ready checks use /v1/models. The app does not send /v1/chat/completions.
 ```
 
 ## Non-Goals

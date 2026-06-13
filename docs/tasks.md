@@ -450,11 +450,12 @@
    - State that runtime settings, model profiles, model files, Hugging Face cache, logs, and secrets are not included.
 3. Document zip creation commands.
    - Reuse the Release `xcodebuild` command.
-   - Document `ditto -c -k --keepParent`.
+   - Document `ditto -c -k --norsrc --noextattr --keepParent`.
    - Use `/tmp/MLXServerManagerReleaseDerivedData` as an example temporary DerivedData path.
 4. Document Release asset contents verification.
    - Use `unzip -l` to confirm zip contents.
    - Use `du -h` to confirm zip size.
+   - Confirm the zip has no AppleDouble `._*` metadata files.
    - Use `git ls-files` to confirm `.app`, `.zip`, `.dSYM`, build artifacts, runtime settings, secrets, and model files are not tracked.
 5. Document local launch verification after unzip.
    - Unzip into a temporary location.
@@ -468,6 +469,7 @@
 7. Add final v0.9 verification checklist.
    - Release build succeeds.
    - Zip contains only the app bundle.
+   - Verified v0.9 outputs: app size `1.1M`, zip size `284K`.
    - No runtime settings, secrets, model files, `.app`, `.zip`, `.dSYM`, or build artifacts are tracked by Git.
    - Direct Mode, no Proxy, and no Chat UI are maintained.
 8. Prepare v0.9 tag.
