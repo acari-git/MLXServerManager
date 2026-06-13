@@ -14,6 +14,10 @@ struct LogBuffer {
         entries.map(\.line).joined(separator: "\n")
     }
 
+    var isEmpty: Bool {
+        entries.isEmpty
+    }
+
     mutating func append(_ line: String) {
         entries.append(LogEntry(line: line))
         trimIfNeeded()

@@ -20,6 +20,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var runtimeState: ModelRuntimeState = .stopped
     @Published private(set) var memoryUsageGB: Double?
     @Published private(set) var logText: String
+    @Published private(set) var logEntries: [LogEntry]
     @Published private(set) var diagnosticsResults: [DiagnosticsResult] = []
     @Published private(set) var diagnosticsDidRun = false
     @Published var profileEditorDraft: ModelProfileDraft = .empty
@@ -68,6 +69,7 @@ final class AppViewModel: ObservableObject {
         )
         self.logBuffer = LogBuffer(initialLines: Self.initialLogLines)
         self.logText = logBuffer.text
+        self.logEntries = logBuffer.entries
         loadSettings()
         selectedModelID = models.first?.id
     }
@@ -545,6 +547,19 @@ final class AppViewModel: ObservableObject {
         logBuffer.clear()
         syncLogText()
         appendLog("[info] logs cleared")
+    }
+
+    func copyLogsRequested() {
+        guard !logBuffer.isEmpty else {
+            appendLog("[warning] No logs to copy.")
+            return
+        }
+
+        if copyToPasteboard(logBuffer.text) {
+            appendLog("[info] copied logs to clipboard")
+        } else {
+            appendLog("[error] failed to copy logs to clipboard")
+        }
     }
 
     private func startManagedServer(logPrefix: String) async -> Bool {
@@ -1057,10 +1072,12 @@ final class AppViewModel: ObservableObject {
 
     private func syncLogText() {
         logText = logBuffer.text
+        logEntries = logBuffer.entries
     }
 
-    private func copyToPasteboard(_ value: String) {
+    @discardableResult
+    private func copyToPasteboard(_ value: String) -> Bool {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(value, forType: .string)
+        return NSPasteboard.general.setString(value, forType: .string)
     }
 }

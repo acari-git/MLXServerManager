@@ -103,7 +103,8 @@ struct ContentView: View {
                         )
 
                         LogView(
-                            text: viewModel.logText,
+                            entries: viewModel.logEntries,
+                            onCopy: viewModel.copyLogsRequested,
                             onClear: viewModel.clearLogsRequested
                         )
                     }
