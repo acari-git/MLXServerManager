@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ModelDetailView: View {
     let model: ModelConfig?
+    let runningModelText: String
+    let restartRequired: Bool
     let deletionMessage: String?
     let onEditProfile: () -> Void
     let onDeleteProfile: () -> Void
@@ -37,6 +39,20 @@ struct ModelDetailView: View {
             }
 
             if let model {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Selected Model: \(model.modelID)", systemImage: "checkmark.circle")
+                        .foregroundStyle(.secondary)
+                    Label(runningModelText, systemImage: "server.rack")
+                        .foregroundStyle(.secondary)
+
+                    if restartRequired {
+                        Label("Restart required to apply selected model.", systemImage: "arrow.clockwise.circle")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.orange)
+                    }
+                }
+                .font(.caption)
+
                 DetailGrid(rows: [
                     ("Model ID", model.modelID),
                     ("Display Name", model.displayName),

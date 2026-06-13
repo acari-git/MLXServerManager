@@ -20,6 +20,8 @@ struct ContentView: View {
                 ModelListView(
                     models: viewModel.models,
                     selectedModelID: $viewModel.selectedModelID,
+                    runningModelID: viewModel.runningModelID,
+                    restartRequired: viewModel.restartRequired,
                     onAddProfile: viewModel.addProfileRequested
                 )
                 .frame(minWidth: 260, idealWidth: 300, maxWidth: 360)
@@ -42,6 +44,7 @@ struct ContentView: View {
                         StatusPanelView(
                             runtimeState: viewModel.runtimeState,
                             memoryUsageText: viewModel.memoryUsageText,
+                            selectedModelText: viewModel.selectedModelText,
                             runningModelText: viewModel.runningModelText,
                             restartRequired: viewModel.restartRequired,
                             onCheckPort: viewModel.checkPortRequested,
@@ -53,6 +56,8 @@ struct ContentView: View {
 
                         ModelDetailView(
                             model: viewModel.selectedModel,
+                            runningModelText: viewModel.runningModelText,
+                            restartRequired: viewModel.restartRequired,
                             deletionMessage: viewModel.profileDeletionMessage,
                             onEditProfile: viewModel.editProfileRequested,
                             onDeleteProfile: viewModel.deleteProfileRequested

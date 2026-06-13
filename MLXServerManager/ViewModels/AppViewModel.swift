@@ -84,6 +84,10 @@ final class AppViewModel: ObservableObject {
         selectedModel?.modelID ?? "No model selected"
     }
 
+    var selectedModelText: String {
+        "Selected Model: \(selectedModelIdentifier)"
+    }
+
     var runningModelText: String {
         guard let runningModelID else {
             return "Running Model: Not running"
@@ -145,7 +149,11 @@ final class AppViewModel: ObservableObject {
     }
 
     var menuBarTitle: String {
-        "MLX: \(runtimeState.menuBarStatus)"
+        if restartRequired {
+            return "MLX: \(runtimeState.menuBarStatus) - restart required"
+        }
+
+        return "MLX: \(runtimeState.menuBarStatus)"
     }
 
     var isManagedProcessRunning: Bool {

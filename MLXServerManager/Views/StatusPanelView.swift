@@ -3,6 +3,7 @@ import SwiftUI
 struct StatusPanelView: View {
     let runtimeState: ModelRuntimeState
     let memoryUsageText: String
+    let selectedModelText: String
     let runningModelText: String
     let restartRequired: Bool
     let onCheckPort: () -> Void
@@ -20,6 +21,7 @@ struct StatusPanelView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     statusBadge
                     memoryBadge
+                    selectedModelBadge
                     runningModelBadge
                     if restartRequired {
                         restartRequiredBadge
@@ -80,6 +82,14 @@ struct StatusPanelView: View {
         Label(memoryUsageText, systemImage: "memorychip")
             .font(.caption)
             .foregroundStyle(.secondary)
+    }
+
+    private var selectedModelBadge: some View {
+        Label(selectedModelText, systemImage: "checkmark.circle")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .truncationMode(.middle)
     }
 
     private var runningModelBadge: some View {
