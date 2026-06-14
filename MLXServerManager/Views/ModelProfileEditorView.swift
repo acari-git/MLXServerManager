@@ -42,7 +42,7 @@ struct ModelProfileEditorView: View {
 
             if runtimeFieldsLocked {
                 Label(
-                    "Stop the managed server before changing modelID, host, or port.",
+                    "Stop the managed server before changing modelID, host, port, or advanced launch options.",
                     systemImage: "lock.fill"
                 )
                 .font(.callout)
@@ -92,9 +92,126 @@ struct ModelProfileEditorView: View {
                         .overlay {
                             RoundedRectangle(cornerRadius: 6)
                                 .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
-                        }
+                    }
                 }
             }
+
+            DisclosureGroup("Advanced Launch Options") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Leave empty to use mlx_lm.server defaults.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+
+                    Text("Advanced options are workload-dependent and may not improve performance.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+
+                    Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 10) {
+                        advancedRow("Temperature") {
+                            TextField("0.0 - 1.0", text: advancedBinding(\.defaultTemperature))
+                                .textFieldStyle(.roundedBorder)
+                        }
+
+                        advancedRow("Top P") {
+                            TextField("0.0 - 1.0", text: advancedBinding(\.defaultTopP))
+                                .textFieldStyle(.roundedBorder)
+                        }
+
+                        advancedRow("Top K") {
+                            TextField("Positive integer", text: advancedBinding(\.defaultTopK))
+                                .textFieldStyle(.roundedBorder)
+                        }
+
+                        advancedRow("Min P") {
+                            TextField("0.0 - 1.0", text: advancedBinding(\.defaultMinP))
+                                .textFieldStyle(.roundedBorder)
+                        }
+
+                        advancedRow("Max Tokens") {
+                            TextField("Positive integer", text: advancedBinding(\.defaultMaxTokens))
+                                .textFieldStyle(.roundedBorder)
+                        }
+
+                        advancedRow("Allowed Origins") {
+                            TextField("Optional origin list", text: advancedBinding(\.allowedOrigins))
+                                .textFieldStyle(.roundedBorder)
+                        }
+
+                        advancedRow("Log Level") {
+                            TextField("Optional log level", text: advancedBinding(\.logLevel))
+                                .textFieldStyle(.roundedBorder)
+                        }
+
+                        advancedRow("Decode Concurrency") {
+                            TextField("Positive integer", text: advancedBinding(\.decodeConcurrency))
+                                .textFieldStyle(.roundedBorder)
+                        }
+
+                        advancedRow("Prompt Concurrency") {
+                            TextField("Positive integer", text: advancedBinding(\.promptConcurrency))
+                                .textFieldStyle(.roundedBorder)
+                        }
+
+                        advancedRow("Prefill Step Size") {
+                            TextField("Positive integer", text: advancedBinding(\.prefillStepSize))
+                                .textFieldStyle(.roundedBorder)
+                        }
+
+                        advancedRow("Prompt Cache Size") {
+                            TextField("Positive integer", text: advancedBinding(\.promptCacheSize))
+                                .textFieldStyle(.roundedBorder)
+                        }
+
+                        advancedRow("Prompt Cache Bytes") {
+                            TextField("Positive integer", text: advancedBinding(\.promptCacheBytes))
+                                .textFieldStyle(.roundedBorder)
+                        }
+
+                        advancedRow("Chat Template Args") {
+                            TextEditor(text: advancedBinding(\.chatTemplateArgs))
+                                .font(.system(.callout, design: .monospaced))
+                                .frame(minHeight: 60)
+                                .scrollContentBackground(.hidden)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                                }
+                        }
+
+                        advancedRow("Raw Extra Args") {
+                            VStack(alignment: .leading, spacing: 6) {
+                                TextEditor(text: advancedBinding(\.rawExtraArgs))
+                                    .font(.system(.callout, design: .monospaced))
+                                    .frame(minHeight: 60)
+                                    .scrollContentBackground(.hidden)
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                                    }
+
+                                Text("Expert only. Raw arguments are appended last and used only when explicitly set.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Launch Command Preview")
+                            .font(.callout.weight(.medium))
+
+                        Text(launchCommandPreview)
+                            .font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled)
+                            .padding(8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(nsColor: .textBackgroundColor))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                }
+                .padding(.top, 8)
+            }
+            .disabled(runtimeFieldsLocked)
         }
         .panelStyle()
     }
@@ -112,5 +229,48 @@ struct ModelProfileEditorView: View {
             content()
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private func advancedRow<Content: View>(
+        _ label: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        GridRow {
+            Text(label)
+                .font(.callout.weight(.medium))
+                .foregroundStyle(.secondary)
+                .frame(width: 150, alignment: .leading)
+
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func advancedBinding(_ keyPath: WritableKeyPath<AdvancedLaunchOptions, String?>) -> Binding<String> {
+        Binding {
+            draft.advancedLaunchOptions[keyPath: keyPath] ?? ""
+        } set: { newValue in
+            draft.advancedLaunchOptions[keyPath: keyPath] = newValue
+        }
+    }
+
+    private var launchCommandPreview: String {
+        let modelID = draft.modelID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let host = draft.host.trimmingCharacters(in: .whitespacesAndNewlines)
+        let portText = draft.serverPortText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !modelID.isEmpty, !host.isEmpty, let port = Int(portText) else {
+            return "Complete Model ID, Host, and Port to preview the launch command."
+        }
+
+        let request = ModelLaunchRequest(
+            executablePath: "mlx_lm.server",
+            modelID: modelID,
+            host: host,
+            port: port,
+            advancedLaunchOptions: draft.advancedLaunchOptions.normalized()
+        )
+
+        return ModelProcessManager.commandPreview(for: request, executablePath: "mlx_lm.server")
     }
 }

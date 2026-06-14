@@ -2,9 +2,17 @@
 
 This document defines the planned v1.1 design direction for optional Advanced Launch Options in MLX Server Manager.
 
+## Implementation Status
+
+- v1.1.0 documented the design only.
+- v1.2 adds the initial implementation for optional per-profile Advanced Launch Options.
+- The default simple launch remains unchanged when advanced fields are empty.
+- Empty advanced values are omitted from `mlx_lm.server` arguments.
+- Advanced options remain workload-dependent and are not enabled by default.
+
 ## Overview
 
-Advanced Launch Options are future user-tunable settings for constructing `mlx_lm.server` launch arguments. They are intended for users who understand their workload and want to experiment with server-side launch configuration.
+Advanced Launch Options are optional user-tunable settings for constructing `mlx_lm.server` launch arguments. They are intended for users who understand their workload and want to experiment with server-side launch configuration.
 
 They must not change the default simple launch behavior.
 

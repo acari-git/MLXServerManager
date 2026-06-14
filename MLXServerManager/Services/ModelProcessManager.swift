@@ -5,6 +5,7 @@ struct ModelLaunchRequest: Equatable {
     let modelID: String
     let host: String
     let port: Int
+    let advancedLaunchOptions: AdvancedLaunchOptions?
 }
 
 struct ModelLaunchResult: Equatable {
@@ -81,14 +82,7 @@ final class ModelProcessManager {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executablePath)
-        process.arguments = [
-            "--model",
-            request.modelID,
-            "--host",
-            request.host,
-            "--port",
-            String(request.port)
-        ]
+        process.arguments = Self.launchArguments(for: request)
 
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
@@ -120,8 +114,49 @@ final class ModelProcessManager {
 
         return ModelLaunchResult(
             processIdentifier: process.processIdentifier,
-            commandSummary: commandSummary(for: request, executablePath: executablePath)
+            commandSummary: Self.commandPreview(for: request, executablePath: executablePath)
         )
+    }
+
+    nonisolated static func launchArguments(for request: ModelLaunchRequest) -> [String] {
+        var arguments = [
+            "--model",
+            request.modelID,
+            "--host",
+            request.host,
+            "--port",
+            String(request.port)
+        ]
+
+        guard let advancedOptions = request.advancedLaunchOptions?.normalized() else {
+            return arguments
+        }
+
+        appendValue(advancedOptions.chatTemplateArgs, flag: "--chat-template-args", to: &arguments)
+        appendValue(advancedOptions.defaultTemperature, flag: "--temperature", to: &arguments)
+        appendValue(advancedOptions.defaultTopP, flag: "--top-p", to: &arguments)
+        appendValue(advancedOptions.defaultTopK, flag: "--top-k", to: &arguments)
+        appendValue(advancedOptions.defaultMinP, flag: "--min-p", to: &arguments)
+        appendValue(advancedOptions.defaultMaxTokens, flag: "--max-tokens", to: &arguments)
+        appendValue(advancedOptions.allowedOrigins, flag: "--allowed-origins", to: &arguments)
+        appendValue(advancedOptions.logLevel, flag: "--log-level", to: &arguments)
+        appendValue(advancedOptions.decodeConcurrency, flag: "--decode-concurrency", to: &arguments)
+        appendValue(advancedOptions.promptConcurrency, flag: "--prompt-concurrency", to: &arguments)
+        appendValue(advancedOptions.prefillStepSize, flag: "--prefill-step-size", to: &arguments)
+        appendValue(advancedOptions.promptCacheSize, flag: "--prompt-cache-size", to: &arguments)
+        appendValue(advancedOptions.promptCacheBytes, flag: "--prompt-cache-bytes", to: &arguments)
+
+        if let rawExtraArgs = advancedOptions.rawExtraArgs {
+            arguments.append(contentsOf: rawExtraArgs.split(whereSeparator: \.isWhitespace).map(String.init))
+        }
+
+        return arguments
+    }
+
+    nonisolated static func commandPreview(for request: ModelLaunchRequest, executablePath: String) -> String {
+        ([executablePath] + launchArguments(for: request))
+            .map(shellEscaped)
+            .joined(separator: " ")
     }
 
     func stop(
@@ -251,7 +286,25 @@ final class ModelProcessManager {
         stderrPipe = nil
     }
 
-    private func commandSummary(for request: ModelLaunchRequest, executablePath: String) -> String {
-        "\(executablePath) --model \(request.modelID) --host \(request.host) --port \(request.port)"
+    nonisolated private static func appendValue(_ value: String?, flag: String, to arguments: inout [String]) {
+        guard let value, !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+
+        arguments.append(flag)
+        arguments.append(value)
+    }
+
+    nonisolated private static func shellEscaped(_ value: String) -> String {
+        guard !value.isEmpty else {
+            return "''"
+        }
+
+        let safeCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._/:=")
+        if value.unicodeScalars.allSatisfy({ safeCharacters.contains($0) }) {
+            return value
+        }
+
+        return "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 }

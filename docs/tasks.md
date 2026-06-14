@@ -656,6 +656,34 @@
    - SwiftUI views should not construct `Process` arguments directly.
    - Future flow should remain `ModelConfig -> ModelLaunchRequest -> ModelProcessManager argument builder`.
 
+## v1.2 In Progress: Advanced Launch Options Initial Implementation
+
+1. Add per-profile Advanced Launch Options data model.
+   - Add optional `advancedLaunchOptions` to `ModelConfig`.
+   - Preserve loading compatibility for existing `models.json` files without advanced fields.
+   - Keep empty advanced values omitted from launch arguments.
+2. Add launch argument builder support.
+   - Keep simple launch unchanged when advanced options are unset.
+   - Preserve the `ModelConfig -> ModelLaunchRequest -> ModelProcessManager argument builder` flow.
+   - Append structured advanced options only when explicitly set.
+   - Append `rawExtraArgs` last only when explicitly set.
+3. Add Model Profile Editor UI.
+   - Add a collapsed Advanced Launch Options disclosure.
+   - Add optional fields for structured options and raw extra args.
+   - Show workload-dependent warning copy.
+   - Show a read-only launch command preview.
+4. Add validation.
+   - Validate bounded numeric fields.
+   - Validate positive integer fields.
+   - Validate `chatTemplateArgs` as JSON when set.
+   - Surface validation errors before saving.
+5. Preserve safety boundaries.
+   - Direct Mode is maintained.
+   - No Proxy mode.
+   - No Chat UI.
+   - No app-executed `/v1/chat/completions`.
+   - No new app binary or release asset in this implementation step.
+
 ## Later
 
 - Unit tests for services where practical.

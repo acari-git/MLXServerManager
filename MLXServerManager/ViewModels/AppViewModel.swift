@@ -7,6 +7,11 @@ private enum ProfileValidationResult {
     case invalid(String)
 }
 
+private enum AdvancedLaunchOptionsValidationResult {
+    case valid(AdvancedLaunchOptions?)
+    case invalid(String)
+}
+
 @MainActor
 final class AppViewModel: ObservableObject {
     @Published var settings: AppSettings = .defaults
@@ -586,6 +591,15 @@ final class AppViewModel: ObservableObject {
 
         let host = selectedModel.host
         let port = selectedModel.serverPort
+        let advancedValidation = validatedAdvancedLaunchOptions(selectedModel.advancedLaunchOptions ?? .empty)
+        guard case let .valid(advancedLaunchOptions) = advancedValidation else {
+            if case let .invalid(message) = advancedValidation {
+                runtimeState = .error(message: message)
+                appendLog("[\(logPrefix)] failed: \(message)")
+            }
+            return false
+        }
+
         appendLog("[\(logPrefix)] starting \(selectedModel.modelID) at \(host):\(port)")
         appendLog("[\(logPrefix)] checking port before launch: \(host):\(port)")
         runtimeState = .checkingPort(host: host, port: port)
@@ -611,7 +625,8 @@ final class AppViewModel: ObservableObject {
             executablePath: settings.mlxServerExecutablePath,
             modelID: selectedModel.modelID,
             host: host,
-            port: port
+            port: port,
+            advancedLaunchOptions: advancedLaunchOptions
         )
 
         runtimeState = .starting(host: host, port: port)
@@ -1013,12 +1028,22 @@ final class AppViewModel: ObservableObject {
             return .invalid("Port must be between 1 and 65535.")
         }
 
+        let advancedValidation = validatedAdvancedLaunchOptions(draft.advancedLaunchOptions)
+        if case let .invalid(message) = advancedValidation {
+            return .invalid(message)
+        }
+
+        guard case let .valid(advancedLaunchOptions) = advancedValidation else {
+            return .invalid("Advanced Launch Options validation failed.")
+        }
+
         let changesRuntimeTarget = modelID != existingModel.modelID
             || host != existingModel.host
             || port != existingModel.serverPort
+            || advancedLaunchOptions != existingModel.advancedLaunchOptions?.normalized()
 
         if isManagedProcessRunning && changesRuntimeTarget {
-            return .invalid("Stop the managed server before changing modelID, host, or port.")
+            return .invalid("Stop the managed server before changing modelID, host, port, or advanced launch options.")
         }
 
         var updatedModel = existingModel
@@ -1028,6 +1053,7 @@ final class AppViewModel: ObservableObject {
         updatedModel.serverPort = port
         updatedModel.enableThinking = draft.enableThinking
         updatedModel.notes = draft.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        updatedModel.advancedLaunchOptions = advancedLaunchOptions
         return .valid(updatedModel)
     }
 
@@ -1053,6 +1079,15 @@ final class AppViewModel: ObservableObject {
             return .invalid("A model profile with this Model ID already exists.")
         }
 
+        let advancedValidation = validatedAdvancedLaunchOptions(draft.advancedLaunchOptions)
+        if case let .invalid(message) = advancedValidation {
+            return .invalid(message)
+        }
+
+        guard case let .valid(advancedLaunchOptions) = advancedValidation else {
+            return .invalid("Advanced Launch Options validation failed.")
+        }
+
         let localName = modelID.split(separator: "/").last.map(String.init) ?? modelID
         return .valid(
             ModelConfig(
@@ -1064,9 +1099,66 @@ final class AppViewModel: ObservableObject {
                 host: host,
                 serverPort: port,
                 enableThinking: draft.enableThinking,
-                notes: draft.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+                notes: draft.notes.trimmingCharacters(in: .whitespacesAndNewlines),
+                advancedLaunchOptions: advancedLaunchOptions
             )
         )
+    }
+
+    private func validatedAdvancedLaunchOptions(_ options: AdvancedLaunchOptions) -> AdvancedLaunchOptionsValidationResult {
+        guard let normalizedOptions = options.normalized() else {
+            return .valid(nil)
+        }
+
+        let boundedDoubleFields: [(String, String?)] = [
+            ("Default Temperature", normalizedOptions.defaultTemperature),
+            ("Default Top P", normalizedOptions.defaultTopP),
+            ("Default Min P", normalizedOptions.defaultMinP)
+        ]
+
+        for (label, value) in boundedDoubleFields {
+            guard let value else {
+                continue
+            }
+
+            guard let doubleValue = Double(value), (0...1).contains(doubleValue) else {
+                return .invalid("\(label) must be a number between 0 and 1.")
+            }
+        }
+
+        let positiveIntegerFields: [(String, String?)] = [
+            ("Default Top K", normalizedOptions.defaultTopK),
+            ("Default Max Tokens", normalizedOptions.defaultMaxTokens),
+            ("Decode Concurrency", normalizedOptions.decodeConcurrency),
+            ("Prompt Concurrency", normalizedOptions.promptConcurrency),
+            ("Prefill Step Size", normalizedOptions.prefillStepSize),
+            ("Prompt Cache Size", normalizedOptions.promptCacheSize),
+            ("Prompt Cache Bytes", normalizedOptions.promptCacheBytes)
+        ]
+
+        for (label, value) in positiveIntegerFields {
+            guard let value else {
+                continue
+            }
+
+            guard let integerValue = Int(value), integerValue > 0 else {
+                return .invalid("\(label) must be a positive integer.")
+            }
+        }
+
+        if let chatTemplateArgs = normalizedOptions.chatTemplateArgs {
+            guard let data = chatTemplateArgs.data(using: .utf8) else {
+                return .invalid("Chat Template Args must be valid JSON.")
+            }
+
+            do {
+                _ = try JSONSerialization.jsonObject(with: data)
+            } catch {
+                return .invalid("Chat Template Args must be valid JSON.")
+            }
+        }
+
+        return .valid(normalizedOptions)
     }
 
     private var connectionConfigBuilder: ConnectionConfigBuilder {
