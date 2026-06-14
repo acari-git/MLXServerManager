@@ -72,6 +72,8 @@ Advanced Launch Options are optional, per-profile user-tunable settings. They ar
 
 External server detection is documented in [docs/external_server_detection.md](docs/external_server_detection.md). It detects existing OpenAI-compatible servers on the selected host/port without taking ownership of external processes.
 
+Future Adopt External Server behavior is designed in [docs/adopt_external_server.md](docs/adopt_external_server.md). The intent is to explicitly adopt a detected external server for connection context without taking process ownership.
+
 ## Current Binary Asset
 
 The current app binary asset is still:

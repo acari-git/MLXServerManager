@@ -802,6 +802,26 @@
    - Issue templates do not frame Proxy mode, Chat UI, or multi-backend wrapper behavior as default directions.
    - Bug reports ask users to remove personal paths, tokens, API keys, and secrets before posting.
 
+## v1.6.0 Completed: Adopt External Server Design
+
+1. Add Adopt External Server design docs.
+   - Add `docs/adopt_external_server.md`.
+   - Define Adopt as connection context, not process ownership.
+   - Document managed server, external server detected, and adopted external server terminology.
+2. Keep this step docs-only.
+   - No Swift changes.
+   - No app code changes.
+   - No Xcode project changes.
+   - No new app binary, zip asset, `.dSYM`, or DerivedData.
+3. Preserve Direct Mode and process ownership boundaries.
+   - MLX Server Manager remains outside the inference request path.
+   - External processes are not stopped or restarted by the app.
+   - Stop and Restart remain scoped to app-managed processes.
+   - Adopted external servers use connection context only.
+4. Link related docs.
+   - Link README to the Adopt External Server design.
+   - Link `docs/external_server_detection.md` to the separated adopt design.
+
 ## Later
 
 - Unit tests for services where practical.

@@ -19,6 +19,8 @@ v1.5.0 implements the initial detect-only behavior.
 - Connection Settings remain available and continue to use the selected model profile.
 - Adopt External Server is still future work.
 
+Adopt External Server is split into a separate future design document: [adopt_external_server.md](adopt_external_server.md). The v1.5.0 implementation remains detect-only.
+
 ## Problem Statement
 
 Today, a busy port blocks Start. That is safe, but it does not explain whether the busy port is caused by:
