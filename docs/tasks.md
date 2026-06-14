@@ -725,6 +725,26 @@
    - No Chat UI.
    - No multi-backend wrapper behavior.
 
+## v1.3.0 Completed: Hermes Agent Connection Guide
+
+1. Add Hermes Agent and OpenAI-compatible client guide.
+   - Add `docs/hermes_agent_connection.md`.
+   - Document Direct Mode boundary.
+   - Document example Base URL, Model ID, API key placeholder, and curl checks.
+   - Treat Hermes Agent as an OpenAI-compatible client without assuming internal configuration details.
+2. Link from README.
+   - Add a short link from Supported Client Context.
+   - Clarify that MLX Server Manager remains outside the inference request path.
+3. Keep this step docs-only.
+   - No Swift changes.
+   - No Xcode project changes.
+   - No new app binary, zip asset, `.dSYM`, or DerivedData.
+4. Preserve product boundaries.
+   - Direct Mode is maintained.
+   - No Proxy mode.
+   - No Chat UI.
+   - No multi-backend wrapper behavior.
+
 ## Later
 
 - Unit tests for services where practical.

@@ -94,6 +94,8 @@ MLX Server Manager presents connection information for OpenAI-compatible clients
 
 The client sends inference requests directly to `mlx_lm.server`. MLX Server Manager only starts, stops, monitors, diagnoses, and copies connection settings.
 
+For Hermes Agent and similar clients, see [docs/hermes_agent_connection.md](docs/hermes_agent_connection.md). Hermes Agent is treated as an OpenAI-compatible client; MLX Server Manager still stays outside the inference request path.
+
 ## Stable Scope
 
 The v1.0 stable scope includes:
