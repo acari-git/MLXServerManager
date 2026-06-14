@@ -60,6 +60,8 @@ See [docs/distribution.md](docs/distribution.md) for release asset and Gatekeepe
 
 See [docs/benchmark_findings.md](docs/benchmark_findings.md) for benchmark-informed notes on Direct Mode, long-context workloads, streaming TTFT, and future optional Advanced Launch Options.
 
+Advanced Launch Options are planned as future optional/user-tunable settings. See [docs/advanced_launch_options.md](docs/advanced_launch_options.md) for the v1.1 design notes.
+
 ## Current Binary Asset
 
 The current app binary asset is still:

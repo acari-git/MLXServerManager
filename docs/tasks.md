@@ -634,6 +634,28 @@
    - Direct Mode is maintained.
    - Proxy mode, Chat UI, model downloader, model deletion, and multi-backend wrapper behavior remain out of scope.
 
+## v1.1 Planned: Advanced Launch Options Design
+
+1. Add Advanced Launch Options design documentation.
+   - Add `docs/advanced_launch_options.md`.
+   - Document goals, non-goals, Direct Mode boundary, optional behavior, candidate options, UI design, data model design, argument construction, validation, safety boundaries, tests, and future work.
+2. Keep this step docs-only.
+   - No app code changes in this design step.
+   - No Swift changes.
+   - No Xcode project changes.
+   - No new `.app`, `.zip`, `.dSYM`, DerivedData, or release asset.
+3. Maintain Direct Mode.
+   - MLX Server Manager remains outside the inference request path.
+   - Advanced Launch Options affect only the future `mlx_lm.server` launch command.
+4. Keep Advanced Launch Options optional.
+   - Do not enable advanced settings by default.
+   - Omit empty advanced values from launch arguments.
+   - Avoid aggressive tuning defaults.
+   - Defer implementation to a later step.
+5. Preserve architecture boundaries.
+   - SwiftUI views should not construct `Process` arguments directly.
+   - Future flow should remain `ModelConfig -> ModelLaunchRequest -> ModelProcessManager argument builder`.
+
 ## Later
 
 - Unit tests for services where practical.
