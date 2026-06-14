@@ -764,6 +764,28 @@
    - Stop and Restart remain scoped to app-managed processes.
    - External server detection is status and connection-setting support only.
 
+## v1.5.0 In Progress: External Server Detection Initial Implementation
+
+1. Add detect-only external server state.
+   - Represent an external OpenAI-compatible server detected on the selected host and port.
+   - Keep managed process state separate from external server status.
+   - Show that external servers are not managed by MLX Server Manager.
+2. Extend Start flow safely.
+   - If the selected port is available, keep the managed launch path unchanged.
+   - If the selected port is occupied, check `GET /v1/models` on the same host and port.
+   - If `/v1/models` returns HTTP 200, show external server detected and do not launch a managed process.
+   - If `/v1/models` fails, keep the existing port conflict behavior.
+3. Preserve process ownership boundaries.
+   - Stop and Restart remain scoped to app-managed processes.
+   - External server logs and memory monitoring are not collected.
+   - External server PID discovery and Adopt External Server remain out of scope.
+4. Preserve product boundaries.
+   - Direct Mode is maintained.
+   - No Proxy mode.
+   - No Chat UI.
+   - No multi-backend wrapper behavior.
+   - Detection uses `/v1/models` only.
+
 ## Later
 
 - Unit tests for services where practical.

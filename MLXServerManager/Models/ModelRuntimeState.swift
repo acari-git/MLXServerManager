@@ -8,6 +8,7 @@ enum ModelRuntimeState: Hashable {
     case checkingPort(host: String, port: Int)
     case portAvailable(host: String, port: Int)
     case portBusy(host: String, port: Int)
+    case externalServerDetected(host: String, port: Int, baseURL: String, message: String)
     case portCheckFailed(host: String, port: Int, message: String)
     case checkingReady(host: String, port: Int)
     case ready(host: String, port: Int, processIdentifier: Int32?)
@@ -31,6 +32,8 @@ enum ModelRuntimeState: Hashable {
             "Port Available"
         case .portBusy:
             "Port Busy"
+        case .externalServerDetected:
+            "External Server Detected"
         case .portCheckFailed:
             "Port Check Failed"
         case .checkingReady:
@@ -62,6 +65,8 @@ enum ModelRuntimeState: Hashable {
             "\(host):\(port) is available for mlx_lm.server launch."
         case let .portBusy(host, port):
             "\(host):\(port) is already in use. Start will not launch a second server on this port."
+        case let .externalServerDetected(host, port, baseURL, message):
+            "\(message) \(baseURL) is ready at \(host):\(port). This server was not started by MLX Server Manager."
         case let .portCheckFailed(host, port, message):
             "Could not check \(host):\(port): \(message)"
         case let .checkingReady(host, port):
@@ -97,6 +102,8 @@ enum ModelRuntimeState: Hashable {
             "\(host):\(port)"
         case let .portBusy(host, port):
             "\(host):\(port)"
+        case let .externalServerDetected(host, port, _, _):
+            "\(host):\(port), external"
         case let .portCheckFailed(host, port, _):
             "\(host):\(port)"
         case let .checkingReady(host, port):
@@ -122,13 +129,21 @@ enum ModelRuntimeState: Hashable {
             "stopped"
         case .starting, .loading, .checkingPort, .checkingReady:
             "starting"
-        case .ready:
+        case .ready, .externalServerDetected:
             "ready"
         case .stopping:
             "stopping"
         case .portBusy, .portCheckFailed, .readyCheckFailed, .error, .unknown:
             "failed"
         }
+    }
+
+    var isExternalServerDetected: Bool {
+        if case .externalServerDetected = self {
+            return true
+        }
+
+        return false
     }
 
 }

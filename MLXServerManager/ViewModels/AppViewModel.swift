@@ -118,6 +118,10 @@ final class AppViewModel: ObservableObject {
     }
 
     var memoryUsageText: String {
+        if runtimeState.isExternalServerDetected {
+            return "Memory: Not available for external server"
+        }
+
         guard let memoryUsageGB else {
             return "Memory: Not running"
         }
@@ -168,6 +172,18 @@ final class AppViewModel: ObservableObject {
         processManager.managedProcessIdentifier != nil
     }
 
+    var isExternalServerDetected: Bool {
+        runtimeState.isExternalServerDetected
+    }
+
+    var canStopManagedServer: Bool {
+        processManager.managedProcessIdentifier != nil
+    }
+
+    var canRestartManagedServer: Bool {
+        processManager.managedProcessIdentifier != nil && !runtimeState.isExternalServerDetected
+    }
+
     func startRequested() {
         Task {
             _ = await startManagedServer(logPrefix: "start")
@@ -177,8 +193,12 @@ final class AppViewModel: ObservableObject {
     func stopRequested() {
         guard let processIdentifier = processManager.managedProcessIdentifier else {
             clearRunningModel(logPrefix: "stop")
-            runtimeState = .stopped
-            appendLog("[stop] managed process is not running.")
+            if runtimeState.isExternalServerDetected {
+                appendLog("[stop] managed process is not running. External servers are not stopped by this app.")
+            } else {
+                runtimeState = .stopped
+                appendLog("[stop] managed process is not running.")
+            }
             return
         }
 
@@ -193,6 +213,11 @@ final class AppViewModel: ObservableObject {
     }
 
     func restartRequested() {
+        guard !runtimeState.isExternalServerDetected else {
+            appendLog("[restart] unavailable for external servers. Start a managed server only after the port is available.")
+            return
+        }
+
         guard let selectedModel else {
             let message = "No model is selected."
             runtimeState = .error(message: message)
@@ -599,6 +624,17 @@ final class AppViewModel: ObservableObject {
 
         let host = selectedModel.host
         let port = selectedModel.serverPort
+        if let processIdentifier = processManager.managedProcessIdentifier {
+            let message = "A managed mlx_lm.server process is already running with pid \(processIdentifier)."
+            runtimeState = .ready(
+                host: host,
+                port: port,
+                processIdentifier: processIdentifier
+            )
+            appendLog("[\(logPrefix)] failed: \(message)")
+            return false
+        }
+
         let advancedValidation = validatedAdvancedLaunchOptions(selectedModel.advancedLaunchOptions ?? .empty)
         guard case let .valid(advancedLaunchOptions) = advancedValidation else {
             if case let .invalid(message) = advancedValidation {
@@ -616,8 +652,13 @@ final class AppViewModel: ObservableObject {
         case .available:
             appendLog("[\(logPrefix)] port available: \(host):\(port)")
         case .busy:
+            appendLog("[\(logPrefix)] port occupied: \(host):\(port)")
+            if await detectExternalServer(host: host, port: port, logPrefix: logPrefix) {
+                return false
+            }
+
             runtimeState = .portBusy(host: host, port: port)
-            appendLog("[\(logPrefix)] port busy: \(host):\(port). Start cancelled.")
+            appendLog("[\(logPrefix)] port occupied and no compatible /v1/models endpoint detected.")
             return false
         case let .invalidInput(message):
             runtimeState = .portCheckFailed(host: host, port: port, message: message)
@@ -708,11 +749,20 @@ final class AppViewModel: ObservableObject {
     ) {
         switch result {
         case let .ready(url, statusCode):
-            runtimeState = .ready(
-                host: fallbackHost,
-                port: fallbackPort,
-                processIdentifier: processManager.managedProcessIdentifier
-            )
+            if runtimeState.isExternalServerDetected {
+                runtimeState = .externalServerDetected(
+                    host: fallbackHost,
+                    port: fallbackPort,
+                    baseURL: "http://\(fallbackHost):\(fallbackPort)/v1",
+                    message: "An OpenAI-compatible server appears to be running on this host/port."
+                )
+            } else {
+                runtimeState = .ready(
+                    host: fallbackHost,
+                    port: fallbackPort,
+                    processIdentifier: processManager.managedProcessIdentifier
+                )
+            }
             appendLog("[ready] ready: \(url.absoluteString) returned HTTP \(statusCode)")
         case let .notReady(url, statusCode):
             runtimeState = .readyCheckFailed(
@@ -896,6 +946,8 @@ final class AppViewModel: ObservableObject {
              let .portBusy(host, port),
              let .checkingReady(host, port):
             return (host, port)
+        case let .externalServerDetected(host, port, _, _):
+            return (host, port)
         case let .loading(host, port, _),
              let .ready(host, port, _):
             return (host, port)
@@ -921,7 +973,50 @@ final class AppViewModel: ObservableObject {
         }
 
         appendLog("[model] selected modelID: \(selectedModel.modelID)")
+        if runtimeState.isExternalServerDetected {
+            runtimeState = .stopped
+            appendLog("[model] external server detection cleared after model selection changed.")
+        }
         logRestartRequiredIfNeeded()
+    }
+
+    private func detectExternalServer(
+        host: String,
+        port: Int,
+        logPrefix: String
+    ) async -> Bool {
+        let baseURL = "http://\(host):\(port)/v1"
+        appendLog("[\(logPrefix)] checking for external OpenAI-compatible server at \(baseURL)/models")
+
+        let result = await readyChecker.check(host: host, port: port)
+
+        switch result {
+        case let .ready(url, statusCode):
+            stopMemoryMonitoring()
+            clearRunningModel(logPrefix: logPrefix)
+            let message = "An OpenAI-compatible server appears to be running on this host/port."
+            runtimeState = .externalServerDetected(
+                host: host,
+                port: port,
+                baseURL: baseURL,
+                message: message
+            )
+            appendLog("[\(logPrefix)] external server detected: \(url.absoluteString) returned HTTP \(statusCode)")
+            appendLog("[\(logPrefix)] not launching managed process.")
+            return true
+        case let .notReady(url, statusCode):
+            appendLog("[\(logPrefix)] external server check not ready: \(url.absoluteString) returned HTTP \(statusCode)")
+            return false
+        case let .invalidInput(message):
+            appendLog("[\(logPrefix)] external server check failed: \(message)")
+            return false
+        case let .failed(url, message):
+            appendLog("[\(logPrefix)] external server check failed for \(url?.absoluteString ?? "\(host):\(port)"): \(message)")
+            return false
+        case let .timedOut(url):
+            appendLog("[\(logPrefix)] external server check timed out: \(url.absoluteString)")
+            return false
+        }
     }
 
     private func setRunningModelID(_ modelID: ModelConfig.ID, logPrefix: String) {

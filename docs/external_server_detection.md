@@ -6,6 +6,19 @@ External Server Detection is a planned Direct Mode improvement for cases where a
 
 The first implementation should be detect-only. It should help users understand why a port is busy and whether the existing service appears usable as an OpenAI-compatible endpoint, without taking ownership of that process.
 
+## Implementation Status
+
+v1.5.0 implements the initial detect-only behavior.
+
+- When Start sees the selected host and port are occupied, it checks `GET /v1/models` before reporting a plain port conflict.
+- If `/v1/models` returns HTTP 200, the app shows External Server Detected.
+- The app does not launch a managed process in that case.
+- The app does not collect external server logs.
+- The app does not monitor external server memory usage.
+- Stop and Restart remain unavailable for external servers.
+- Connection Settings remain available and continue to use the selected model profile.
+- Adopt External Server is still future work.
+
 ## Problem Statement
 
 Today, a busy port blocks Start. That is safe, but it does not explain whether the busy port is caused by:

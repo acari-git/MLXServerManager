@@ -23,10 +23,12 @@ struct MenuBarView: View {
             Button("Stop") {
                 viewModel.stopRequested()
             }
+            .disabled(!viewModel.canStopManagedServer)
 
             Button("Restart") {
                 viewModel.restartRequested()
             }
+            .disabled(!viewModel.canRestartManagedServer)
 
             Button("Run Diagnostics") {
                 viewModel.runDiagnosticsRequested()

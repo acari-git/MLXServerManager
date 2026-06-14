@@ -6,6 +6,9 @@ struct StatusPanelView: View {
     let selectedModelText: String
     let runningModelText: String
     let restartRequired: Bool
+    let isExternalServerDetected: Bool
+    let canStopManagedServer: Bool
+    let canRestartManagedServer: Bool
     let onCheckPort: () -> Void
     let onCheckReady: () -> Void
     let onStart: () -> Void
@@ -25,6 +28,9 @@ struct StatusPanelView: View {
                     runningModelBadge
                     if restartRequired {
                         restartRequiredBadge
+                    }
+                    if isExternalServerDetected {
+                        externalServerBadge
                     }
                 }
 
@@ -54,12 +60,14 @@ struct StatusPanelView: View {
                 } label: {
                     Label("Stop", systemImage: "stop.fill")
                 }
+                .disabled(!canStopManagedServer)
 
                 Button {
                     onRestart()
                 } label: {
                     Label("Restart", systemImage: "arrow.clockwise")
                 }
+                .disabled(!canRestartManagedServer)
             }
         }
         .panelStyle()
@@ -106,6 +114,19 @@ struct StatusPanelView: View {
             .foregroundStyle(.orange)
     }
 
+    private var externalServerBadge: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Label("External server detected", systemImage: "network")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.orange)
+            Text("This server was not started by MLX Server Manager.")
+            Text("Stop and Restart are unavailable for external servers.")
+            Text("Use connection settings to connect a client to this endpoint.")
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+
     private var indicatorColor: Color {
         switch runtimeState {
         case .stopped:
@@ -115,6 +136,8 @@ struct StatusPanelView: View {
         case .portAvailable, .ready:
             .green
         case .checkingReady:
+            .orange
+        case .externalServerDetected:
             .orange
         case .portBusy, .portCheckFailed, .readyCheckFailed, .error:
             .red
