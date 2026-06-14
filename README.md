@@ -12,6 +12,12 @@ OpenAI-compatible client -> mlx_lm.server
 
 MLX Server Manager controls and observes the managed local server process, but it does not enter the inference request path. OpenAI-compatible clients connect directly to `mlx_lm.server`.
 
+## Screenshot
+
+![MLX Server Manager main window](screenshots/main-window.png)
+
+MLX Server Manager provides a local Direct Mode control surface for managing `mlx_lm.server`, checking status, viewing logs, and copying OpenAI-compatible connection settings.
+
 ## Why This Project Exists
 
 `mlx_lm.server` is fast and simple, but day-to-day local use benefits from a small GUI around process management, diagnostics, model profiles, logs, memory display, and connection settings.

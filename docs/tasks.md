@@ -614,6 +614,8 @@
    - Clarify supported OpenAI-compatible client context.
    - Clarify current binary asset and docs-only release history.
    - Add AI-assisted maintenance notes.
+   - Add README screenshot.
+   - Improve public repository presentation.
 2. Add contribution guidance.
    - Add `CONTRIBUTING.md`.
    - Document project scope, Direct Mode boundary, welcome contributions, out-of-scope changes, development safety rules, repository hygiene, basic checks, and human-reviewed AI-assisted workflow.
@@ -623,6 +625,7 @@
 4. Add public release checklist.
    - Add `docs/public_release_checklist.md`.
    - Include secrets check, tracked file check, personal path check, binary artifact check, README check, release check, screenshot check, GitHub repo settings check, recommended topics, and Codex OSS readiness notes.
+   - Confirm README screenshot is checked for secrets, personal paths, and public display safety.
 5. Keep v1.0.4 docs-only.
    - No app code changes.
    - No Swift changes.

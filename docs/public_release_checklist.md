@@ -11,6 +11,7 @@ Use this checklist before making the repository public or announcing a release m
 - Confirm the app is not described as a Chat UI, inference proxy, or multi-backend wrapper.
 - Confirm the current binary asset is identified correctly.
 - Confirm docs-only releases are not described as new app binaries.
+- Confirm the README screenshot is displayed and points to `screenshots/main-window.png`.
 
 ## Secrets Check
 
@@ -74,9 +75,11 @@ Confirm these are not committed:
 
 Before publishing screenshots:
 
+- Confirm the README screenshot has been added.
 - Do not show tokens, local secrets, or private paths.
 - Do not show private model directories.
 - Do not show private logs.
+- Confirm the screenshot is safe for public repository display.
 - Prefer sample model IDs and local loopback URLs.
 - Confirm screenshots do not imply Chat UI, proxy behavior, or multi-backend support.
 
