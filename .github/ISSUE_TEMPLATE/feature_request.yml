@@ -1,0 +1,73 @@
+name: Feature request
+description: Suggest an improvement for MLX Server Manager
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. MLX Server Manager is a Direct Mode control surface for `mlx_lm.server`.
+
+        It manages local server process configuration and status, but it does not proxy inference requests, provide a Chat UI, or act as a multi-backend wrapper.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Briefly describe the requested improvement.
+      placeholder: What should be improved?
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: What workflow or problem would this improve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_behavior
+    attributes:
+      label: Proposed behavior
+      description: Describe the behavior you would like to see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: project_fit
+    attributes:
+      label: Why this belongs in MLX Server Manager
+      description: Explain why this fits the app's process management, diagnostics, profile, logging, memory, or connection-settings scope.
+    validations:
+      required: true
+
+  - type: textarea
+    id: direct_mode_boundary
+    attributes:
+      label: Direct Mode boundary check
+      description: The project manages `mlx_lm.server` and does not proxy inference. Explain whether this preserves Direct Mode.
+      value: |
+        - Does this preserve Direct Mode? yes/no/not sure
+        - Does this avoid proxying inference requests? yes/no/not sure
+        - Does this avoid adding a Chat UI or multi-backend wrapper behavior? yes/no/not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional alternatives, workarounds, or reasons this should not live in another tool.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add screenshots, mockups, links, or extra context if useful. Do not include secrets.
+    validations:
+      required: false

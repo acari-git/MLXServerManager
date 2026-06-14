@@ -786,6 +786,22 @@
    - No multi-backend wrapper behavior.
    - Detection uses `/v1/models` only.
 
+## v1.5.1 Completed: GitHub Issue Templates
+
+1. Add GitHub issue templates.
+   - Add `.github/ISSUE_TEMPLATE/bug_report.yml`.
+   - Add `.github/ISSUE_TEMPLATE/feature_request.yml`.
+   - Add `.github/ISSUE_TEMPLATE/config.yml`.
+2. Keep this repo maintenance scoped to docs/config only.
+   - No Swift changes.
+   - No app code changes.
+   - No Xcode project changes.
+   - No new app binary, zip asset, `.dSYM`, or DerivedData.
+3. Preserve product boundaries.
+   - Direct Mode boundary is reflected in feature requests.
+   - Issue templates do not frame Proxy mode, Chat UI, or multi-backend wrapper behavior as default directions.
+   - Bug reports ask users to remove personal paths, tokens, API keys, and secrets before posting.
+
 ## Later
 
 - Unit tests for services where practical.

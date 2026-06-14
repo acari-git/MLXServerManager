@@ -1,0 +1,102 @@
+name: Bug report
+description: Report a reproducible problem with MLX Server Manager
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please include enough local context to reproduce the issue.
+
+        Before posting logs or screenshots, remove personal paths, tokens, API keys, secrets, and private model locations.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Briefly describe the problem.
+      placeholder: What went wrong?
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include the relevant local environment details.
+      value: |
+        - macOS version:
+        - Apple Silicon chip / memory:
+        - MLX Server Manager version:
+        - mlx-lm version:
+        - Python / virtualenv setup, if relevant:
+    validations:
+      required: true
+
+  - type: textarea
+    id: model_server_configuration
+    attributes:
+      label: Model / server configuration
+      description: Include the model and endpoint setup. Do not include secrets or private paths.
+      value: |
+        - Model ID:
+        - Host / port:
+        - Advanced Launch Options used? yes/no
+        - Server ownership: managed by MLX Server Manager / detected as external / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps_to_reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Provide safe, minimal steps that reproduce the problem.
+      placeholder: |
+        1. Open the app
+        2. Configure ...
+        3. Press ...
+        4. See ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: Actual behavior
+      description: What actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Paste relevant MLX Server Manager logs. Remove personal paths, tokens, API keys, and secrets before posting.
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Optional screenshots. Remove private information before attaching.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Anything else that may help reproduce or understand the issue.
+    validations:
+      required: false

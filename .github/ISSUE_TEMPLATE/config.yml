@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+  - name: README / Quick Start
+    url: https://github.com/acari-git/MLXServerManager
+    about: Start here for setup, Direct Mode scope, and first-run guidance.
+  - name: Releases
+    url: https://github.com/acari-git/MLXServerManager/releases
+    about: Download unsigned local-use app assets and read release notes.
+  - name: Security policy
+    url: https://github.com/acari-git/MLXServerManager/blob/main/SECURITY.md
+    about: Read security reporting guidance before posting sensitive information.
+  - name: Hermes Agent / OpenAI-compatible connection guide
+    url: https://github.com/acari-git/MLXServerManager/blob/main/docs/hermes_agent_connection.md
+    about: Configure Hermes Agent or another OpenAI-compatible client for Direct Mode use.
+  - name: Advanced Launch Options docs
+    url: https://github.com/acari-git/MLXServerManager/blob/main/docs/advanced_launch_options.md
+    about: Learn how optional per-profile launch arguments are intended to work.
