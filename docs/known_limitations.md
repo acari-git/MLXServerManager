@@ -39,6 +39,10 @@ This document lists known v1.0 limitations for MLX Server Manager.
 - Ready Check uses `/v1/models` only.
 - The app does not test `/v1/chat/completions`.
 - The app does not run model inference.
+- Local benchmark results are workload-dependent.
+- MLX Server Manager does not guarantee faster performance than oMLX or other backends.
+- Advanced `mlx_lm.server` options are not enabled by default.
+- The app does not proxy inference requests.
 - Qwen thinking behavior is a client/request-side concern.
 - The app does not optimize inference.
 - The app does not alter the MLX performance path.

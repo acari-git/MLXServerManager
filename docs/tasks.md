@@ -575,6 +575,36 @@
    - No Swift code changes, UI changes, new features, Xcode project changes, app binaries, zip creation, or tag creation.
    - Proxy, Chat UI, model downloader, auto updater, notarization, DMG, CI/CD, and GitHub Actions remain out of scope.
 
+## v1.0.3 Planned: Benchmark-Informed Documentation Update
+
+1. Add benchmark findings.
+   - Add `docs/benchmark_findings.md`.
+   - Summarize workload-dependent benchmark results for oMLX and pure `mlx_lm.server`.
+   - State that MLX Server Manager does not claim to be faster than oMLX in every workload.
+2. Add README link.
+   - Link to benchmark-informed product direction from the README.
+   - Keep the README wording modest and direct.
+3. Update known limitations.
+   - State that local benchmarks are workload-dependent.
+   - State that MLX Server Manager does not guarantee faster performance than oMLX or other backends.
+   - State that Advanced `mlx_lm.server` options are not enabled by default.
+   - State that the app does not proxy inference requests.
+4. Keep v1.0.3 docs-only.
+   - No app code changes.
+   - No Swift changes.
+   - No Xcode project changes.
+   - No new `.app`, `.zip`, `.dSYM`, DerivedData, or release asset.
+   - Direct Mode is maintained.
+5. Keep Advanced Launch Options future optional work.
+   - v1.1 candidate: Advanced Launch Options design.
+   - Future optional controls may include raw extra launch args, chat template args, prompt cache related options, prefill/decode/concurrency related options, command preview, and validation.
+   - Aggressive defaults are avoided.
+6. Keep deferred architecture out of scope.
+   - Proxy mode remains deferred.
+   - Chat UI remains deferred.
+   - Multi-backend wrapper behavior remains deferred.
+   - Automatic tuning remains deferred.
+
 ## Later
 
 - Unit tests for services where practical.

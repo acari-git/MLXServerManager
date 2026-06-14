@@ -37,6 +37,8 @@ You must provide your own `mlx-lm` environment, `mlx_lm.server` executable, and 
 
 See [docs/distribution.md](docs/distribution.md) for release asset and Gatekeeper details, and [docs/known_limitations.md](docs/known_limitations.md) for the full stable-scope boundary.
 
+See [docs/benchmark_findings.md](docs/benchmark_findings.md) for benchmark-informed notes on Direct Mode, long-context workloads, streaming TTFT, and future optional Advanced Launch Options.
+
 ## Target Users
 
 - macOS users running local MLX / `mlx-lm`.
