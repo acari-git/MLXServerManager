@@ -705,6 +705,26 @@
    - No app-executed `/v1/chat/completions`.
    - No new app binary or release asset in this polish step.
 
+## v1.2.2 Completed: Advanced Launch Options README and Docs Polish
+
+1. Add Advanced Launch Options screenshot to README.
+   - Use `screenshots/advanced-launch-options.png`.
+   - Explain Copy Preview, Clear Advanced Options, validation, and simple launch preservation.
+2. Expand Advanced Launch Options docs.
+   - Add screenshot section.
+   - Document Copy Preview and Clear Advanced Options.
+   - Document validation examples.
+   - Clarify that raw extra args are expert-only.
+3. Keep this step docs-only.
+   - No Swift changes.
+   - No Xcode project changes.
+   - No new app binary, zip asset, `.dSYM`, or DerivedData.
+4. Preserve product boundaries.
+   - Direct Mode is maintained.
+   - No Proxy mode.
+   - No Chat UI.
+   - No multi-backend wrapper behavior.
+
 ## Later
 
 - Unit tests for services where practical.

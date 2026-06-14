@@ -18,6 +18,14 @@ MLX Server Manager controls and observes the managed local server process, but i
 
 MLX Server Manager provides a local Direct Mode control surface for managing `mlx_lm.server`, checking status, viewing logs, and copying OpenAI-compatible connection settings.
 
+### Advanced Launch Options
+
+![Advanced Launch Options editor](screenshots/advanced-launch-options.png)
+
+Advanced Launch Options are optional per-profile settings for users who want to experiment with `mlx_lm.server` launch arguments. Leave fields empty to use `mlx_lm.server` defaults and preserve the simple launch command. The editor includes Copy Preview, Clear Advanced Options, and validation for common numeric and JSON inputs.
+
+These options only affect the managed `mlx_lm.server` launch command. MLX Server Manager remains Direct Mode and does not proxy inference requests.
+
 ## Why This Project Exists
 
 `mlx_lm.server` is fast and simple, but day-to-day local use benefits from a small GUI around process management, diagnostics, model profiles, logs, memory display, and connection settings.

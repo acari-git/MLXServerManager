@@ -47,6 +47,12 @@ OpenAI-compatible client -> mlx_lm.server -> MLX model
 
 The app may build and preview the command used to start `mlx_lm.server`, but it must not enter the inference request path.
 
+## Screenshot
+
+![Advanced Launch Options editor](../screenshots/advanced-launch-options.png)
+
+The Advanced Launch Options disclosure lives in the Model Profile Editor. It is intended for optional, workload-dependent launch tuning while preserving Direct Mode.
+
 ## Why Advanced Launch Options Should Be Optional
 
 Recent benchmark work showed that pure `mlx_lm.server` can be strong for long-context, prompt-cache-style, and streaming TTFT workloads. It also showed that performance depends on workload, and earlier aggressive advanced launch option tests did not show clear improvement.
@@ -101,6 +107,26 @@ Design direction:
 - Keep Connection Settings tied to the selected model profile.
 
 The UI should not imply that enabling advanced options guarantees better performance.
+
+## Copy Preview
+
+Copy Preview copies the launch command preview shown in the editor.
+
+The preview is generated from the same `ModelProcessManager` argument builder used for launch. It should therefore reflect the simple launch command plus only the advanced fields that are explicitly set.
+
+The preview is for review and manual inspection. Copying it does not start `mlx_lm.server` and does not send inference requests.
+
+## Clear Advanced Options
+
+Clear Advanced Options resets the draft advanced fields to empty values.
+
+After clearing, the command preview returns to the simple launch shape:
+
+```text
+<mlxServerExecutablePath> --model <modelID> --host <host> --port <port>
+```
+
+This keeps the default behavior easy to recover. Empty values are omitted from `mlx_lm.server` arguments.
 
 ## Data Model Design
 
@@ -160,6 +186,13 @@ Recommended validation:
 - Do not launch if validation fails.
 
 Validation should be conservative. If an option is not understood well enough to validate safely, it should remain unset or be treated as expert raw input with a clear warning.
+
+Validation examples:
+
+- Temperature, Top P, and Min P must be between `0` and `1`.
+- Top K, Max Tokens, Decode Concurrency, Prompt Concurrency, Prefill Step Size, Prompt Cache Size, and Prompt Cache Bytes must be positive integers.
+- Chat Template Args must be valid JSON when set.
+- Raw Extra Args are expert-only and are appended last only when explicitly set.
 
 ## Safety Boundaries
 
