@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ModelProfileEditorView: View {
     @Binding var draft: ModelProfileDraft
+    @State private var advancedOptionsStatus: String?
+
     let title: String
     let saveButtonTitle: String
     let noticeMessage: String?
@@ -9,6 +11,7 @@ struct ModelProfileEditorView: View {
     let runtimeFieldsLocked: Bool
     let onSave: () -> Void
     let onCancel: () -> Void
+    let onCopyPreview: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -197,8 +200,27 @@ struct ModelProfileEditorView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Launch Command Preview")
-                            .font(.callout.weight(.medium))
+                        HStack {
+                            Text("Launch Command Preview")
+                                .font(.callout.weight(.medium))
+
+                            Spacer()
+
+                            Button {
+                                onCopyPreview(launchCommandPreview)
+                                advancedOptionsStatus = "Preview copied."
+                            } label: {
+                                Label("Copy Preview", systemImage: "doc.on.doc")
+                            }
+                            .disabled(!canCopyLaunchCommandPreview)
+
+                            Button {
+                                draft.advancedLaunchOptions = .empty
+                                advancedOptionsStatus = "Advanced options cleared."
+                            } label: {
+                                Label("Clear Advanced Options", systemImage: "clear")
+                            }
+                        }
 
                         Text(launchCommandPreview)
                             .font(.system(.caption, design: .monospaced))
@@ -207,6 +229,12 @@ struct ModelProfileEditorView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Color(nsColor: .textBackgroundColor))
                             .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                        if let advancedOptionsStatus {
+                            Text(advancedOptionsStatus)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 .padding(.top, 8)
@@ -255,22 +283,32 @@ struct ModelProfileEditorView: View {
     }
 
     private var launchCommandPreview: String {
+        guard let request = launchCommandPreviewRequest else {
+            return "Complete Model ID, Host, and Port to preview the launch command."
+        }
+
+        return ModelProcessManager.commandPreview(for: request, executablePath: "mlx_lm.server")
+    }
+
+    private var canCopyLaunchCommandPreview: Bool {
+        launchCommandPreviewRequest != nil
+    }
+
+    private var launchCommandPreviewRequest: ModelLaunchRequest? {
         let modelID = draft.modelID.trimmingCharacters(in: .whitespacesAndNewlines)
         let host = draft.host.trimmingCharacters(in: .whitespacesAndNewlines)
         let portText = draft.serverPortText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !modelID.isEmpty, !host.isEmpty, let port = Int(portText) else {
-            return "Complete Model ID, Host, and Port to preview the launch command."
+            return nil
         }
 
-        let request = ModelLaunchRequest(
+        return ModelLaunchRequest(
             executablePath: "mlx_lm.server",
             modelID: modelID,
             host: host,
             port: port,
             advancedLaunchOptions: draft.advancedLaunchOptions.normalized()
         )
-
-        return ModelProcessManager.commandPreview(for: request, executablePath: "mlx_lm.server")
     }
 }

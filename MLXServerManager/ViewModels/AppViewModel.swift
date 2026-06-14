@@ -549,6 +549,14 @@ final class AppViewModel: ObservableObject {
         appendLog("[ui] Copied OpenAI-compatible curl /v1/chat/completions command.")
     }
 
+    func copyLaunchCommandPreview(_ preview: String) {
+        if copyToPasteboard(preview) {
+            appendLog("[profile] copied launch command preview to clipboard.")
+        } else {
+            appendLog("[profile] failed to copy launch command preview.")
+        }
+    }
+
     func clearLogsRequested() {
         logBuffer.clear()
         syncLogText()
@@ -1122,7 +1130,7 @@ final class AppViewModel: ObservableObject {
             }
 
             guard let doubleValue = Double(value), (0...1).contains(doubleValue) else {
-                return .invalid("\(label) must be a number between 0 and 1.")
+                return .invalid("\(label) must be between 0 and 1.")
             }
         }
 

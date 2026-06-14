@@ -9,6 +9,7 @@ This document defines the planned v1.1 design direction for optional Advanced La
 - The default simple launch remains unchanged when advanced fields are empty.
 - Empty advanced values are omitted from `mlx_lm.server` arguments.
 - Advanced options remain workload-dependent and are not enabled by default.
+- v1.2.1 adds Copy Preview, Clear Advanced Options, and clearer validation messages.
 
 ## Overview
 
@@ -93,7 +94,9 @@ Design direction:
 - Show "Leave empty to use mlx_lm.server defaults."
 - Show "Advanced options are workload-dependent and may not improve performance."
 - Treat raw extra args as expert-only.
-- Show a command preview in a future step.
+- Show a command preview from the same argument builder used for launch.
+- Provide Copy Preview so users can copy the exact displayed command.
+- Provide Clear Advanced Options so users can quickly return the draft to simple launch behavior.
 - Keep Start / Stop / Restart controls unchanged.
 - Keep Connection Settings tied to the selected model profile.
 

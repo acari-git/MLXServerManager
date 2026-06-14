@@ -73,7 +73,8 @@ struct ContentView: View {
                                 message: viewModel.profileEditorMessage,
                                 runtimeFieldsLocked: viewModel.isManagedProcessRunning,
                                 onSave: viewModel.saveProfileEditing,
-                                onCancel: viewModel.cancelProfileEditing
+                                onCancel: viewModel.cancelProfileEditing,
+                                onCopyPreview: viewModel.copyLaunchCommandPreview
                             )
                         }
 
@@ -88,7 +89,8 @@ struct ContentView: View {
                                 message: viewModel.addProfileMessage,
                                 runtimeFieldsLocked: false,
                                 onSave: viewModel.saveNewProfile,
-                                onCancel: viewModel.cancelAddProfile
+                                onCancel: viewModel.cancelAddProfile,
+                                onCopyPreview: viewModel.copyLaunchCommandPreview
                             )
                         }
 
