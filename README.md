@@ -70,6 +70,8 @@ See [docs/benchmark_findings.md](docs/benchmark_findings.md) for benchmark-infor
 
 Advanced Launch Options are optional, per-profile user-tunable settings. They are empty by default and omitted from launch arguments unless explicitly set. See [docs/advanced_launch_options.md](docs/advanced_launch_options.md) for design notes and safety boundaries.
 
+Future external server detection is documented in [docs/external_server_detection.md](docs/external_server_detection.md). The goal is to detect existing OpenAI-compatible servers on the selected host/port without taking ownership of external processes.
+
 ## Current Binary Asset
 
 The current app binary asset is still:

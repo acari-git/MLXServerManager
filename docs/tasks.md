@@ -745,6 +745,25 @@
    - No Chat UI.
    - No multi-backend wrapper behavior.
 
+## v1.4.0 Completed: External Server Detection Design
+
+1. Add external server detection design docs.
+   - Add `docs/external_server_detection.md`.
+   - Document managed server versus external server ownership.
+   - Document conservative detection through `GET /v1/models`.
+   - Document UI states for port conflict and external server detected.
+2. Keep this step docs-only.
+   - No Swift changes.
+   - No Xcode project changes.
+   - No new app binary, zip asset, `.dSYM`, or DerivedData.
+3. Preserve Direct Mode.
+   - MLX Server Manager remains outside the inference request path.
+   - Detection does not add Proxy mode, Chat UI, or multi-backend wrapper behavior.
+4. Preserve external process ownership boundaries.
+   - External processes are not managed by the app.
+   - Stop and Restart remain scoped to app-managed processes.
+   - External server detection is status and connection-setting support only.
+
 ## Later
 
 - Unit tests for services where practical.
