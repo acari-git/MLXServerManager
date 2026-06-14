@@ -1,8 +1,8 @@
 # MLX Server Manager
 
-MLX Server Manager is a macOS SwiftUI app for starting, stopping, restarting, monitoring, and configuring a local `mlx_lm.server` process.
+MLX Server Manager is a lightweight macOS SwiftUI GUI for managing pure `mlx_lm.server` on Apple Silicon in Direct Mode.
 
-It is a pure `mlx_lm.server` manager. It is not a chat UI, not a proxy, and not a wrapper for LM Studio, Ollama, llama.cpp, or another inference backend.
+It helps Apple Silicon users expose local MLX models as OpenAI-compatible endpoints for local agent tools while keeping the inference path direct.
 
 The app keeps Direct Mode:
 
@@ -11,6 +11,21 @@ OpenAI-compatible client -> mlx_lm.server
 ```
 
 MLX Server Manager controls and observes the managed local server process, but it does not enter the inference request path. OpenAI-compatible clients connect directly to `mlx_lm.server`.
+
+## Why This Project Exists
+
+`mlx_lm.server` is fast and simple, but day-to-day local use benefits from a small GUI around process management, diagnostics, model profiles, logs, memory display, and connection settings.
+
+MLX Server Manager exists to provide that management layer without becoming the inference layer. The goal is to make pure `mlx_lm.server` easier to operate for local OpenAI-compatible clients, especially agent tools that need a stable local endpoint.
+
+## What This Is Not
+
+- Not a chat UI.
+- Not an inference proxy.
+- Not a model downloader.
+- Not a model deletion tool.
+- Not a multi-backend wrapper.
+- Not a replacement for `mlx-lm` or model setup.
 
 ## Quick Start
 
@@ -39,11 +54,29 @@ See [docs/distribution.md](docs/distribution.md) for release asset and Gatekeepe
 
 See [docs/benchmark_findings.md](docs/benchmark_findings.md) for benchmark-informed notes on Direct Mode, long-context workloads, streaming TTFT, and future optional Advanced Launch Options.
 
+## Current Binary Asset
+
+The current app binary asset is still:
+
+- `MLXServerManager-v1.0.0-unsigned.zip`
+
+v1.0.1, v1.0.2, and v1.0.3 are documentation-only releases. They update guidance, release notes, Gatekeeper explanations, first-run flow, and benchmark-informed direction, but they do not change the app binary.
+
 ## Target Users
 
 - macOS users running local MLX / `mlx-lm`.
 - Users who want a GUI for `mlx_lm.server` Start, Stop, Restart, diagnostics, logs, model profiles, and connection settings.
 - Users of OpenAI-compatible clients such as Hermes Agent, Open WebUI, LibreChat, AnythingLLM, or custom scripts.
+
+## Supported Client Context
+
+MLX Server Manager presents connection information for OpenAI-compatible clients. Typical clients use:
+
+- Base URL: `http://127.0.0.1:8080/v1`
+- Model ID: the selected Model Profile's `modelID`
+- API key placeholder: `not-required-local`
+
+The client sends inference requests directly to `mlx_lm.server`. MLX Server Manager only starts, stops, monitors, diagnoses, and copies connection settings.
 
 ## Stable Scope
 
@@ -190,8 +223,23 @@ These files are local runtime state and should not be committed. Model directori
 
 Do not hardcode user-specific absolute paths in source code or committed documentation.
 
+## AI-Assisted Maintenance
+
+This project is maintained with human-reviewed AI assistance for planning, documentation, implementation, and release preparation. AI-generated changes should remain small, reviewable, and consistent with the Direct Mode product boundary.
+
+All changes should be reviewed for:
+
+- No secrets.
+- No local personal paths.
+- No model files or runtime settings.
+- No app bundles or build artifacts.
+- No expansion into Chat UI, inference proxy behavior, or multi-backend wrapper behavior.
+
 ## Documentation
 
+- Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Security: [SECURITY.md](SECURITY.md)
+- Public release checklist: [docs/public_release_checklist.md](docs/public_release_checklist.md)
 - Stable scope: [docs/stable_scope.md](docs/stable_scope.md)
 - Known limitations: [docs/known_limitations.md](docs/known_limitations.md)
 - v1.0 plan: [docs/v1.0_plan.md](docs/v1.0_plan.md)

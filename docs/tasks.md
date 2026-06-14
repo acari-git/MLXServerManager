@@ -605,6 +605,32 @@
    - Multi-backend wrapper behavior remains deferred.
    - Automatic tuning remains deferred.
 
+## v1.0.4 Planned: Public Repository Readiness Documentation
+
+1. Improve README for public visitors.
+   - Clarify OSS-facing project purpose.
+   - Add or improve Why this project exists.
+   - Add or improve What this is not.
+   - Clarify supported OpenAI-compatible client context.
+   - Clarify current binary asset and docs-only release history.
+   - Add AI-assisted maintenance notes.
+2. Add contribution guidance.
+   - Add `CONTRIBUTING.md`.
+   - Document project scope, Direct Mode boundary, welcome contributions, out-of-scope changes, development safety rules, repository hygiene, basic checks, and human-reviewed AI-assisted workflow.
+3. Add security policy.
+   - Add `SECURITY.md`.
+   - Document latest-release best effort support, security reporting, local-only assumptions, unsigned app warnings, secrets/log safety, artifact safety, process safety, and inference boundary.
+4. Add public release checklist.
+   - Add `docs/public_release_checklist.md`.
+   - Include secrets check, tracked file check, personal path check, binary artifact check, README check, release check, screenshot check, GitHub repo settings check, recommended topics, and Codex OSS readiness notes.
+5. Keep v1.0.4 docs-only.
+   - No app code changes.
+   - No Swift changes.
+   - No Xcode project changes.
+   - No new `.app`, `.zip`, `.dSYM`, DerivedData, or release asset.
+   - Direct Mode is maintained.
+   - Proxy mode, Chat UI, model downloader, model deletion, and multi-backend wrapper behavior remain out of scope.
+
 ## Later
 
 - Unit tests for services where practical.
