@@ -34,11 +34,7 @@ Expected result: empty.
 
 ## Personal Path Check
 
-Run:
-
-```sh
-grep -R -n "/Users/" README.md docs AGENTS.md MLXServerManager CONTRIBUTING.md SECURITY.md || true
-```
+Review README, docs, AGENTS.md, Swift files, CONTRIBUTING.md, and SECURITY.md for personal home-directory paths.
 
 Expected result: no committed personal fixed paths.
 

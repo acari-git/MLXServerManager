@@ -635,7 +635,6 @@
 
 - Unit tests for services where practical.
 - LAN Web UI.
-- Proxy mode as an explicit opt-in architecture.
 - Automatic unload policies.
 - More advanced resource graphs.
 - App Intents for start, stop, restart, and status.

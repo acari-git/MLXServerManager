@@ -99,12 +99,13 @@ Before asking for review, run:
 git status --short --untracked-files=all
 git diff --check
 git ls-files settings.json models.json '*.safetensors' '*.gguf' '*.bin' '.env' HF_TOKEN models logs .venv '*.app' '*.zip' '*.dSYM'
-grep -R -n "/Users/" README.md docs AGENTS.md MLXServerManager || true
 grep -R -n "pkill\\|killall\\|pgrep" MLXServerManager || true
 grep -R -n "/v1/chat/completions" MLXServerManager || true
 ```
 
 `/v1/chat/completions` may appear only in copy-helper UI or documentation for external clients. The app itself should not send inference requests.
+
+Also review README, docs, AGENTS.md, and Swift files for personal home-directory paths before committing.
 
 ## Proposing Changes
 
