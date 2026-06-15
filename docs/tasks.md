@@ -842,6 +842,27 @@
    - Detection and readiness continue to use `/v1/models`.
    - No external process kill, stop, restart, memory monitoring, or log collection.
 
+## v1.8.0 Completed: Connection Settings Polish Design
+
+1. Add Connection Settings Polish design docs.
+   - Add `docs/connection_settings_polish.md`.
+   - Define Current Connection Target summary behavior.
+   - Cover Managed Server, External Server Detected, Adopted External Server, and Not Running / Not Connected states.
+2. Keep this step docs-only.
+   - No Swift changes.
+   - No app code changes.
+   - No Xcode project changes.
+   - No new app binary, zip asset, `.dSYM`, or DerivedData.
+3. Preserve Direct Mode and ownership boundaries.
+   - Connection Settings polish is display and copy UX only.
+   - MLX Server Manager remains outside the inference request path.
+   - No inference proxy, Chat UI, or multi-backend wrapper behavior.
+   - No external process ownership changes.
+4. Define copy action direction.
+   - Copy Base URL, Model ID, API key placeholder, JSON client config, Hermes Agent config, readiness curl, OpenAI-compatible chat example, and all connection settings.
+   - Keep `/v1/chat/completions` examples as client-side helper text only.
+   - Keep copied default config free of secrets.
+
 ## Later
 
 - Unit tests for services where practical.

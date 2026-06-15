@@ -74,6 +74,8 @@ External server detection is documented in [docs/external_server_detection.md](d
 
 Adopt External Server behavior is documented in [docs/adopt_external_server.md](docs/adopt_external_server.md). v1.7.0 adds the initial implementation for explicitly adopting a detected external server as connection context only, without taking process ownership.
 
+Future Connection Settings polish is documented in [docs/connection_settings_polish.md](docs/connection_settings_polish.md). It focuses on making Managed, External Detected, and Adopted target configuration easier to understand and copy without changing the Direct Mode inference path.
+
 ## Current Binary Asset
 
 The current app binary asset is still:

@@ -22,6 +22,8 @@ v1.7.0 implements the initial Adopt External Server behavior.
 - Stop and Restart remain unavailable for external servers.
 - Connection Settings remain available and continue to use the selected model profile.
 
+Connection Settings polish is tracked separately in [connection_settings_polish.md](connection_settings_polish.md). That design focuses on making managed, detected external, and adopted external targets easier to understand and copy without changing the process ownership boundary.
+
 ## Problem Statement
 
 External Server Detection can identify that the selected host and port respond to `GET /v1/models`, but the UI still treats that state as transient detection. Users may want a clearer way to say:
