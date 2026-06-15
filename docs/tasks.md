@@ -946,6 +946,28 @@
    - No real API keys, tokens, private paths, personal home paths, or private repository URLs.
    - Use local example values such as `127.0.0.1`, port `8080`, and `not-required-local`.
 
+## v2.3.0 Completed: Onboarding / First-run Guidance Design
+
+1. Add onboarding and first-run guidance docs.
+   - Add `docs/onboarding_first_run.md`.
+   - Document first-run checklist, required setup, recommended launch flow, managed server flow, external server flow, Connection Settings flow, and Hermes Agent setup flow.
+2. Keep this step docs-only.
+   - No Swift changes.
+   - No app code changes.
+   - No Xcode project changes.
+   - No new app binary, zip asset, `.dSYM`, DerivedData, or release asset.
+3. Preserve product boundaries.
+   - Direct Mode is maintained.
+   - MLX Server Manager remains outside the inference request path.
+   - No Proxy mode, Chat UI, multi-backend wrapper behavior, model downloader, or model deleter.
+   - External process ownership boundaries remain clear.
+4. Document safe first-run concepts.
+   - `mlx_lm.server executable path`.
+   - Model Profile host, port, and model ID.
+   - `/v1/models` readiness.
+   - API key placeholder as local dummy config.
+   - Adopt External Server as connection context only.
+
 ## Later
 
 - Unit tests for services where practical.

@@ -115,6 +115,8 @@ Connection Settings polish is documented in [docs/connection_settings_polish.md]
 
 Screenshot refresh planning is documented in [docs/screenshot_refresh.md](docs/screenshot_refresh.md). Future screenshots should cover the v1.9+ Current Target summary and Adopted External Server states without exposing private paths or secrets.
 
+First-run guidance design is documented in [docs/onboarding_first_run.md](docs/onboarding_first_run.md). It outlines the setup order for `mlx_lm.server`, model profiles, readiness checks, Connection Settings, and OpenAI-compatible clients while preserving Direct Mode.
+
 ## Current Binary Asset
 
 The current downloadable app binary asset is:
@@ -323,6 +325,7 @@ All changes should be reviewed for:
 - Adopt External Server: [docs/adopt_external_server.md](docs/adopt_external_server.md)
 - Connection Settings polish: [docs/connection_settings_polish.md](docs/connection_settings_polish.md)
 - Screenshot refresh plan: [docs/screenshot_refresh.md](docs/screenshot_refresh.md)
+- Onboarding / first-run guidance: [docs/onboarding_first_run.md](docs/onboarding_first_run.md)
 - v1.0 plan: [docs/v1.0_plan.md](docs/v1.0_plan.md)
 - v1.0.1 maintenance plan: [docs/v1.0.1_maintenance.md](docs/v1.0.1_maintenance.md)
 - Requirements: [docs/requirements.md](docs/requirements.md)

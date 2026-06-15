@@ -616,6 +616,19 @@ Use this checklist for README first-run quick start maintenance.
 - Confirm Direct Mode is short and clear.
 - Confirm details link to distribution and known limitations docs.
 
+## Future Onboarding Verification
+
+- Confirm first-run empty state explains required setup.
+- Confirm missing `mlx_lm.server executable path` is actionable.
+- Confirm missing or invalid model profile fields are actionable.
+- Confirm managed server Start reaches Ready through `/v1/models`.
+- Confirm external server detection explains not-managed ownership.
+- Confirm Adopt External Server explains connection context only.
+- Confirm Connection Settings copy actions are easy to find.
+- Confirm Hermes Agent setup guidance uses OpenAI-compatible client wording.
+- Confirm chat-completions examples remain copy-only helper text.
+- Confirm Stop and Restart remain scoped to app-managed processes.
+
 ### v1.0.2 Safety
 
 - Confirm no new feature scope is introduced.
