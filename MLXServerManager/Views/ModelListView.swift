@@ -5,23 +5,53 @@ struct ModelListView: View {
     @Binding var selectedModelID: ModelConfig.ID?
     let runningModelID: ModelConfig.ID?
     let restartRequired: Bool
+    let exportSummaryText: String
+    let exportMessage: String?
     let onAddProfile: () -> Void
+    let onExportProfiles: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("Models")
-                    .font(.headline)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Models")
+                        .font(.headline)
 
-                Spacer()
+                    Spacer()
 
-                Button {
-                    onAddProfile()
-                } label: {
-                    Label("Add Profile", systemImage: "plus")
+                    Button {
+                        onAddProfile()
+                    } label: {
+                        Label("Add Profile", systemImage: "plus")
+                    }
+                    .labelStyle(.iconOnly)
+                    .help("Add Profile")
                 }
-                .labelStyle(.iconOnly)
-                .help("Add Profile")
+
+                HStack(spacing: 8) {
+                    Button {
+                        onExportProfiles()
+                    } label: {
+                        Label("Export Profiles...", systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(models.isEmpty)
+
+                    Spacer()
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(exportSummaryText)
+                    Text("Exports profile metadata only. No API keys, tokens, model weights, caches, logs, executable paths, or runtime state.")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+                if let exportMessage {
+                    Text(exportMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)

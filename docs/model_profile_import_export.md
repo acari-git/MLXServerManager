@@ -2,11 +2,33 @@
 
 ## Overview
 
-Model Profile Import / Export is a v2.6.0 docs-only design for backing up, moving, and sharing MLX Server Manager profile metadata safely.
+Model Profile Import / Export started as a v2.6.0 docs-only design for backing up, moving, and sharing MLX Server Manager profile metadata safely.
 
-The feature is not implemented yet. This document defines the intended file format, safety boundaries, UI behavior, validation policy, and test plan before implementation.
+v2.7.0 implements the Export Profiles portion only. Import Profiles, Import Preview, and conflict handling remain future work.
 
 Import and export apply only to Model Profile metadata. They do not include model weights, Hugging Face cache, local runtime settings, secrets, or app binaries.
+
+## v2.7.0 Implementation Status
+
+Implemented:
+
+- `Export Profiles...` button in the Model Profiles area.
+- Save panel with default filename `MLXServerManager-Profiles.json`.
+- JSON export document with `schemaVersion`, `app`, `exportedAt`, and `profiles`.
+- Pretty printed, sorted-key JSON with ISO 8601 dates.
+- Export of profile `name`, `modelID`, `host`, `port`, and non-empty `advancedLaunchOptions`.
+- UI privacy summary near the export button.
+- Success, cancel, and failure messages in the UI and Logs.
+
+Not implemented:
+
+- Import Profiles.
+- Import Preview.
+- Conflict handling.
+- Selecting an imported profile.
+- Model download or install automation.
+
+Export is side-effect-free with respect to server lifecycle. It does not start, stop, restart, adopt, forget, readiness-check, or send HTTP requests.
 
 ## Goals
 
@@ -136,7 +158,11 @@ Export defaults:
 
 If a future `includeExecutablePath` option is added, it should be off by default and guarded by a privacy warning.
 
+v2.7.0 exports all current in-memory Model Profiles. If the profile list is empty, Export is unavailable and no file is written.
+
 ## Import Behavior
+
+Import is not implemented in v2.7.0.
 
 Recommended flow:
 
@@ -240,6 +266,8 @@ Recommended controls:
 - Validation result list.
 - Privacy warning before export.
 
+v2.7.0 implements only `Export Profiles...` and a short always-visible privacy summary. Import UI remains future work.
+
 Export summary should show:
 
 - number of profiles,
@@ -282,6 +310,8 @@ Test cases should cover:
 - export includes schema version and app name,
 - export does not include API keys, tokens, local executable path, model weights, cache paths, or logs,
 - export includes only selected profile metadata fields,
+- export does not include adopted external server state, selected current target state, readiness results, PID, memory metrics, or runtime process state,
+- export does not start, stop, restart, adopt, forget, readiness-check, or call `/v1/models`,
 - import rejects unsupported schema versions,
 - import rejects missing or invalid profiles,
 - import preview shows valid and invalid entries,

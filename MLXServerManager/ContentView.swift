@@ -22,7 +22,10 @@ struct ContentView: View {
                     selectedModelID: $viewModel.selectedModelID,
                     runningModelID: viewModel.runningModelID,
                     restartRequired: viewModel.restartRequired,
-                    onAddProfile: viewModel.addProfileRequested
+                    exportSummaryText: viewModel.modelProfileExportSummaryText,
+                    exportMessage: viewModel.modelProfileExportMessage,
+                    onAddProfile: viewModel.addProfileRequested,
+                    onExportProfiles: viewModel.exportProfilesRequested
                 )
                 .frame(minWidth: 260, idealWidth: 300, maxWidth: 360)
 

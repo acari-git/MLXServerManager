@@ -1021,6 +1021,26 @@
    - External process ownership boundaries remain unchanged.
    - No external process kill, stop, or restart.
 
+## v2.7.0 Completed: Export Profiles Implementation
+
+1. Implement Export Profiles only.
+   - Add model profile export schema and export service.
+   - Add `Export Profiles...` button near Model Profiles.
+   - Save pretty printed JSON as `MLXServerManager-Profiles.json` by default.
+   - Show UI privacy summary and export result message.
+2. Keep Import Profiles deferred.
+   - No Import Profiles implementation.
+   - No Import Preview implementation.
+   - No conflict handling implementation.
+3. Preserve product and safety boundaries.
+   - Direct Mode is maintained.
+   - Export is profile metadata only.
+   - No model weights, caches, API keys, tokens, secrets, executable paths, runtime state, PID, memory metrics, readiness result, or adopted external state are exported.
+   - Export does not start, stop, restart, adopt, forget, readiness-check, or call external endpoints.
+   - External process ownership boundaries remain unchanged.
+4. Release note.
+   - v2.7.0 is an app-code release and requires a new app binary asset when released.
+
 ## Later
 
 - Unit tests for services where practical.

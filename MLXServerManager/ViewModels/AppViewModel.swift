@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Foundation
+import UniformTypeIdentifiers
 
 private enum ProfileValidationResult {
     case valid(ModelConfig)
@@ -36,6 +37,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var addProfileMessage: String?
     @Published var isDeleteProfileConfirmationPresented = false
     @Published private(set) var profileDeletionMessage: String?
+    @Published private(set) var modelProfileExportMessage: String?
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
@@ -43,6 +45,7 @@ final class AppViewModel: ObservableObject {
     private let processManager: ModelProcessManager
     private let memoryMonitor: MemoryMonitor
     private let setupDiagnostics: SetupDiagnostics
+    private let modelProfileExportService: ModelProfileExportService
     private var logBuffer: LogBuffer
     private var memoryMonitorTask: Task<Void, Never>?
     private var pendingDeleteModelID: ModelConfig.ID?
@@ -60,7 +63,8 @@ final class AppViewModel: ObservableObject {
         readyChecker: ReadyChecker? = nil,
         processManager: ModelProcessManager? = nil,
         memoryMonitor: MemoryMonitor? = nil,
-        setupDiagnostics: SetupDiagnostics? = nil
+        setupDiagnostics: SetupDiagnostics? = nil,
+        modelProfileExportService: ModelProfileExportService? = nil
     ) {
         self.settingsStore = settingsStore ?? SettingsStore()
         self.portChecker = portChecker ?? PortChecker()
@@ -72,6 +76,7 @@ final class AppViewModel: ObservableObject {
             portChecker: self.portChecker,
             readyChecker: self.readyChecker
         )
+        self.modelProfileExportService = modelProfileExportService ?? ModelProfileExportService()
         self.logBuffer = LogBuffer(initialLines: Self.initialLogLines)
         self.logText = logBuffer.text
         self.logEntries = logBuffer.entries
@@ -253,6 +258,15 @@ final class AppViewModel: ObservableObject {
 
     var apiKeyPlaceholder: String {
         settings.apiKeyPlaceholder
+    }
+
+    var modelProfileExportSummaryText: String {
+        let advancedCount = models.filter { $0.advancedLaunchOptions?.normalized() != nil }.count
+        let advancedText = advancedCount == 0
+            ? "Advanced Launch Options: not included"
+            : "Advanced Launch Options: included for \(advancedCount) profile(s)"
+
+        return "\(models.count) profile(s). \(advancedText). Export does not start or stop servers."
     }
 
     var memoryUsageText: String {
@@ -536,6 +550,42 @@ final class AppViewModel: ObservableObject {
         addProfileMessage = nil
         isAddProfilePresented = true
         appendLog("[profile] adding new model profile.")
+    }
+
+    func exportProfilesRequested() {
+        guard !models.isEmpty else {
+            let message = "No model profiles are available to export."
+            modelProfileExportMessage = message
+            appendLog("[profile] export failed: \(message)")
+            return
+        }
+
+        let panel = NSSavePanel()
+        panel.title = "Export Model Profiles"
+        panel.nameFieldStringValue = "MLXServerManager-Profiles.json"
+        panel.canCreateDirectories = true
+        panel.allowedContentTypes = [.json]
+
+        let response = panel.runModal()
+        guard response == .OK, let url = panel.url else {
+            modelProfileExportMessage = "Export cancelled."
+            appendLog("[profile] export cancelled.")
+            return
+        }
+
+        do {
+            let data = try modelProfileExportService.exportData(from: models)
+            try data.write(to: url, options: [.atomic])
+
+            let message = "Exported \(models.count) profile(s) to \(url.lastPathComponent)."
+            modelProfileExportMessage = message
+            appendLog("[profile] \(message)")
+            appendLog("[profile] export includes profile metadata only. It does not include API keys, tokens, model weights, caches, logs, executable paths, or runtime state.")
+        } catch {
+            let message = error.localizedDescription
+            modelProfileExportMessage = "Export failed: \(message)"
+            appendLog("[profile] export failed: \(message)")
+        }
     }
 
     func cancelAddProfile() {
