@@ -1041,6 +1041,35 @@
 4. Release note.
    - v2.7.0 is an app-code release and requires a new app binary asset when released.
 
+## v2.8.0 Completed: Import Profiles Preview / Validation Design Polish
+
+1. Refine future Import Profiles design.
+   - Document Import Preview sheet contents.
+   - Document validation result structure.
+   - Document validation severities: error, warning, and info.
+   - Document unsupported `schemaVersion` handling.
+   - Document duplicate and conflict handling.
+   - Document Advanced Launch Options validation for import.
+2. Keep this step docs-only.
+   - No Swift changes.
+   - No app code changes.
+   - No Xcode project changes.
+   - No new app binary, zip asset, `.dSYM`, DerivedData, or release asset.
+3. Preserve product and safety boundaries.
+   - Direct Mode is maintained.
+   - Import Profiles is not implemented.
+   - Export Profiles remains implemented.
+   - Import Preview must be side-effect-free.
+   - No model weights, caches, API keys, tokens, secrets, executable paths, or local paths are imported.
+   - No automatic server start.
+   - No selected target or adopted external server ownership change.
+   - No external process kill, stop, restart, or ownership change.
+4. Future staging.
+   - v2.9.0: Import Preview implementation.
+   - v3.0.0: Import selected valid profiles.
+   - v3.1.0: Conflict handling polish.
+   - v3.2.0: Import/export schema tests and fixtures.
+
 ## Later
 
 - Unit tests for services where practical.

@@ -39,7 +39,9 @@ This is a documentation and public presentation update only. It does not change 
 
 ## Future Import / Export Relationship
 
-Model Profile export can help first-run setup by backing up current profile metadata. Import remains future work. Import/export should remain metadata-only: no model install, no model download, no automatic server start, no inference proxy, and no external process ownership changes.
+Model Profile export can help first-run setup by backing up current profile metadata. Future Import Profiles may help first-run setup by restoring profile metadata after preview and validation.
+
+Import remains future work. Import/export should remain metadata-only: no model install, no model download, no automatic server start, no inference proxy, and no external process ownership changes.
 
 ## Goals
 

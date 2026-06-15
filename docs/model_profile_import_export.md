@@ -30,6 +30,246 @@ Not implemented:
 
 Export is side-effect-free with respect to server lifecycle. It does not start, stop, restart, adopt, forget, readiness-check, or send HTTP requests.
 
+## v2.8.0 Import Preview / Validation Design Polish
+
+v2.8.0 refines the future Import Profiles design. It is a documentation-only step. Import Profiles remains unimplemented, while Export Profiles remains implemented as of v2.7.0.
+
+The v2.8.0 design keeps import limited to Model Profile metadata. Import must not include model weights, Hugging Face cache, API keys, tokens, secrets, executable paths, app settings, runtime state, process ownership, or external server ownership.
+
+### Import Preview Sheet Design
+
+The future Import Preview sheet should show document-level information before any profile is applied:
+
+- source file name,
+- `schemaVersion`,
+- `app` field,
+- `exportedAt`,
+- total profiles in the file,
+- valid profile count,
+- invalid profile count,
+- warning count,
+- profiles list,
+- per-profile status,
+- conflict status,
+- selected import action.
+
+Each profile row should show:
+
+- profile name,
+- `modelID`,
+- host,
+- port,
+- whether Advanced Launch Options are included,
+- validation status,
+- conflict status,
+- planned action: `import`, `skip`, `rename`, `replace`, or `invalid-blocked`.
+
+Preview must be side-effect-free:
+
+- no managed server start, stop, or restart,
+- no external process operation,
+- no adopted external server state changes,
+- no selected profile or current target changes,
+- no readiness check,
+- no `/v1/models` call,
+- no external HTTP request,
+- no model download,
+- no model file or cache changes.
+
+### Validation Result Model
+
+Future implementation should use an explicit validation result model rather than mixing validation with UI state:
+
+```text
+ImportValidationResult
+- documentStatus
+- profiles[]
+- errors[]
+- warnings[]
+- infos[]
+- canImport
+
+ValidatedImportProfile
+- sourceIndex
+- name
+- modelID
+- host
+- port
+- advancedLaunchOptions
+- status
+- messages[]
+- conflict
+- plannedAction
+```
+
+Severity policy:
+
+- `error`: blocks import for the affected profile or entire document.
+- `warning`: can be imported only after user review, confirmation, or adjustment.
+- `info`: informational and non-blocking.
+
+Document-level blocking errors, such as unsupported schema versions, should prevent partial import. Profile-level errors should block only invalid entries when the document itself is supported.
+
+### Validation Rules
+
+Document validation:
+
+- JSON must parse successfully.
+- Top-level value must be an object.
+- `schemaVersion` is required and must be supported.
+- `app` should be `MLXServerManager`.
+- `profiles` must be an array.
+- Unsupported schema versions block the entire import.
+
+Profile validation:
+
+- `name` must not be empty.
+- `modelID` must not be empty.
+- `host` must not be empty and must be valid for the app's host policy.
+- `port` must be an integer in `1...65535`.
+- probability values such as temperature, top-p, and min-p must be in `0...1`.
+- positive integer fields must be greater than `0`.
+- `chatTemplateArgs` must be valid JSON when present and non-empty.
+- unknown fields must not be executed.
+- unknown fields should be ignored unless a future schema explicitly supports them.
+- executable path fields must be ignored or rejected.
+- API key, token, or secret-looking fields must be ignored or rejected with a warning or error.
+- model weight paths, local model paths, and cache paths must not be imported.
+
+Invalid entries should not block all valid entries unless the document has a document-level blocking error.
+
+### Unsupported Schema Version
+
+Unsupported `schemaVersion` is a document-level blocking error. The app should not silently reinterpret unknown schemas and should not partially import profiles from an unsupported document.
+
+Example message:
+
+```text
+This file uses schemaVersion 2, but this version of MLX Server Manager supports schemaVersion 1 only. No profiles were imported.
+```
+
+Future migration must be explicit and testable.
+
+### Conflict Handling
+
+Potential conflicts:
+
+- same profile name as an existing profile,
+- same `modelID + host + port` as an existing profile,
+- duplicate profile names inside the imported file,
+- duplicate equivalent profiles inside the imported file,
+- replace target ambiguity,
+- generated rename result collision.
+
+Allowed planned actions:
+
+- `skip`: do not import the profile.
+- `rename`: import with a generated non-conflicting name.
+- `replace`: replace an existing profile only after explicit confirmation.
+
+Default behavior should be `skip` or `rename`, not `replace`. Replace must require explicit confirmation.
+
+Rename should be deterministic, for example:
+
+- `<name> (Imported)`
+- `<name> (Imported 2)`
+
+Invalid profiles cannot be imported even if renamed. Import must not start a server. Import should not automatically change the selected target unless a future implementation explicitly asks the user.
+
+### Advanced Launch Options Validation
+
+Advanced Launch Options may be imported as metadata, but they remain optional and user-tunable.
+
+Policy:
+
+- Start-time validation still applies.
+- Empty advanced values are omitted from launch arguments.
+- `rawExtraArgs` is displayed in the preview.
+- `rawExtraArgs` should show a warning.
+- `chatTemplateArgs` must be valid JSON when present.
+- numeric constraints must mirror current app validation.
+- unknown advanced fields are ignored unless the schema supports them.
+
+Example warning:
+
+```text
+This profile includes raw extra server arguments. Review them before starting a managed server.
+```
+
+### Privacy and Local Path Boundary
+
+Import must not treat shared JSON as trusted executable input. Unknown fields are data, not commands.
+
+Privacy policy:
+
+- Do not import `mlx_lm.server executable path`.
+- Do not import local model paths.
+- Do not import Hugging Face cache paths.
+- Do not import API keys, tokens, or secrets.
+- Warn that export files may reveal model IDs, profile names, host, port, notes, and Advanced Launch Options.
+- Warn that private model IDs can be sensitive.
+
+Import Preview should help users inspect shared files before importing. It should not imply that model files exist locally.
+
+### Import Side-Effect Boundary
+
+Preview side effects:
+
+- no lifecycle changes,
+- no network calls,
+- no readiness checks,
+- no adopted external server changes,
+- no current target changes,
+- no model download,
+- no model file deletion,
+- no cache changes.
+
+Future actual import side effects:
+
+- write only selected valid profile metadata,
+- do not start a managed server,
+- do not adopt an external server,
+- do not take process ownership,
+- do not change external process state.
+
+Selecting an imported profile after import should be a future explicit option, default off or behind confirmation.
+
+### Error, Warning, and Info Message Examples
+
+Error examples:
+
+- `Import file is not valid JSON.`
+- `Unsupported profile export schema version.`
+- `The import file must contain a profiles array.`
+- `Profile name is required.`
+- `Model ID is required.`
+- `Host is required.`
+- `Port must be between 1 and 65535.`
+- `Temperature must be between 0 and 1.`
+- `Chat Template Args must be valid JSON.`
+
+Warning examples:
+
+- `This profile includes raw extra server arguments. Review them before starting a managed server.`
+- `Duplicate profile name found. Choose skip, rename, or replace.`
+- `Replace requires explicit confirmation.`
+- `Secret-looking field ignored.`
+- `Executable path ignored. Configure it locally in Settings.`
+- `Local path ignored. Model files are not imported.`
+
+Info examples:
+
+- `Profile metadata only. No model files will be imported.`
+- `No server will be started after import.`
+- `External server ownership will not change.`
+
+### Future Implementation Staging
+
+- v2.9.0: Import Preview implementation.
+- v3.0.0: Import selected valid profiles.
+- v3.1.0: Conflict handling polish.
+- v3.2.0: Import/export schema tests and fixtures.
+
 ## Goals
 
 - Let users back up saved Model Profiles.
