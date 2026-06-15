@@ -4,7 +4,7 @@
 
 Model Profile Import / Export started as a v2.6.0 docs-only design for backing up, moving, and sharing MLX Server Manager profile metadata safely.
 
-v2.7.0 implements the Export Profiles portion only. Import Profiles, Import Preview, and conflict handling remain future work.
+v2.7.0 implements Export Profiles. v2.9.0 implements Import Profiles Preview. v3.0.0 implements importing selected valid profiles without conflicts. Rename, replace, and conflict handling polish remain future work.
 
 Import and export apply only to Model Profile metadata. They do not include model weights, Hugging Face cache, local runtime settings, secrets, or app binaries.
 
@@ -22,10 +22,9 @@ Implemented:
 
 Not implemented:
 
-- Import Profiles.
-- Import Preview.
-- Conflict handling.
-- Selecting an imported profile.
+- Rename conflict handling.
+- Replace conflict handling.
+- Selecting an imported profile after import.
 - Model download or install automation.
 
 Export is side-effect-free with respect to server lifecycle. It does not start, stop, restart, adopt, forget, readiness-check, or send HTTP requests.
@@ -301,6 +300,57 @@ Not implemented:
 - Automatic server start after preview.
 
 Import Preview remains side-effect-free. It reads the selected JSON file, decodes metadata, validates it, and updates preview UI state only. It does not start, stop, restart, adopt, forget, readiness-check, call `/v1/models`, make external HTTP requests, download models, delete files, mutate caches, save app settings, save profiles, or change external process ownership.
+
+## v3.0.0 Import Selected Profiles Implementation Status
+
+v3.0.0 implements importing selected valid profiles from the Import Preview sheet.
+
+Implemented:
+
+- Profile selection in Import Preview.
+- Default selection for importable profiles.
+- Disabled selection for invalid profiles.
+- Disabled selection for conflict profiles.
+- `Import Selected Profiles` button.
+- Confirmation alert before import.
+- Re-validation and conflict re-check before saving.
+- Appending selected valid non-conflicting profile metadata to `models.json`.
+- Success and no-op messages in UI and Logs.
+
+Importable profiles:
+
+- must have no validation errors,
+- must have no conflict summary,
+- must have valid `name`, `modelID`, host, and port,
+- may include valid Advanced Launch Options metadata.
+
+Skipped profiles:
+
+- invalid profiles,
+- profiles with conflicts,
+- profiles that become conflicting during final re-check.
+
+Not implemented:
+
+- rename conflict handling,
+- replace conflict handling,
+- forced import of conflicting profiles,
+- selecting imported profiles after import,
+- model file import,
+- Hugging Face cache import,
+- API key, token, secret, executable path, or local path import.
+
+Import saves only model profile metadata:
+
+- profile name,
+- `modelID`,
+- host,
+- port,
+- Advanced Launch Options.
+
+Import does not save runtime state, PID, memory metrics, readiness result, selected current target state, adopted external server state, logs, unknown fields, secrets, executable paths, local model paths, model weights, or caches.
+
+After import, selected profile is not changed automatically. Server lifecycle and external process ownership are unchanged. Import does not start, stop, restart, adopt, forget, readiness-check, call `/v1/models`, make external HTTP requests, download models, delete files, or mutate caches.
 
 ## Goals
 

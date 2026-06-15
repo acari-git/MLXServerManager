@@ -39,11 +39,23 @@ struct ValidatedImportProfile: Identifiable {
     let modelID: String
     let host: String
     let port: Int?
+    let advancedLaunchOptions: AdvancedLaunchOptions?
     let hasAdvancedLaunchOptions: Bool
     let status: ImportProfileValidationStatus
     let messages: [ImportValidationMessage]
     let conflictSummary: String?
     let plannedActionSummary: String
+
+    var isImportable: Bool {
+        status != .invalid && conflictSummary == nil && port != nil
+    }
+}
+
+struct ImportSelectedProfilesResult {
+    let importedModels: [ModelConfig]
+    let importedCount: Int
+    let skippedCount: Int
+    let messages: [String]
 }
 
 struct ModelProfileImportPreviewService {
@@ -68,6 +80,95 @@ struct ModelProfileImportPreviewService {
                 message: "Import file is not valid JSON."
             )
         }
+    }
+
+    func importSelectedProfiles(
+        from preview: ImportPreviewResult,
+        selectedSourceIndexes: Set<Int>,
+        existingModels: [ModelConfig]
+    ) -> ImportSelectedProfilesResult {
+        guard !preview.documentMessages.contains(where: { $0.severity == .error }) else {
+            return ImportSelectedProfilesResult(
+                importedModels: [],
+                importedCount: 0,
+                skippedCount: selectedSourceIndexes.count,
+                messages: ["Import blocked because the document has validation errors."]
+            )
+        }
+
+        guard !selectedSourceIndexes.isEmpty else {
+            return ImportSelectedProfilesResult(
+                importedModels: [],
+                importedCount: 0,
+                skippedCount: 0,
+                messages: ["No importable profiles selected."]
+            )
+        }
+
+        let selectedProfiles = preview.profiles.filter { selectedSourceIndexes.contains($0.sourceIndex) }
+        let existingNames = Set(existingModels.map { $0.displayName.trimmingCharacters(in: .whitespacesAndNewlines) })
+        let existingModelIDs = Set(existingModels.map { $0.modelID.trimmingCharacters(in: .whitespacesAndNewlines) })
+        let existingEndpoints = Set(existingModels.map { endpointKey(modelID: $0.modelID, host: $0.host, port: $0.serverPort) })
+        let selectedNames = Dictionary(grouping: selectedProfiles.map(\.name), by: { $0 }).mapValues(\.count)
+        let selectedModelIDs = Dictionary(grouping: selectedProfiles.map(\.modelID), by: { $0 }).mapValues(\.count)
+        let selectedEndpoints = Dictionary(grouping: selectedProfiles.compactMap { profile -> String? in
+            guard let port = profile.port else {
+                return nil
+            }
+
+            return endpointKey(modelID: profile.modelID, host: profile.host, port: port)
+        }, by: { $0 }).mapValues(\.count)
+
+        var importedModels: [ModelConfig] = []
+        var messages: [String] = []
+        var skippedCount = 0
+
+        for profile in selectedProfiles {
+            guard profile.isImportable else {
+                skippedCount += 1
+                messages.append("Skipped \(profile.name): validation errors or conflicts cannot be imported in this version.")
+                continue
+            }
+
+            guard let port = profile.port else {
+                skippedCount += 1
+                messages.append("Skipped \(profile.name): port is invalid.")
+                continue
+            }
+
+            let endpoint = endpointKey(modelID: profile.modelID, host: profile.host, port: port)
+            guard !existingNames.contains(profile.name),
+                  !existingModelIDs.contains(profile.modelID),
+                  !existingEndpoints.contains(endpoint) else {
+                skippedCount += 1
+                messages.append("Skipped \(profile.name): conflicts with an existing profile.")
+                continue
+            }
+
+            guard selectedNames[profile.name, default: 0] == 1,
+                  selectedModelIDs[profile.modelID, default: 0] == 1,
+                  selectedEndpoints[endpoint, default: 0] == 1 else {
+                skippedCount += 1
+                messages.append("Skipped \(profile.name): conflicts with another selected profile.")
+                continue
+            }
+
+            importedModels.append(modelConfig(from: profile, port: port))
+        }
+
+        if importedModels.isEmpty {
+            messages.append("No profiles were imported.")
+        } else {
+            messages.append("Imported \(importedModels.count) profile(s). Skipped \(skippedCount) profile(s).")
+            messages.append("Import completed. Servers were not started or modified.")
+        }
+
+        return ImportSelectedProfilesResult(
+            importedModels: importedModels,
+            importedCount: importedModels.count,
+            skippedCount: skippedCount,
+            messages: messages
+        )
     }
 
     private func validate(
@@ -135,18 +236,23 @@ struct ModelProfileImportPreviewService {
 
         let importedNameCounts = Dictionary(grouping: candidates.compactMap(\.normalizedName), by: { $0 })
             .mapValues(\.count)
+        let importedModelIDCounts = Dictionary(grouping: candidates.compactMap(\.normalizedModelID), by: { $0 })
+            .mapValues(\.count)
         let importedEndpointCounts = Dictionary(grouping: candidates.compactMap(\.endpointKey), by: { $0 })
             .mapValues(\.count)
 
         let existingNames = Set(existingModels.map { $0.displayName.trimmingCharacters(in: .whitespacesAndNewlines) })
+        let existingModelIDs = Set(existingModels.map { $0.modelID.trimmingCharacters(in: .whitespacesAndNewlines) })
         let existingEndpoints = Set(existingModels.map { endpointKey(modelID: $0.modelID, host: $0.host, port: $0.serverPort) })
 
         let validatedProfiles = candidates.map { candidate in
             validate(
                 candidate: candidate,
                 existingNames: existingNames,
+                existingModelIDs: existingModelIDs,
                 existingEndpoints: existingEndpoints,
                 importedNameCounts: importedNameCounts,
+                importedModelIDCounts: importedModelIDCounts,
                 importedEndpointCounts: importedEndpointCounts
             )
         }
@@ -165,8 +271,10 @@ struct ModelProfileImportPreviewService {
     private func validate(
         candidate: ImportProfileCandidate,
         existingNames: Set<String>,
+        existingModelIDs: Set<String>,
         existingEndpoints: Set<String>,
         importedNameCounts: [String: Int],
+        importedModelIDCounts: [String: Int],
         importedEndpointCounts: [String: Int]
     ) -> ValidatedImportProfile {
         guard let profile = candidate.profile else {
@@ -176,11 +284,12 @@ struct ModelProfileImportPreviewService {
                 modelID: "Missing",
                 host: "Missing",
                 port: nil,
+                advancedLaunchOptions: nil,
                 hasAdvancedLaunchOptions: false,
                 status: .invalid,
                 messages: [.error("Profile entry must be a JSON object.")],
                 conflictSummary: nil,
-                plannedActionSummary: "Preview only - import action not implemented"
+                plannedActionSummary: "Invalid - cannot import"
             )
         }
 
@@ -231,6 +340,16 @@ struct ModelProfileImportPreviewService {
             }
         }
 
+        if !modelID.isEmpty {
+            if existingModelIDs.contains(modelID) {
+                conflicts.append("same modelID as an existing profile")
+            }
+
+            if importedModelIDCounts[modelID, default: 0] > 1 {
+                conflicts.append("duplicate modelID inside import file")
+            }
+        }
+
         if let port, !modelID.isEmpty, !host.isEmpty {
             let endpoint = Self.endpointKey(modelID: modelID, host: host, port: port)
 
@@ -262,11 +381,12 @@ struct ModelProfileImportPreviewService {
             modelID: modelID.isEmpty ? "Missing" : modelID,
             host: host.isEmpty ? "Missing" : host,
             port: port,
+            advancedLaunchOptions: advancedOptions?.normalized(),
             hasAdvancedLaunchOptions: advancedOptions?.normalized() != nil,
             status: status,
             messages: messages.isEmpty ? [.info("Profile metadata is valid for preview.")] : messages,
             conflictSummary: conflicts.isEmpty ? nil : conflicts.joined(separator: "; "),
-            plannedActionSummary: "Preview only - import action not implemented"
+            plannedActionSummary: plannedActionSummary(status: status, conflicts: conflicts)
         )
     }
 
@@ -445,6 +565,7 @@ struct ModelProfileImportPreviewService {
         let warningCount = documentMessages.filter { $0.severity == .warning }.count
             + profiles.flatMap(\.messages).filter { $0.severity == .warning }.count
         let hasDocumentError = documentMessages.contains { $0.severity == .error }
+        let importableCount = profiles.filter(\.isImportable).count
 
         return ImportPreviewResult(
             sourceFileName: sourceFileName,
@@ -457,8 +578,36 @@ struct ModelProfileImportPreviewService {
             warningCount: warningCount,
             documentMessages: documentMessages,
             profiles: profiles,
-            canProceedToFutureImport: !hasDocumentError && validCount > 0
+            canProceedToFutureImport: !hasDocumentError && importableCount > 0
         )
+    }
+
+    private func modelConfig(from profile: ValidatedImportProfile, port: Int) -> ModelConfig {
+        let localName = profile.modelID.split(separator: "/").last.map(String.init) ?? profile.modelID
+        return ModelConfig(
+            modelID: profile.modelID,
+            displayName: profile.name,
+            family: "Imported",
+            quantization: "Imported profile metadata",
+            localName: localName,
+            host: profile.host,
+            serverPort: port,
+            enableThinking: false,
+            notes: "Imported profile metadata. Review before starting a managed server.",
+            advancedLaunchOptions: profile.advancedLaunchOptions?.normalized()
+        )
+    }
+
+    private func plannedActionSummary(status: ImportProfileValidationStatus, conflicts: [String]) -> String {
+        if status == .invalid {
+            return "Invalid - cannot import"
+        }
+
+        if !conflicts.isEmpty {
+            return "Skipped - conflict handling is future work"
+        }
+
+        return "Importable - selected by default"
     }
 
     private func documentError(sourceFileName: String, message: String) -> ImportPreviewResult {
@@ -566,6 +715,15 @@ private struct ImportProfileCandidate {
         }
 
         return name
+    }
+
+    var normalizedModelID: String? {
+        guard let modelID = stringValue(profile?["modelID"])?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !modelID.isEmpty else {
+            return nil
+        }
+
+        return modelID
     }
 
     var endpointKey: String? {

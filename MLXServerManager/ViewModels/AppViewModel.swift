@@ -640,6 +640,45 @@ final class AppViewModel: ObservableObject {
         isImportPreviewPresented = false
     }
 
+    func importSelectedProfilesRequested(sourceIndexes: Set<Int>) {
+        guard let importPreviewResult else {
+            let message = "No import preview is available."
+            modelProfileImportMessage = message
+            appendLog("[profile] import failed: \(message)")
+            return
+        }
+
+        let importResult = modelProfileImportPreviewService.importSelectedProfiles(
+            from: importPreviewResult,
+            selectedSourceIndexes: sourceIndexes,
+            existingModels: models
+        )
+
+        for message in importResult.messages {
+            appendLog("[profile] \(message)")
+        }
+
+        guard !importResult.importedModels.isEmpty else {
+            let message = importResult.messages.last ?? "No profiles were imported."
+            modelProfileImportMessage = message
+            return
+        }
+
+        let nextModels = models + importResult.importedModels
+
+        do {
+            try settingsStore.save(models: nextModels)
+            models = nextModels
+            modelProfileImportMessage = "Imported \(importResult.importedCount) profile(s). Skipped \(importResult.skippedCount) profile(s)."
+            appendLog("[profile] imported profile metadata saved to models.json.")
+            appendLog("[profile] selected profile was not changed. No server lifecycle action was taken.")
+            isImportPreviewPresented = false
+        } catch {
+            modelProfileImportMessage = "Import failed: \(error.localizedDescription)"
+            appendLog("[profile] import failed: \(error.localizedDescription)")
+        }
+    }
+
     func cancelAddProfile() {
         addProfileDraft = .empty
         addProfileMessage = nil

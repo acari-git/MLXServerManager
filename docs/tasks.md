@@ -1100,6 +1100,37 @@
 5. Release note.
    - v2.9.0 is an app-code release and requires a new app binary asset when released.
 
+## v3.0.0 Completed: Import Selected Profiles Implementation
+
+1. Implement selected profile import.
+   - Add selection controls to Import Preview.
+   - Select valid non-conflicting profiles by default.
+   - Disable invalid profiles.
+   - Disable conflict profiles.
+   - Add `Import Selected Profiles`.
+   - Add confirmation before saving.
+2. Save selected valid non-conflicting profile metadata.
+   - Append selected importable profiles to the existing model profile list.
+   - Persist the updated list through the existing `models.json` save path.
+   - Re-check validation and conflicts before saving.
+   - Keep selected profile unchanged after import.
+3. Keep conflict handling limited.
+   - Conflict profiles are skipped and disabled.
+   - Rename is not implemented.
+   - Replace is not implemented.
+   - Conflict handling polish remains future work.
+4. Preserve product and safety boundaries.
+   - Direct Mode is maintained.
+   - Import saves model profile metadata only.
+   - Invalid profiles are blocked.
+   - No model weights, caches, API keys, tokens, secrets, executable paths, local paths, runtime state, PID, memory metrics, readiness result, selected target state, or adopted external state are imported.
+   - No automatic server start.
+   - No readiness check or `/v1/models` call from Import Profiles.
+   - No external HTTP request from Import Profiles.
+   - No external process kill, stop, restart, adoption, forget, or ownership change.
+5. Release note.
+   - v3.0.0 is an app-code release and requires a new app binary asset when released.
+
 ## Later
 
 - Unit tests for services where practical.

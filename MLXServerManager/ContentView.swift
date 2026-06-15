@@ -155,6 +155,8 @@ struct ContentView: View {
             if let result = viewModel.importPreviewResult {
                 ImportProfilesPreviewView(
                     result: result,
+                    importMessage: viewModel.modelProfileImportMessage,
+                    onImportSelected: viewModel.importSelectedProfilesRequested,
                     onClose: viewModel.dismissImportPreview
                 )
             } else {

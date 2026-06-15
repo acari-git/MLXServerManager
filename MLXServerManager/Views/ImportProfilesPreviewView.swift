@@ -2,7 +2,12 @@ import SwiftUI
 
 struct ImportProfilesPreviewView: View {
     let result: ImportPreviewResult
+    let importMessage: String?
+    let onImportSelected: (Set<Int>) -> Void
     let onClose: () -> Void
+
+    @State private var selectedSourceIndexes: Set<Int> = []
+    @State private var isImportConfirmationPresented = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -10,7 +15,7 @@ struct ImportProfilesPreviewView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    previewOnlyNotice
+                    importScopeNotice
                     documentSummary
                     messageSection(title: "Document Messages", messages: result.documentMessages)
                     profilesSection
@@ -19,11 +24,17 @@ struct ImportProfilesPreviewView: View {
             }
 
             HStack {
-                Text("Import is future work. No profiles are saved from this preview.")
+                Text(importMessage ?? "Only selected valid profiles without conflicts will be imported.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
                 Spacer()
+
+                Button("Import Selected Profiles") {
+                    isImportConfirmationPresented = true
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(selectedImportableCount == 0)
 
                 Button("Close") {
                     onClose()
@@ -33,6 +44,18 @@ struct ImportProfilesPreviewView: View {
         }
         .padding(20)
         .frame(minWidth: 760, idealWidth: 880, minHeight: 620, idealHeight: 720)
+        .onAppear {
+            selectedSourceIndexes = Set(importableProfiles.map(\.sourceIndex))
+        }
+        .alert("Import selected profile metadata?", isPresented: $isImportConfirmationPresented) {
+            Button("Import Selected Profiles") {
+                onImportSelected(selectedSourceIndexes)
+            }
+
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will add selected profiles only. It will not start servers, call /v1/models, download models, import secrets, or change process ownership.")
+        }
     }
 
     private var header: some View {
@@ -50,7 +73,7 @@ struct ImportProfilesPreviewView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 4) {
-                Text(result.canProceedToFutureImport ? "Future import possible" : "Future import blocked")
+                Text(result.canProceedToFutureImport ? "\(selectedImportableCount) selected for import" : "Import blocked")
                     .font(.callout.weight(.medium))
                     .foregroundStyle(result.canProceedToFutureImport ? .green : .red)
 
@@ -61,12 +84,12 @@ struct ImportProfilesPreviewView: View {
         }
     }
 
-    private var previewOnlyNotice: some View {
+    private var importScopeNotice: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Preview only. No profiles are imported in this version.", systemImage: "eye")
+            Label("Only selected valid profiles without conflicts will be imported. Rename and replace are future work.", systemImage: "checklist")
                 .font(.callout.weight(.semibold))
 
-            Text("Import preview does not start, stop, or restart servers. It does not call /v1/models, make external HTTP requests, download models, import secrets, or change process ownership.")
+            Text("Import does not start, stop, or restart servers. It does not call /v1/models, make external HTTP requests, download models, import secrets, change selected profile, or change process ownership.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -115,6 +138,10 @@ struct ImportProfilesPreviewView: View {
     private func profileRow(_ profile: ValidatedImportProfile) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
+                Toggle("", isOn: selectionBinding(for: profile))
+                    .labelsHidden()
+                    .disabled(!profile.isImportable || resultHasDocumentError)
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text("#\(profile.sourceIndex) \(profile.name)")
                         .font(.callout.weight(.semibold))
@@ -144,6 +171,34 @@ struct ImportProfilesPreviewView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(nsColor: .textBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var importableProfiles: [ValidatedImportProfile] {
+        guard !resultHasDocumentError else {
+            return []
+        }
+
+        return result.profiles.filter(\.isImportable)
+    }
+
+    private var selectedImportableCount: Int {
+        importableProfiles.filter { selectedSourceIndexes.contains($0.sourceIndex) }.count
+    }
+
+    private var resultHasDocumentError: Bool {
+        result.documentMessages.contains { $0.severity == .error }
+    }
+
+    private func selectionBinding(for profile: ValidatedImportProfile) -> Binding<Bool> {
+        Binding {
+            selectedSourceIndexes.contains(profile.sourceIndex)
+        } set: { isSelected in
+            if isSelected {
+                selectedSourceIndexes.insert(profile.sourceIndex)
+            } else {
+                selectedSourceIndexes.remove(profile.sourceIndex)
+            }
+        }
     }
 
     private func messageSection(title: String, messages: [ImportValidationMessage]) -> some View {

@@ -50,7 +50,7 @@ struct ModelListView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(exportSummaryText)
                     Text("Exports profile metadata only. No API keys, tokens, model weights, caches, logs, executable paths, or runtime state.")
-                    Text("Import Profiles is preview-only. It validates JSON metadata and does not save profiles or start servers.")
+                    Text("Import Profiles adds selected valid metadata only. It does not start servers, import secrets, or resolve conflicts yet.")
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
