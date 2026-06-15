@@ -907,6 +907,25 @@
    - Refresh screenshots when new v1.9+ UI screenshots are available.
    - Keep screenshot refresh as optional public polish, not a blocker for this docs update.
 
+## v2.1.0 Completed: Screenshot Refresh Design
+
+1. Add screenshot refresh planning docs.
+   - Add `docs/screenshot_refresh.md`.
+   - Define recommended screenshots for main dashboard, Connection Settings Current Target, External Server Detected, Adopted External Server, Advanced Launch Options, and logs / diagnostics.
+   - Document capture scenarios for managed, external detected, adopted external, and advanced options states.
+2. Keep this step docs-only.
+   - No Swift changes.
+   - No app code changes.
+   - No Xcode project changes.
+   - No new app binary, zip asset, `.dSYM`, DerivedData, or release asset.
+   - No screenshot image files added yet.
+3. Preserve Direct Mode and product boundaries.
+   - Screenshots must not imply Proxy mode, Chat UI, or multi-backend wrapper behavior.
+   - External server screenshots must preserve the connection-context-only and not-managed wording.
+4. Add public screenshot safety checklist.
+   - No real API keys, Hugging Face tokens, GitHub tokens, private paths, personal home paths, local shell history, or private repository URLs.
+   - Prefer `127.0.0.1`, port `8080`, and `not-required-local` for public examples.
+
 ## Later
 
 - Unit tests for services where practical.

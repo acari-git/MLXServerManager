@@ -87,6 +87,8 @@ Adopt External Server behavior is documented in [docs/adopt_external_server.md](
 
 Connection Settings polish is documented in [docs/connection_settings_polish.md](docs/connection_settings_polish.md). v1.9.0 implements the initial Current Target summary and expanded copy actions for Managed, External Detected, Adopted, and Not Running connection states. Direct Mode remains unchanged.
 
+Screenshot refresh planning is documented in [docs/screenshot_refresh.md](docs/screenshot_refresh.md). Future screenshots should cover the v1.9+ Current Target summary and Adopted External Server states without exposing private paths or secrets.
+
 ## Current Binary Asset
 
 The current downloadable app binary asset is:
@@ -294,6 +296,7 @@ All changes should be reviewed for:
 - External Server Detection: [docs/external_server_detection.md](docs/external_server_detection.md)
 - Adopt External Server: [docs/adopt_external_server.md](docs/adopt_external_server.md)
 - Connection Settings polish: [docs/connection_settings_polish.md](docs/connection_settings_polish.md)
+- Screenshot refresh plan: [docs/screenshot_refresh.md](docs/screenshot_refresh.md)
 - v1.0 plan: [docs/v1.0_plan.md](docs/v1.0_plan.md)
 - v1.0.1 maintenance plan: [docs/v1.0.1_maintenance.md](docs/v1.0.1_maintenance.md)
 - Requirements: [docs/requirements.md](docs/requirements.md)
