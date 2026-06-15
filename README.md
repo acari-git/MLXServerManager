@@ -127,6 +127,8 @@ Screenshot refresh planning is documented in [docs/screenshot_refresh.md](docs/s
 
 First-run guidance is documented in [docs/onboarding_first_run.md](docs/onboarding_first_run.md). v2.4.0 adds a small in-app guidance panel that points first-time users toward executable path setup, model profile selection, diagnostics, Start, and Connection Settings while preserving Direct Mode.
 
+Future Model Profile import/export design is documented in [docs/model_profile_import_export.md](docs/model_profile_import_export.md). The proposed design is profile metadata only; it does not include model weights, caches, API keys, tokens, or automatic server start.
+
 ## Current Binary Asset
 
 The current downloadable app binary asset is:
@@ -337,6 +339,7 @@ All changes should be reviewed for:
 - Connection Settings polish: [docs/connection_settings_polish.md](docs/connection_settings_polish.md)
 - Screenshot refresh plan: [docs/screenshot_refresh.md](docs/screenshot_refresh.md)
 - Onboarding / first-run guidance: [docs/onboarding_first_run.md](docs/onboarding_first_run.md)
+- Model Profile import/export design: [docs/model_profile_import_export.md](docs/model_profile_import_export.md)
 - v1.0 plan: [docs/v1.0_plan.md](docs/v1.0_plan.md)
 - v1.0.1 maintenance plan: [docs/v1.0.1_maintenance.md](docs/v1.0.1_maintenance.md)
 - Requirements: [docs/requirements.md](docs/requirements.md)

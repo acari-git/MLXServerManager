@@ -1003,6 +1003,24 @@
    - No real API keys, tokens, private paths, personal home paths, or private repository URLs.
    - Direct Mode is maintained.
 
+## v2.6.0 Completed: Model Profile Import / Export Design
+
+1. Add Model Profile import/export design.
+   - Add `docs/model_profile_import_export.md`.
+   - Define future JSON export format, import preview behavior, validation behavior, conflict handling, and testing plan.
+2. Keep this step docs-only.
+   - No Swift changes.
+   - No app code changes.
+   - No Xcode project changes.
+   - No new app binary, zip asset, `.dSYM`, DerivedData, or release asset.
+3. Preserve product and safety boundaries.
+   - Direct Mode is maintained.
+   - Import/export is profile metadata only.
+   - No model weights, caches, API keys, tokens, secrets, executable paths, or runtime settings are exported by default.
+   - Import does not automatically start servers.
+   - External process ownership boundaries remain unchanged.
+   - No external process kill, stop, or restart.
+
 ## Later
 
 - Unit tests for services where practical.

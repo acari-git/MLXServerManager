@@ -37,6 +37,10 @@ v2.5.0 adds a README screenshot for the First-run Onboarding Guidance panel:
 
 This is a documentation and public presentation update only. It does not change onboarding behavior, server lifecycle behavior, Direct Mode, external process ownership, model download behavior, or inference routing.
 
+## Future Import / Export Relationship
+
+Future Model Profile import/export could help first-run setup by restoring profile metadata. It should remain metadata-only: no model install, no model download, no automatic server start, no inference proxy, and no external process ownership changes.
+
 ## Goals
 
 - Explain the first-run path from local `mlx-lm` setup through client configuration.
