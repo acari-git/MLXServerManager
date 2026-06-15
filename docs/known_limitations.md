@@ -26,8 +26,9 @@ This document lists known limitations for MLX Server Manager.
 - The app does not currently download models.
 - The app does not validate that a model exists before `mlx_lm.server` attempts to load it.
 - Model download may be considered in a future release only if it preserves `mlx-lm` runtime performance and keeps explicit safety, privacy, and user-control boundaries.
-- Model Profile import currently supports selected valid profiles without conflicts only.
-- Conflict Rename and Replace are not implemented yet; conflict profiles are skipped and disabled.
+- Model Profile import currently supports selected valid profiles and explicit Rename for profile-name conflicts.
+- Profile-name conflicts can be imported with explicit Rename.
+- Replace is not implemented yet; runtime identity conflicts remain skipped and disabled.
 
 ## Process Management
 

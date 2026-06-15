@@ -1180,6 +1180,34 @@
    - No external process kill, stop, restart, adoption, forget, or ownership change.
    - Replace requires explicit confirmation in the future design.
 
+## v3.3.0 Completed: Rename Conflicted Profiles Implementation
+
+1. Implement Rename for profile-name conflicts only.
+   - Add per-profile import actions in Import Preview: `Skip`, `Import`, and `Rename`.
+   - Keep valid non-conflicting profiles selected for import by default.
+   - Keep conflicts visible in preview.
+   - Allow Rename only for otherwise valid profile-name conflicts.
+   - Keep Replace unavailable and future work.
+2. Validate renamed names.
+   - Empty and whitespace-only rename names are rejected.
+   - Rename names that conflict with existing local profiles are rejected.
+   - Rename names that conflict with another selected import are rejected.
+   - Rename is revalidated before saving imported profiles.
+3. Preserve metadata-only import behavior.
+   - Rename changes only the imported profile display name before saving it as a new profile.
+   - Existing local profiles are not overwritten.
+   - `modelID`, host, port, Advanced Launch Options, runtime state, selected profile, and adopted external server state are not changed by Rename.
+4. Preserve product and safety boundaries.
+   - Direct Mode is maintained.
+   - No Replace implementation.
+   - No model download or model deletion.
+   - No inference proxy, Chat UI, or multi-backend router.
+   - No automatic server start.
+   - No `/v1/models` call or external HTTP request from Import Profiles.
+   - No external process kill, stop, restart, adoption, forget, or ownership change.
+5. Release note.
+   - v3.3.0 is an app-code release and requires a new app binary asset when released.
+
 ## Later
 
 - Unit tests for services where practical.

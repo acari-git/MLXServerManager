@@ -640,7 +640,7 @@ final class AppViewModel: ObservableObject {
         isImportPreviewPresented = false
     }
 
-    func importSelectedProfilesRequested(sourceIndexes: Set<Int>) {
+    func importSelectedProfilesRequested(requests: [ImportSelectedProfileRequest]) {
         guard let importPreviewResult else {
             let message = "No import preview is available."
             modelProfileImportMessage = message
@@ -650,7 +650,7 @@ final class AppViewModel: ObservableObject {
 
         let importResult = modelProfileImportPreviewService.importSelectedProfiles(
             from: importPreviewResult,
-            selectedSourceIndexes: sourceIndexes,
+            requests: requests,
             existingModels: models
         )
 
@@ -669,7 +669,7 @@ final class AppViewModel: ObservableObject {
         do {
             try settingsStore.save(models: nextModels)
             models = nextModels
-            modelProfileImportMessage = "Imported \(importResult.importedCount) profile(s). Skipped \(importResult.skippedCount) profile(s)."
+            modelProfileImportMessage = "Imported \(importResult.importedCount) profile(s). Renamed \(importResult.renamedCount) profile(s). Skipped \(importResult.skippedCount) profile(s)."
             appendLog("[profile] imported profile metadata saved to models.json.")
             appendLog("[profile] selected profile was not changed. No server lifecycle action was taken.")
             isImportPreviewPresented = false

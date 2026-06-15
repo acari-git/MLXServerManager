@@ -4,7 +4,7 @@
 
 Model Profile Import / Export started as a v2.6.0 docs-only design for backing up, moving, and sharing MLX Server Manager profile metadata safely.
 
-v2.7.0 implements Export Profiles. v2.9.0 implements Import Profiles Preview. v3.0.0 implements importing selected valid profiles without conflicts. Rename, replace, and conflict handling polish remain future work.
+v2.7.0 implements Export Profiles. v2.9.0 implements Import Profiles Preview. v3.0.0 implements importing selected valid profiles without conflicts. v3.3.0 implements Rename for profile-name conflicts. Replace and broader conflict handling remain future work.
 
 Import and export apply only to Model Profile metadata. They do not include model weights, Hugging Face cache, local runtime settings, secrets, or app binaries.
 
@@ -24,7 +24,6 @@ Implemented:
 
 Not implemented:
 
-- Rename conflict handling.
 - Replace conflict handling.
 - Selecting an imported profile after import.
 - Model download or install automation in the current import/export flow.
@@ -269,7 +268,7 @@ Info examples:
 - v2.9.0: Import Preview implementation.
 - v3.0.0: Import selected valid profiles.
 - v3.2.0: Conflict handling design polish.
-- v3.3.0 candidate: Rename conflicted profiles.
+- v3.3.0: Rename profile-name conflicts.
 - v3.4.0 candidate: Replace conflicted profiles.
 - v3.5.0 candidate: Import/export schema tests and fixtures.
 - v4.0.0 candidate: Import/export stable release.
@@ -422,7 +421,7 @@ The default behavior should remain safe:
 
 Rename is safer than Replace and is the preferred first conflict-resolution implementation candidate.
 
-v3.3.0 candidate behavior:
+v3.3.0 implements the initial Rename behavior for profile-name conflicts:
 
 - user can choose Rename for name conflicts,
 - Rename must be previewed before import,
@@ -558,10 +557,41 @@ It must not:
 
 ### Future Implementation Staging
 
-- v3.3.0 candidate: Rename conflicted profiles implementation.
+- v3.3.0: Rename profile-name conflicts implementation.
 - v3.4.0 candidate: Replace conflicted profiles implementation.
 - v3.5.0 candidate: Import/export fixtures and tests.
 - v4.0.0 candidate: Import/export stable release.
+
+## v3.3.0 Rename Conflicted Profiles Implementation Status
+
+v3.3.0 implements Rename for imported profiles that are otherwise valid but conflict by profile name.
+
+Implemented:
+
+- per-profile `Skip`, `Import`, and `Rename` actions in Import Preview,
+- Rename action only for profile-name conflicts,
+- suggested deterministic names such as `<name> (Imported)` and `<name> (Imported 2)`,
+- editable rename field before import,
+- UI validation for empty or whitespace rename names,
+- UI validation for rename names that already exist locally,
+- UI validation for rename names that conflict with another selected import,
+- final import-time validation before writing to `models.json`,
+- import result logging with renamed count,
+- no selected profile change after import.
+
+Not implemented:
+
+- Replace conflict handling,
+- overwrite of existing local profiles,
+- endpoint/runtime identity conflict resolution by Rename,
+- model file import,
+- Hugging Face cache import,
+- API key, token, secret, executable path, or local path import,
+- automatic server start after import.
+
+Rename changes only the imported profile display name before saving it as a new profile. It does not modify an existing local profile. It does not modify `modelID`, host, port, Advanced Launch Options, runtime state, selected profile, adopted external server state, or process ownership.
+
+Import remains metadata-only and side-effect-free with respect to server lifecycle. It does not start, stop, restart, adopt, forget, readiness-check, call `/v1/models`, make external HTTP requests, download models, delete files, or mutate caches.
 
 ## Goals
 

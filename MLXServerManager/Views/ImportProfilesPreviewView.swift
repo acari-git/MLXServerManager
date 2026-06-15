@@ -3,10 +3,11 @@ import SwiftUI
 struct ImportProfilesPreviewView: View {
     let result: ImportPreviewResult
     let importMessage: String?
-    let onImportSelected: (Set<Int>) -> Void
+    let onImportSelected: ([ImportSelectedProfileRequest]) -> Void
     let onClose: () -> Void
 
-    @State private var selectedSourceIndexes: Set<Int> = []
+    @State private var actionBySourceIndex: [Int: ImportProfileRowAction] = [:]
+    @State private var renameBySourceIndex: [Int: String] = [:]
     @State private var isImportConfirmationPresented = false
 
     var body: some View {
@@ -24,7 +25,7 @@ struct ImportProfilesPreviewView: View {
             }
 
             HStack {
-                Text(importMessage ?? "Only selected valid profiles without conflicts will be imported.")
+                Text(importMessage ?? "Import valid profiles or explicitly rename profile-name conflicts.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -34,7 +35,7 @@ struct ImportProfilesPreviewView: View {
                     isImportConfirmationPresented = true
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(selectedImportableCount == 0)
+                .disabled(selectedActionCount == 0)
 
                 Button("Close") {
                     onClose()
@@ -45,16 +46,25 @@ struct ImportProfilesPreviewView: View {
         .padding(20)
         .frame(minWidth: 760, idealWidth: 880, minHeight: 620, idealHeight: 720)
         .onAppear {
-            selectedSourceIndexes = Set(importableProfiles.map(\.sourceIndex))
+            actionBySourceIndex = Dictionary(uniqueKeysWithValues: result.profiles.map { profile in
+                (profile.sourceIndex, defaultAction(for: profile))
+            })
+            renameBySourceIndex = Dictionary(uniqueKeysWithValues: result.profiles.compactMap { profile in
+                guard let suggestedRename = profile.suggestedRename else {
+                    return nil
+                }
+
+                return (profile.sourceIndex, suggestedRename)
+            })
         }
         .alert("Import selected profile metadata?", isPresented: $isImportConfirmationPresented) {
             Button("Import Selected Profiles") {
-                onImportSelected(selectedSourceIndexes)
+                onImportSelected(importRequests)
             }
 
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This will add selected profiles only. It will not start servers, call /v1/models, download models, import secrets, or change process ownership.")
+            Text("This will add selected profile metadata and apply explicit Rename actions shown in the preview. It will not start servers, call /v1/models, download models, import secrets, or change process ownership.")
         }
     }
 
@@ -73,7 +83,7 @@ struct ImportProfilesPreviewView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 4) {
-                Text(result.canProceedToFutureImport ? "\(selectedImportableCount) selected for import" : "Import blocked")
+                Text(result.canProceedToFutureImport ? "\(selectedActionCount) selected for import" : "Import blocked")
                     .font(.callout.weight(.medium))
                     .foregroundStyle(result.canProceedToFutureImport ? .green : .red)
 
@@ -86,7 +96,7 @@ struct ImportProfilesPreviewView: View {
 
     private var importScopeNotice: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Only selected valid profiles without conflicts will be imported. Rename and replace are future work.", systemImage: "checklist")
+            Label("Valid profiles are selected by default. Profile-name conflicts can be explicitly renamed. Replace is future work.", systemImage: "checklist")
                 .font(.callout.weight(.semibold))
 
             Text("Import does not start, stop, or restart servers. It does not call /v1/models, make external HTTP requests, download models, import secrets, change selected profile, or change process ownership.")
@@ -138,9 +148,20 @@ struct ImportProfilesPreviewView: View {
     private func profileRow(_ profile: ValidatedImportProfile) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
-                Toggle("", isOn: selectionBinding(for: profile))
-                    .labelsHidden()
-                    .disabled(!profile.isImportable || resultHasDocumentError)
+                Picker("Action", selection: actionBinding(for: profile)) {
+                    Text("Skip").tag(ImportProfileRowAction.skip)
+
+                    if profile.isImportable {
+                        Text("Import").tag(ImportProfileRowAction.importProfile)
+                    }
+
+                    if profile.canImportWithRename {
+                        Text("Rename").tag(ImportProfileRowAction.rename)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 120)
+                .disabled(resultHasDocumentError || !profile.isImportable && !profile.canImportWithRename)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("#\(profile.sourceIndex) \(profile.name)")
@@ -162,7 +183,14 @@ struct ImportProfilesPreviewView: View {
                 compactRow("Port", profile.port.map(String.init) ?? "Missing")
                 compactRow("Advanced Launch Options", profile.hasAdvancedLaunchOptions ? "Included" : "Not included")
                 compactRow("Conflict", profile.conflictSummary ?? "None")
+                if let suggestedRename = profile.suggestedRename {
+                    compactRow("Suggested Rename", suggestedRename)
+                }
                 compactRow("Planned Action", profile.plannedActionSummary)
+            }
+
+            if profile.canImportWithRename {
+                renameControls(for: profile)
             }
 
             messageSection(title: "Messages", messages: profile.messages)
@@ -173,32 +201,128 @@ struct ImportProfilesPreviewView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private var importableProfiles: [ValidatedImportProfile] {
-        guard !resultHasDocumentError else {
-            return []
-        }
-
-        return result.profiles.filter(\.isImportable)
-    }
-
-    private var selectedImportableCount: Int {
-        importableProfiles.filter { selectedSourceIndexes.contains($0.sourceIndex) }.count
+    private var selectedActionCount: Int {
+        importRequests.count
     }
 
     private var resultHasDocumentError: Bool {
         result.documentMessages.contains { $0.severity == .error }
     }
 
-    private func selectionBinding(for profile: ValidatedImportProfile) -> Binding<Bool> {
-        Binding {
-            selectedSourceIndexes.contains(profile.sourceIndex)
-        } set: { isSelected in
-            if isSelected {
-                selectedSourceIndexes.insert(profile.sourceIndex)
-            } else {
-                selectedSourceIndexes.remove(profile.sourceIndex)
+    private var importRequests: [ImportSelectedProfileRequest] {
+        result.profiles.compactMap { profile in
+            switch actionBySourceIndex[profile.sourceIndex, default: .skip] {
+            case .skip:
+                return nil
+            case .importProfile:
+                return ImportSelectedProfileRequest(sourceIndex: profile.sourceIndex, action: .importProfile)
+            case .rename:
+                guard renameValidationMessage(for: profile) == nil else {
+                    return nil
+                }
+
+                return ImportSelectedProfileRequest(
+                    sourceIndex: profile.sourceIndex,
+                    action: .rename,
+                    renamedName: normalizedRenameName(for: profile)
+                )
             }
         }
+    }
+
+    private func actionBinding(for profile: ValidatedImportProfile) -> Binding<ImportProfileRowAction> {
+        Binding {
+            actionBySourceIndex[profile.sourceIndex, default: defaultAction(for: profile)]
+        } set: { action in
+            actionBySourceIndex[profile.sourceIndex] = action
+        }
+    }
+
+    private func defaultAction(for profile: ValidatedImportProfile) -> ImportProfileRowAction {
+        profile.isImportable ? .importProfile : .skip
+    }
+
+    private func renameControls(for profile: ValidatedImportProfile) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("Rename To")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+
+                TextField("New profile name", text: renameBinding(for: profile))
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(actionBySourceIndex[profile.sourceIndex, default: .skip] != .rename)
+
+                if let suggestedRename = profile.suggestedRename {
+                    Button("Use Suggested") {
+                        renameBySourceIndex[profile.sourceIndex] = suggestedRename
+                        actionBySourceIndex[profile.sourceIndex] = .rename
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+
+            Text("Rename imports this row as a new profile. It does not replace or overwrite the existing profile.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if actionBySourceIndex[profile.sourceIndex, default: .skip] == .rename,
+               let validationMessage = renameValidationMessage(for: profile) {
+                Label(validationMessage, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+    }
+
+    private func renameBinding(for profile: ValidatedImportProfile) -> Binding<String> {
+        Binding {
+            renameBySourceIndex[profile.sourceIndex] ?? profile.suggestedRename ?? ""
+        } set: { value in
+            renameBySourceIndex[profile.sourceIndex] = value
+        }
+    }
+
+    private func renameValidationMessage(for profile: ValidatedImportProfile) -> String? {
+        guard actionBySourceIndex[profile.sourceIndex, default: .skip] == .rename else {
+            return nil
+        }
+
+        let name = normalizedRenameName(for: profile)
+        if name.isEmpty {
+            return "Rename name cannot be empty."
+        }
+
+        if result.existingProfileNames.contains(name) {
+            return "Rename name already exists in local profiles."
+        }
+
+        if selectedFinalNameCounts[name, default: 0] > 1 {
+            return "Rename name conflicts with another selected import."
+        }
+
+        return nil
+    }
+
+    private func normalizedRenameName(for profile: ValidatedImportProfile) -> String {
+        (renameBySourceIndex[profile.sourceIndex] ?? profile.suggestedRename ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var selectedFinalNameCounts: [String: Int] {
+        let names = result.profiles.compactMap { profile -> String? in
+            switch actionBySourceIndex[profile.sourceIndex, default: .skip] {
+            case .skip:
+                return nil
+            case .importProfile:
+                return profile.name
+            case .rename:
+                let name = normalizedRenameName(for: profile)
+                return name.isEmpty ? nil : name
+            }
+        }
+
+        return Dictionary(grouping: names, by: { $0 }).mapValues(\.count)
     }
 
     private func messageSection(title: String, messages: [ImportValidationMessage]) -> some View {
@@ -288,4 +412,10 @@ struct ImportProfilesPreviewView: View {
 
         return date.formatted(date: .abbreviated, time: .standard)
     }
+}
+
+private enum ImportProfileRowAction: String, Hashable {
+    case skip
+    case importProfile
+    case rename
 }

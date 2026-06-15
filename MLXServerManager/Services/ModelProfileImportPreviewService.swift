@@ -18,6 +18,41 @@ enum ImportProfileValidationStatus: String, Hashable {
     case invalid = "Invalid"
 }
 
+enum ImportProfileConflictKind: String, Hashable {
+    case existingName
+    case importedNameDuplicate
+    case existingModelID
+    case importedModelIDDuplicate
+    case existingEndpoint
+    case importedEndpointDuplicate
+
+    var isNameConflict: Bool {
+        switch self {
+        case .existingName, .importedNameDuplicate:
+            true
+        case .existingModelID, .importedModelIDDuplicate, .existingEndpoint, .importedEndpointDuplicate:
+            false
+        }
+    }
+}
+
+enum ImportProfileImportAction: String, Hashable {
+    case importProfile
+    case rename
+}
+
+struct ImportSelectedProfileRequest: Hashable {
+    let sourceIndex: Int
+    let action: ImportProfileImportAction
+    let renamedName: String?
+
+    init(sourceIndex: Int, action: ImportProfileImportAction, renamedName: String? = nil) {
+        self.sourceIndex = sourceIndex
+        self.action = action
+        self.renamedName = renamedName
+    }
+}
+
 struct ImportPreviewResult {
     let sourceFileName: String
     let schemaVersion: Int?
@@ -29,6 +64,7 @@ struct ImportPreviewResult {
     let warningCount: Int
     let documentMessages: [ImportValidationMessage]
     let profiles: [ValidatedImportProfile]
+    let existingProfileNames: Set<String>
     let canProceedToFutureImport: Bool
 }
 
@@ -43,17 +79,27 @@ struct ValidatedImportProfile: Identifiable {
     let hasAdvancedLaunchOptions: Bool
     let status: ImportProfileValidationStatus
     let messages: [ImportValidationMessage]
+    let conflictKinds: Set<ImportProfileConflictKind>
     let conflictSummary: String?
+    let suggestedRename: String?
     let plannedActionSummary: String
 
     var isImportable: Bool {
         status != .invalid && conflictSummary == nil && port != nil
+    }
+
+    var canImportWithRename: Bool {
+        status != .invalid
+            && port != nil
+            && !conflictKinds.isEmpty
+            && conflictKinds.allSatisfy(\.isNameConflict)
     }
 }
 
 struct ImportSelectedProfilesResult {
     let importedModels: [ModelConfig]
     let importedCount: Int
+    let renamedCount: Int
     let skippedCount: Int
     let messages: [String]
 }
@@ -84,34 +130,48 @@ struct ModelProfileImportPreviewService {
 
     func importSelectedProfiles(
         from preview: ImportPreviewResult,
-        selectedSourceIndexes: Set<Int>,
+        requests: [ImportSelectedProfileRequest],
         existingModels: [ModelConfig]
     ) -> ImportSelectedProfilesResult {
         guard !preview.documentMessages.contains(where: { $0.severity == .error }) else {
             return ImportSelectedProfilesResult(
                 importedModels: [],
                 importedCount: 0,
-                skippedCount: selectedSourceIndexes.count,
+                renamedCount: 0,
+                skippedCount: requests.count,
                 messages: ["Import blocked because the document has validation errors."]
             )
         }
 
-        guard !selectedSourceIndexes.isEmpty else {
+        guard !requests.isEmpty else {
             return ImportSelectedProfilesResult(
                 importedModels: [],
                 importedCount: 0,
+                renamedCount: 0,
                 skippedCount: 0,
                 messages: ["No importable profiles selected."]
             )
         }
 
-        let selectedProfiles = preview.profiles.filter { selectedSourceIndexes.contains($0.sourceIndex) }
+        var requestBySourceIndex: [Int: ImportSelectedProfileRequest] = [:]
+        for request in requests {
+            requestBySourceIndex[request.sourceIndex] = request
+        }
+        let selectedProfiles = preview.profiles.compactMap { profile -> (ValidatedImportProfile, ImportSelectedProfileRequest)? in
+            guard let request = requestBySourceIndex[profile.sourceIndex] else {
+                return nil
+            }
+
+            return (profile, request)
+        }
         let existingNames = Set(existingModels.map { $0.displayName.trimmingCharacters(in: .whitespacesAndNewlines) })
         let existingModelIDs = Set(existingModels.map { $0.modelID.trimmingCharacters(in: .whitespacesAndNewlines) })
         let existingEndpoints = Set(existingModels.map { endpointKey(modelID: $0.modelID, host: $0.host, port: $0.serverPort) })
-        let selectedNames = Dictionary(grouping: selectedProfiles.map(\.name), by: { $0 }).mapValues(\.count)
-        let selectedModelIDs = Dictionary(grouping: selectedProfiles.map(\.modelID), by: { $0 }).mapValues(\.count)
-        let selectedEndpoints = Dictionary(grouping: selectedProfiles.compactMap { profile -> String? in
+        let selectedNames = Dictionary(grouping: selectedProfiles.compactMap { profile, request in
+            finalProfileName(for: profile, request: request)
+        }, by: { $0 }).mapValues(\.count)
+        let selectedModelIDs = Dictionary(grouping: selectedProfiles.map { $0.0.modelID }, by: { $0 }).mapValues(\.count)
+        let selectedEndpoints = Dictionary(grouping: selectedProfiles.compactMap { profile, _ -> String? in
             guard let port = profile.port else {
                 return nil
             }
@@ -121,12 +181,31 @@ struct ModelProfileImportPreviewService {
 
         var importedModels: [ModelConfig] = []
         var messages: [String] = []
+        var renamedCount = 0
         var skippedCount = 0
 
-        for profile in selectedProfiles {
-            guard profile.isImportable else {
+        for (profile, request) in selectedProfiles {
+            let finalName: String
+            switch request.action {
+            case .importProfile:
+                guard profile.isImportable else {
+                    skippedCount += 1
+                    messages.append("Skipped \(profile.name): validation errors or conflicts cannot be imported without Rename.")
+                    continue
+                }
+                finalName = profile.name
+            case .rename:
+                guard profile.canImportWithRename else {
+                    skippedCount += 1
+                    messages.append("Skipped \(profile.name): Rename is available only for profile-name conflicts.")
+                    continue
+                }
+                finalName = normalizedProfileName(request.renamedName)
+            }
+
+            guard !finalName.isEmpty else {
                 skippedCount += 1
-                messages.append("Skipped \(profile.name): validation errors or conflicts cannot be imported in this version.")
+                messages.append("Skipped \(profile.name): renamed profile name is invalid.")
                 continue
             }
 
@@ -137,7 +216,7 @@ struct ModelProfileImportPreviewService {
             }
 
             let endpoint = endpointKey(modelID: profile.modelID, host: profile.host, port: port)
-            guard !existingNames.contains(profile.name),
+            guard !existingNames.contains(finalName),
                   !existingModelIDs.contains(profile.modelID),
                   !existingEndpoints.contains(endpoint) else {
                 skippedCount += 1
@@ -145,7 +224,7 @@ struct ModelProfileImportPreviewService {
                 continue
             }
 
-            guard selectedNames[profile.name, default: 0] == 1,
+            guard selectedNames[finalName, default: 0] == 1,
                   selectedModelIDs[profile.modelID, default: 0] == 1,
                   selectedEndpoints[endpoint, default: 0] == 1 else {
                 skippedCount += 1
@@ -153,19 +232,25 @@ struct ModelProfileImportPreviewService {
                 continue
             }
 
-            importedModels.append(modelConfig(from: profile, port: port))
+            if request.action == .rename {
+                renamedCount += 1
+                messages.append("Renamed \(profile.name) to \(finalName) during import.")
+            }
+
+            importedModels.append(modelConfig(from: profile, port: port, displayName: finalName))
         }
 
         if importedModels.isEmpty {
             messages.append("No profiles were imported.")
         } else {
-            messages.append("Imported \(importedModels.count) profile(s). Skipped \(skippedCount) profile(s).")
+            messages.append("Imported \(importedModels.count) profile(s). Renamed \(renamedCount) profile(s). Skipped \(skippedCount) profile(s).")
             messages.append("Import completed. Servers were not started or modified.")
         }
 
         return ImportSelectedProfilesResult(
             importedModels: importedModels,
             importedCount: importedModels.count,
+            renamedCount: renamedCount,
             skippedCount: skippedCount,
             messages: messages
         )
@@ -177,8 +262,8 @@ struct ModelProfileImportPreviewService {
         existingModels: [ModelConfig]
     ) -> ImportPreviewResult {
         var documentMessages: [ImportValidationMessage] = [
-            .info("Preview only. No profiles are imported in this version."),
-            .info("Shared profile JSON is metadata only and should be reviewed before future import.")
+            .info("Review selected profile metadata before import."),
+            .info("Shared profile JSON is metadata only. Rename is available only for profile-name conflicts.")
         ]
 
         documentMessages.append(contentsOf: ignoredFieldMessages(in: document.keys, scope: "Document"))
@@ -245,16 +330,19 @@ struct ModelProfileImportPreviewService {
         let existingModelIDs = Set(existingModels.map { $0.modelID.trimmingCharacters(in: .whitespacesAndNewlines) })
         let existingEndpoints = Set(existingModels.map { endpointKey(modelID: $0.modelID, host: $0.host, port: $0.serverPort) })
 
-        let validatedProfiles = candidates.map { candidate in
-            validate(
+        var reservedRenameNames = Set<String>()
+        var validatedProfiles: [ValidatedImportProfile] = []
+        for candidate in candidates {
+            validatedProfiles.append(validate(
                 candidate: candidate,
                 existingNames: existingNames,
                 existingModelIDs: existingModelIDs,
                 existingEndpoints: existingEndpoints,
                 importedNameCounts: importedNameCounts,
                 importedModelIDCounts: importedModelIDCounts,
-                importedEndpointCounts: importedEndpointCounts
-            )
+                importedEndpointCounts: importedEndpointCounts,
+                reservedRenameNames: &reservedRenameNames
+            ))
         }
 
         return result(
@@ -264,7 +352,8 @@ struct ModelProfileImportPreviewService {
             exportedAt: exportedAt,
             totalProfiles: rawProfiles.count,
             documentMessages: documentMessages,
-            profiles: validatedProfiles
+            profiles: validatedProfiles,
+            existingProfileNames: existingNames
         )
     }
 
@@ -275,7 +364,8 @@ struct ModelProfileImportPreviewService {
         existingEndpoints: Set<String>,
         importedNameCounts: [String: Int],
         importedModelIDCounts: [String: Int],
-        importedEndpointCounts: [String: Int]
+        importedEndpointCounts: [String: Int],
+        reservedRenameNames: inout Set<String>
     ) -> ValidatedImportProfile {
         guard let profile = candidate.profile else {
             return ValidatedImportProfile(
@@ -288,7 +378,9 @@ struct ModelProfileImportPreviewService {
                 hasAdvancedLaunchOptions: false,
                 status: .invalid,
                 messages: [.error("Profile entry must be a JSON object.")],
+                conflictKinds: [],
                 conflictSummary: nil,
+                suggestedRename: nil,
                 plannedActionSummary: "Invalid - cannot import"
             )
         }
@@ -300,6 +392,7 @@ struct ModelProfileImportPreviewService {
         let advancedOptions = advancedLaunchOptions(from: profile["advancedLaunchOptions"])
         var messages: [ImportValidationMessage] = []
         var conflicts: [String] = []
+        var conflictKinds = Set<ImportProfileConflictKind>()
 
         messages.append(contentsOf: ignoredFieldMessages(in: profile.keys, scope: "Profile"))
         messages.append(contentsOf: advancedLaunchOptionsShapeMessages(from: profile["advancedLaunchOptions"]))
@@ -333,20 +426,24 @@ struct ModelProfileImportPreviewService {
         if !name.isEmpty {
             if existingNames.contains(name) {
                 conflicts.append("same profile name as an existing profile")
+                conflictKinds.insert(.existingName)
             }
 
             if importedNameCounts[name, default: 0] > 1 {
                 conflicts.append("duplicate profile name inside import file")
+                conflictKinds.insert(.importedNameDuplicate)
             }
         }
 
         if !modelID.isEmpty {
             if existingModelIDs.contains(modelID) {
                 conflicts.append("same modelID as an existing profile")
+                conflictKinds.insert(.existingModelID)
             }
 
             if importedModelIDCounts[modelID, default: 0] > 1 {
                 conflicts.append("duplicate modelID inside import file")
+                conflictKinds.insert(.importedModelIDDuplicate)
             }
         }
 
@@ -355,15 +452,21 @@ struct ModelProfileImportPreviewService {
 
             if existingEndpoints.contains(endpoint) {
                 conflicts.append("same modelID + host + port as an existing profile")
+                conflictKinds.insert(.existingEndpoint)
             }
 
             if importedEndpointCounts[endpoint, default: 0] > 1 {
                 conflicts.append("duplicate modelID + host + port inside import file")
+                conflictKinds.insert(.importedEndpointDuplicate)
             }
         }
 
         if !conflicts.isEmpty {
-            messages.append(.warning("Conflict detected. Skip, rename, and replace actions are future work."))
+            if canSuggestRename(conflictKinds: conflictKinds) {
+                messages.append(.warning("Profile name conflict detected. Skip is the default; Rename is available before import."))
+            } else {
+                messages.append(.warning("Conflict detected. This profile will be skipped unless a future conflict action supports it."))
+            }
         }
 
         let status: ImportProfileValidationStatus
@@ -373,6 +476,19 @@ struct ModelProfileImportPreviewService {
             status = .warning
         } else {
             status = .valid
+        }
+
+        let suggestedRename: String?
+        if status != .invalid, canSuggestRename(conflictKinds: conflictKinds), !name.isEmpty {
+            let reservedNames = existingNames
+                .union(Set(importedNameCounts.keys))
+                .union(reservedRenameNames)
+            suggestedRename = makeSuggestedRename(for: name, reservedNames: reservedNames)
+            if let suggestedRename {
+                reservedRenameNames.insert(suggestedRename)
+            }
+        } else {
+            suggestedRename = nil
         }
 
         return ValidatedImportProfile(
@@ -385,8 +501,10 @@ struct ModelProfileImportPreviewService {
             hasAdvancedLaunchOptions: advancedOptions?.normalized() != nil,
             status: status,
             messages: messages.isEmpty ? [.info("Profile metadata is valid for preview.")] : messages,
+            conflictKinds: conflictKinds,
             conflictSummary: conflicts.isEmpty ? nil : conflicts.joined(separator: "; "),
-            plannedActionSummary: plannedActionSummary(status: status, conflicts: conflicts)
+            suggestedRename: suggestedRename,
+            plannedActionSummary: plannedActionSummary(status: status, conflicts: conflicts, suggestedRename: suggestedRename)
         )
     }
 
@@ -558,14 +676,15 @@ struct ModelProfileImportPreviewService {
         exportedAt: Date?,
         totalProfiles: Int,
         documentMessages: [ImportValidationMessage],
-        profiles: [ValidatedImportProfile]
+        profiles: [ValidatedImportProfile],
+        existingProfileNames: Set<String> = []
     ) -> ImportPreviewResult {
         let invalidCount = profiles.filter { $0.status == .invalid }.count
         let validCount = profiles.count - invalidCount
         let warningCount = documentMessages.filter { $0.severity == .warning }.count
             + profiles.flatMap(\.messages).filter { $0.severity == .warning }.count
         let hasDocumentError = documentMessages.contains { $0.severity == .error }
-        let importableCount = profiles.filter(\.isImportable).count
+        let actionableCount = profiles.filter { $0.isImportable || $0.canImportWithRename }.count
 
         return ImportPreviewResult(
             sourceFileName: sourceFileName,
@@ -578,15 +697,16 @@ struct ModelProfileImportPreviewService {
             warningCount: warningCount,
             documentMessages: documentMessages,
             profiles: profiles,
-            canProceedToFutureImport: !hasDocumentError && importableCount > 0
+            existingProfileNames: existingProfileNames,
+            canProceedToFutureImport: !hasDocumentError && actionableCount > 0
         )
     }
 
-    private func modelConfig(from profile: ValidatedImportProfile, port: Int) -> ModelConfig {
+    private func modelConfig(from profile: ValidatedImportProfile, port: Int, displayName: String) -> ModelConfig {
         let localName = profile.modelID.split(separator: "/").last.map(String.init) ?? profile.modelID
         return ModelConfig(
             modelID: profile.modelID,
-            displayName: profile.name,
+            displayName: displayName,
             family: "Imported",
             quantization: "Imported profile metadata",
             localName: localName,
@@ -598,16 +718,60 @@ struct ModelProfileImportPreviewService {
         )
     }
 
-    private func plannedActionSummary(status: ImportProfileValidationStatus, conflicts: [String]) -> String {
+    private func plannedActionSummary(
+        status: ImportProfileValidationStatus,
+        conflicts: [String],
+        suggestedRename: String?
+    ) -> String {
         if status == .invalid {
             return "Invalid - cannot import"
         }
 
+        if let suggestedRename {
+            return "Skip by default - can rename to \(suggestedRename)"
+        }
+
         if !conflicts.isEmpty {
-            return "Skipped - conflict handling is future work"
+            return "Skipped - conflict cannot be renamed in this version"
         }
 
         return "Importable - selected by default"
+    }
+
+    private func finalProfileName(
+        for profile: ValidatedImportProfile,
+        request: ImportSelectedProfileRequest
+    ) -> String? {
+        switch request.action {
+        case .importProfile:
+            profile.name
+        case .rename:
+            normalizedProfileName(request.renamedName)
+        }
+    }
+
+    private func normalizedProfileName(_ name: String?) -> String {
+        name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    private func canSuggestRename(conflictKinds: Set<ImportProfileConflictKind>) -> Bool {
+        !conflictKinds.isEmpty && conflictKinds.allSatisfy(\.isNameConflict)
+    }
+
+    private func makeSuggestedRename(for name: String, reservedNames: Set<String>) -> String? {
+        let baseName = "\(name) (Imported)"
+        if !reservedNames.contains(baseName) {
+            return baseName
+        }
+
+        for index in 2...999 {
+            let candidate = "\(name) (Imported \(index))"
+            if !reservedNames.contains(candidate) {
+                return candidate
+            }
+        }
+
+        return nil
     }
 
     private func documentError(sourceFileName: String, message: String) -> ImportPreviewResult {

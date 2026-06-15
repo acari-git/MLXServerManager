@@ -122,7 +122,7 @@ Future candidates can be considered if they preserve performance, safety, and Di
 
 Each candidate should define what it changes, what it refuses to change, and how it avoids interfering with active `mlx_lm.server` generation.
 
-Import conflict handling should follow the same rule. Rename and Replace can improve profile portability, but they must remain explicit metadata operations that do not start servers, call readiness endpoints, alter external process ownership, or interfere with active generation.
+Import conflict handling should follow the same rule. v3.3.0 implements Rename for profile-name conflicts as an explicit metadata operation. Future Replace work must remain explicit and must not start servers, call readiness endpoints, alter external process ownership, or interfere with active generation.
 
 ## Model Download Position
 
