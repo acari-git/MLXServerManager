@@ -21,6 +21,34 @@ struct ConnectionConfigBuilder {
         return jsonString(from: config)
     }
 
+    func allConnectionSettingsText(summary: ConnectionTargetSummary) -> String {
+        """
+        Target Type: \(summary.targetType)
+        Base URL: \(summary.baseURL)
+        Model ID: \(summary.modelID)
+        API Key: \(summary.apiKeyPlaceholder)
+        Readiness: GET /v1/models
+        Status: \(summary.readinessSummary)
+        Ownership: \(summary.ownershipNote)
+        Direct Mode: \(summary.directModeNote)
+        """
+    }
+
+    func hermesAgentConfigText(summary: ConnectionTargetSummary) -> String {
+        """
+        Hermes Agent / OpenAI-compatible client config
+
+        Base URL: \(summary.baseURL)
+        Model: \(summary.modelID)
+        API Key: \(summary.apiKeyPlaceholder)
+
+        Direct Mode: \(summary.directModeNote)
+        Local server note: MLX Server Manager does not proxy inference requests.
+        Ownership: \(summary.ownershipNote)
+        Qwen thinking note: If Qwen thinking control is needed, configure chat_template_kwargs client-side where supported.
+        """
+    }
+
     func modelsCurlCommand() -> String {
         "curl \(baseURL)/models"
     }

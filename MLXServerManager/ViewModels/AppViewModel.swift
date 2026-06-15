@@ -87,6 +87,49 @@ final class AppViewModel: ObservableObject {
         connectionConfigBuilder.baseURL
     }
 
+    var connectionTargetSummary: ConnectionTargetSummary {
+        let targetType: String
+        let ownershipNote: String
+        let readinessSummary: String
+        let isActiveTarget: Bool
+
+        switch runtimeState {
+        case .externalServerDetected:
+            targetType = "External Server Detected"
+            ownershipNote = "External server detected. Not managed by MLX Server Manager."
+            readinessSummary = "Ready via /v1/models"
+            isActiveTarget = true
+        case .adoptedExternalServer:
+            targetType = "Adopted External Server"
+            ownershipNote = "Connection context only. Not managed by MLX Server Manager."
+            readinessSummary = "Ready via /v1/models"
+            isActiveTarget = true
+        default:
+            if isManagedProcessRunning {
+                targetType = "Managed Server"
+                ownershipNote = "Managed by MLX Server Manager"
+                readinessSummary = managedReadinessSummary
+                isActiveTarget = true
+            } else {
+                targetType = "Not Running / Not Connected"
+                ownershipNote = "No active connection target."
+                readinessSummary = "Not currently running"
+                isActiveTarget = false
+            }
+        }
+
+        return ConnectionTargetSummary(
+            targetType: targetType,
+            baseURL: baseURL,
+            modelID: selectedModelIdentifier,
+            apiKeyPlaceholder: apiKeyPlaceholder,
+            readinessSummary: readinessSummary,
+            ownershipNote: ownershipNote,
+            directModeNote: "OpenAI-compatible client -> server -> MLX model",
+            isActiveTarget: isActiveTarget
+        )
+    }
+
     var selectedModelIdentifier: String {
         selectedModel?.modelID ?? "No model selected"
     }
@@ -129,6 +172,23 @@ final class AppViewModel: ObservableObject {
         return String(format: "Memory: %.2f GB", memoryUsageGB)
     }
 
+    private var managedReadinessSummary: String {
+        switch runtimeState {
+        case .ready:
+            "Ready via /v1/models"
+        case .starting, .loading:
+            "Starting"
+        case .checkingReady:
+            "Checking /v1/models"
+        case .readyCheckFailed:
+            "Ready check failed"
+        case .stopping:
+            "Stopping"
+        default:
+            "Managed process active"
+        }
+    }
+
     var copyableConfig: String {
         connectionConfigBuilder.configText(modelID: selectedModelIdentifier)
     }
@@ -139,6 +199,14 @@ final class AppViewModel: ObservableObject {
 
     var chatCompletionsCurlCommand: String {
         connectionConfigBuilder.chatCompletionsCurlCommand(modelID: selectedModelIdentifier)
+    }
+
+    var allConnectionSettingsText: String {
+        connectionConfigBuilder.allConnectionSettingsText(summary: connectionTargetSummary)
+    }
+
+    var hermesAgentConfigText: String {
+        connectionConfigBuilder.hermesAgentConfigText(summary: connectionTargetSummary)
     }
 
     var settingsDirectoryPath: String {
@@ -576,6 +644,21 @@ final class AppViewModel: ObservableObject {
     func copyConfig() {
         copyToPasteboard(copyableConfig)
         appendLog("[ui] Copied OpenAI-compatible config.")
+    }
+
+    func copyAPIKeyPlaceholder() {
+        copyToPasteboard(apiKeyPlaceholder)
+        appendLog("[ui] Copied API key placeholder.")
+    }
+
+    func copyAllConnectionSettings() {
+        copyToPasteboard(allConnectionSettingsText)
+        appendLog("[ui] Copied all connection settings.")
+    }
+
+    func copyHermesAgentConfig() {
+        copyToPasteboard(hermesAgentConfigText)
+        appendLog("[ui] Copied Hermes Agent connection config.")
     }
 
     func copyModelsCurl() {

@@ -863,6 +863,27 @@
    - Keep `/v1/chat/completions` examples as client-side helper text only.
    - Keep copied default config free of secrets.
 
+## v1.9.0 Completed: Connection Settings Polish Implementation
+
+1. Add Current Target summary to Connection Settings.
+   - Show Target Type, Base URL, Model ID, API key placeholder, readiness/status summary, and ownership note.
+   - Cover Managed Server, External Server Detected, Adopted External Server, and Not Running / Not Connected states.
+2. Expand copy actions.
+   - Add Copy API Key Placeholder.
+   - Add Copy All Connection Settings.
+   - Add Copy Hermes Agent Config.
+   - Rename `/v1/models` copy as Copy curl Readiness Check.
+   - Keep chat-completions text as a client-side example only.
+3. Keep implementation scoped to display and copy UX.
+   - App code changed only around Connection Settings and copy text generation.
+   - Direct Mode is maintained.
+   - No inference proxy, Chat UI, or multi-backend wrapper behavior.
+   - Advanced Launch Options behavior is unchanged.
+4. Preserve lifecycle and ownership boundaries.
+   - Stop and Restart remain scoped to app-managed processes.
+   - External detected and adopted servers remain not managed by MLX Server Manager.
+   - No external process kill, stop, restart, memory monitoring, or log collection.
+
 ## Later
 
 - Unit tests for services where practical.

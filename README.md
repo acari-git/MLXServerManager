@@ -76,6 +76,8 @@ Adopt External Server behavior is documented in [docs/adopt_external_server.md](
 
 Future Connection Settings polish is documented in [docs/connection_settings_polish.md](docs/connection_settings_polish.md). It focuses on making Managed, External Detected, and Adopted target configuration easier to understand and copy without changing the Direct Mode inference path.
 
+v1.9.0 implements the initial Current Target summary and expanded copy actions for Managed, External Detected, Adopted, and Not Running connection states. Direct Mode remains unchanged.
+
 ## Current Binary Asset
 
 The current app binary asset is still:

@@ -6,6 +6,15 @@ Connection Settings Polish is a v1.8.0 design step for making connection targets
 
 This is a display and copy UX improvement. It does not change the inference path, does not add a proxy, and does not give MLX Server Manager ownership of external processes.
 
+## Implementation Status
+
+v1.9.0 implements the initial Current Target summary and expanded copy actions in Connection Settings.
+
+- Managed, external detected, adopted external, and not-running states show distinct target summaries.
+- Copy actions include Base URL, Model ID, API key placeholder, JSON client config, Hermes Agent config, readiness curl, OpenAI-compatible chat example, and all connection settings.
+- The implementation remains display and copy UX only.
+- Direct Mode and external process ownership boundaries are unchanged.
+
 ## Problem Statement
 
 After External Server Detection and Adopt External Server, the app can represent more than one connection context:
