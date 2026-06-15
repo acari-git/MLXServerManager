@@ -6,6 +6,8 @@ Onboarding / First-run Guidance started as a v2.3.0 docs-only design and receive
 
 The guidance should make the first run safer and clearer without adding automation that hides important ownership or network boundaries.
 
+This aligns with the project direction: make `mlx-lm` usable for users who are not comfortable with CLI workflows while keeping Direct Mode and runtime ownership visible.
+
 ## v2.4.0 Initial Implementation
 
 v2.4.0 adds a small Onboarding Guidance panel in the main app. It is lightweight guidance, not a wizard.
@@ -22,7 +24,7 @@ The panel summarizes the next setup step based on current app state:
 The panel keeps these boundaries:
 
 - No auto install.
-- No model download.
+- No model download in the current onboarding flow.
 - No model deletion.
 - No inference proxy.
 - No automatic external process ownership.
@@ -41,7 +43,7 @@ This is a documentation and public presentation update only. It does not change 
 
 Model Profile export can help first-run setup by backing up current profile metadata. v2.9.0 adds Import Profiles Preview so users can inspect and validate exported profile metadata. v3.0.0 adds import for selected valid profiles without conflicts.
 
-Conflict handling remains future work. Import/export should remain metadata-only: no model install, no model download, no automatic server start, no inference proxy, and no external process ownership changes.
+Conflict handling remains future work. Import/export should remain metadata-only: no model install, no model download in the current import/export flow, no automatic server start, no inference proxy, and no external process ownership changes.
 
 ## Goals
 
@@ -59,7 +61,7 @@ Conflict handling remains future work. Import/export should remain metadata-only
 - Do not add Chat UI.
 - Do not add Proxy mode.
 - Do not add multi-backend wrapper behavior.
-- Do not add model download or model deletion.
+- Do not add model download or model deletion to the current onboarding flow.
 - Do not automate `mlx-lm` installation.
 - Do not automatically modify external client configuration.
 - Do not stop, restart, kill, monitor memory for, or collect logs from external processes.
@@ -282,3 +284,4 @@ Future onboarding tests should confirm:
 - Add a first-run checklist UI that links to Setup Diagnostics.
 - Add inline explanations for Managed Server versus Adopted External Server.
 - Keep onboarding guidance text short enough for the main app UI.
+- Consider future model download guidance only if a separate explicit model download feature is designed with clear performance, safety, privacy, and Direct Mode boundaries.

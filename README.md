@@ -68,6 +68,16 @@ The guidance is informational only. It does not install dependencies, download m
 
 MLX Server Manager exists to provide that management layer without becoming the inference layer. The goal is to make pure `mlx_lm.server` easier to operate for local OpenAI-compatible clients, especially agent tools that need a stable local endpoint.
 
+## Project Principles
+
+MLX Server Manager follows three product principles:
+
+1. Preserve `mlx-lm` runtime performance as the top priority.
+2. Make `mlx-lm` usable for users who are not comfortable with CLI workflows.
+3. Adopt useful features from other local LLM tools when they do not conflict with `mlx-lm` performance, safety, or Direct Mode boundaries.
+
+See [docs/product_direction.md](docs/product_direction.md) for the full project direction, including current non-goals and future candidate features.
+
 ## What This Is
 
 - A local macOS app for starting, stopping, and restarting an app-managed `mlx_lm.server`.
@@ -82,7 +92,7 @@ MLX Server Manager exists to provide that management layer without becoming the 
 
 - Not a chat UI.
 - Not an inference proxy.
-- Not a model downloader.
+- Does not currently include model download or install automation.
 - Not a model deletion tool.
 - Not a multi-backend wrapper.
 - Not a replacement for `mlx-lm` or model setup.
@@ -131,11 +141,11 @@ Model Profile export and import are documented in [docs/model_profile_import_exp
 
 ## Current Binary Asset
 
-The current downloadable app binary asset is:
+The current downloadable app binary asset is the latest app-code release:
 
-- `MLXServerManager-v1.9.0-unsigned.zip`
+- `MLXServerManager-v3.0.0-unsigned.zip`
 
-v2.0.0 is a docs/public-polish release. It updates README and project documentation to describe the current public feature set, but it does not introduce a new app binary.
+v3.1.0 is a docs-only product-direction release. It updates project principles and documentation, but it does not introduce a new app binary.
 
 ## Target Users
 
@@ -203,7 +213,7 @@ The copied `curl /v1/chat/completions` text is only a client-side convenience ex
 - App Intents.
 - Auto unload.
 - Hugging Face download manager.
-- Model download.
+- Model download in the current release.
 - Model deletion.
 - Hugging Face cache deletion.
 - Multiple concurrent server management.
@@ -214,6 +224,8 @@ The copied `curl /v1/chat/completions` text is only a client-side convenience ex
 - Telemetry, analytics, crash reporting, external log sending, or cloud logging.
 - Persistent file logging.
 - Notarization, Developer ID signing, DMG, App Store distribution, Homebrew cask, auto updater, or CI/CD release automation.
+
+Model download is a future candidate only if it can preserve `mlx-lm` runtime performance, avoid silent downloads or automatic server start, and keep clear safety and privacy boundaries.
 
 ## First-Run Workflow
 

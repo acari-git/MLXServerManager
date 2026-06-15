@@ -1,6 +1,6 @@
 # Known Limitations
 
-This document lists known v1.0 limitations for MLX Server Manager.
+This document lists known limitations for MLX Server Manager.
 
 ## Distribution
 
@@ -23,8 +23,9 @@ This document lists known v1.0 limitations for MLX Server Manager.
 - The app does not bundle Hugging Face cache.
 - Users must provide the `mlx_lm.server` executable path in Settings.
 - Users must provide model files or Hugging Face cache separately.
-- The app does not download models.
+- The app does not currently download models.
 - The app does not validate that a model exists before `mlx_lm.server` attempts to load it.
+- Model download may be considered in a future release only if it preserves `mlx-lm` runtime performance and keeps explicit safety, privacy, and user-control boundaries.
 
 ## Process Management
 

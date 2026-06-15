@@ -1067,8 +1067,8 @@
 4. Future staging.
    - v2.9.0: Import Preview implementation.
    - v3.0.0: Import selected valid profiles.
-   - v3.1.0: Conflict handling polish.
-   - v3.2.0: Import/export schema tests and fixtures.
+   - Future: Conflict handling polish.
+   - Future: Import/export schema tests and fixtures.
 
 ## v2.9.0 Completed: Import Profiles Preview Implementation
 
@@ -1130,6 +1130,29 @@
    - No external process kill, stop, restart, adoption, forget, or ownership change.
 5. Release note.
    - v3.0.0 is an app-code release and requires a new app binary asset when released.
+
+## v3.1.0 Completed: Project Principles / Product Direction
+
+1. Add project direction documentation.
+   - Add `docs/product_direction.md`.
+   - Document Project Principles, Product Direction, performance-first policy, CLI-friendly `mlx-lm` workflow, Direct Mode boundary, feature adoption policy, current non-goals, future candidate features, model download position, safety/privacy boundaries, and release roadmap framing.
+2. Keep this step docs-only.
+   - No Swift changes.
+   - No app code changes.
+   - No Xcode project changes.
+   - No new app binary, zip asset, `.dSYM`, DerivedData, or release asset.
+3. Clarify product principles.
+   - `mlx-lm` runtime performance is the top priority.
+   - The app should make `mlx-lm` usable for users who are not comfortable with CLI workflows.
+   - Useful features may be adopted when they do not conflict with performance, safety, or Direct Mode boundaries.
+4. Clarify model download position.
+   - Model download is a current non-goal.
+   - Model download remains a future candidate under strict performance, safety, privacy, and user-control conditions.
+   - Model deletion remains out of current scope and must be handled cautiously.
+5. Preserve product and safety boundaries.
+   - Direct Mode is maintained.
+   - No inference proxy, Chat UI, multi-backend router, hidden request rewriting, or automatic external process ownership changes.
+   - Convenience features must not silently start, stop, restart, download, import secrets, or obscure process ownership.
 
 ## Later
 

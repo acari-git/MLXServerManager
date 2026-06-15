@@ -8,6 +8,8 @@ v2.7.0 implements Export Profiles. v2.9.0 implements Import Profiles Preview. v3
 
 Import and export apply only to Model Profile metadata. They do not include model weights, Hugging Face cache, local runtime settings, secrets, or app binaries.
 
+Import/export follows the product principles in [Product Direction](product_direction.md): preserve `mlx-lm` runtime performance, keep metadata operations explicit and side-effect-free, and avoid hiding server lifecycle or ownership boundaries.
+
 ## v2.7.0 Implementation Status
 
 Implemented:
@@ -25,7 +27,7 @@ Not implemented:
 - Rename conflict handling.
 - Replace conflict handling.
 - Selecting an imported profile after import.
-- Model download or install automation.
+- Model download or install automation in the current import/export flow.
 
 Export is side-effect-free with respect to server lifecycle. It does not start, stop, restart, adopt, forget, readiness-check, or send HTTP requests.
 
@@ -606,7 +608,7 @@ Import summary should show:
 - conflict resolution result,
 - whether an imported profile will be selected after import.
 
-Keep the UI small and explicit. Do not turn import/export into a model installer, model downloader, backend router, or first-run wizard.
+Keep the UI small and explicit. Do not turn import/export into an implicit model installer, hidden downloader, backend router, or first-run wizard. Future model download design, if added separately, must stay explicit and preserve performance, safety, and Direct Mode boundaries.
 
 ## Error Messages
 
