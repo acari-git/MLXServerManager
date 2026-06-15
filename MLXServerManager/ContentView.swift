@@ -49,13 +49,18 @@ struct ContentView: View {
                             runningModelText: viewModel.runningModelText,
                             restartRequired: viewModel.restartRequired,
                             isExternalServerDetected: viewModel.isExternalServerDetected,
+                            isAdoptedExternalServer: viewModel.isAdoptedExternalServer,
                             canStopManagedServer: viewModel.canStopManagedServer,
                             canRestartManagedServer: viewModel.canRestartManagedServer,
+                            canAdoptExternalServer: viewModel.canAdoptExternalServer,
+                            canForgetExternalServer: viewModel.canForgetExternalServer,
                             onCheckPort: viewModel.checkPortRequested,
                             onCheckReady: viewModel.checkReadyRequested,
                             onStart: viewModel.startRequested,
                             onStop: viewModel.stopRequested,
-                            onRestart: viewModel.restartRequested
+                            onRestart: viewModel.restartRequested,
+                            onAdoptExternalServer: viewModel.adoptExternalServerRequested,
+                            onForgetExternalServer: viewModel.forgetExternalServerRequested
                         )
 
                         ModelDetailView(

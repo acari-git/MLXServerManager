@@ -7,13 +7,18 @@ struct StatusPanelView: View {
     let runningModelText: String
     let restartRequired: Bool
     let isExternalServerDetected: Bool
+    let isAdoptedExternalServer: Bool
     let canStopManagedServer: Bool
     let canRestartManagedServer: Bool
+    let canAdoptExternalServer: Bool
+    let canForgetExternalServer: Bool
     let onCheckPort: () -> Void
     let onCheckReady: () -> Void
     let onStart: () -> Void
     let onStop: () -> Void
     let onRestart: () -> Void
+    let onAdoptExternalServer: () -> Void
+    let onForgetExternalServer: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -31,6 +36,9 @@ struct StatusPanelView: View {
                     }
                     if isExternalServerDetected {
                         externalServerBadge
+                    }
+                    if isAdoptedExternalServer {
+                        adoptedExternalServerBadge
                     }
                 }
 
@@ -68,6 +76,24 @@ struct StatusPanelView: View {
                     Label("Restart", systemImage: "arrow.clockwise")
                 }
                 .disabled(!canRestartManagedServer)
+
+                if isExternalServerDetected {
+                    Button {
+                        onAdoptExternalServer()
+                    } label: {
+                        Label("Adopt External Server", systemImage: "link.badge.plus")
+                    }
+                    .disabled(!canAdoptExternalServer)
+                }
+
+                if isAdoptedExternalServer {
+                    Button {
+                        onForgetExternalServer()
+                    } label: {
+                        Label("Forget External Server", systemImage: "xmark.circle")
+                    }
+                    .disabled(!canForgetExternalServer)
+                }
             }
         }
         .panelStyle()
@@ -127,6 +153,19 @@ struct StatusPanelView: View {
         .foregroundStyle(.secondary)
     }
 
+    private var adoptedExternalServerBadge: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Label("Adopted external server", systemImage: "link")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.orange)
+            Text("Connection context only.")
+            Text("Not managed by MLX Server Manager.")
+            Text("Forget removes the app-side context only.")
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+
     private var indicatorColor: Color {
         switch runtimeState {
         case .stopped:
@@ -137,7 +176,7 @@ struct StatusPanelView: View {
             .green
         case .checkingReady:
             .orange
-        case .externalServerDetected:
+        case .externalServerDetected, .adoptedExternalServer:
             .orange
         case .portBusy, .portCheckFailed, .readyCheckFailed, .error:
             .red

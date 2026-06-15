@@ -9,6 +9,7 @@ enum ModelRuntimeState: Hashable {
     case portAvailable(host: String, port: Int)
     case portBusy(host: String, port: Int)
     case externalServerDetected(host: String, port: Int, baseURL: String, message: String)
+    case adoptedExternalServer(host: String, port: Int, baseURL: String, message: String)
     case portCheckFailed(host: String, port: Int, message: String)
     case checkingReady(host: String, port: Int)
     case ready(host: String, port: Int, processIdentifier: Int32?)
@@ -34,6 +35,8 @@ enum ModelRuntimeState: Hashable {
             "Port Busy"
         case .externalServerDetected:
             "External Server Detected"
+        case .adoptedExternalServer:
+            "Adopted External Server"
         case .portCheckFailed:
             "Port Check Failed"
         case .checkingReady:
@@ -67,6 +70,8 @@ enum ModelRuntimeState: Hashable {
             "\(host):\(port) is already in use. Start will not launch a second server on this port."
         case let .externalServerDetected(host, port, baseURL, message):
             "\(message) \(baseURL) is ready at \(host):\(port). This server was not started by MLX Server Manager."
+        case let .adoptedExternalServer(host, port, baseURL, message):
+            "\(message) \(baseURL) is the adopted connection context at \(host):\(port). This server is not managed by MLX Server Manager."
         case let .portCheckFailed(host, port, message):
             "Could not check \(host):\(port): \(message)"
         case let .checkingReady(host, port):
@@ -104,6 +109,8 @@ enum ModelRuntimeState: Hashable {
             "\(host):\(port)"
         case let .externalServerDetected(host, port, _, _):
             "\(host):\(port), external"
+        case let .adoptedExternalServer(host, port, _, _):
+            "\(host):\(port), adopted external"
         case let .portCheckFailed(host, port, _):
             "\(host):\(port)"
         case let .checkingReady(host, port):
@@ -129,7 +136,7 @@ enum ModelRuntimeState: Hashable {
             "stopped"
         case .starting, .loading, .checkingPort, .checkingReady:
             "starting"
-        case .ready, .externalServerDetected:
+        case .ready, .externalServerDetected, .adoptedExternalServer:
             "ready"
         case .stopping:
             "stopping"
@@ -144,6 +151,18 @@ enum ModelRuntimeState: Hashable {
         }
 
         return false
+    }
+
+    var isAdoptedExternalServer: Bool {
+        if case .adoptedExternalServer = self {
+            return true
+        }
+
+        return false
+    }
+
+    var isExternalServerContext: Bool {
+        isExternalServerDetected || isAdoptedExternalServer
     }
 
 }

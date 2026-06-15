@@ -8,6 +8,20 @@ Adopt does not mean process ownership. It means the user has chosen to track and
 
 The initial v1.5.0 External Server Detection feature remains detect-only. This document describes a possible next step, not current behavior.
 
+## Implementation Status
+
+v1.7.0 implements the initial Adopt External Server behavior.
+
+- Adopt is available only after an external OpenAI-compatible server is detected.
+- Adopt changes UI state to Adopted External Server.
+- Adopt does not launch a process.
+- Adopt does not store a PID.
+- Adopt does not start memory monitoring.
+- Adopt does not collect external process logs.
+- Forget External Server clears only the app-side connection context.
+- Stop and Restart remain unavailable for external servers.
+- Connection Settings remain available and continue to use the selected model profile.
+
 ## Problem Statement
 
 External Server Detection can identify that the selected host and port respond to `GET /v1/models`, but the UI still treats that state as transient detection. Users may want a clearer way to say:

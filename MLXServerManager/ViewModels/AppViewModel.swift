@@ -118,7 +118,7 @@ final class AppViewModel: ObservableObject {
     }
 
     var memoryUsageText: String {
-        if runtimeState.isExternalServerDetected {
+        if runtimeState.isExternalServerContext {
             return "Memory: Not available for external server"
         }
 
@@ -176,12 +176,24 @@ final class AppViewModel: ObservableObject {
         runtimeState.isExternalServerDetected
     }
 
+    var isAdoptedExternalServer: Bool {
+        runtimeState.isAdoptedExternalServer
+    }
+
     var canStopManagedServer: Bool {
         processManager.managedProcessIdentifier != nil
     }
 
     var canRestartManagedServer: Bool {
-        processManager.managedProcessIdentifier != nil && !runtimeState.isExternalServerDetected
+        processManager.managedProcessIdentifier != nil && !runtimeState.isExternalServerContext
+    }
+
+    var canAdoptExternalServer: Bool {
+        runtimeState.isExternalServerDetected
+    }
+
+    var canForgetExternalServer: Bool {
+        runtimeState.isAdoptedExternalServer
     }
 
     func startRequested() {
@@ -193,7 +205,7 @@ final class AppViewModel: ObservableObject {
     func stopRequested() {
         guard let processIdentifier = processManager.managedProcessIdentifier else {
             clearRunningModel(logPrefix: "stop")
-            if runtimeState.isExternalServerDetected {
+            if runtimeState.isExternalServerContext {
                 appendLog("[stop] managed process is not running. External servers are not stopped by this app.")
             } else {
                 runtimeState = .stopped
@@ -213,7 +225,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func restartRequested() {
-        guard !runtimeState.isExternalServerDetected else {
+        guard !runtimeState.isExternalServerContext else {
             appendLog("[restart] unavailable for external servers. Start a managed server only after the port is available.")
             return
         }
@@ -280,7 +292,9 @@ final class AppViewModel: ObservableObject {
     func checkReadyRequested() {
         let host = selectedModel?.host ?? settings.defaultHost
         let port = selectedModel?.serverPort ?? settings.defaultPort
-        runtimeState = .checkingReady(host: host, port: port)
+        if !runtimeState.isExternalServerContext {
+            runtimeState = .checkingReady(host: host, port: port)
+        }
         appendLog("[ready] checking: http://\(host):\(port)/v1/models")
 
         Task {
@@ -614,6 +628,44 @@ final class AppViewModel: ObservableObject {
         }
     }
 
+    func adoptExternalServerRequested() {
+        guard case let .externalServerDetected(host, port, baseURL, _) = runtimeState else {
+            appendLog("[external] adopt unavailable: no detected external server.")
+            return
+        }
+
+        stopMemoryMonitoring()
+        clearRunningModel(logPrefix: "external")
+        runtimeState = .adoptedExternalServer(
+            host: host,
+            port: port,
+            baseURL: baseURL,
+            message: "This server is adopted for connection context only."
+        )
+        appendLog("[external] adopted external server for connection context: \(baseURL)")
+        appendLog("[external] not managed by MLX Server Manager. Stop and Restart remain unavailable.")
+    }
+
+    func forgetExternalServerRequested() {
+        guard runtimeState.isAdoptedExternalServer else {
+            appendLog("[external] forget unavailable: no adopted external server.")
+            return
+        }
+
+        appendLog("[external] forgot adopted external server. External process was not modified.")
+
+        if let processIdentifier = processManager.managedProcessIdentifier {
+            let endpoint = endpointForCurrentRuntimeState()
+            runtimeState = .ready(
+                host: endpoint.host,
+                port: endpoint.port,
+                processIdentifier: processIdentifier
+            )
+        } else {
+            runtimeState = .stopped
+        }
+    }
+
     private func startManagedServer(logPrefix: String) async -> Bool {
         guard let selectedModel else {
             let message = "No model is selected."
@@ -749,7 +801,14 @@ final class AppViewModel: ObservableObject {
     ) {
         switch result {
         case let .ready(url, statusCode):
-            if runtimeState.isExternalServerDetected {
+            if runtimeState.isAdoptedExternalServer {
+                runtimeState = .adoptedExternalServer(
+                    host: fallbackHost,
+                    port: fallbackPort,
+                    baseURL: "http://\(fallbackHost):\(fallbackPort)/v1",
+                    message: "This server is adopted for connection context only."
+                )
+            } else if runtimeState.isExternalServerDetected {
                 runtimeState = .externalServerDetected(
                     host: fallbackHost,
                     port: fallbackPort,
@@ -765,34 +824,40 @@ final class AppViewModel: ObservableObject {
             }
             appendLog("[ready] ready: \(url.absoluteString) returned HTTP \(statusCode)")
         case let .notReady(url, statusCode):
-            runtimeState = .readyCheckFailed(
+            setReadyFailureState(
                 host: fallbackHost,
                 port: fallbackPort,
                 message: "HTTP \(statusCode)"
             )
             appendLog("[ready] not ready: \(url.absoluteString) returned HTTP \(statusCode)")
         case let .invalidInput(message):
-            runtimeState = .readyCheckFailed(
-                host: fallbackHost,
-                port: fallbackPort,
-                message: message
-            )
+            setReadyFailureState(host: fallbackHost, port: fallbackPort, message: message)
             appendLog("[ready] ready check failed: \(message)")
         case let .failed(url, message):
-            runtimeState = .readyCheckFailed(
-                host: fallbackHost,
-                port: fallbackPort,
-                message: message
-            )
+            setReadyFailureState(host: fallbackHost, port: fallbackPort, message: message)
             appendLog("[ready] ready check failed for \(url?.absoluteString ?? "\(fallbackHost):\(fallbackPort)"): \(message)")
         case let .timedOut(url):
-            runtimeState = .readyCheckFailed(
-                host: fallbackHost,
-                port: fallbackPort,
-                message: "Timed out"
-            )
+            setReadyFailureState(host: fallbackHost, port: fallbackPort, message: "Timed out")
             appendLog("[ready] timed out: \(url.absoluteString)")
         }
+    }
+
+    private func setReadyFailureState(host: String, port: Int, message: String) {
+        if runtimeState.isAdoptedExternalServer {
+            runtimeState = .adoptedExternalServer(
+                host: host,
+                port: port,
+                baseURL: "http://\(host):\(port)/v1",
+                message: "Adopted external server is not ready: \(message)"
+            )
+            return
+        }
+
+        runtimeState = .readyCheckFailed(
+            host: host,
+            port: port,
+            message: message
+        )
     }
 
     private func waitForReadyAfterStart(
@@ -948,6 +1013,8 @@ final class AppViewModel: ObservableObject {
             return (host, port)
         case let .externalServerDetected(host, port, _, _):
             return (host, port)
+        case let .adoptedExternalServer(host, port, _, _):
+            return (host, port)
         case let .loading(host, port, _),
              let .ready(host, port, _):
             return (host, port)
@@ -973,9 +1040,9 @@ final class AppViewModel: ObservableObject {
         }
 
         appendLog("[model] selected modelID: \(selectedModel.modelID)")
-        if runtimeState.isExternalServerDetected {
+        if runtimeState.isExternalServerContext {
             runtimeState = .stopped
-            appendLog("[model] external server detection cleared after model selection changed.")
+            appendLog("[model] external server context cleared after model selection changed.")
         }
         logRestartRequiredIfNeeded()
     }

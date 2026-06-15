@@ -822,6 +822,26 @@
    - Link README to the Adopt External Server design.
    - Link `docs/external_server_detection.md` to the separated adopt design.
 
+## v1.7.0 In Progress: Adopt External Server Initial Implementation
+
+1. Add adopted external server runtime state.
+   - Represent Adopted External Server separately from External Server Detected.
+   - Keep adopted external servers outside managed process ownership.
+   - Show adopted state as connection context only.
+2. Add Adopt and Forget actions.
+   - Adopt is available only from External Server Detected state.
+   - Forget clears only the app-side adopted context.
+   - Neither action starts, stops, restarts, or modifies the external process.
+3. Update UI and menu bar actions.
+   - Show Adopt External Server for detected external servers.
+   - Show Forget External Server for adopted external servers.
+   - Keep Stop and Restart disabled unless an app-managed process exists.
+4. Preserve Direct Mode and process ownership boundaries.
+   - MLX Server Manager remains outside the inference request path.
+   - Adopt means connection context, not process ownership.
+   - Detection and readiness continue to use `/v1/models`.
+   - No external process kill, stop, restart, memory monitoring, or log collection.
+
 ## Later
 
 - Unit tests for services where practical.

@@ -30,6 +30,18 @@ struct MenuBarView: View {
             }
             .disabled(!viewModel.canRestartManagedServer)
 
+            if viewModel.canAdoptExternalServer {
+                Button("Adopt External Server") {
+                    viewModel.adoptExternalServerRequested()
+                }
+            }
+
+            if viewModel.canForgetExternalServer {
+                Button("Forget External Server") {
+                    viewModel.forgetExternalServerRequested()
+                }
+            }
+
             Button("Run Diagnostics") {
                 viewModel.runDiagnosticsRequested()
             }
