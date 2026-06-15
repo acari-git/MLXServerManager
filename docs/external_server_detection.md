@@ -2,7 +2,7 @@
 
 ## Overview
 
-External Server Detection is a planned Direct Mode improvement for cases where an OpenAI-compatible server is already running on the selected host and port before MLX Server Manager starts its own managed `mlx_lm.server` process.
+External Server Detection is a Direct Mode improvement for cases where an OpenAI-compatible server is already running on the selected host and port before MLX Server Manager starts its own managed `mlx_lm.server` process.
 
 The first implementation should be detect-only. It should help users understand why a port is busy and whether the existing service appears usable as an OpenAI-compatible endpoint, without taking ownership of that process.
 
@@ -17,9 +17,9 @@ v1.5.0 implements the initial detect-only behavior.
 - The app does not monitor external server memory usage.
 - Stop and Restart remain unavailable for external servers.
 - Connection Settings remain available and continue to use the selected model profile.
-- Adopt External Server is still future work.
+- Adopt External Server is implemented separately as explicit connection context.
 
-Adopt External Server is split into a separate future design document: [adopt_external_server.md](adopt_external_server.md). The v1.5.0 implementation remains detect-only.
+Adopt External Server is documented separately in [adopt_external_server.md](adopt_external_server.md). Detection remains conservative and does not imply process ownership.
 
 ## Problem Statement
 

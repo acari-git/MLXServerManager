@@ -884,9 +884,33 @@
    - External detected and adopted servers remain not managed by MLX Server Manager.
    - No external process kill, stop, restart, memory monitoring, or log collection.
 
+## v2.0.0 Completed: Public README and Docs Polish
+
+1. Refresh README for the current public feature set.
+   - Describe MLX Server Manager as a Direct Mode control surface for managed `mlx_lm.server` and adopted external connection context.
+   - Add a clear What This Is section.
+   - Keep What This Is Not and non-goals visible.
+   - Update the feature list to reflect v1.9.0 behavior.
+2. Clarify binary asset status.
+   - v2.0.0 is docs/public polish only.
+   - No new app binary or zip asset is created.
+   - Current downloadable app binary remains the v1.9.0 unsigned build.
+3. Update public docs consistency.
+   - Remove stale future-only wording from External Server Detection, Adopt External Server, and Connection Settings polish docs.
+   - Keep Direct Mode, no Proxy, no Chat UI, and no multi-backend wrapper boundaries intact.
+4. Keep this step docs-only.
+   - No Swift changes.
+   - No app code changes.
+   - No Xcode project changes.
+   - No new `.app`, `.zip`, `.dSYM`, DerivedData, or release asset.
+5. Note future optional presentation work.
+   - Refresh screenshots when new v1.9+ UI screenshots are available.
+   - Keep screenshot refresh as optional public polish, not a blocker for this docs update.
+
 ## Later
 
 - Unit tests for services where practical.
+- Refresh README screenshots for the v1.9+ Connection Settings Current Target UI.
 - LAN Web UI.
 - Automatic unload policies.
 - More advanced resource graphs.

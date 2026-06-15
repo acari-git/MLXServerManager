@@ -1,16 +1,16 @@
 # MLX Server Manager
 
-MLX Server Manager is a lightweight macOS SwiftUI GUI for managing pure `mlx_lm.server` on Apple Silicon in Direct Mode.
+MLX Server Manager is a lightweight macOS SwiftUI GUI for operating local OpenAI-compatible MLX endpoints in Direct Mode.
 
-It helps Apple Silicon users expose local MLX models as OpenAI-compatible endpoints for local agent tools while keeping the inference path direct.
+It is primarily a control surface for app-managed `mlx_lm.server`, with support for detecting and adopting an already-running external OpenAI-compatible server as connection context.
 
 The app keeps Direct Mode:
 
 ```text
-OpenAI-compatible client -> mlx_lm.server
+OpenAI-compatible client -> mlx_lm.server or adopted external server -> MLX model
 ```
 
-MLX Server Manager controls and observes the managed local server process, but it does not enter the inference request path. OpenAI-compatible clients connect directly to `mlx_lm.server`.
+MLX Server Manager controls and observes app-managed local server processes, but it does not enter the inference request path. OpenAI-compatible clients connect directly to the server endpoint.
 
 ## Screenshot
 
@@ -28,9 +28,19 @@ These options only affect the managed `mlx_lm.server` launch command. MLX Server
 
 ## Why This Project Exists
 
-`mlx_lm.server` is fast and simple, but day-to-day local use benefits from a small GUI around process management, diagnostics, model profiles, logs, memory display, and connection settings.
+`mlx_lm.server` is fast and simple, but day-to-day local use benefits from a small GUI around process management, diagnostics, model profiles, logs, memory display, external endpoint visibility, and connection settings.
 
 MLX Server Manager exists to provide that management layer without becoming the inference layer. The goal is to make pure `mlx_lm.server` easier to operate for local OpenAI-compatible clients, especially agent tools that need a stable local endpoint.
+
+## What This Is
+
+- A local macOS app for starting, stopping, and restarting an app-managed `mlx_lm.server`.
+- A status and diagnostics surface for readiness checks via `GET /v1/models`.
+- A model profile editor for local OpenAI-compatible endpoint settings.
+- A managed-process log and memory display.
+- A Direct Mode connection settings copier for OpenAI-compatible clients.
+- A conservative external server detector for selected host/port endpoints.
+- An Adopt External Server flow for connection context only, not process ownership.
 
 ## What This Is Not
 
@@ -43,7 +53,7 @@ MLX Server Manager exists to provide that management layer without becoming the 
 
 ## Quick Start
 
-1. Download `MLXServerManager-v1.0.0-unsigned.zip` from the GitHub Release.
+1. Download `MLXServerManager-v1.9.0-unsigned.zip` from the GitHub Release.
 2. Extract the zip and confirm it contains `MLXServerManager.app`.
 3. Open the app.
    - This is an unsigned, non-notarized local-use build.
@@ -59,8 +69,9 @@ MLX Server Manager exists to provide that management layer without becoming the 
 5. Configure or add a Model Profile.
 6. Run Setup Diagnostics.
 7. Press Start.
-8. Copy Base URL, Model ID, or JSON config from Connection Settings.
-9. Paste those values into an OpenAI-compatible client.
+8. Confirm the Current Target summary in Connection Settings.
+9. Copy Base URL, Model ID, API key placeholder, JSON config, Hermes Agent config, or curl readiness check from Connection Settings.
+10. Paste those values into an OpenAI-compatible client.
 
 You must provide your own `mlx-lm` environment, `mlx_lm.server` executable, and model files or Hugging Face cache. The app keeps Direct Mode: the client connects directly to `mlx_lm.server`; MLX Server Manager does not proxy inference traffic or run chat completions.
 
@@ -74,17 +85,15 @@ External server detection is documented in [docs/external_server_detection.md](d
 
 Adopt External Server behavior is documented in [docs/adopt_external_server.md](docs/adopt_external_server.md). v1.7.0 adds the initial implementation for explicitly adopting a detected external server as connection context only, without taking process ownership.
 
-Future Connection Settings polish is documented in [docs/connection_settings_polish.md](docs/connection_settings_polish.md). It focuses on making Managed, External Detected, and Adopted target configuration easier to understand and copy without changing the Direct Mode inference path.
-
-v1.9.0 implements the initial Current Target summary and expanded copy actions for Managed, External Detected, Adopted, and Not Running connection states. Direct Mode remains unchanged.
+Connection Settings polish is documented in [docs/connection_settings_polish.md](docs/connection_settings_polish.md). v1.9.0 implements the initial Current Target summary and expanded copy actions for Managed, External Detected, Adopted, and Not Running connection states. Direct Mode remains unchanged.
 
 ## Current Binary Asset
 
-The current app binary asset is still:
+The current downloadable app binary asset is:
 
-- `MLXServerManager-v1.0.0-unsigned.zip`
+- `MLXServerManager-v1.9.0-unsigned.zip`
 
-v1.0.1, v1.0.2, and v1.0.3 are documentation-only releases. They update guidance, release notes, Gatekeeper explanations, first-run flow, and benchmark-informed direction, but they do not change the app binary.
+v2.0.0 is a docs/public-polish release. It updates README and project documentation to describe the current public feature set, but it does not introduce a new app binary.
 
 ## Target Users
 
@@ -100,13 +109,13 @@ MLX Server Manager presents connection information for OpenAI-compatible clients
 - Model ID: the selected Model Profile's `modelID`
 - API key placeholder: `not-required-local`
 
-The client sends inference requests directly to `mlx_lm.server`. MLX Server Manager only starts, stops, monitors, diagnoses, and copies connection settings.
+The client sends inference requests directly to the selected server endpoint. MLX Server Manager starts, stops, monitors, diagnoses, and copies connection settings for app-managed `mlx_lm.server`; for adopted external servers it provides connection context only.
 
 For Hermes Agent and similar clients, see [docs/hermes_agent_connection.md](docs/hermes_agent_connection.md). Hermes Agent is treated as an OpenAI-compatible client; MLX Server Manager still stays outside the inference request path.
 
-## Stable Scope
+## Current Feature Set
 
-The v1.0 stable scope includes:
+As of v1.9.0, MLX Server Manager includes:
 
 - Start, Stop, and Restart for the `mlx_lm.server` process started by this app.
 - Managed-process-only Stop and Restart behavior.
@@ -115,6 +124,14 @@ The v1.0 stable scope includes:
 - Settings save and restore.
 - Model profile add, edit, delete, and selection.
 - Model switching with `Restart required` state.
+- Advanced Launch Options per model profile.
+- External Server Detection for selected host/port endpoints.
+- Adopt External Server and Forget External Server for connection context only.
+- Current Target summary in Connection Settings:
+  - Managed Server
+  - External Server Detected
+  - Adopted External Server
+  - Not Running / Not Connected
 - Menu bar quick actions.
 - Logs readability improvements.
 - Copy Logs.
@@ -123,9 +140,12 @@ The v1.0 stable scope includes:
 - OpenAI-compatible connection setting copy actions:
   - Copy Base URL
   - Copy Model ID
+  - Copy API key placeholder
   - Copy JSON config
-  - Copy `curl /v1/models`
-  - Copy `curl /v1/chat/completions`
+  - Copy Hermes Agent config
+  - Copy all connection settings
+  - Copy `curl /v1/models` readiness check
+  - Copy OpenAI-compatible chat example text
 - Unsigned `.app` zip distribution documentation.
 
 The copied `curl /v1/chat/completions` text is only a client-side convenience example. The app itself uses `/v1/models` for readiness and diagnostics and does not send inference requests.
@@ -265,9 +285,15 @@ All changes should be reviewed for:
 
 - Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Security: [SECURITY.md](SECURITY.md)
+- Issue templates: [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/)
 - Public release checklist: [docs/public_release_checklist.md](docs/public_release_checklist.md)
 - Stable scope: [docs/stable_scope.md](docs/stable_scope.md)
 - Known limitations: [docs/known_limitations.md](docs/known_limitations.md)
+- Hermes Agent connection guide: [docs/hermes_agent_connection.md](docs/hermes_agent_connection.md)
+- Advanced Launch Options: [docs/advanced_launch_options.md](docs/advanced_launch_options.md)
+- External Server Detection: [docs/external_server_detection.md](docs/external_server_detection.md)
+- Adopt External Server: [docs/adopt_external_server.md](docs/adopt_external_server.md)
+- Connection Settings polish: [docs/connection_settings_polish.md](docs/connection_settings_polish.md)
 - v1.0 plan: [docs/v1.0_plan.md](docs/v1.0_plan.md)
 - v1.0.1 maintenance plan: [docs/v1.0.1_maintenance.md](docs/v1.0.1_maintenance.md)
 - Requirements: [docs/requirements.md](docs/requirements.md)

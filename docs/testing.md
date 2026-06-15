@@ -539,15 +539,15 @@ Example zip creation:
 cd /tmp/MLXServerManagerReleaseDerivedData/Build/Products/Release
 ditto -c -k --norsrc --noextattr --keepParent \
   MLXServerManager.app \
-  /tmp/MLXServerManager-v1.0.0-unsigned.zip
+  /tmp/MLXServerManager-v1.9.0-unsigned.zip
 ```
 
 Example zip verification:
 
 ```sh
-unzip -l /tmp/MLXServerManager-v1.0.0-unsigned.zip
-du -h /tmp/MLXServerManager-v1.0.0-unsigned.zip
-unzip -l /tmp/MLXServerManager-v1.0.0-unsigned.zip | grep -E 'settings.json|models.json|\\.safetensors|\\.gguf|\\.bin|\\.env|HF_TOKEN|\\.dSYM|DerivedData|logs|__MACOSX|/\\._' || true
+unzip -l /tmp/MLXServerManager-v1.9.0-unsigned.zip
+du -h /tmp/MLXServerManager-v1.9.0-unsigned.zip
+unzip -l /tmp/MLXServerManager-v1.9.0-unsigned.zip | grep -E 'settings.json|models.json|\\.safetensors|\\.gguf|\\.bin|\\.env|HF_TOKEN|\\.dSYM|DerivedData|logs|__MACOSX|/\\._' || true
 ```
 
 ### Safety and Non-Goals

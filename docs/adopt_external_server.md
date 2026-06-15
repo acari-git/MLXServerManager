@@ -2,11 +2,11 @@
 
 ## Overview
 
-Adopt External Server is a future design for explicitly using a detected external OpenAI-compatible server as a connection context in MLX Server Manager.
+Adopt External Server explicitly uses a detected external OpenAI-compatible server as a connection context in MLX Server Manager.
 
 Adopt does not mean process ownership. It means the user has chosen to track and use a detected external endpoint for status display and connection-setting copy behavior.
 
-The initial v1.5.0 External Server Detection feature remains detect-only. This document describes a possible next step, not current behavior.
+The initial v1.5.0 External Server Detection feature remains detect-only. v1.7.0 adds explicit Adopt and Forget actions for connection context without process ownership.
 
 ## Implementation Status
 

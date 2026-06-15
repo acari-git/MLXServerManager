@@ -235,9 +235,9 @@ This is a verification of the published asset, not a new packaging method.
 
 ## First Launch From Release Asset
 
-For end-user first launch, keep the path short:
+For end-user first launch with the current downloadable app binary, keep the path short:
 
-1. Download `MLXServerManager-v1.0.0-unsigned.zip` from the GitHub Release.
+1. Download `MLXServerManager-v1.9.0-unsigned.zip` from the GitHub Release.
 2. Extract the zip.
 3. Confirm the extracted app is `MLXServerManager.app`.
 4. If Gatekeeper blocks launch with a damaged-app warning, verify the asset source, zip contents, and checksum first.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Connection Settings Polish is a v1.8.0 design step for making connection targets easier to understand and copy across managed and external server states.
+Connection Settings Polish makes connection targets easier to understand and copy across managed and external server states.
 
 This is a display and copy UX improvement. It does not change the inference path, does not add a proxy, and does not give MLX Server Manager ownership of external processes.
 
