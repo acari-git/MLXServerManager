@@ -29,6 +29,14 @@ The panel keeps these boundaries:
 - No external process stop, restart, or kill.
 - Direct Mode remains visible.
 
+## v2.5.0 Screenshot Refresh
+
+v2.5.0 adds a README screenshot for the First-run Onboarding Guidance panel:
+
+- `screenshots/onboarding-guidance-v2.5.png`
+
+This is a documentation and public presentation update only. It does not change onboarding behavior, server lifecycle behavior, Direct Mode, external process ownership, model download behavior, or inference routing.
+
 ## Goals
 
 - Explain the first-run path from local `mlx-lm` setup through client configuration.

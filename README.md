@@ -52,6 +52,16 @@ The Direct Mode path remains:
 
 `OpenAI-compatible client -> mlx_lm.server or adopted external server -> MLX model`
 
+### First-run Onboarding Guidance
+
+![First-run Onboarding Guidance panel](screenshots/onboarding-guidance-v2.5.png)
+
+The onboarding guidance panel gives short, state-aware setup hints for first-time users.
+
+It helps users understand what to configure next, such as the `mlx_lm.server` executable path, selected model profile, server state, and connection settings.
+
+The guidance is informational only. It does not install dependencies, download models, start external processes, proxy inference, or change process ownership.
+
 ## Why This Project Exists
 
 `mlx_lm.server` is fast and simple, but day-to-day local use benefits from a small GUI around process management, diagnostics, model profiles, logs, memory display, external endpoint visibility, and connection settings.

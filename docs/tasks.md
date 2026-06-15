@@ -985,6 +985,24 @@
    - Adopt / Forget behavior remains unchanged.
    - Advanced Launch Options behavior remains unchanged.
 
+## v2.5.0 Completed: Onboarding Guidance Screenshot Refresh
+
+1. Add onboarding guidance screenshot.
+   - Add `screenshots/onboarding-guidance-v2.5.png`.
+   - Confirm the screenshot is available before linking it from README.
+2. Update README screenshot section.
+   - Keep the existing Main Dashboard, Connection Settings / Current Target, and Adopted External Server screenshots.
+   - Add First-run Onboarding Guidance.
+   - Explain that the panel is informational only.
+3. Keep this step docs/public polish only.
+   - No Swift changes.
+   - No app code changes.
+   - No Xcode project changes.
+   - No new app binary, zip asset, `.dSYM`, DerivedData, or release asset.
+4. Follow screenshot privacy checklist.
+   - No real API keys, tokens, private paths, personal home paths, or private repository URLs.
+   - Direct Mode is maintained.
+
 ## Later
 
 - Unit tests for services where practical.

@@ -32,10 +32,15 @@ Current committed screenshots:
 - `screenshots/main-dashboard-v2.2.png`
 - `screenshots/connection-settings-current-target-v2.2.png`
 - `screenshots/adopted-external-server-v2.2.png`
+- `screenshots/onboarding-guidance-v2.5.png`
 
 v2.2.0 adds the three v2.2 screenshots above and publishes them in the README.
 
 The v2.2.0 screenshot refresh follows the privacy checklist: no real API keys, tokens, private paths, personal home paths, private repository URLs, or app binary artifacts are added.
+
+v2.5.0 adds `screenshots/onboarding-guidance-v2.5.png` and publishes it in the README as the First-run Onboarding Guidance screenshot.
+
+The v2.5.0 onboarding screenshot follows the privacy checklist: no real API keys, tokens, private paths, personal home paths, private repository URLs, or app binary artifacts are added.
 
 ## Recommended Screenshot Set
 
@@ -45,6 +50,7 @@ Recommended future screenshots:
 - Connection Settings / Current Target summary.
 - External Server Detected.
 - Adopted External Server.
+- First-run Onboarding Guidance.
 - Advanced Launch Options.
 - Logs / diagnostics panel, if useful and safe.
 
