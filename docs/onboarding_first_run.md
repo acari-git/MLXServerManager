@@ -43,7 +43,7 @@ This is a documentation and public presentation update only. It does not change 
 
 Model Profile export can help first-run setup by backing up current profile metadata. v2.9.0 adds Import Profiles Preview so users can inspect and validate exported profile metadata. v3.0.0 adds import for selected valid profiles without conflicts.
 
-Conflict handling remains future work. Import/export should remain metadata-only: no model install, no model download in the current import/export flow, no automatic server start, no inference proxy, and no external process ownership changes.
+Conflict handling remains staged future work. v3.2.0 documents the future Rename and Replace design, but the current import flow still imports only selected valid profiles without conflicts. Import/export should remain metadata-only: no model install, no model download in the current import/export flow, no automatic server start, no inference proxy, and no external process ownership changes.
 
 ## Goals
 

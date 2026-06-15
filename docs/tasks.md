@@ -1154,6 +1154,32 @@
    - No inference proxy, Chat UI, multi-backend router, hidden request rewriting, or automatic external process ownership changes.
    - Convenience features must not silently start, stop, restart, download, import secrets, or obscure process ownership.
 
+## v3.2.0 Completed: Conflict Handling Design Polish
+
+1. Add conflict handling design polish.
+   - Update `docs/model_profile_import_export.md`.
+   - Document current v3.0.0 Import Selected Profiles behavior.
+   - Document conflict types, default behavior, Rename design, Replace design, duplicate handling, confirmation requirements, selection behavior, logging, safety boundaries, and future implementation staging.
+2. Keep this step docs-only.
+   - No Swift changes.
+   - No app code changes.
+   - No Xcode project changes.
+   - No new app binary, zip asset, `.dSYM`, DerivedData, or release asset.
+3. Preserve current import behavior.
+   - Valid non-conflicting profiles can be imported.
+   - Invalid profiles are blocked.
+   - Conflict profiles are currently skipped and disabled.
+   - Rename and Replace remain future work.
+4. Preserve product and safety boundaries.
+   - Direct Mode is maintained.
+   - `mlx-lm` runtime performance remains the top priority.
+   - Conflict handling remains model profile metadata only.
+   - No model weights, caches, API keys, tokens, secrets, executable paths, or local paths are imported.
+   - No automatic server start.
+   - No `/v1/models` call or external HTTP request from Import Profiles.
+   - No external process kill, stop, restart, adoption, forget, or ownership change.
+   - Replace requires explicit confirmation in the future design.
+
 ## Later
 
 - Unit tests for services where practical.

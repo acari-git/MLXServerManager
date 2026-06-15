@@ -268,8 +268,11 @@ Info examples:
 
 - v2.9.0: Import Preview implementation.
 - v3.0.0: Import selected valid profiles.
-- v3.1.0: Conflict handling polish.
-- v3.2.0: Import/export schema tests and fixtures.
+- v3.2.0: Conflict handling design polish.
+- v3.3.0 candidate: Rename conflicted profiles.
+- v3.4.0 candidate: Replace conflicted profiles.
+- v3.5.0 candidate: Import/export schema tests and fixtures.
+- v4.0.0 candidate: Import/export stable release.
 
 ## v2.9.0 Import Preview Implementation Status
 
@@ -353,6 +356,212 @@ Import saves only model profile metadata:
 Import does not save runtime state, PID, memory metrics, readiness result, selected current target state, adopted external server state, logs, unknown fields, secrets, executable paths, local model paths, model weights, or caches.
 
 After import, selected profile is not changed automatically. Server lifecycle and external process ownership are unchanged. Import does not start, stop, restart, adopt, forget, readiness-check, call `/v1/models`, make external HTTP requests, download models, delete files, or mutate caches.
+
+## v3.2.0 Conflict Handling Design Polish
+
+v3.2.0 is a documentation-only design step for future import conflict handling. It does not implement Rename or Replace.
+
+### Current v3.0.0 Behavior
+
+Current import behavior is intentionally conservative:
+
+- valid and non-conflicting profiles can be imported,
+- invalid profiles are blocked,
+- conflicting profiles are skipped and disabled,
+- Rename is not implemented,
+- Replace is not implemented,
+- selected profile does not change automatically,
+- no server lifecycle changes occur,
+- no network calls occur,
+- no `/v1/models` calls occur,
+- no external process ownership changes occur.
+
+### Conflict Types
+
+Conflict handling must account for:
+
+- same profile name as an existing profile,
+- same `modelID + host + port` as an existing profile,
+- duplicate names inside the imported file,
+- duplicate `modelID + host + port` inside the imported file,
+- rename result colliding with an existing profile,
+- rename result colliding with another imported profile,
+- replace target ambiguity,
+- profile becoming invalid after rename,
+- unsupported `schemaVersion`,
+- document-level blocking errors.
+
+### Conflict Resolution Goals
+
+Conflict resolution should:
+
+- preserve user control,
+- avoid silent overwrite,
+- avoid automatic process changes,
+- avoid changing selected profile automatically,
+- make the action for each profile visible before import,
+- keep the default action safe,
+- avoid hidden server Start / Stop / Restart,
+- avoid secrets, model weights, caches, and executable paths,
+- keep import predictable and reversible where possible.
+
+Conflict handling follows the project principles: preserve `mlx-lm` runtime performance, keep metadata operations explicit, and avoid hidden lifecycle or ownership changes.
+
+### Default Behavior
+
+The default behavior should remain safe:
+
+- conflicting profiles default to `Skip`,
+- Rename and Replace are opt-in,
+- invalid profiles cannot be imported,
+- document-level blocking errors disable all import actions,
+- non-conflicting valid profiles can remain selected by default,
+- conflict profiles should not be selected unless the user explicitly chooses Rename or Replace in a future UI.
+
+### Rename Design
+
+Rename is safer than Replace and is the preferred first conflict-resolution implementation candidate.
+
+v3.3.0 candidate behavior:
+
+- user can choose Rename for name conflicts,
+- Rename must be previewed before import,
+- renamed profile must be revalidated,
+- renamed profile must not collide with existing profiles,
+- renamed profile must not collide with other imported profiles,
+- Rename does not change `modelID`, host, or port unless a future design explicitly supports endpoint editing,
+- Rename does not start servers,
+- Rename does not change selected profile.
+
+Deterministic suggested names:
+
+- `<name> (Imported)`,
+- `<name> (Imported 2)`,
+- `<name> (Imported 3)`.
+
+Suggested UI:
+
+- per-profile action dropdown with `Skip` and `Rename`,
+- proposed new name field,
+- inline validation message,
+- optional `Use Suggested Name` action.
+
+### Replace Design
+
+Replace is higher risk than Rename and should be staged later.
+
+v3.4.0 candidate behavior:
+
+- Replace requires explicit confirmation,
+- Replace shows before / after profile metadata comparison,
+- Replace clearly identifies the target existing profile,
+- Replace is not offered if the target is ambiguous,
+- Replace only changes profile metadata,
+- Replace does not delete model weights,
+- Replace does not delete caches,
+- Replace does not affect logs,
+- Replace does not change selected profile automatically,
+- Replace does not start, stop, or restart servers,
+- Replace does not affect adopted external server state.
+
+Confirmation message:
+
+```text
+Replace existing profile metadata? This will update the selected profile configuration only. It will not delete model files, start servers, call /v1/models, import secrets, or change process ownership.
+```
+
+### Duplicate Handling
+
+Duplicates inside the imported file should be resolved before conflicts with existing profiles:
+
+- duplicate imported names default to Skip or Rename,
+- duplicate imported `modelID + host + port` values default to Skip,
+- if multiple imported profiles target the same existing profile for Replace, block until the user resolves ambiguity,
+- rename suggestions should be deterministic,
+- order-dependent behavior should be avoided or clearly documented.
+
+### Confirmation Requirements
+
+Future conflict actions should require confirmation when they can alter existing metadata:
+
+- Rename should show the final imported name before import.
+- Replace must require explicit confirmation.
+- Replace must show the target existing profile.
+- Document-level blocking errors must prevent confirmation and import.
+- Confirmation must state that no server lifecycle, network, model download, model deletion, secret import, or process ownership change occurs.
+
+### Selection Behavior
+
+Selection should remain predictable:
+
+- valid non-conflicting profiles are selected by default,
+- invalid profiles are disabled,
+- conflict profiles default to Skip,
+- future Rename action can make a profile importable if the resulting name is valid and non-conflicting,
+- future Replace action can make a profile importable only with explicit target and confirmation,
+- selected profile in the app should not change automatically after import,
+- optional `select imported profile after import` should remain future work and default off if ever added.
+
+### Import Result Logging
+
+Import result logs should include:
+
+- imported count,
+- skipped count,
+- renamed count,
+- replaced count,
+- invalid count,
+- conflict count,
+- safety note that no server lifecycle changes occurred,
+- safety note that no secrets were imported,
+- safety note that no executable paths were imported.
+
+Example:
+
+```text
+Import completed: 2 imported, 1 skipped, 0 renamed, 0 replaced. Servers were not started or modified.
+```
+
+### Error, Warning, and Confirmation Messages
+
+Suggested messages:
+
+- `Name conflict: an existing profile already uses this name.`
+- `Endpoint conflict: an existing profile already uses this modelID, host, and port.`
+- `Duplicate imported name: choose Skip or Rename.`
+- `Duplicate imported endpoint: choose Skip.`
+- `Rename collision: the proposed name already exists.`
+- `Replace target is ambiguous. Choose one target or skip this profile.`
+- `Replace requires explicit confirmation.`
+- `Invalid profile cannot be imported.`
+- `Document-level error blocks import.`
+- `Selected profile unchanged after import.`
+- `Server lifecycle unchanged after import.`
+
+### Safety and Side-Effect Boundaries
+
+Conflict handling remains model profile metadata only.
+
+It must not:
+
+- import model weights,
+- import Hugging Face cache,
+- import API keys, tokens, or secrets,
+- import executable paths,
+- start a managed server,
+- stop or restart a managed server,
+- call `/v1/models`,
+- make external HTTP requests,
+- kill, stop, restart, adopt, or take ownership of external processes,
+- change Adopted External Server state,
+- change selected profile automatically.
+
+### Future Implementation Staging
+
+- v3.3.0 candidate: Rename conflicted profiles implementation.
+- v3.4.0 candidate: Replace conflicted profiles implementation.
+- v3.5.0 candidate: Import/export fixtures and tests.
+- v4.0.0 candidate: Import/export stable release.
 
 ## Goals
 
