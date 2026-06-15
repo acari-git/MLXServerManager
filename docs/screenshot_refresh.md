@@ -29,8 +29,13 @@ Current committed screenshots:
 
 - `screenshots/main-window.png`
 - `screenshots/advanced-launch-options.png`
+- `screenshots/main-dashboard-v2.2.png`
+- `screenshots/connection-settings-current-target-v2.2.png`
+- `screenshots/adopted-external-server-v2.2.png`
 
-Current README references should remain valid until new screenshots are committed.
+v2.2.0 adds the three v2.2 screenshots above and publishes them in the README.
+
+The v2.2.0 screenshot refresh follows the privacy checklist: no real API keys, tokens, private paths, personal home paths, private repository URLs, or app binary artifacts are added.
 
 ## Recommended Screenshot Set
 

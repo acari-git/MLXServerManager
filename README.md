@@ -12,19 +12,45 @@ OpenAI-compatible client -> mlx_lm.server or adopted external server -> MLX mode
 
 MLX Server Manager controls and observes app-managed local server processes, but it does not enter the inference request path. OpenAI-compatible clients connect directly to the server endpoint.
 
-## Screenshot
+## Screenshots
 
-![MLX Server Manager main window](screenshots/main-window.png)
+### Main Dashboard
 
-MLX Server Manager provides a local Direct Mode control surface for managing `mlx_lm.server`, checking status, viewing logs, and copying OpenAI-compatible connection settings.
+![MLX Server Manager main dashboard](screenshots/main-dashboard-v2.2.png)
 
-### Advanced Launch Options
+The main dashboard shows the core MLX Server Manager workflow in one place: model profiles, app settings, diagnostics, server status, selected model details, OpenAI-compatible connection settings, and logs.
 
-![Advanced Launch Options editor](screenshots/advanced-launch-options.png)
+MLX Server Manager remains a Direct Mode control surface for `mlx_lm.server`. It does not proxy inference requests.
 
-Advanced Launch Options are optional per-profile settings for users who want to experiment with `mlx_lm.server` launch arguments. Leave fields empty to use `mlx_lm.server` defaults and preserve the simple launch command. The editor includes Copy Preview, Clear Advanced Options, and validation for common numeric and JSON inputs.
+### Connection Settings / Current Target
 
-These options only affect the managed `mlx_lm.server` launch command. MLX Server Manager remains Direct Mode and does not proxy inference requests.
+![Connection Settings Current Target summary](screenshots/connection-settings-current-target-v2.2.png)
+
+Connection Settings shows the current OpenAI-compatible target clearly.
+
+It displays:
+
+- target type
+- Base URL
+- Model ID
+- API key placeholder
+- readiness endpoint
+- ownership note
+- copy actions for client setup
+
+The copy actions help configure OpenAI-compatible clients, including Hermes Agent, without routing inference through MLX Server Manager.
+
+### Adopted External Server
+
+![Adopted External Server state](screenshots/adopted-external-server-v2.2.png)
+
+Adopted External Server mode lets users use a detected external OpenAI-compatible server as a connection context.
+
+Adopt does not mean process ownership. MLX Server Manager does not stop, restart, kill, monitor memory for, or collect logs from adopted external servers.
+
+The Direct Mode path remains:
+
+`OpenAI-compatible client -> mlx_lm.server or adopted external server -> MLX model`
 
 ## Why This Project Exists
 

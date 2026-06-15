@@ -926,6 +926,26 @@
    - No real API keys, Hugging Face tokens, GitHub tokens, private paths, personal home paths, local shell history, or private repository URLs.
    - Prefer `127.0.0.1`, port `8080`, and `not-required-local` for public examples.
 
+## v2.2.0 Completed: Screenshot Refresh
+
+1. Add updated README screenshots.
+   - Add `screenshots/main-dashboard-v2.2.png`.
+   - Add `screenshots/connection-settings-current-target-v2.2.png`.
+   - Add `screenshots/adopted-external-server-v2.2.png`.
+2. Update README screenshot section.
+   - Show Main Dashboard.
+   - Show Connection Settings / Current Target summary.
+   - Show Adopted External Server state.
+   - Keep Direct Mode and no-proxy wording near the screenshots.
+3. Keep this step docs/public polish only.
+   - No Swift changes.
+   - No app code changes.
+   - No Xcode project changes.
+   - No new app binary, zip asset, `.dSYM`, DerivedData, or release asset.
+4. Follow screenshot privacy checklist.
+   - No real API keys, tokens, private paths, personal home paths, or private repository URLs.
+   - Use local example values such as `127.0.0.1`, port `8080`, and `not-required-local`.
+
 ## Later
 
 - Unit tests for services where practical.
