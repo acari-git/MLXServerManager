@@ -270,6 +270,38 @@ Info examples:
 - v3.1.0: Conflict handling polish.
 - v3.2.0: Import/export schema tests and fixtures.
 
+## v2.9.0 Import Preview Implementation Status
+
+v2.9.0 implements Import Profiles Preview only.
+
+Implemented:
+
+- `Import Profiles...` button near `Export Profiles...`.
+- JSON file picker for profile export documents.
+- Import Preview sheet.
+- Document-level validation for JSON object shape, `schemaVersion`, `app`, and `profiles`.
+- `schemaVersion` 1 support.
+- Blocking document-level error for unsupported schema versions.
+- Profile-level validation for name, `modelID`, host, port, and Advanced Launch Options.
+- Warnings for `rawExtraArgs`, secret-looking fields, executable path fields, local path fields, and ignored unknown fields.
+- Conflict preview for existing profile names, existing `modelID + host + port`, duplicate imported names, and duplicate imported `modelID + host + port`.
+- Preview rows showing profile metadata, validation status, messages, conflict summary, and planned action summary.
+- Clear `Preview only` messaging in the UI and Logs.
+
+Not implemented:
+
+- Actual profile import or save.
+- Writing imported profiles to `models.json`.
+- Selecting imported profiles.
+- Skip, rename, or replace execution.
+- Conflict resolution actions.
+- Model file import.
+- Hugging Face cache import.
+- API key, token, secret, executable path, or local path import.
+- Automatic server start after preview.
+
+Import Preview remains side-effect-free. It reads the selected JSON file, decodes metadata, validates it, and updates preview UI state only. It does not start, stop, restart, adopt, forget, readiness-check, call `/v1/models`, make external HTTP requests, download models, delete files, mutate caches, save app settings, save profiles, or change external process ownership.
+
 ## Goals
 
 - Let users back up saved Model Profiles.

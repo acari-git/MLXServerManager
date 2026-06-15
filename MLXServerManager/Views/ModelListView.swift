@@ -7,8 +7,10 @@ struct ModelListView: View {
     let restartRequired: Bool
     let exportSummaryText: String
     let exportMessage: String?
+    let importMessage: String?
     let onAddProfile: () -> Void
     let onExportProfiles: () -> Void
+    let onImportProfilesPreview: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -36,18 +38,32 @@ struct ModelListView: View {
                     }
                     .disabled(models.isEmpty)
 
+                    Button {
+                        onImportProfilesPreview()
+                    } label: {
+                        Label("Import Profiles...", systemImage: "square.and.arrow.down")
+                    }
+
                     Spacer()
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(exportSummaryText)
                     Text("Exports profile metadata only. No API keys, tokens, model weights, caches, logs, executable paths, or runtime state.")
+                    Text("Import Profiles is preview-only. It validates JSON metadata and does not save profiles or start servers.")
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
                 if let exportMessage {
                     Text(exportMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                if let importMessage {
+                    Text(importMessage)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)

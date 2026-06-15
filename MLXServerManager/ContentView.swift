@@ -24,8 +24,10 @@ struct ContentView: View {
                     restartRequired: viewModel.restartRequired,
                     exportSummaryText: viewModel.modelProfileExportSummaryText,
                     exportMessage: viewModel.modelProfileExportMessage,
+                    importMessage: viewModel.modelProfileImportMessage,
                     onAddProfile: viewModel.addProfileRequested,
-                    onExportProfiles: viewModel.exportProfilesRequested
+                    onExportProfiles: viewModel.exportProfilesRequested,
+                    onImportProfilesPreview: viewModel.importProfilesPreviewRequested
                 )
                 .frame(minWidth: 260, idealWidth: 300, maxWidth: 360)
 
@@ -148,6 +150,22 @@ struct ContentView: View {
             }
         } message: {
             Text("This removes only the saved profile. Model files and Hugging Face cache are not deleted.")
+        }
+        .sheet(isPresented: $viewModel.isImportPreviewPresented) {
+            if let result = viewModel.importPreviewResult {
+                ImportProfilesPreviewView(
+                    result: result,
+                    onClose: viewModel.dismissImportPreview
+                )
+            } else {
+                VStack(spacing: 12) {
+                    Text("No import preview is available.")
+                    Button("Close") {
+                        viewModel.dismissImportPreview()
+                    }
+                }
+                .padding(20)
+            }
         }
     }
 

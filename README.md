@@ -127,7 +127,7 @@ Screenshot refresh planning is documented in [docs/screenshot_refresh.md](docs/s
 
 First-run guidance is documented in [docs/onboarding_first_run.md](docs/onboarding_first_run.md). v2.4.0 adds a small in-app guidance panel that points first-time users toward executable path setup, model profile selection, diagnostics, Start, and Connection Settings while preserving Direct Mode.
 
-Model Profile export and future import design are documented in [docs/model_profile_import_export.md](docs/model_profile_import_export.md). v2.7.0 implements Export Profiles for profile metadata only; it does not include model weights, caches, API keys, tokens, executable paths, or automatic server start. v2.8.0 refines the future Import Preview and validation design, but Import Profiles remains unimplemented.
+Model Profile export and future import design are documented in [docs/model_profile_import_export.md](docs/model_profile_import_export.md). v2.7.0 implements Export Profiles for profile metadata only; it does not include model weights, caches, API keys, tokens, executable paths, or automatic server start. v2.9.0 implements Import Profiles Preview for JSON validation only; actual profile import/save remains future work.
 
 ## Current Binary Asset
 
@@ -166,6 +166,7 @@ As of v1.9.0, MLX Server Manager includes:
 - Settings save and restore.
 - Model profile add, edit, delete, and selection.
 - Export Profiles for model profile metadata backup.
+- Import Profiles Preview for JSON validation only.
 - Model switching with `Restart required` state.
 - Advanced Launch Options per model profile.
 - External Server Detection for selected host/port endpoints.

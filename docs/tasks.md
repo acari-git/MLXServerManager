@@ -1070,6 +1070,36 @@
    - v3.1.0: Conflict handling polish.
    - v3.2.0: Import/export schema tests and fixtures.
 
+## v2.9.0 Completed: Import Profiles Preview Implementation
+
+1. Implement Import Profiles Preview only.
+   - Add `Import Profiles...` button near `Export Profiles...`.
+   - Add JSON file picker.
+   - Add Import Preview sheet.
+   - Show source file, `schemaVersion`, `app`, `exportedAt`, profile counts, warning count, document messages, profile validation rows, conflict summary, and planned action summary.
+2. Add import preview validation service.
+   - Decode selected JSON safely.
+   - Validate document-level schema.
+   - Validate profile metadata.
+   - Validate Advanced Launch Options consistently with existing app rules.
+   - Detect conflicts for preview.
+   - Ignore unsupported unknown fields as data only.
+3. Keep actual import deferred.
+   - No profile import or save.
+   - No write to `models.json`.
+   - No skip, rename, or replace execution.
+   - No selected profile mutation.
+4. Preserve product and safety boundaries.
+   - Direct Mode is maintained.
+   - Import Preview is model profile metadata validation only.
+   - No model weights, caches, API keys, tokens, secrets, executable paths, or local paths are imported.
+   - No automatic server start.
+   - No readiness check or `/v1/models` call from Import Preview.
+   - No external HTTP request from Import Preview.
+   - No external process kill, stop, restart, adoption, forget, or ownership change.
+5. Release note.
+   - v2.9.0 is an app-code release and requires a new app binary asset when released.
+
 ## Later
 
 - Unit tests for services where practical.

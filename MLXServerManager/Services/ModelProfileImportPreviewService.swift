@@ -1,0 +1,620 @@
+import Foundation
+
+enum ImportValidationSeverity: String, Hashable {
+    case error
+    case warning
+    case info
+}
+
+struct ImportValidationMessage: Identifiable, Hashable {
+    let id = UUID()
+    let severity: ImportValidationSeverity
+    let message: String
+}
+
+enum ImportProfileValidationStatus: String, Hashable {
+    case valid = "Valid"
+    case warning = "Warning"
+    case invalid = "Invalid"
+}
+
+struct ImportPreviewResult {
+    let sourceFileName: String
+    let schemaVersion: Int?
+    let app: String?
+    let exportedAt: Date?
+    let totalProfiles: Int
+    let validProfilesCount: Int
+    let invalidProfilesCount: Int
+    let warningCount: Int
+    let documentMessages: [ImportValidationMessage]
+    let profiles: [ValidatedImportProfile]
+    let canProceedToFutureImport: Bool
+}
+
+struct ValidatedImportProfile: Identifiable {
+    let id = UUID()
+    let sourceIndex: Int
+    let name: String
+    let modelID: String
+    let host: String
+    let port: Int?
+    let hasAdvancedLaunchOptions: Bool
+    let status: ImportProfileValidationStatus
+    let messages: [ImportValidationMessage]
+    let conflictSummary: String?
+    let plannedActionSummary: String
+}
+
+struct ModelProfileImportPreviewService {
+    func preview(
+        data: Data,
+        sourceFileName: String,
+        existingModels: [ModelConfig]
+    ) -> ImportPreviewResult {
+        do {
+            let object = try JSONSerialization.jsonObject(with: data)
+            guard let document = object as? [String: Any] else {
+                return documentError(
+                    sourceFileName: sourceFileName,
+                    message: "Import file must be a JSON object."
+                )
+            }
+
+            return validate(document: document, sourceFileName: sourceFileName, existingModels: existingModels)
+        } catch {
+            return documentError(
+                sourceFileName: sourceFileName,
+                message: "Import file is not valid JSON."
+            )
+        }
+    }
+
+    private func validate(
+        document: [String: Any],
+        sourceFileName: String,
+        existingModels: [ModelConfig]
+    ) -> ImportPreviewResult {
+        var documentMessages: [ImportValidationMessage] = [
+            .info("Preview only. No profiles are imported in this version."),
+            .info("Shared profile JSON is metadata only and should be reviewed before future import.")
+        ]
+
+        documentMessages.append(contentsOf: ignoredFieldMessages(in: document.keys, scope: "Document"))
+
+        let schemaVersion = integerValue(document["schemaVersion"])
+        let app = stringValue(document["app"])
+        let exportedAt = dateValue(document["exportedAt"])
+
+        guard let schemaVersion else {
+            documentMessages.append(.error("schemaVersion is required. No profiles were imported."))
+            return result(
+                sourceFileName: sourceFileName,
+                schemaVersion: nil,
+                app: app,
+                exportedAt: exportedAt,
+                totalProfiles: 0,
+                documentMessages: documentMessages,
+                profiles: []
+            )
+        }
+
+        guard schemaVersion == 1 else {
+            documentMessages.append(.error("This file uses schemaVersion \(schemaVersion), but this version of MLX Server Manager supports schemaVersion 1 only. No profiles were imported."))
+            return result(
+                sourceFileName: sourceFileName,
+                schemaVersion: schemaVersion,
+                app: app,
+                exportedAt: exportedAt,
+                totalProfiles: 0,
+                documentMessages: documentMessages,
+                profiles: []
+            )
+        }
+
+        if let app, app != "MLXServerManager" {
+            documentMessages.append(.warning("The app field is \(app). Expected MLXServerManager. Review this file before future import."))
+        }
+
+        guard let rawProfiles = document["profiles"] as? [Any] else {
+            documentMessages.append(.error("The import file must contain a profiles array."))
+            return result(
+                sourceFileName: sourceFileName,
+                schemaVersion: schemaVersion,
+                app: app,
+                exportedAt: exportedAt,
+                totalProfiles: 0,
+                documentMessages: documentMessages,
+                profiles: []
+            )
+        }
+
+        let candidates = rawProfiles.enumerated().map { offset, rawProfile in
+            ImportProfileCandidate(sourceIndex: offset + 1, rawProfile: rawProfile)
+        }
+
+        let importedNameCounts = Dictionary(grouping: candidates.compactMap(\.normalizedName), by: { $0 })
+            .mapValues(\.count)
+        let importedEndpointCounts = Dictionary(grouping: candidates.compactMap(\.endpointKey), by: { $0 })
+            .mapValues(\.count)
+
+        let existingNames = Set(existingModels.map { $0.displayName.trimmingCharacters(in: .whitespacesAndNewlines) })
+        let existingEndpoints = Set(existingModels.map { endpointKey(modelID: $0.modelID, host: $0.host, port: $0.serverPort) })
+
+        let validatedProfiles = candidates.map { candidate in
+            validate(
+                candidate: candidate,
+                existingNames: existingNames,
+                existingEndpoints: existingEndpoints,
+                importedNameCounts: importedNameCounts,
+                importedEndpointCounts: importedEndpointCounts
+            )
+        }
+
+        return result(
+            sourceFileName: sourceFileName,
+            schemaVersion: schemaVersion,
+            app: app,
+            exportedAt: exportedAt,
+            totalProfiles: rawProfiles.count,
+            documentMessages: documentMessages,
+            profiles: validatedProfiles
+        )
+    }
+
+    private func validate(
+        candidate: ImportProfileCandidate,
+        existingNames: Set<String>,
+        existingEndpoints: Set<String>,
+        importedNameCounts: [String: Int],
+        importedEndpointCounts: [String: Int]
+    ) -> ValidatedImportProfile {
+        guard let profile = candidate.profile else {
+            return ValidatedImportProfile(
+                sourceIndex: candidate.sourceIndex,
+                name: "Profile \(candidate.sourceIndex)",
+                modelID: "Missing",
+                host: "Missing",
+                port: nil,
+                hasAdvancedLaunchOptions: false,
+                status: .invalid,
+                messages: [.error("Profile entry must be a JSON object.")],
+                conflictSummary: nil,
+                plannedActionSummary: "Preview only - import action not implemented"
+            )
+        }
+
+        let name = stringValue(profile["name"])?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let modelID = stringValue(profile["modelID"])?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let host = stringValue(profile["host"])?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let port = integerValue(profile["port"])
+        let advancedOptions = advancedLaunchOptions(from: profile["advancedLaunchOptions"])
+        var messages: [ImportValidationMessage] = []
+        var conflicts: [String] = []
+
+        messages.append(contentsOf: ignoredFieldMessages(in: profile.keys, scope: "Profile"))
+        messages.append(contentsOf: advancedLaunchOptionsShapeMessages(from: profile["advancedLaunchOptions"]))
+
+        if name.isEmpty {
+            messages.append(.error("Profile name is required."))
+        }
+
+        if modelID.isEmpty {
+            messages.append(.error("Model ID is required."))
+        }
+
+        if host.isEmpty {
+            messages.append(.error("Host is required."))
+        } else if !isValidHost(host) {
+            messages.append(.error("Host is invalid."))
+        }
+
+        if let port {
+            if !(1...65_535).contains(port) {
+                messages.append(.error("Port must be between 1 and 65535."))
+            }
+        } else {
+            messages.append(.error("Port must be between 1 and 65535."))
+        }
+
+        if let advancedOptions {
+            messages.append(contentsOf: validateAdvancedLaunchOptions(advancedOptions))
+        }
+
+        if !name.isEmpty {
+            if existingNames.contains(name) {
+                conflicts.append("same profile name as an existing profile")
+            }
+
+            if importedNameCounts[name, default: 0] > 1 {
+                conflicts.append("duplicate profile name inside import file")
+            }
+        }
+
+        if let port, !modelID.isEmpty, !host.isEmpty {
+            let endpoint = Self.endpointKey(modelID: modelID, host: host, port: port)
+
+            if existingEndpoints.contains(endpoint) {
+                conflicts.append("same modelID + host + port as an existing profile")
+            }
+
+            if importedEndpointCounts[endpoint, default: 0] > 1 {
+                conflicts.append("duplicate modelID + host + port inside import file")
+            }
+        }
+
+        if !conflicts.isEmpty {
+            messages.append(.warning("Conflict detected. Skip, rename, and replace actions are future work."))
+        }
+
+        let status: ImportProfileValidationStatus
+        if messages.contains(where: { $0.severity == .error }) {
+            status = .invalid
+        } else if messages.contains(where: { $0.severity == .warning }) {
+            status = .warning
+        } else {
+            status = .valid
+        }
+
+        return ValidatedImportProfile(
+            sourceIndex: candidate.sourceIndex,
+            name: name.isEmpty ? "Profile \(candidate.sourceIndex)" : name,
+            modelID: modelID.isEmpty ? "Missing" : modelID,
+            host: host.isEmpty ? "Missing" : host,
+            port: port,
+            hasAdvancedLaunchOptions: advancedOptions?.normalized() != nil,
+            status: status,
+            messages: messages.isEmpty ? [.info("Profile metadata is valid for preview.")] : messages,
+            conflictSummary: conflicts.isEmpty ? nil : conflicts.joined(separator: "; "),
+            plannedActionSummary: "Preview only - import action not implemented"
+        )
+    }
+
+    private func validateAdvancedLaunchOptions(_ options: AdvancedLaunchOptions) -> [ImportValidationMessage] {
+        guard let normalizedOptions = options.normalized() else {
+            return []
+        }
+
+        var messages: [ImportValidationMessage] = []
+        let boundedDoubleFields: [(String, String?)] = [
+            ("Default Temperature", normalizedOptions.defaultTemperature),
+            ("Default Top P", normalizedOptions.defaultTopP),
+            ("Default Min P", normalizedOptions.defaultMinP)
+        ]
+
+        for (label, value) in boundedDoubleFields {
+            guard let value else {
+                continue
+            }
+
+            guard let doubleValue = Double(value), (0...1).contains(doubleValue) else {
+                messages.append(.error("\(label) must be between 0 and 1."))
+                continue
+            }
+        }
+
+        let positiveIntegerFields: [(String, String?)] = [
+            ("Default Top K", normalizedOptions.defaultTopK),
+            ("Default Max Tokens", normalizedOptions.defaultMaxTokens),
+            ("Decode Concurrency", normalizedOptions.decodeConcurrency),
+            ("Prompt Concurrency", normalizedOptions.promptConcurrency),
+            ("Prefill Step Size", normalizedOptions.prefillStepSize),
+            ("Prompt Cache Size", normalizedOptions.promptCacheSize),
+            ("Prompt Cache Bytes", normalizedOptions.promptCacheBytes)
+        ]
+
+        for (label, value) in positiveIntegerFields {
+            guard let value else {
+                continue
+            }
+
+            guard let integerValue = Int(value), integerValue > 0 else {
+                messages.append(.error("\(label) must be a positive integer."))
+                continue
+            }
+        }
+
+        if let chatTemplateArgs = normalizedOptions.chatTemplateArgs {
+            guard let data = chatTemplateArgs.data(using: .utf8) else {
+                messages.append(.error("Chat Template Args must be valid JSON."))
+                return messages
+            }
+
+            do {
+                _ = try JSONSerialization.jsonObject(with: data)
+            } catch {
+                messages.append(.error("Chat Template Args must be valid JSON."))
+            }
+        }
+
+        if normalizedOptions.rawExtraArgs != nil {
+            messages.append(.warning("This profile includes raw extra server arguments. Review them before starting a managed server."))
+        }
+
+        return messages
+    }
+
+    private func ignoredFieldMessages(in keys: Dictionary<String, Any>.Keys, scope: String) -> [ImportValidationMessage] {
+        var messages: [ImportValidationMessage] = []
+        let knownKeys: Set<String> = [
+            "schemaVersion",
+            "app",
+            "exportedAt",
+            "notes",
+            "profiles",
+            "name",
+            "modelID",
+            "host",
+            "port",
+            "advancedLaunchOptions"
+        ]
+
+        let secretKeys = keys.filter { isSecretLikeKey($0) }
+        if !secretKeys.isEmpty {
+            messages.append(.warning("\(scope) contains secret-looking field(s). They are ignored by preview and will not be imported."))
+        }
+
+        let pathKeys = keys.filter { isLocalPathLikeKey($0) }
+        if !pathKeys.isEmpty {
+            messages.append(.warning("\(scope) contains local path or executable path field(s). They are ignored by preview and will not be imported."))
+        }
+
+        let unknownKeys = keys.filter { !knownKeys.contains($0) && !isSecretLikeKey($0) && !isLocalPathLikeKey($0) }
+        if !unknownKeys.isEmpty {
+            messages.append(.info("\(scope) contains unknown field(s). They are treated as data only and ignored."))
+        }
+
+        return messages
+    }
+
+    private func advancedLaunchOptions(from rawValue: Any?) -> AdvancedLaunchOptions? {
+        guard let dictionary = rawValue as? [String: Any] else {
+            return nil
+        }
+
+        let options = AdvancedLaunchOptions(
+            rawExtraArgs: stringValue(dictionary["rawExtraArgs"]),
+            chatTemplateArgs: stringValue(dictionary["chatTemplateArgs"]),
+            defaultTemperature: stringValue(dictionary["defaultTemperature"]),
+            defaultTopP: stringValue(dictionary["defaultTopP"]),
+            defaultTopK: stringValue(dictionary["defaultTopK"]),
+            defaultMinP: stringValue(dictionary["defaultMinP"]),
+            defaultMaxTokens: stringValue(dictionary["defaultMaxTokens"]),
+            allowedOrigins: stringValue(dictionary["allowedOrigins"]),
+            logLevel: stringValue(dictionary["logLevel"]),
+            decodeConcurrency: stringValue(dictionary["decodeConcurrency"]),
+            promptConcurrency: stringValue(dictionary["promptConcurrency"]),
+            prefillStepSize: stringValue(dictionary["prefillStepSize"]),
+            promptCacheSize: stringValue(dictionary["promptCacheSize"]),
+            promptCacheBytes: stringValue(dictionary["promptCacheBytes"])
+        )
+
+        return options.normalized()
+    }
+
+    private func advancedLaunchOptionsShapeMessages(from rawValue: Any?) -> [ImportValidationMessage] {
+        guard let rawValue else {
+            return []
+        }
+
+        guard let dictionary = rawValue as? [String: Any] else {
+            if rawValue is NSNull {
+                return []
+            }
+
+            return [.error("Advanced Launch Options must be a JSON object when present.")]
+        }
+
+        let knownAdvancedKeys: Set<String> = [
+            "rawExtraArgs",
+            "chatTemplateArgs",
+            "defaultTemperature",
+            "defaultTopP",
+            "defaultTopK",
+            "defaultMinP",
+            "defaultMaxTokens",
+            "allowedOrigins",
+            "logLevel",
+            "decodeConcurrency",
+            "promptConcurrency",
+            "prefillStepSize",
+            "promptCacheSize",
+            "promptCacheBytes"
+        ]
+
+        var messages: [ImportValidationMessage] = []
+        let unknownKeys = dictionary.keys.filter { !knownAdvancedKeys.contains($0) }
+        if !unknownKeys.isEmpty {
+            messages.append(.info("Advanced Launch Options contain unknown field(s). They are treated as data only and ignored."))
+        }
+
+        return messages
+    }
+
+    private func result(
+        sourceFileName: String,
+        schemaVersion: Int?,
+        app: String?,
+        exportedAt: Date?,
+        totalProfiles: Int,
+        documentMessages: [ImportValidationMessage],
+        profiles: [ValidatedImportProfile]
+    ) -> ImportPreviewResult {
+        let invalidCount = profiles.filter { $0.status == .invalid }.count
+        let validCount = profiles.count - invalidCount
+        let warningCount = documentMessages.filter { $0.severity == .warning }.count
+            + profiles.flatMap(\.messages).filter { $0.severity == .warning }.count
+        let hasDocumentError = documentMessages.contains { $0.severity == .error }
+
+        return ImportPreviewResult(
+            sourceFileName: sourceFileName,
+            schemaVersion: schemaVersion,
+            app: app,
+            exportedAt: exportedAt,
+            totalProfiles: totalProfiles,
+            validProfilesCount: validCount,
+            invalidProfilesCount: invalidCount,
+            warningCount: warningCount,
+            documentMessages: documentMessages,
+            profiles: profiles,
+            canProceedToFutureImport: !hasDocumentError && validCount > 0
+        )
+    }
+
+    private func documentError(sourceFileName: String, message: String) -> ImportPreviewResult {
+        result(
+            sourceFileName: sourceFileName,
+            schemaVersion: nil,
+            app: nil,
+            exportedAt: nil,
+            totalProfiles: 0,
+            documentMessages: [.error(message)],
+            profiles: []
+        )
+    }
+
+    private func isValidHost(_ host: String) -> Bool {
+        guard !host.isEmpty else {
+            return false
+        }
+
+        if host.rangeOfCharacter(from: .whitespacesAndNewlines) != nil {
+            return false
+        }
+
+        return !host.contains("/") && !host.contains("://")
+    }
+
+    private func isSecretLikeKey(_ key: String) -> Bool {
+        let lowercaseKey = key.lowercased()
+        return lowercaseKey.contains("apikey")
+            || lowercaseKey.contains("api_key")
+            || lowercaseKey.contains("token")
+            || lowercaseKey.contains("secret")
+            || lowercaseKey.contains("authorization")
+            || lowercaseKey.contains("bearer")
+            || lowercaseKey.contains("password")
+    }
+
+    private func isLocalPathLikeKey(_ key: String) -> Bool {
+        let lowercaseKey = key.lowercased()
+        return lowercaseKey.contains("executable")
+            || lowercaseKey.contains("filepath")
+            || lowercaseKey.contains("file_path")
+            || lowercaseKey.contains("modelpath")
+            || lowercaseKey.contains("model_path")
+            || lowercaseKey.contains("cachepath")
+            || lowercaseKey.contains("cache_path")
+            || lowercaseKey.contains("localpath")
+            || lowercaseKey.contains("local_path")
+    }
+
+    private func stringValue(_ value: Any?) -> String? {
+        switch value {
+        case let string as String:
+            string
+        case let number as NSNumber:
+            number.stringValue
+        default:
+            nil
+        }
+    }
+
+    private func integerValue(_ value: Any?) -> Int? {
+        switch value {
+        case let integer as Int:
+            integer
+        case let number as NSNumber:
+            number.intValue
+        case let string as String:
+            Int(string.trimmingCharacters(in: .whitespacesAndNewlines))
+        default:
+            nil
+        }
+    }
+
+    private func dateValue(_ value: Any?) -> Date? {
+        guard let string = stringValue(value) else {
+            return nil
+        }
+
+        return ISO8601DateFormatter().date(from: string)
+    }
+
+    private static func endpointKey(modelID: String, host: String, port: Int) -> String {
+        "\(modelID.trimmingCharacters(in: .whitespacesAndNewlines))|\(host.trimmingCharacters(in: .whitespacesAndNewlines))|\(port)"
+    }
+
+    private func endpointKey(modelID: String, host: String, port: Int) -> String {
+        Self.endpointKey(modelID: modelID, host: host, port: port)
+    }
+}
+
+private struct ImportProfileCandidate {
+    let sourceIndex: Int
+    let profile: [String: Any]?
+
+    init(sourceIndex: Int, rawProfile: Any) {
+        self.sourceIndex = sourceIndex
+        self.profile = rawProfile as? [String: Any]
+    }
+
+    var normalizedName: String? {
+        guard let name = stringValue(profile?["name"])?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !name.isEmpty else {
+            return nil
+        }
+
+        return name
+    }
+
+    var endpointKey: String? {
+        guard let modelID = stringValue(profile?["modelID"])?.trimmingCharacters(in: .whitespacesAndNewlines),
+              let host = stringValue(profile?["host"])?.trimmingCharacters(in: .whitespacesAndNewlines),
+              let port = integerValue(profile?["port"]),
+              !modelID.isEmpty,
+              !host.isEmpty else {
+            return nil
+        }
+
+        return "\(modelID)|\(host)|\(port)"
+    }
+
+    private func stringValue(_ value: Any?) -> String? {
+        switch value {
+        case let string as String:
+            string
+        case let number as NSNumber:
+            number.stringValue
+        default:
+            nil
+        }
+    }
+
+    private func integerValue(_ value: Any?) -> Int? {
+        switch value {
+        case let integer as Int:
+            integer
+        case let number as NSNumber:
+            number.intValue
+        case let string as String:
+            Int(string.trimmingCharacters(in: .whitespacesAndNewlines))
+        default:
+            nil
+        }
+    }
+}
+
+private extension ImportValidationMessage {
+    static func error(_ message: String) -> ImportValidationMessage {
+        ImportValidationMessage(severity: .error, message: message)
+    }
+
+    static func warning(_ message: String) -> ImportValidationMessage {
+        ImportValidationMessage(severity: .warning, message: message)
+    }
+
+    static func info(_ message: String) -> ImportValidationMessage {
+        ImportValidationMessage(severity: .info, message: message)
+    }
+}

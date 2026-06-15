@@ -38,6 +38,9 @@ final class AppViewModel: ObservableObject {
     @Published var isDeleteProfileConfirmationPresented = false
     @Published private(set) var profileDeletionMessage: String?
     @Published private(set) var modelProfileExportMessage: String?
+    @Published private(set) var modelProfileImportMessage: String?
+    @Published var isImportPreviewPresented = false
+    @Published private(set) var importPreviewResult: ImportPreviewResult?
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
@@ -46,6 +49,7 @@ final class AppViewModel: ObservableObject {
     private let memoryMonitor: MemoryMonitor
     private let setupDiagnostics: SetupDiagnostics
     private let modelProfileExportService: ModelProfileExportService
+    private let modelProfileImportPreviewService: ModelProfileImportPreviewService
     private var logBuffer: LogBuffer
     private var memoryMonitorTask: Task<Void, Never>?
     private var pendingDeleteModelID: ModelConfig.ID?
@@ -64,7 +68,8 @@ final class AppViewModel: ObservableObject {
         processManager: ModelProcessManager? = nil,
         memoryMonitor: MemoryMonitor? = nil,
         setupDiagnostics: SetupDiagnostics? = nil,
-        modelProfileExportService: ModelProfileExportService? = nil
+        modelProfileExportService: ModelProfileExportService? = nil,
+        modelProfileImportPreviewService: ModelProfileImportPreviewService? = nil
     ) {
         self.settingsStore = settingsStore ?? SettingsStore()
         self.portChecker = portChecker ?? PortChecker()
@@ -77,6 +82,7 @@ final class AppViewModel: ObservableObject {
             readyChecker: self.readyChecker
         )
         self.modelProfileExportService = modelProfileExportService ?? ModelProfileExportService()
+        self.modelProfileImportPreviewService = modelProfileImportPreviewService ?? ModelProfileImportPreviewService()
         self.logBuffer = LogBuffer(initialLines: Self.initialLogLines)
         self.logText = logBuffer.text
         self.logEntries = logBuffer.entries
@@ -586,6 +592,52 @@ final class AppViewModel: ObservableObject {
             modelProfileExportMessage = "Export failed: \(message)"
             appendLog("[profile] export failed: \(message)")
         }
+    }
+
+    func importProfilesPreviewRequested() {
+        let panel = NSOpenPanel()
+        panel.title = "Import Model Profiles Preview"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.json]
+
+        let response = panel.runModal()
+        guard response == .OK, let url = panel.url else {
+            modelProfileImportMessage = "Import preview cancelled."
+            appendLog("[profile] import preview cancelled.")
+            return
+        }
+
+        do {
+            let data = try Data(contentsOf: url)
+            let result = modelProfileImportPreviewService.preview(
+                data: data,
+                sourceFileName: url.lastPathComponent,
+                existingModels: models
+            )
+
+            importPreviewResult = result
+            isImportPreviewPresented = true
+            modelProfileImportMessage = "Previewed \(result.totalProfiles) profile row(s) from \(result.sourceFileName)."
+            appendLog("[profile] import preview loaded \(result.sourceFileName): \(result.validProfilesCount) valid, \(result.invalidProfilesCount) invalid, \(result.warningCount) warning(s).")
+            appendLog("[profile] import preview only. No profiles were saved, no server lifecycle action was taken, and no external request was made.")
+        } catch {
+            let result = modelProfileImportPreviewService.preview(
+                data: Data(),
+                sourceFileName: url.lastPathComponent,
+                existingModels: models
+            )
+
+            importPreviewResult = result
+            isImportPreviewPresented = true
+            modelProfileImportMessage = "Import preview failed: \(error.localizedDescription)"
+            appendLog("[profile] import preview failed: \(error.localizedDescription)")
+        }
+    }
+
+    func dismissImportPreview() {
+        isImportPreviewPresented = false
     }
 
     func cancelAddProfile() {
