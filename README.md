@@ -115,7 +115,7 @@ Connection Settings polish is documented in [docs/connection_settings_polish.md]
 
 Screenshot refresh planning is documented in [docs/screenshot_refresh.md](docs/screenshot_refresh.md). Future screenshots should cover the v1.9+ Current Target summary and Adopted External Server states without exposing private paths or secrets.
 
-First-run guidance design is documented in [docs/onboarding_first_run.md](docs/onboarding_first_run.md). It outlines the setup order for `mlx_lm.server`, model profiles, readiness checks, Connection Settings, and OpenAI-compatible clients while preserving Direct Mode.
+First-run guidance is documented in [docs/onboarding_first_run.md](docs/onboarding_first_run.md). v2.4.0 adds a small in-app guidance panel that points first-time users toward executable path setup, model profile selection, diagnostics, Start, and Connection Settings while preserving Direct Mode.
 
 ## Current Binary Asset
 
@@ -162,6 +162,7 @@ As of v1.9.0, MLX Server Manager includes:
   - External Server Detected
   - Adopted External Server
   - Not Running / Not Connected
+- Lightweight Onboarding Guidance panel for first-run setup and connection state hints.
 - Menu bar quick actions.
 - Logs readability improvements.
 - Copy Logs.

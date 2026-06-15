@@ -2,9 +2,32 @@
 
 ## Overview
 
-Onboarding / First-run Guidance is a v2.3.0 docs-only design for helping first-time users understand what to configure, what to check before Start, and how Direct Mode affects their local OpenAI-compatible client setup.
+Onboarding / First-run Guidance started as a v2.3.0 docs-only design and received an initial app implementation in v2.4.0. It helps first-time users understand what to configure, what to check before Start, and how Direct Mode affects their local OpenAI-compatible client setup.
 
 The guidance should make the first run safer and clearer without adding automation that hides important ownership or network boundaries.
+
+## v2.4.0 Initial Implementation
+
+v2.4.0 adds a small Onboarding Guidance panel in the main app. It is lightweight guidance, not a wizard.
+
+The panel summarizes the next setup step based on current app state:
+
+- Missing `mlx_lm.server executable path`.
+- Missing or empty selected Model Profile `modelID`.
+- Not Running / Not Connected.
+- External Server Detected.
+- Adopted External Server.
+- Managed Server Running.
+
+The panel keeps these boundaries:
+
+- No auto install.
+- No model download.
+- No model deletion.
+- No inference proxy.
+- No automatic external process ownership.
+- No external process stop, restart, or kill.
+- Direct Mode remains visible.
 
 ## Goals
 

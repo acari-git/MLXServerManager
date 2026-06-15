@@ -35,6 +35,8 @@ struct ContentView: View {
                             onRunDiagnostics: viewModel.runDiagnosticsRequested
                         )
 
+                        OnboardingGuidanceView(guidance: viewModel.onboardingGuidance)
+
                         DiagnosticsPanelView(
                             results: viewModel.diagnosticsResults,
                             didRun: viewModel.diagnosticsDidRun,

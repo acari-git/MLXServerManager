@@ -968,6 +968,23 @@
    - API key placeholder as local dummy config.
    - Adopt External Server as connection context only.
 
+## v2.4.0 Completed: Onboarding / First-run Guidance Initial Implementation
+
+1. Add a small Onboarding Guidance panel.
+   - Add app-side guidance for first-run and unconfigured states.
+   - Keep the panel lightweight; no large wizard UI.
+   - Show only short next-step guidance.
+2. Preserve product and safety boundaries.
+   - Direct Mode is maintained.
+   - MLX Server Manager remains outside the inference request path.
+   - No Proxy mode, Chat UI, multi-backend wrapper behavior, model downloader, model deleter, or install automation.
+   - External process ownership boundaries remain clear.
+   - No external process kill, stop, or restart.
+3. Keep existing lifecycle behavior unchanged.
+   - Start / Stop / Restart enabled states are not changed by onboarding guidance.
+   - Adopt / Forget behavior remains unchanged.
+   - Advanced Launch Options behavior remains unchanged.
+
 ## Later
 
 - Unit tests for services where practical.

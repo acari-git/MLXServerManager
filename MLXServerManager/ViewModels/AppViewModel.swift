@@ -130,6 +130,101 @@ final class AppViewModel: ObservableObject {
         )
     }
 
+    var onboardingGuidance: OnboardingGuidance {
+        let executablePathMissing = settings.mlxServerExecutablePath
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty
+        let modelIDMissing = selectedModel?.modelID
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty ?? true
+
+        switch runtimeState {
+        case .externalServerDetected:
+            return OnboardingGuidance(
+                title: "External Server Detected",
+                tone: .warning,
+                messages: [
+                    "A compatible external server was detected.",
+                    "Adopt it as connection context, or leave it unmanaged.",
+                    "Stop and Restart do not apply to external servers."
+                ],
+                actionHints: [
+                    "Adopt External Server if you want connection context.",
+                    "Use Connection Settings to copy client values."
+                ]
+            )
+        case .adoptedExternalServer:
+            return OnboardingGuidance(
+                title: "Adopted External Server",
+                tone: .warning,
+                messages: [
+                    "This server is adopted as connection context only.",
+                    "It is not managed by MLX Server Manager.",
+                    "Forget removes app-side context only."
+                ],
+                actionHints: [
+                    "Copy Base URL, Model ID, and API key placeholder.",
+                    "Use Forget External Server when this context is no longer needed."
+                ]
+            )
+        default:
+            if isManagedProcessRunning {
+                return OnboardingGuidance(
+                    title: "Managed Server Running",
+                    tone: .ready,
+                    messages: [
+                        "Use Connection Settings to copy Base URL, Model ID, and local API key placeholder.",
+                        "Ready and diagnostics use /v1/models.",
+                        "Stop and Restart apply only to this managed process."
+                    ],
+                    actionHints: [
+                        "Copy connection settings.",
+                        "Paste them into an OpenAI-compatible client."
+                    ]
+                )
+            }
+
+            if executablePathMissing || modelIDMissing {
+                var messages: [String] = []
+                var hints: [String] = []
+
+                if executablePathMissing {
+                    messages.append("Set the mlx_lm.server executable path to start a managed server.")
+                    hints.append("Set executable path")
+                }
+
+                if modelIDMissing {
+                    messages.append("Add or select a model profile before starting a managed server.")
+                    hints.append("Select model profile")
+                }
+
+                messages.append("Run Diagnostics before Start when setup is ready.")
+                hints.append("Run Diagnostics")
+
+                return OnboardingGuidance(
+                    title: "Setup Needed",
+                    tone: .setup,
+                    messages: messages,
+                    actionHints: hints
+                )
+            }
+
+            return OnboardingGuidance(
+                title: "Not Running / Not Connected",
+                tone: .neutral,
+                messages: [
+                    "Start a managed server, or connect to an already-running OpenAI-compatible server on the selected host and port.",
+                    "Use Diagnostics if setup or readiness is unclear."
+                ],
+                actionHints: [
+                    "Start server",
+                    "Or connect to an external server",
+                    "Copy connection settings after ready"
+                ]
+            )
+        }
+    }
+
     var selectedModelIdentifier: String {
         selectedModel?.modelID ?? "No model selected"
     }
