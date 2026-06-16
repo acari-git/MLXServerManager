@@ -14,7 +14,10 @@ struct DashboardOverviewView: View {
             subtitle: "Current target and server state at a glance. Lifecycle actions remain explicit below."
         ) {
             HStack(alignment: .top, spacing: 12) {
-                DashboardCurrentTargetCard(summary: targetSummary)
+                DashboardCurrentTargetCard(
+                    summary: targetSummary,
+                    runtimeState: runtimeState
+                )
                     .frame(maxWidth: .infinity, alignment: .topLeading)
 
                 DashboardServerStateCard(
@@ -64,19 +67,39 @@ struct DashboardSectionView<Content: View>: View {
 
 struct DashboardCurrentTargetCard: View {
     let summary: ConnectionTargetSummary
+    let runtimeState: ModelRuntimeState
 
     var body: some View {
         DashboardStatusCard(
             title: "Current Target",
-            systemImage: iconName,
-            accentColor: accentColor
+            systemImage: display.iconName,
+            accentColor: display.accentColor
         ) {
-            VStack(alignment: .leading, spacing: 8) {
-                DashboardKeyValueRow(label: "Target", value: summary.targetType)
-                DashboardKeyValueRow(label: "Base URL", value: summary.baseURL)
-                DashboardKeyValueRow(label: "Model", value: summary.modelID)
-                DashboardKeyValueRow(label: "Readiness", value: summary.readinessSummary)
-                DashboardKeyValueRow(label: "Ownership", value: summary.ownershipNote)
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(display.title)
+                        .font(.callout.weight(.semibold))
+
+                    Text(display.message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Divider()
+
+                DashboardKeyValueRow(label: "Target Type", value: display.targetType)
+                DashboardKeyValueRow(label: "Endpoint", value: display.endpoint)
+                DashboardKeyValueRow(label: "Selected Model", value: display.modelID)
+                DashboardKeyValueRow(label: "Readiness", value: display.readiness)
+                DashboardKeyValueRow(label: "Ownership", value: display.ownership)
+
+                if let lifecycleNote = display.lifecycleNote {
+                    Label(lifecycleNote, systemImage: "info.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 Text(summary.directModeNote)
                     .font(.caption)
@@ -86,27 +109,171 @@ struct DashboardCurrentTargetCard: View {
         }
     }
 
-    private var iconName: String {
-        switch summary.targetType {
-        case "Managed Server":
-            "server.rack"
-        case "External Server Detected":
-            "network"
-        case "Adopted External Server":
-            "link"
-        default:
-            "power"
-        }
+    private var display: DashboardCurrentTargetDisplay {
+        DashboardCurrentTargetDisplay(summary: summary, runtimeState: runtimeState)
     }
+}
 
-    private var accentColor: Color {
-        switch summary.targetType {
-        case "Managed Server":
-            .green
-        case "External Server Detected", "Adopted External Server":
-            .orange
-        default:
-            .secondary
+private struct DashboardCurrentTargetDisplay {
+    let title: String
+    let message: String
+    let targetType: String
+    let endpoint: String
+    let modelID: String
+    let readiness: String
+    let ownership: String
+    let lifecycleNote: String?
+    let iconName: String
+    let accentColor: Color
+
+    init(summary: ConnectionTargetSummary, runtimeState: ModelRuntimeState) {
+        self.modelID = summary.modelID
+
+        switch runtimeState {
+        case let .externalServerDetected(host, port, baseURL, _):
+            title = "External server detected"
+            message = "A compatible endpoint responded on the selected host and port. It is not managed until you explicitly adopt it as connection context."
+            targetType = "External Server Detected"
+            endpoint = "\(baseURL) (\(host):\(port))"
+            readiness = "Ready - /v1/models responded successfully"
+            ownership = "External server, not owned by MLX Server Manager"
+            lifecycleNote = "Adopt is connection context only. Stop and Restart remain unavailable for this external process."
+            iconName = "network"
+            accentColor = .orange
+        case let .adoptedExternalServer(host, port, baseURL, _):
+            title = "Adopted external server"
+            message = "This endpoint is being used as connection context only. MLX Server Manager does not own or control the process."
+            targetType = "Adopted External Server"
+            endpoint = "\(baseURL) (\(host):\(port))"
+            readiness = "Ready - /v1/models responded successfully"
+            ownership = "Connection context only"
+            lifecycleNote = "Forget External Server only clears app-side context. It does not stop the server."
+            iconName = "link"
+            accentColor = .orange
+        case let .ready(host, port, processIdentifier):
+            title = "Managed server ready"
+            message = "The selected endpoint is ready for an OpenAI-compatible client. MLX Server Manager owns this managed process when a pid is attached."
+            targetType = "Managed Server"
+            endpoint = "\(summary.baseURL) (\(host):\(port))"
+            readiness = "Ready - /v1/models responded successfully"
+            if let processIdentifier {
+                ownership = "Managed by MLX Server Manager, pid \(processIdentifier)"
+            } else {
+                ownership = "Ready endpoint, no managed pid attached"
+            }
+            lifecycleNote = "Start, Stop, and Restart controls apply only when an app-managed process is attached."
+            iconName = "server.rack"
+            accentColor = .green
+        case let .starting(host, port):
+            title = "Managed server starting"
+            message = "A managed launch is in progress. Readiness has not completed yet."
+            targetType = "Managed Server"
+            endpoint = "\(summary.baseURL) (\(host):\(port))"
+            readiness = "Not checked - waiting for /v1/models"
+            ownership = "Managed launch requested by MLX Server Manager"
+            lifecycleNote = "Lifecycle actions remain explicit; no automatic restart is triggered by this card."
+            iconName = "server.rack"
+            accentColor = .orange
+        case let .loading(host, port, processIdentifier):
+            title = "Managed server loading"
+            message = "A managed process is attached and the endpoint is still loading."
+            targetType = "Managed Server"
+            endpoint = "\(summary.baseURL) (\(host):\(port))"
+            readiness = "Checking - waiting for /v1/models"
+            ownership = "Managed by MLX Server Manager, pid \(processIdentifier)"
+            lifecycleNote = "Stop and Restart apply to the managed process only."
+            iconName = "server.rack"
+            accentColor = .orange
+        case let .checkingReady(host, port):
+            title = "Checking readiness"
+            message = "The app is checking the selected endpoint with /v1/models."
+            targetType = summary.targetType
+            endpoint = "\(summary.baseURL) (\(host):\(port))"
+            readiness = "Checking - /v1/models request in progress"
+            ownership = summary.ownershipNote
+            lifecycleNote = "Readiness check does not send inference requests."
+            iconName = summary.isActiveTarget ? "server.rack" : "power"
+            accentColor = .orange
+        case let .readyCheckFailed(host, port, message):
+            title = "Target readiness failed"
+            self.message = "The selected endpoint did not pass the /v1/models readiness check: \(message)"
+            targetType = summary.targetType
+            endpoint = "\(summary.baseURL) (\(host):\(port))"
+            readiness = "Failed - readiness check failed"
+            ownership = summary.ownershipNote
+            lifecycleNote = "No automatic recovery is attempted. Use existing controls after checking setup and logs."
+            iconName = "exclamationmark.triangle"
+            accentColor = .red
+        case let .portBusy(host, port):
+            title = "Endpoint unavailable"
+            message = "The selected host and port are busy, but no target has been adopted or attached here."
+            targetType = "Unavailable"
+            endpoint = "\(summary.baseURL) (\(host):\(port))"
+            readiness = "Unavailable - port is busy"
+            ownership = "No app-managed process attached"
+            lifecycleNote = "Start will not launch a second server on this port."
+            iconName = "exclamationmark.triangle"
+            accentColor = .red
+        case let .portCheckFailed(host, port, message):
+            title = "Endpoint check failed"
+            self.message = "The selected endpoint could not be checked: \(message)"
+            targetType = "Unavailable"
+            endpoint = "\(summary.baseURL) (\(host):\(port))"
+            readiness = "Failed - endpoint check failed"
+            ownership = "No app-managed process attached"
+            lifecycleNote = "No automatic recovery is attempted."
+            iconName = "exclamationmark.triangle"
+            accentColor = .red
+        case let .checkingPort(host, port):
+            title = "Checking endpoint"
+            message = "The app is checking whether the selected host and port can be used."
+            targetType = "No Current Target"
+            endpoint = "\(summary.baseURL) (\(host):\(port))"
+            readiness = "Not checked - port check in progress"
+            ownership = "No app-managed process attached"
+            lifecycleNote = "Port checks do not start or stop servers."
+            iconName = "power"
+            accentColor = .orange
+        case let .portAvailable(host, port):
+            title = "No current target"
+            message = "The selected host and port are available. Start a managed server or adopt an external server through the existing controls."
+            targetType = "No Current Target"
+            endpoint = "\(summary.baseURL) (\(host):\(port))"
+            readiness = "Not checked - no active target"
+            ownership = "No app-managed process attached"
+            lifecycleNote = "Start remains an explicit user action."
+            iconName = "power"
+            accentColor = .secondary
+        case .stopped:
+            title = "No current target"
+            message = "No managed server is running and no external server is adopted."
+            targetType = "No Current Target"
+            endpoint = summary.baseURL
+            readiness = "Not checked - no active target"
+            ownership = "No app-managed process attached"
+            lifecycleNote = "Start a managed server, or adopt a detected external server after readiness succeeds."
+            iconName = "power"
+            accentColor = .secondary
+        case .stopping:
+            title = "Managed server stopping"
+            message = "The app-managed process is stopping. The current target is becoming unavailable."
+            targetType = "Managed Server"
+            endpoint = summary.baseURL
+            readiness = "Unavailable - process is stopping"
+            ownership = "Managed process is stopping"
+            lifecycleNote = "Stop applies only to the app-managed process."
+            iconName = "server.rack"
+            accentColor = .orange
+        case let .error(message), let .unknown(message):
+            title = "Target state needs attention"
+            self.message = message
+            targetType = summary.isActiveTarget ? summary.targetType : "Unavailable"
+            endpoint = summary.baseURL
+            readiness = "Unavailable - check status and logs"
+            ownership = summary.ownershipNote
+            lifecycleNote = "No automatic recovery is attempted."
+            iconName = "exclamationmark.triangle"
+            accentColor = .red
         }
     }
 }
@@ -289,5 +456,7 @@ struct DashboardKeyValueRow: View {
                 .truncationMode(.middle)
                 .textSelection(.enabled)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label): \(value)")
     }
 }

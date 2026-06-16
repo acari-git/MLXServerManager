@@ -2,7 +2,7 @@
 
 ## Purpose
 
-v4.1.0 is a documentation-only design step for a future Dashboard UI Refresh. v4.2.0 adds the first small app-code foundation for that direction by introducing reusable dashboard display structure and clearer Current Target / Server State presentation. The goal is to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, or process ownership boundaries.
+v4.1.0 is a documentation-only design step for a future Dashboard UI Refresh. v4.2.0 adds the first small app-code foundation for that direction by introducing reusable dashboard display structure and clearer Current Target / Server State presentation. v4.3.0 polishes the Current Target card copy and state grouping. The goal is to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, or process ownership boundaries.
 
 The refreshed dashboard should help users quickly answer:
 
@@ -75,6 +75,28 @@ This implementation is intentionally presentation-only. It does not:
 - change external server ownership boundaries,
 - implement the full v5.0.0 Dashboard UI Refresh v1.
 
+## v4.3.0 Current Target Polish
+
+v4.3.0 improves only the Current Target card presentation:
+
+- clearer no-target wording,
+- clearer managed server wording,
+- clearer external detected and adopted external server wording,
+- clearer unavailable endpoint wording,
+- clearer readiness wording,
+- endpoint context that includes host and port when available,
+- selected model visibility,
+- concise ownership and lifecycle notes.
+
+The Current Target card should answer:
+
+- what endpoint the user is targeting,
+- whether MLX Server Manager owns the process,
+- whether readiness is known, checking, failed, unavailable, or not checked,
+- where an OpenAI-compatible client should connect.
+
+It should not become a lifecycle controller. Start, Stop, Restart, Adopt, and Forget remain explicit existing controls outside the display-only card.
+
 ## Target Information Architecture
 
 The refreshed dashboard should prioritize these areas in the first viewport:
@@ -106,6 +128,14 @@ The top summary should show the current connection target:
 - whether connection settings are copy-ready.
 
 Current Target should not imply that the app proxies inference. It should state or visually imply that copied settings are for external OpenAI-compatible clients.
+
+Current Target should use concise state language:
+
+- `Ready`: `/v1/models` responded successfully,
+- `Checking`: readiness check is in progress,
+- `Not checked`: readiness has not been checked yet or no active target exists,
+- `Unavailable`: endpoint or process is not currently available,
+- `Failed`: readiness or endpoint check failed.
 
 ### Server State
 
@@ -274,6 +304,7 @@ The future dashboard should:
 
 - Keep v4.1.0 as the design step.
 - Treat v4.2.0 as the first small app-code foundation.
+- Treat v4.3.0 as a Current Target presentation polish step.
 - Confirm information architecture and safety boundaries.
 - Identify current UI sections that can be reorganized without changing behavior.
 - Keep Import / Export stable release boundaries intact.
@@ -319,7 +350,7 @@ The Dashboard UI Refresh must preserve:
 
 ## Release Positioning
 
-v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction.
+v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity.
 
 v4.1.0 does not:
 
@@ -331,4 +362,4 @@ v4.1.0 does not:
 - create a new app binary,
 - create a release asset.
 
-v4.2.0 does change SwiftUI view code and therefore requires a new unsigned app zip when released. It still does not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, or external process ownership.
+v4.2.0 and v4.3.0 change SwiftUI view code and therefore require new unsigned app zips when released. They still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, or external process ownership.

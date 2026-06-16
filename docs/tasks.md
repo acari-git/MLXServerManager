@@ -1374,6 +1374,39 @@
    - It is not the full v5.0.0 Dashboard UI Refresh v1.
    - Because app code changed, v4.2.0 will need a new unsigned app zip when released.
 
+## v4.3.0 Completed: Dashboard Current Target Polish
+
+1. Polish Current Target presentation.
+   - Improve no-target wording.
+   - Improve managed server wording.
+   - Improve external detected and adopted external server wording.
+   - Improve unavailable endpoint wording.
+   - Improve readiness wording for ready, checking, not checked, unavailable, and failed states.
+2. Keep changes display-only.
+   - Use existing runtime state and connection target summary data.
+   - Do not change process management.
+   - Do not change readiness checks.
+   - Do not add network calls.
+   - Do not change model profile persistence.
+   - Do not change Import / Export behavior.
+3. Clarify ownership boundaries.
+   - Managed targets are app-managed only when a managed process is attached.
+   - External detected targets are not owned by the app.
+   - Adopted external targets are connection context only.
+   - Forget External Server does not stop the external process.
+4. Preserve behavior.
+   - No Start / Stop / Restart behavior change.
+   - No automatic lifecycle action.
+   - No `/v1/models` behavior change.
+   - No `/v1/chat/completions` calls by the app.
+   - No Import / Export behavior change.
+   - No model profile schema change.
+   - No external server ownership change.
+5. Release note.
+   - v4.3.0 is a small app-code polish release for the Current Target card.
+   - It is not the full v5.0.0 Dashboard UI Refresh v1.
+   - Because app code changed, v4.3.0 will need a new unsigned app zip when released.
+
 ## Later
 
 - v5.0.0 candidate: Dashboard UI Refresh v1 implementation.

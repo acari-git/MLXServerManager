@@ -133,7 +133,7 @@ Adopt External Server behavior is documented in [docs/adopt_external_server.md](
 
 Connection Settings polish is documented in [docs/connection_settings_polish.md](docs/connection_settings_polish.md). v1.9.0 implements the initial Current Target summary and expanded copy actions for Managed, External Detected, Adopted, and Not Running connection states. Direct Mode remains unchanged.
 
-Dashboard UI Refresh planning is documented in [docs/dashboard_ui_refresh.md](docs/dashboard_ui_refresh.md). v4.1.0 is a docs-only design step for a future dashboard refresh. v4.2.0 adds the first small app-code foundation with dashboard cards for Current Target and Server State while preserving lifecycle behavior, Direct Mode, external server ownership boundaries, and Import / Export behavior.
+Dashboard UI Refresh planning is documented in [docs/dashboard_ui_refresh.md](docs/dashboard_ui_refresh.md). v4.1.0 is a docs-only design step for a future dashboard refresh. v4.2.0 adds the first small app-code foundation with dashboard cards for Current Target and Server State. v4.3.0 polishes Current Target wording for managed, external, unavailable, and readiness states while preserving lifecycle behavior, Direct Mode, external server ownership boundaries, and Import / Export behavior.
 
 Screenshot refresh planning is documented in [docs/screenshot_refresh.md](docs/screenshot_refresh.md). Future screenshots should cover the v1.9+ Current Target summary and Adopted External Server states without exposing private paths or secrets.
 
@@ -145,9 +145,9 @@ Model Profile export and import are documented in [docs/model_profile_import_exp
 
 The current downloadable app binary asset is the latest app-code release:
 
-- `MLXServerManager-v3.5.0-unsigned.zip`
+- `MLXServerManager-v4.2.0-unsigned.zip`
 
-v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 changes app UI code, so a new unsigned app zip will be needed when v4.2.0 is released.
+v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 changes app UI code and should use a v4.2.0 unsigned app zip when released. v4.3.0 also changes app UI code, so it will need a new unsigned app zip when released.
 
 ## Target Users
 
@@ -169,7 +169,7 @@ For Hermes Agent and similar clients, see [docs/hermes_agent_connection.md](docs
 
 ## Current Feature Set
 
-As of v4.2.0, MLX Server Manager includes:
+As of v4.3.0, MLX Server Manager includes:
 
 - Start, Stop, and Restart for the `mlx_lm.server` process started by this app.
 - Managed-process-only Stop and Restart behavior.
@@ -193,6 +193,7 @@ As of v4.2.0, MLX Server Manager includes:
   - Adopted External Server
   - Not Running / Not Connected
 - Dashboard foundation cards for Current Target and Server State.
+- Polished Current Target wording for no target, managed server, external server, adopted external server, unavailable endpoint, and readiness states.
 - Lightweight Onboarding Guidance panel for first-run setup and connection state hints.
 - Menu bar quick actions.
 - Logs readability improvements.

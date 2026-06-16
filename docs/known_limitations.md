@@ -35,6 +35,7 @@ This document lists known limitations for MLX Server Manager.
 ## Dashboard UI
 
 - The current dashboard exposes the required controls and state, and v4.2.0 adds the first small foundation cards for Current Target and Server State.
+- v4.3.0 polishes Current Target wording and state grouping, but it does not implement the full dashboard refresh.
 - The full Dashboard UI Refresh v1 is still future work.
 - Future dashboard work should continue improving first-glance Current Target, managed vs external state, lifecycle controls, profile overview, readiness, memory, logs, diagnostics, onboarding, and Import / Export placement.
 - Dashboard UI work must continue to preserve Direct Mode, explicit lifecycle actions, managed-process-only Stop/Restart, and external server connection-context boundaries.
