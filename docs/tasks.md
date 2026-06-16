@@ -1346,6 +1346,34 @@
    - It is foundation work for future v4.x implementation planning and a possible v5.0.0 Dashboard UI Refresh v1.
    - The current app binary remains the v3.5.0 unsigned build unless a later app-code release changes the app.
 
+## v4.2.0 Completed: Dashboard UI Refresh Foundation
+
+1. Add reusable dashboard UI structure.
+   - Add display-only dashboard section/card views.
+   - Keep SwiftUI cards side-effect free.
+   - Do not move process launch, termination, port probing, readiness polling, import/export, or networking logic into views.
+2. Add Current Target presentation.
+   - Surface target type, Base URL, selected model ID, readiness, ownership note, and Direct Mode note.
+   - Reuse existing `ConnectionTargetSummary` values.
+   - Preserve existing Connection Settings copy actions.
+3. Add Server State presentation.
+   - Surface runtime state, endpoint, managed/external process ownership, lifecycle expectations, memory status, selected model, running model, and Restart Required.
+   - Make adopted external servers clearly connection context only.
+   - Keep Stop and Restart scoped to app-managed processes.
+4. Preserve behavior.
+   - No Start / Stop / Restart behavior change.
+   - No automatic lifecycle action.
+   - No readiness behavior change.
+   - No `/v1/models` behavior change.
+   - No `/v1/chat/completions` calls by the app.
+   - No Import / Export behavior change.
+   - No model profile schema change.
+   - No external server ownership change.
+5. Release note.
+   - v4.2.0 is the first small app-code foundation for Dashboard UI Refresh.
+   - It is not the full v5.0.0 Dashboard UI Refresh v1.
+   - Because app code changed, v4.2.0 will need a new unsigned app zip when released.
+
 ## Later
 
 - v5.0.0 candidate: Dashboard UI Refresh v1 implementation.

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-v4.1.0 is a documentation-only design step for a future Dashboard UI Refresh. The goal is to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, or process ownership boundaries.
+v4.1.0 is a documentation-only design step for a future Dashboard UI Refresh. v4.2.0 adds the first small app-code foundation for that direction by introducing reusable dashboard display structure and clearer Current Target / Server State presentation. The goal is to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, or process ownership boundaries.
 
 The refreshed dashboard should help users quickly answer:
 
@@ -52,6 +52,28 @@ The current app exposes the required functionality, but the dashboard can become
 - logs and diagnostics are useful but compete with profile editing and connection-copy actions,
 - stable Import / Export actions are available but should be easier to discover without implying model download or install behavior,
 - first-run guidance should be visible without turning into a wizard or hidden automation.
+
+## v4.2.0 Foundation Implementation
+
+v4.2.0 implements a conservative first step:
+
+- reusable dashboard display components,
+- a Current Target card,
+- a Server State card,
+- clearer managed vs external ownership copy,
+- selected model and running model summary,
+- Restart Required visibility in the dashboard overview.
+
+This implementation is intentionally presentation-only. It does not:
+
+- move lifecycle ownership into the dashboard cards,
+- add automatic Start, Stop, Restart, Adopt, or Forget behavior,
+- change `/v1/models` readiness or detection behavior,
+- add network calls,
+- change Import / Export behavior,
+- change model profile schema,
+- change external server ownership boundaries,
+- implement the full v5.0.0 Dashboard UI Refresh v1.
 
 ## Target Information Architecture
 
@@ -250,7 +272,8 @@ The future dashboard should:
 
 ### v4.x Foundation
 
-- Keep this v4.1.0 step docs-only.
+- Keep v4.1.0 as the design step.
+- Treat v4.2.0 as the first small app-code foundation.
 - Confirm information architecture and safety boundaries.
 - Identify current UI sections that can be reorganized without changing behavior.
 - Keep Import / Export stable release boundaries intact.
@@ -296,9 +319,9 @@ The Dashboard UI Refresh must preserve:
 
 ## Release Positioning
 
-v4.1.0 is a docs-only design release.
+v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction.
 
-It does not:
+v4.1.0 does not:
 
 - change Swift code,
 - change tests,
@@ -308,4 +331,4 @@ It does not:
 - create a new app binary,
 - create a release asset.
 
-The current binary asset remains the v3.5.0 unsigned build unless a later app-code release changes the app.
+v4.2.0 does change SwiftUI view code and therefore requires a new unsigned app zip when released. It still does not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, or external process ownership.

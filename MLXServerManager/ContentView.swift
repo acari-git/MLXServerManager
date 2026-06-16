@@ -42,6 +42,15 @@ struct ContentView: View {
 
                         OnboardingGuidanceView(guidance: viewModel.onboardingGuidance)
 
+                        DashboardOverviewView(
+                            targetSummary: viewModel.connectionTargetSummary,
+                            runtimeState: viewModel.runtimeState,
+                            memoryUsageText: viewModel.memoryUsageText,
+                            selectedModelText: viewModel.selectedModelText,
+                            runningModelText: viewModel.runningModelText,
+                            restartRequired: viewModel.restartRequired
+                        )
+
                         DiagnosticsPanelView(
                             results: viewModel.diagnosticsResults,
                             didRun: viewModel.diagnosticsDidRun,

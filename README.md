@@ -133,7 +133,7 @@ Adopt External Server behavior is documented in [docs/adopt_external_server.md](
 
 Connection Settings polish is documented in [docs/connection_settings_polish.md](docs/connection_settings_polish.md). v1.9.0 implements the initial Current Target summary and expanded copy actions for Managed, External Detected, Adopted, and Not Running connection states. Direct Mode remains unchanged.
 
-Dashboard UI Refresh planning is documented in [docs/dashboard_ui_refresh.md](docs/dashboard_ui_refresh.md). v4.1.0 is a docs-only design step for a future dashboard refresh focused on clearer Current Target, server state, lifecycle controls, profiles, logs, diagnostics, onboarding, and Import / Export placement without changing app behavior.
+Dashboard UI Refresh planning is documented in [docs/dashboard_ui_refresh.md](docs/dashboard_ui_refresh.md). v4.1.0 is a docs-only design step for a future dashboard refresh. v4.2.0 adds the first small app-code foundation with dashboard cards for Current Target and Server State while preserving lifecycle behavior, Direct Mode, external server ownership boundaries, and Import / Export behavior.
 
 Screenshot refresh planning is documented in [docs/screenshot_refresh.md](docs/screenshot_refresh.md). Future screenshots should cover the v1.9+ Current Target summary and Adopted External Server states without exposing private paths or secrets.
 
@@ -147,7 +147,7 @@ The current downloadable app binary asset is the latest app-code release:
 
 - `MLXServerManager-v3.5.0-unsigned.zip`
 
-v4.0.0 and v4.1.0 are docs-only preparation releases. If released without additional app-code changes after v3.5.0, they do not require a new binary asset.
+v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 changes app UI code, so a new unsigned app zip will be needed when v4.2.0 is released.
 
 ## Target Users
 
@@ -169,7 +169,7 @@ For Hermes Agent and similar clients, see [docs/hermes_agent_connection.md](docs
 
 ## Current Feature Set
 
-As of v4.0.0, MLX Server Manager includes:
+As of v4.2.0, MLX Server Manager includes:
 
 - Start, Stop, and Restart for the `mlx_lm.server` process started by this app.
 - Managed-process-only Stop and Restart behavior.
@@ -192,6 +192,7 @@ As of v4.0.0, MLX Server Manager includes:
   - External Server Detected
   - Adopted External Server
   - Not Running / Not Connected
+- Dashboard foundation cards for Current Target and Server State.
 - Lightweight Onboarding Guidance panel for first-run setup and connection state hints.
 - Menu bar quick actions.
 - Logs readability improvements.
