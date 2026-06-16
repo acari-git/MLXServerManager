@@ -133,7 +133,7 @@ Adopt External Server behavior is documented in [docs/adopt_external_server.md](
 
 Connection Settings polish is documented in [docs/connection_settings_polish.md](docs/connection_settings_polish.md). v1.9.0 implements the initial Current Target summary and expanded copy actions for Managed, External Detected, Adopted, and Not Running connection states. Direct Mode remains unchanged.
 
-Dashboard UI Refresh planning is documented in [docs/dashboard_ui_refresh.md](docs/dashboard_ui_refresh.md). v4.1.0 is a docs-only design step for a future dashboard refresh. v4.2.0 adds the first small app-code foundation with dashboard cards for Current Target and Server State. v4.3.0 polishes Current Target wording. v4.4.0 polishes Server State wording. v4.5.0 adds display-only Logs / Diagnostics guidance. v4.6.0 adds display-only Profiles / Import Export guidance. v4.7.0 adds display-only Onboarding / Next Steps guidance for first-run setup, managed Start, external adoption, readiness, and Direct Mode while preserving lifecycle behavior, Direct Mode, external server ownership boundaries, and Import / Export behavior.
+Dashboard UI Refresh planning is documented in [docs/dashboard_ui_refresh.md](docs/dashboard_ui_refresh.md). v4.1.0 is a docs-only design step for a future dashboard refresh. v4.2.0 adds the first small app-code foundation with dashboard cards for Current Target and Server State. v4.3.0 polishes Current Target wording. v4.4.0 polishes Server State wording. v4.5.0 adds display-only Logs / Diagnostics guidance. v4.6.0 adds display-only Profiles / Import Export guidance. v4.7.0 adds display-only Onboarding / Next Steps guidance. v4.8.0 polishes Dashboard layout, card ordering, grouping headings, and information hierarchy while preserving lifecycle behavior, Direct Mode, external server ownership boundaries, and Import / Export behavior.
 
 Screenshot refresh planning is documented in [docs/screenshot_refresh.md](docs/screenshot_refresh.md). Future screenshots should cover the v1.9+ Current Target summary and Adopted External Server states without exposing private paths or secrets.
 
@@ -145,9 +145,9 @@ Model Profile export and import are documented in [docs/model_profile_import_exp
 
 The current downloadable app binary asset is the latest app-code release:
 
-- `MLXServerManager-v4.6.0-unsigned.zip`
+- `MLXServerManager-v4.7.0-unsigned.zip`
 
-v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 through v4.6.0 are app-code dashboard polish releases with unsigned app zip assets. v4.7.0 also changes app UI code, so it will need a new unsigned app zip when released.
+v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 through v4.7.0 are app-code dashboard polish releases with unsigned app zip assets. v4.8.0 also changes app UI code, so it will need a new unsigned app zip when released.
 
 ## Target Users
 
@@ -169,7 +169,7 @@ For Hermes Agent and similar clients, see [docs/hermes_agent_connection.md](docs
 
 ## Current Feature Set
 
-As of v4.7.0, MLX Server Manager includes:
+As of v4.8.0, MLX Server Manager includes:
 
 - Start, Stop, and Restart for the `mlx_lm.server` process started by this app.
 - Managed-process-only Stop and Restart behavior.
@@ -198,6 +198,7 @@ As of v4.7.0, MLX Server Manager includes:
 - Display-only Dashboard guidance for logs, diagnostics, readiness failures, port busy states, unavailable targets, and external server log boundaries.
 - Display-only Dashboard guidance for selected profile metadata, profile endpoint, current target relationship, Export Profiles, Import Preview, Rename, Replace, and metadata-only Import / Export safety.
 - Display-only Dashboard Next Steps guidance for first-run setup, managed Start, external adoption, readiness expectations, Direct Mode, and manual troubleshooting boundaries.
+- Dashboard grouping headings and scan order that clarify Next Steps, Current Target, Server State, Diagnostics & Logs, and Profiles / Import Export responsibilities.
 - Lightweight Onboarding Guidance panel for first-run setup and connection state hints.
 - Menu bar quick actions.
 - Logs readability improvements.

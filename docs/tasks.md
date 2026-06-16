@@ -1527,6 +1527,33 @@
    - It is not the full v5.0.0 Dashboard UI Refresh v1.
    - Because app code changed, v4.7.0 will need a new unsigned app zip when released.
 
+## v4.8.0 Completed: Dashboard Layout / Information Hierarchy Polish
+
+1. Add display-only grouping headings.
+   - Clarify Dashboard scan order.
+   - Group Next Steps, Target and State, Troubleshooting, and Profile Context.
+   - Keep cards easier to scan without moving runtime controls.
+2. Clarify card responsibilities.
+   - Next Steps answers what to do next.
+   - Current Target answers what the app is connected to.
+   - Server State answers process, readiness, and lifecycle condition.
+   - Diagnostics & Logs answers where to look when something is not working.
+   - Profiles & Import / Export answers what metadata context is relevant.
+3. Preserve behavior.
+   - No Start / Stop / Restart behavior change.
+   - No External Server Detection / Adopt / Forget behavior change.
+   - No readiness behavior change.
+   - No new network calls.
+   - No automatic diagnostics execution.
+   - No onboarding persistence or user tracking.
+   - No Import / Export behavior or schema change.
+   - No model download or deletion.
+   - No external server ownership change.
+4. Release note.
+   - v4.8.0 is a small app-code polish release for Dashboard layout and information hierarchy.
+   - It is not the full v5.0.0 Dashboard UI Refresh v1.
+   - Because app code changed, v4.8.0 will need a new unsigned app zip when released.
+
 ## Later
 
 - v5.0.0 candidate: Dashboard UI Refresh v1 implementation.

@@ -13,15 +13,25 @@ struct DashboardOverviewView: View {
     var body: some View {
         DashboardSectionView(
             title: "Dashboard",
-            subtitle: "Current target, server state, and troubleshooting hints at a glance. Lifecycle actions remain explicit below."
+            subtitle: "Scan in order: next action, current target, server state, troubleshooting, then profile context. Lifecycle actions remain explicit below."
         ) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 14) {
+                DashboardGroupHeader(
+                    title: "1. Next action",
+                    subtitle: "Start here for the safest next step in the current state."
+                )
+
                 DashboardNextStepsCard(
                     runtimeState: runtimeState,
                     targetSummary: targetSummary,
                     selectedModel: selectedModel
                 )
                 .frame(maxWidth: .infinity, alignment: .topLeading)
+
+                DashboardGroupHeader(
+                    title: "2. Target and state",
+                    subtitle: "Current Target explains connection context. Server State explains process, readiness, and lifecycle."
+                )
 
                 HStack(alignment: .top, spacing: 12) {
                     DashboardCurrentTargetCard(
@@ -40,11 +50,21 @@ struct DashboardOverviewView: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
 
+                DashboardGroupHeader(
+                    title: "3. Troubleshooting",
+                    subtitle: "Use diagnostics and logs when readiness, availability, or ownership is unclear."
+                )
+
                 DashboardDiagnosticsGuidanceCard(
                     runtimeState: runtimeState,
                     targetSummary: targetSummary
                 )
                 .frame(maxWidth: .infinity, alignment: .topLeading)
+
+                DashboardGroupHeader(
+                    title: "4. Profile context",
+                    subtitle: "Profiles and Import / Export are metadata context, not lifecycle or model-file actions."
+                )
 
                 DashboardProfileImportExportCard(
                     selectedModel: selectedModel,
@@ -54,6 +74,26 @@ struct DashboardOverviewView: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
+    }
+}
+
+struct DashboardGroupHeader: View {
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            Text(subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.top, 2)
+        .accessibilityElement(children: .combine)
     }
 }
 
