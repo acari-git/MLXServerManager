@@ -39,6 +39,8 @@ v2.5.0 adds a README screenshot for the First-run Onboarding Guidance panel:
 
 This is a documentation and public presentation update only. It does not change onboarding behavior, server lifecycle behavior, Direct Mode, external process ownership, model download behavior, or inference routing.
 
+v4.1.0 adds Dashboard UI Refresh design guidance. Future dashboard work should keep first-run guidance short and state-aware, place it near setup status when useful, and avoid turning onboarding into hidden automation, model download, server start, or inference routing.
+
 ## Import / Export Relationship
 
 Model Profile export can help first-run setup by backing up current profile metadata. v2.9.0 adds Import Profiles Preview so users can inspect and validate exported profile metadata. v3.0.0 adds import for selected valid profiles without conflicts. v3.3.0 adds explicit Rename for profile-name conflicts. v3.4.0 adds explicit Replace for one unambiguous existing profile target. v3.5.0 adds deterministic fixtures and XCTest coverage for the current import/export behavior. v4.0.0 treats Import / Export as stable metadata-only behavior without changing first-run UI behavior.

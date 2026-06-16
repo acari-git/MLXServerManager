@@ -32,6 +32,12 @@ This document lists known limitations for MLX Server Manager.
 - Ambiguous Replace targets and duplicate selected Replace actions remain skipped or disabled.
 - Import/export fixtures and XCTest coverage exist for the current schema, validation, Rename, and Replace behavior, but they are service-level metadata tests and do not run live `mlx_lm.server`.
 
+## Dashboard UI
+
+- The current dashboard exposes the required controls and state, but the v4.1.0 Dashboard UI Refresh is design-only.
+- A future dashboard refresh should improve first-glance Current Target, managed vs external state, lifecycle controls, profile overview, readiness, memory, logs, diagnostics, onboarding, and Import / Export placement.
+- No dashboard UI refresh has been implemented in v4.1.0.
+
 ## Process Management
 
 - The app manages only the process it starts.

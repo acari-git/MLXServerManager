@@ -1310,9 +1310,46 @@
    - This step does not create a zipped app binary, tag, push, or GitHub release.
    - If v4.0.0 is released without app-code changes after v3.5.0, the v3.5.0 unsigned app binary can remain the current binary asset.
 
+## v4.1.0 Completed: Dashboard UI Refresh Design
+
+1. Add Dashboard UI Refresh design docs.
+   - Add `docs/dashboard_ui_refresh.md`.
+   - Define purpose, non-goals, Direct Mode boundary, current UI limitations, target information architecture, proposed dashboard areas, accessibility/readability considerations, staged implementation plan, and safety boundaries.
+2. Define future dashboard information architecture.
+   - Current Target.
+   - Server State.
+   - Active Profile.
+   - Lifecycle Controls.
+   - Readiness.
+   - Memory.
+   - Logs.
+   - Profiles.
+   - Import / Export.
+   - Onboarding / Diagnostics.
+3. Preserve safety boundaries.
+   - Dashboard refresh must not become a Chat UI.
+   - Dashboard refresh must not proxy inference requests.
+   - Dashboard refresh must not perform multi-backend routing.
+   - Dashboard refresh must not automatically start, stop, or restart servers.
+   - Dashboard refresh must not take ownership of external processes.
+   - Dashboard refresh must not download or delete models.
+   - Dashboard refresh must not change Import / Export behavior.
+   - Dashboard refresh must not change Direct Mode.
+4. Keep this step docs-only.
+   - No Swift changes.
+   - No tests or fixture changes.
+   - No Xcode project changes.
+   - No app assets or build settings changes.
+   - No new app binary or release asset.
+5. Release note.
+   - v4.1.0 is a docs-only Dashboard UI Refresh design release.
+   - It is foundation work for future v4.x implementation planning and a possible v5.0.0 Dashboard UI Refresh v1.
+   - The current app binary remains the v3.5.0 unsigned build unless a later app-code release changes the app.
+
 ## Later
 
-- Refresh README screenshots for the v1.9+ Connection Settings Current Target UI.
+- v5.0.0 candidate: Dashboard UI Refresh v1 implementation.
+- Refresh README screenshots after Dashboard UI Refresh implementation.
 - LAN Web UI.
 - Automatic unload policies.
 - More advanced resource graphs.

@@ -133,6 +133,8 @@ Adopt External Server behavior is documented in [docs/adopt_external_server.md](
 
 Connection Settings polish is documented in [docs/connection_settings_polish.md](docs/connection_settings_polish.md). v1.9.0 implements the initial Current Target summary and expanded copy actions for Managed, External Detected, Adopted, and Not Running connection states. Direct Mode remains unchanged.
 
+Dashboard UI Refresh planning is documented in [docs/dashboard_ui_refresh.md](docs/dashboard_ui_refresh.md). v4.1.0 is a docs-only design step for a future dashboard refresh focused on clearer Current Target, server state, lifecycle controls, profiles, logs, diagnostics, onboarding, and Import / Export placement without changing app behavior.
+
 Screenshot refresh planning is documented in [docs/screenshot_refresh.md](docs/screenshot_refresh.md). Future screenshots should cover the v1.9+ Current Target summary and Adopted External Server states without exposing private paths or secrets.
 
 First-run guidance is documented in [docs/onboarding_first_run.md](docs/onboarding_first_run.md). v2.4.0 adds a small in-app guidance panel that points first-time users toward executable path setup, model profile selection, diagnostics, Start, and Connection Settings while preserving Direct Mode.
@@ -145,7 +147,7 @@ The current downloadable app binary asset is the latest app-code release:
 
 - `MLXServerManager-v3.5.0-unsigned.zip`
 
-v4.0.0 is Import / Export stable release preparation. If released without additional app-code changes after v3.5.0, it does not require a new binary asset.
+v4.0.0 and v4.1.0 are docs-only preparation releases. If released without additional app-code changes after v3.5.0, they do not require a new binary asset.
 
 ## Target Users
 
