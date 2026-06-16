@@ -289,14 +289,25 @@ struct DashboardServerStateCard: View {
         DashboardStatusCard(
             title: "Server State",
             systemImage: "gauge",
-            accentColor: indicatorColor
+            accentColor: display.accentColor
         ) {
-            VStack(alignment: .leading, spacing: 8) {
-                DashboardKeyValueRow(label: "State", value: runtimeState.title)
-                DashboardKeyValueRow(label: "Endpoint", value: endpointText)
-                DashboardKeyValueRow(label: "Process", value: processText)
-                DashboardKeyValueRow(label: "Lifecycle", value: lifecycleText)
-                DashboardKeyValueRow(label: "Memory", value: normalizedMemoryText)
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(display.title)
+                        .font(.callout.weight(.semibold))
+
+                    Text(display.message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Divider()
+
+                DashboardKeyValueRow(label: "Process State", value: display.processState)
+                DashboardKeyValueRow(label: "Readiness", value: display.readiness)
+                DashboardKeyValueRow(label: "Lifecycle", value: display.lifecycle)
+                DashboardKeyValueRow(label: "Memory", value: display.memory)
 
                 Text(selectedModelText)
                     .font(.caption)
@@ -316,84 +327,163 @@ struct DashboardServerStateCard: View {
                         .foregroundStyle(.orange)
                         .padding(.top, 2)
                 }
+
+                Label(display.lifecycleNote, systemImage: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
-    private var endpointText: String {
-        switch runtimeState {
-        case .stopped, .stopping, .error, .unknown:
-            "No active endpoint"
-        case let .starting(host, port),
-             let .loading(host, port, _),
-             let .checkingPort(host, port),
-             let .portAvailable(host, port),
-             let .portBusy(host, port),
-             let .portCheckFailed(host, port, _),
-             let .checkingReady(host, port),
-             let .readyCheckFailed(host, port, _):
-            "\(host):\(port)"
-        case let .externalServerDetected(_, _, baseURL, _),
-             let .adoptedExternalServer(_, _, baseURL, _):
-            baseURL
-        case let .ready(host, port, _):
-            "\(host):\(port)"
-        }
+    private var display: DashboardServerStateDisplay {
+        DashboardServerStateDisplay(
+            runtimeState: runtimeState,
+            memoryUsageText: memoryUsageText
+        )
     }
+}
 
-    private var processText: String {
-        switch runtimeState {
-        case let .loading(_, _, processIdentifier),
-             let .stopping(processIdentifier):
-            "Managed pid \(processIdentifier)"
-        case let .ready(_, _, processIdentifier):
-            if let processIdentifier {
-                "Managed pid \(processIdentifier)"
-            } else {
-                "Ready endpoint, no managed pid"
-            }
-        case .externalServerDetected:
-            "External, not managed"
-        case .adoptedExternalServer:
-            "Connection context only"
-        default:
-            "No managed process attached"
-        }
-    }
+private struct DashboardServerStateDisplay {
+    let title: String
+    let message: String
+    let processState: String
+    let readiness: String
+    let lifecycle: String
+    let memory: String
+    let lifecycleNote: String
+    let accentColor: Color
 
-    private var lifecycleText: String {
-        switch runtimeState {
-        case .externalServerDetected:
-            "Adopt available; Stop and Restart disabled"
-        case .adoptedExternalServer:
-            "Forget context only; external process untouched"
-        case .loading, .ready, .starting:
-            "Start, Stop, and Restart stay explicit"
-        case .stopping:
-            "Stopping app-managed process"
-        default:
-            "Start is explicit; no automatic lifecycle action"
-        }
-    }
+    init(runtimeState: ModelRuntimeState, memoryUsageText: String) {
+        self.memory = memoryUsageText.replacingOccurrences(of: "Memory: ", with: "")
 
-    private var normalizedMemoryText: String {
-        memoryUsageText.replacingOccurrences(of: "Memory: ", with: "")
-    }
-
-    private var indicatorColor: Color {
         switch runtimeState {
         case .stopped:
-            .secondary
-        case .starting, .loading, .stopping, .checkingPort, .checkingReady:
-            .orange
-        case .portAvailable, .ready:
-            .green
-        case .externalServerDetected, .adoptedExternalServer:
-            .orange
-        case .portBusy, .portCheckFailed, .readyCheckFailed, .error:
-            .red
-        case .unknown:
-            .yellow
+            title = "No server process attached"
+            message = "No app-managed process is running and no external server context is active."
+            processState = "Stopped"
+            readiness = "Unavailable - no active server target"
+            lifecycle = "Start is available through the existing controls"
+            lifecycleNote = "Starting a managed server is always an explicit user action."
+            accentColor = .secondary
+        case let .starting(host, port):
+            title = "Managed server starting"
+            message = "MLX Server Manager has started a managed launch for \(host):\(port). Readiness is still separate from process startup."
+            processState = "Starting managed process"
+            readiness = "Not checked - waiting for /v1/models"
+            lifecycle = "Lifecycle controls apply to the managed launch"
+            lifecycleNote = "Running or starting does not necessarily mean ready; ready requires a successful /v1/models check."
+            accentColor = .orange
+        case let .loading(host, port, processIdentifier):
+            title = "Managed process loading"
+            message = "App-owned process pid \(processIdentifier) is attached at \(host):\(port), but readiness has not completed."
+            processState = "Managed pid \(processIdentifier)"
+            readiness = "Checking - waiting for /v1/models"
+            lifecycle = "Stop and Restart apply to this managed process"
+            lifecycleNote = "Readiness is distinct from process attachment."
+            accentColor = .orange
+        case let .ready(_, _, processIdentifier):
+            title = "Server ready"
+            message = "The readiness check succeeded. OpenAI-compatible clients can use the current connection target."
+            if let processIdentifier {
+                processState = "Managed pid \(processIdentifier)"
+                lifecycle = "Stop and Restart apply to this managed process"
+                lifecycleNote = "Ready means /v1/models responded successfully for the current endpoint."
+            } else {
+                processState = "Ready endpoint, no managed pid attached"
+                lifecycle = "No app-owned process is attached"
+                lifecycleNote = "Readiness can describe endpoint reachability without implying process ownership."
+            }
+            readiness = "Ready - /v1/models responded successfully"
+            accentColor = .green
+        case let .stopping(processIdentifier):
+            title = "Managed server stopping"
+            message = "MLX Server Manager is stopping app-owned process pid \(processIdentifier)."
+            processState = "Stopping managed pid \(processIdentifier)"
+            readiness = "Unavailable - process is stopping"
+            lifecycle = "Stop applies only to the app-managed process"
+            lifecycleNote = "External servers are not affected by this stop operation."
+            accentColor = .orange
+        case let .checkingPort(host, port):
+            title = "Checking selected port"
+            message = "The app is checking whether \(host):\(port) is available. This does not start or stop a server."
+            processState = "No managed process attached"
+            readiness = "Not checked - port check in progress"
+            lifecycle = "No lifecycle action is running"
+            lifecycleNote = "Port checks are informational and do not take ownership of external processes."
+            accentColor = .orange
+        case let .portAvailable(host, port):
+            title = "Port available"
+            message = "\(host):\(port) is available for an explicit managed Start."
+            processState = "No managed process attached"
+            readiness = "Not checked - no active server target"
+            lifecycle = "Start remains an explicit user action"
+            lifecycleNote = "Availability does not automatically start mlx_lm.server."
+            accentColor = .green
+        case let .portBusy(host, port):
+            title = "Port busy"
+            message = "\(host):\(port) is in use. MLX Server Manager will not launch a second server on this port."
+            processState = "No managed process attached"
+            readiness = "Unavailable - port is busy"
+            lifecycle = "Start is blocked until the selected port is safe"
+            lifecycleNote = "The app does not stop unknown external processes."
+            accentColor = .red
+        case let .externalServerDetected(host, port, _, _):
+            title = "External server detected"
+            message = "An external OpenAI-compatible endpoint responded at \(host):\(port). It is not app-managed."
+            processState = "External process, not owned"
+            readiness = "Ready - /v1/models responded successfully"
+            lifecycle = "Adopt stores connection context only"
+            lifecycleNote = "Stop and Restart remain unavailable for this external process."
+            accentColor = .orange
+        case let .adoptedExternalServer(host, port, _, _):
+            title = "Adopted external context"
+            message = "\(host):\(port) is adopted as connection context. MLX Server Manager does not own that process."
+            processState = "External process, connection context only"
+            readiness = "Ready - /v1/models responded successfully"
+            lifecycle = "Forget clears app-side context only"
+            lifecycleNote = "Forget External Server does not stop or restart the external server."
+            accentColor = .orange
+        case let .portCheckFailed(host, port, message):
+            title = "Port check failed"
+            self.message = "The app could not check \(host):\(port): \(message)"
+            processState = "No managed process attached"
+            readiness = "Failed - endpoint check failed"
+            lifecycle = "No lifecycle action is running"
+            lifecycleNote = "No automatic recovery is attempted."
+            accentColor = .red
+        case let .checkingReady(host, port):
+            title = "Checking readiness"
+            message = "The app is checking \(host):\(port) with /v1/models."
+            processState = "Process ownership unchanged"
+            readiness = "Checking - /v1/models request in progress"
+            lifecycle = "Readiness check only"
+            lifecycleNote = "Readiness checks do not send inference requests or change lifecycle state."
+            accentColor = .orange
+        case let .readyCheckFailed(host, port, message):
+            title = "Readiness failed"
+            self.message = "/v1/models did not confirm readiness for \(host):\(port): \(message)"
+            processState = "Process ownership unchanged"
+            readiness = "Failed - readiness check failed"
+            lifecycle = "No automatic restart or recovery"
+            lifecycleNote = "Use existing controls after checking setup, logs, and endpoint state."
+            accentColor = .red
+        case let .error(message):
+            title = "Server state error"
+            self.message = message
+            processState = "Check logs"
+            readiness = "Unavailable - error state"
+            lifecycle = "No automatic recovery"
+            lifecycleNote = "Existing lifecycle buttons remain the only way to start, stop, or restart."
+            accentColor = .red
+        case let .unknown(message):
+            title = "Server state unknown"
+            self.message = message
+            processState = "Unknown"
+            readiness = "Unavailable - check status and logs"
+            lifecycle = "No automatic recovery"
+            lifecycleNote = "The app does not infer or take ownership of unknown processes."
+            accentColor = .yellow
         }
     }
 }

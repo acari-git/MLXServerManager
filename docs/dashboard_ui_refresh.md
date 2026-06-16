@@ -2,7 +2,7 @@
 
 ## Purpose
 
-v4.1.0 is a documentation-only design step for a future Dashboard UI Refresh. v4.2.0 adds the first small app-code foundation for that direction by introducing reusable dashboard display structure and clearer Current Target / Server State presentation. v4.3.0 polishes the Current Target card copy and state grouping. The goal is to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, or process ownership boundaries.
+v4.1.0 is a documentation-only design step for a future Dashboard UI Refresh. v4.2.0 adds the first small app-code foundation for that direction by introducing reusable dashboard display structure and clearer Current Target / Server State presentation. v4.3.0 polishes the Current Target card copy and state grouping. v4.4.0 polishes the Server State card copy and state grouping. The goal is to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, or process ownership boundaries.
 
 The refreshed dashboard should help users quickly answer:
 
@@ -97,6 +97,27 @@ The Current Target card should answer:
 
 It should not become a lifecycle controller. Start, Stop, Restart, Adopt, and Forget remain explicit existing controls outside the display-only card.
 
+## v4.4.0 Server State Polish
+
+v4.4.0 improves only the Server State card presentation:
+
+- clearer managed process wording,
+- clearer stopped, running, unavailable, and failed wording,
+- clearer external detected and adopted external context wording,
+- readiness and lifecycle state shown as separate concepts,
+- memory shown as app-managed process context only,
+- lifecycle notes that explain managed-process-only Stop / Restart,
+- external server notes that explain connection context only.
+
+The Server State card should answer:
+
+- what the current server or process condition is,
+- whether a managed process is attached,
+- whether readiness is known, checking, ready, unavailable, or failed,
+- what lifecycle expectations apply.
+
+It should not change lifecycle behavior. Start, Stop, Restart, Adopt, and Forget remain explicit existing controls outside the display-only card. External servers remain connection context only and are not stopped, restarted, monitored for memory, or owned by MLX Server Manager.
+
 ## Target Information Architecture
 
 The refreshed dashboard should prioritize these areas in the first viewport:
@@ -151,6 +172,14 @@ Server State should show:
 - unavailable or disconnected.
 
 State labels should distinguish process ownership from endpoint reachability.
+
+Server State should keep process, readiness, and lifecycle language distinct:
+
+- Process State: whether an app-managed process is attached, stopped, starting, stopping, external, or unknown.
+- Readiness: whether `/v1/models` is not checked, checking, ready, unavailable, or failed.
+- Lifecycle: what the existing controls are expected to affect.
+
+Ready means `/v1/models` responded successfully. It does not imply that the app proxies inference requests or owns an external process.
 
 ### Active Profile
 
@@ -305,6 +334,7 @@ The future dashboard should:
 - Keep v4.1.0 as the design step.
 - Treat v4.2.0 as the first small app-code foundation.
 - Treat v4.3.0 as a Current Target presentation polish step.
+- Treat v4.4.0 as a Server State presentation polish step.
 - Confirm information architecture and safety boundaries.
 - Identify current UI sections that can be reorganized without changing behavior.
 - Keep Import / Export stable release boundaries intact.
@@ -350,7 +380,7 @@ The Dashboard UI Refresh must preserve:
 
 ## Release Positioning
 
-v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity.
+v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity.
 
 v4.1.0 does not:
 
@@ -362,4 +392,4 @@ v4.1.0 does not:
 - create a new app binary,
 - create a release asset.
 
-v4.2.0 and v4.3.0 change SwiftUI view code and therefore require new unsigned app zips when released. They still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, or external process ownership.
+v4.2.0, v4.3.0, and v4.4.0 change SwiftUI view code and therefore require new unsigned app zips when released. They still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, or external process ownership.
