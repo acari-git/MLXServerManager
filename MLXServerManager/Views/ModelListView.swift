@@ -50,7 +50,7 @@ struct ModelListView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(exportSummaryText)
                     Text("Exports profile metadata only. No API keys, tokens, model weights, caches, logs, executable paths, or runtime state.")
-                    Text("Import Profiles adds selected valid metadata only. Profile-name conflicts can be renamed; Replace remains future work.")
+                    Text("Import Profiles adds selected valid metadata, can rename profile-name conflicts, and can replace one unambiguous local profile after confirmation.")
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)

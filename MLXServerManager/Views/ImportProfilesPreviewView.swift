@@ -25,7 +25,7 @@ struct ImportProfilesPreviewView: View {
             }
 
             HStack {
-                Text(importMessage ?? "Import valid profiles or explicitly rename profile-name conflicts.")
+                Text(importMessage ?? "Import valid profiles, explicitly rename name conflicts, or confirm safe Replace targets.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -57,14 +57,14 @@ struct ImportProfilesPreviewView: View {
                 return (profile.sourceIndex, suggestedRename)
             })
         }
-        .alert("Import selected profile metadata?", isPresented: $isImportConfirmationPresented) {
-            Button("Import Selected Profiles") {
+        .alert(importConfirmationTitle, isPresented: $isImportConfirmationPresented) {
+            Button(importConfirmationButtonTitle, role: hasReplacementActions ? .destructive : nil) {
                 onImportSelected(importRequests)
             }
 
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This will add selected profile metadata and apply explicit Rename actions shown in the preview. It will not start servers, call /v1/models, download models, import secrets, or change process ownership.")
+            Text(importConfirmationMessage)
         }
     }
 
@@ -96,10 +96,10 @@ struct ImportProfilesPreviewView: View {
 
     private var importScopeNotice: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Valid profiles are selected by default. Profile-name conflicts can be explicitly renamed. Replace is future work.", systemImage: "checklist")
+            Label("Valid profiles are selected by default. Profile-name conflicts can be renamed. Unambiguous existing-profile conflicts can be replaced only after confirmation.", systemImage: "checklist")
                 .font(.callout.weight(.semibold))
 
-            Text("Import does not start, stop, or restart servers. It does not call /v1/models, make external HTTP requests, download models, import secrets, change selected profile, or change process ownership.")
+            Text("Import does not start, stop, or restart servers. It does not call /v1/models, make external HTTP requests, download models, delete files, import secrets, change external ownership, or change process ownership.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -158,10 +158,14 @@ struct ImportProfilesPreviewView: View {
                     if profile.canImportWithRename {
                         Text("Rename").tag(ImportProfileRowAction.rename)
                     }
+
+                    if profile.canImportWithReplace {
+                        Text("Replace").tag(ImportProfileRowAction.replace)
+                    }
                 }
                 .labelsHidden()
                 .frame(width: 120)
-                .disabled(resultHasDocumentError || !profile.isImportable && !profile.canImportWithRename)
+                .disabled(resultHasDocumentError || !profile.isImportable && !profile.canImportWithRename && !profile.canImportWithReplace)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("#\(profile.sourceIndex) \(profile.name)")
@@ -186,11 +190,18 @@ struct ImportProfilesPreviewView: View {
                 if let suggestedRename = profile.suggestedRename {
                     compactRow("Suggested Rename", suggestedRename)
                 }
+                if let replaceTarget = profile.replaceTarget {
+                    compactRow("Replace Target", "\(replaceTarget.displayName) (\(replaceTarget.modelID), \(replaceTarget.endpointDescription))")
+                }
                 compactRow("Planned Action", profile.plannedActionSummary)
             }
 
             if profile.canImportWithRename {
                 renameControls(for: profile)
+            }
+
+            if profile.canImportWithReplace {
+                replaceControls(for: profile)
             }
 
             messageSection(title: "Messages", messages: profile.messages)
@@ -226,6 +237,12 @@ struct ImportProfilesPreviewView: View {
                     action: .rename,
                     renamedName: normalizedRenameName(for: profile)
                 )
+            case .replace:
+                guard replaceValidationMessage(for: profile) == nil else {
+                    return nil
+                }
+
+                return ImportSelectedProfileRequest(sourceIndex: profile.sourceIndex, action: .replace)
             }
         }
     }
@@ -275,6 +292,28 @@ struct ImportProfilesPreviewView: View {
         }
     }
 
+    private func replaceControls(for profile: ValidatedImportProfile) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let replaceTarget = profile.replaceTarget {
+                Label("Replace updates one existing local profile's saved metadata. It does not delete model files, caches, logs, or affect server processes.", systemImage: "arrow.triangle.2.circlepath")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
+                    compactRow("Before", "\(replaceTarget.displayName) | \(replaceTarget.modelID) | \(replaceTarget.endpointDescription)")
+                    compactRow("After", "\(profile.name) | \(profile.modelID) | \(profile.host):\(profile.port.map(String.init) ?? "Missing")")
+                }
+            }
+
+            if actionBySourceIndex[profile.sourceIndex, default: .skip] == .replace,
+               let validationMessage = replaceValidationMessage(for: profile) {
+                Label(validationMessage, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+    }
+
     private func renameBinding(for profile: ValidatedImportProfile) -> Binding<String> {
         Binding {
             renameBySourceIndex[profile.sourceIndex] ?? profile.suggestedRename ?? ""
@@ -304,6 +343,35 @@ struct ImportProfilesPreviewView: View {
         return nil
     }
 
+    private func replaceValidationMessage(for profile: ValidatedImportProfile) -> String? {
+        guard actionBySourceIndex[profile.sourceIndex, default: .skip] == .replace else {
+            return nil
+        }
+
+        guard let replaceTarget = profile.replaceTarget else {
+            return "Replace target is ambiguous or unavailable."
+        }
+
+        if selectedReplaceTargetCounts[replaceTarget.modelID, default: 0] > 1 {
+            return "Another selected import already replaces this existing profile."
+        }
+
+        if selectedFinalNameCounts[profile.name, default: 0] > 1 {
+            return "Replacement name conflicts with another selected import."
+        }
+
+        if selectedFinalModelIDCounts[profile.modelID, default: 0] > 1 {
+            return "Replacement Model ID conflicts with another selected import."
+        }
+
+        if let endpoint = endpointKey(for: profile),
+           selectedFinalEndpointCounts[endpoint, default: 0] > 1 {
+            return "Replacement endpoint conflicts with another selected import."
+        }
+
+        return nil
+    }
+
     private func normalizedRenameName(for profile: ValidatedImportProfile) -> String {
         (renameBySourceIndex[profile.sourceIndex] ?? profile.suggestedRename ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -319,10 +387,97 @@ struct ImportProfilesPreviewView: View {
             case .rename:
                 let name = normalizedRenameName(for: profile)
                 return name.isEmpty ? nil : name
+            case .replace:
+                return profile.name
             }
         }
 
         return Dictionary(grouping: names, by: { $0 }).mapValues(\.count)
+    }
+
+    private var selectedFinalModelIDCounts: [String: Int] {
+        let modelIDs = result.profiles.compactMap { profile -> String? in
+            switch actionBySourceIndex[profile.sourceIndex, default: .skip] {
+            case .skip:
+                return nil
+            case .importProfile, .rename, .replace:
+                return profile.modelID
+            }
+        }
+
+        return Dictionary(grouping: modelIDs, by: { $0 }).mapValues(\.count)
+    }
+
+    private var selectedFinalEndpointCounts: [String: Int] {
+        let endpoints = result.profiles.compactMap { profile -> String? in
+            switch actionBySourceIndex[profile.sourceIndex, default: .skip] {
+            case .skip:
+                return nil
+            case .importProfile, .rename, .replace:
+                return endpointKey(for: profile)
+            }
+        }
+
+        return Dictionary(grouping: endpoints, by: { $0 }).mapValues(\.count)
+    }
+
+    private var selectedReplaceTargetCounts: [String: Int] {
+        let targets = result.profiles.compactMap { profile -> String? in
+            guard actionBySourceIndex[profile.sourceIndex, default: .skip] == .replace else {
+                return nil
+            }
+
+            return profile.replaceTarget?.modelID
+        }
+
+        return Dictionary(grouping: targets, by: { $0 }).mapValues(\.count)
+    }
+
+    private var hasReplacementActions: Bool {
+        result.profiles.contains { profile in
+            actionBySourceIndex[profile.sourceIndex, default: .skip] == .replace
+                && replaceValidationMessage(for: profile) == nil
+        }
+    }
+
+    private var importConfirmationTitle: String {
+        hasReplacementActions ? "Replace existing profile metadata?" : "Import selected profile metadata?"
+    }
+
+    private var importConfirmationButtonTitle: String {
+        hasReplacementActions ? "Apply Import and Replace" : "Import Selected Profiles"
+    }
+
+    private var importConfirmationMessage: String {
+        let safetyNote = "This will not start servers, stop servers, call /v1/models, make external HTTP requests, download models, delete model files, import secrets, or change process ownership."
+
+        guard hasReplacementActions else {
+            return "This will add selected profile metadata and apply explicit Rename actions shown in the preview. \(safetyNote)"
+        }
+
+        return "\(replacementConfirmationSummary)\n\nReplace updates existing local profile metadata only. \(safetyNote)"
+    }
+
+    private var replacementConfirmationSummary: String {
+        let summaries = result.profiles.compactMap { profile -> String? in
+            guard actionBySourceIndex[profile.sourceIndex, default: .skip] == .replace,
+                  replaceValidationMessage(for: profile) == nil,
+                  let target = profile.replaceTarget else {
+                return nil
+            }
+
+            return "Replace \(target.displayName) (\(target.modelID), \(target.endpointDescription)) with \(profile.name) (\(profile.modelID), \(profile.host):\(profile.port.map(String.init) ?? "Missing"))."
+        }
+
+        return summaries.joined(separator: "\n")
+    }
+
+    private func endpointKey(for profile: ValidatedImportProfile) -> String? {
+        guard let port = profile.port else {
+            return nil
+        }
+
+        return "\(profile.modelID)|\(profile.host)|\(port)"
     }
 
     private func messageSection(title: String, messages: [ImportValidationMessage]) -> some View {
@@ -418,4 +573,5 @@ private enum ImportProfileRowAction: String, Hashable {
     case skip
     case importProfile
     case rename
+    case replace
 }

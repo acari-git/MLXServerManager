@@ -658,20 +658,35 @@ final class AppViewModel: ObservableObject {
             appendLog("[profile] \(message)")
         }
 
-        guard !importResult.importedModels.isEmpty else {
-            let message = importResult.messages.last ?? "No profiles were imported."
+        guard importResult.didChangeModels else {
+            let message = importResult.messages.last ?? "No profiles were imported or replaced."
             modelProfileImportMessage = message
             return
         }
 
-        let nextModels = models + importResult.importedModels
+        let previousSelectedModelID = selectedModelID
+        let nextModels = importResult.modelsAfterImport
 
         do {
             try settingsStore.save(models: nextModels)
             models = nextModels
-            modelProfileImportMessage = "Imported \(importResult.importedCount) profile(s). Renamed \(importResult.renamedCount) profile(s). Skipped \(importResult.skippedCount) profile(s)."
-            appendLog("[profile] imported profile metadata saved to models.json.")
-            appendLog("[profile] selected profile was not changed. No server lifecycle action was taken.")
+
+            var selectionWasPreservedThroughReplacement = false
+            if let previousSelectedModelID,
+               !nextModels.contains(where: { $0.id == previousSelectedModelID }),
+               let replacement = importResult.replacedProfiles.first(where: { $0.previousModelID == previousSelectedModelID }) {
+                selectedModelID = replacement.replacementModelID
+                selectionWasPreservedThroughReplacement = true
+                appendLog("[profile] selected profile identity updated from \(replacement.previousModelID) to \(replacement.replacementModelID) after Replace.")
+            }
+
+            modelProfileImportMessage = "Imported \(importResult.importedCount) profile(s). Renamed \(importResult.renamedCount) profile(s). Replaced \(importResult.replacedCount) profile(s). Skipped \(importResult.skippedCount) profile(s)."
+            appendLog("[profile] profile metadata changes saved to models.json.")
+            if selectionWasPreservedThroughReplacement {
+                appendLog("[profile] selected profile was preserved through the explicit Replace action. No server lifecycle action was taken.")
+            } else {
+                appendLog("[profile] selected profile was not changed. No server lifecycle action was taken.")
+            }
             isImportPreviewPresented = false
         } catch {
             modelProfileImportMessage = "Import failed: \(error.localizedDescription)"

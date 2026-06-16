@@ -4,7 +4,7 @@
 
 Model Profile Import / Export started as a v2.6.0 docs-only design for backing up, moving, and sharing MLX Server Manager profile metadata safely.
 
-v2.7.0 implements Export Profiles. v2.9.0 implements Import Profiles Preview. v3.0.0 implements importing selected valid profiles without conflicts. v3.3.0 implements Rename for profile-name conflicts. Replace and broader conflict handling remain future work.
+v2.7.0 implements Export Profiles. v2.9.0 implements Import Profiles Preview. v3.0.0 implements importing selected valid profiles without conflicts. v3.3.0 implements Rename for profile-name conflicts. v3.4.0 implements explicit Replace for one unambiguous existing profile target. Broader fixtures/tests remain future work.
 
 Import and export apply only to Model Profile metadata. They do not include model weights, Hugging Face cache, local runtime settings, secrets, or app binaries.
 
@@ -24,7 +24,7 @@ Implemented:
 
 Not implemented:
 
-- Replace conflict handling.
+- Import/export fixtures and tests.
 - Selecting an imported profile after import.
 - Model download or install automation in the current import/export flow.
 
@@ -269,7 +269,7 @@ Info examples:
 - v3.0.0: Import selected valid profiles.
 - v3.2.0: Conflict handling design polish.
 - v3.3.0: Rename profile-name conflicts.
-- v3.4.0 candidate: Replace conflicted profiles.
+- v3.4.0: Replace conflicted profiles.
 - v3.5.0 candidate: Import/export schema tests and fixtures.
 - v4.0.0 candidate: Import/export stable release.
 
@@ -362,13 +362,13 @@ v3.2.0 is a documentation-only design step for future import conflict handling. 
 
 ### Current v3.0.0 Behavior
 
-Current import behavior is intentionally conservative:
+At the v3.2.0 design-polish stage, import behavior was intentionally conservative:
 
 - valid and non-conflicting profiles can be imported,
 - invalid profiles are blocked,
 - conflicting profiles are skipped and disabled,
-- Rename is not implemented,
-- Replace is not implemented,
+- Rename was not implemented yet,
+- Replace was not implemented yet,
 - selected profile does not change automatically,
 - no server lifecycle changes occur,
 - no network calls occur,
@@ -447,9 +447,9 @@ Suggested UI:
 
 ### Replace Design
 
-Replace is higher risk than Rename and should be staged later.
+Replace is higher risk than Rename and is implemented only for safe, unambiguous existing-profile targets.
 
-v3.4.0 candidate behavior:
+v3.4.0 behavior:
 
 - Replace requires explicit confirmation,
 - Replace shows before / after profile metadata comparison,
@@ -459,7 +459,7 @@ v3.4.0 candidate behavior:
 - Replace does not delete model weights,
 - Replace does not delete caches,
 - Replace does not affect logs,
-- Replace does not change selected profile automatically,
+- Replace preserves the selected profile only when the selected profile itself is replaced and its `modelID` changes,
 - Replace does not start, stop, or restart servers,
 - Replace does not affect adopted external server state.
 
@@ -496,8 +496,8 @@ Selection should remain predictable:
 - valid non-conflicting profiles are selected by default,
 - invalid profiles are disabled,
 - conflict profiles default to Skip,
-- future Rename action can make a profile importable if the resulting name is valid and non-conflicting,
-- future Replace action can make a profile importable only with explicit target and confirmation,
+- Rename action can make a profile importable if the resulting name is valid and non-conflicting,
+- Replace action can make a profile importable only with one unambiguous target and explicit confirmation,
 - selected profile in the app should not change automatically after import,
 - optional `select imported profile after import` should remain future work and default off if ever added.
 
@@ -558,7 +558,7 @@ It must not:
 ### Future Implementation Staging
 
 - v3.3.0: Rename profile-name conflicts implementation.
-- v3.4.0 candidate: Replace conflicted profiles implementation.
+- v3.4.0: Replace conflicted profiles implementation.
 - v3.5.0 candidate: Import/export fixtures and tests.
 - v4.0.0 candidate: Import/export stable release.
 
@@ -579,9 +579,9 @@ Implemented:
 - import result logging with renamed count,
 - no selected profile change after import.
 
-Not implemented:
+Not implemented in v3.3.0:
 
-- Replace conflict handling,
+- Replace conflict handling, which is implemented later in v3.4.0 for one unambiguous existing profile target,
 - overwrite of existing local profiles,
 - endpoint/runtime identity conflict resolution by Rename,
 - model file import,
@@ -592,6 +592,56 @@ Not implemented:
 Rename changes only the imported profile display name before saving it as a new profile. It does not modify an existing local profile. It does not modify `modelID`, host, port, Advanced Launch Options, runtime state, selected profile, adopted external server state, or process ownership.
 
 Import remains metadata-only and side-effect-free with respect to server lifecycle. It does not start, stop, restart, adopt, forget, readiness-check, call `/v1/models`, make external HTTP requests, download models, delete files, or mutate caches.
+
+## v3.4.0 Replace Conflicted Profiles Implementation Status
+
+v3.4.0 implements explicit Replace for imported profiles that conflict with exactly one existing local profile target.
+
+Implemented:
+
+- per-profile `Replace` action in Import Preview when the target is unambiguous,
+- Replace target detection across existing profile name, `modelID`, and `modelID + host + port`,
+- Replace disabled/unavailable when conflicts point to multiple existing profiles,
+- Replace confirmation before applying metadata changes,
+- before / after metadata summary for the existing profile and imported profile,
+- duplicate selected Replace target detection,
+- final import-time validation before writing to `models.json`,
+- import result logging with replaced count,
+- selected profile preservation when the replaced selected profile changes `modelID`.
+
+If the currently selected profile is explicitly replaced and its `modelID` changes, selection is updated to continue tracking the same replaced profile. Replace does not silently switch selection to an unrelated profile.
+
+Replace updates the target profile's saved metadata with imported profile metadata for:
+
+- display name,
+- `modelID`,
+- host,
+- port,
+- Advanced Launch Options.
+
+Replace preserves local-only profile fields that are not part of the export document:
+
+- family,
+- quantization,
+- thinking setting,
+- notes.
+
+The export document currently includes `name`, `modelID`, host, port, and Advanced Launch Options only. It does not include `family`, quantization, `enableThinking`, or notes, so Replace preserves those existing local values instead of inventing imported values or clearing user-maintained metadata.
+
+`localName` is recalculated from the replacement `modelID`.
+
+Not implemented:
+
+- automatic Replace,
+- ambiguous Replace target selection,
+- Replace of multiple imported rows into the same existing profile,
+- model file import or deletion,
+- Hugging Face cache import or deletion,
+- API key, token, secret, executable path, or local path import,
+- automatic server start after Replace,
+- external process ownership changes.
+
+Replace remains metadata-only and side-effect-free with respect to server lifecycle. It does not start, stop, restart, adopt, forget, readiness-check, call `/v1/models`, make external HTTP requests, download models, delete files, mutate caches, import secrets, or affect external processes.
 
 ## Goals
 

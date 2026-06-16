@@ -1208,6 +1208,40 @@
 5. Release note.
    - v3.3.0 is an app-code release and requires a new app binary asset when released.
 
+## v3.4.0 Completed: Replace Conflicted Profiles Implementation
+
+1. Implement explicit Replace for safe existing-profile conflicts.
+   - Add per-profile import action: `Replace`.
+   - Offer Replace only when the imported row maps to exactly one existing local profile target.
+   - Detect replacement targets by existing profile name, `modelID`, and `modelID + host + port`.
+   - Keep ambiguous targets unavailable.
+   - Keep automatic Replace unavailable.
+2. Require confirmation before Replace.
+   - Show the existing profile being replaced.
+   - Show before / after metadata summary.
+   - State that Replace updates saved profile metadata only.
+   - State that model files, caches, logs, server processes, secrets, and external ownership are not affected.
+3. Preserve Rename and import behavior.
+   - Keep valid non-conflicting profiles selected for import by default.
+   - Keep Rename limited to profile-name conflicts.
+   - Keep Rename validation for empty names, existing local names, and selected import collisions.
+   - Block duplicate selected Replace actions for the same existing profile target.
+4. Apply Replace conservatively.
+   - Update display name, `modelID`, host, port, and Advanced Launch Options from imported metadata.
+   - Preserve local-only fields not present in the export document: family, quantization, thinking setting, and notes.
+   - Recalculate local name from the replacement `modelID`.
+   - Preserve selected profile identity when the selected profile itself is replaced and its `modelID` changes.
+5. Preserve product and safety boundaries.
+   - Direct Mode is maintained.
+   - No model download or model deletion.
+   - No inference proxy, Chat UI, or multi-backend router.
+   - No automatic server start.
+   - No `/v1/models` call or external HTTP request from Import Profiles.
+   - No external process kill, stop, restart, adoption, forget, or ownership change.
+6. Release note.
+   - v3.4.0 is an app-code release and requires a new unsigned app binary asset when released.
+   - v3.5.0 should focus on import/export fixtures and tests.
+
 ## Later
 
 - Unit tests for services where practical.
