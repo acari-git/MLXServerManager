@@ -2,7 +2,7 @@
 
 ## Purpose
 
-v4.1.0 is a documentation-only design step for a future Dashboard UI Refresh. v4.2.0 adds the first small app-code foundation for that direction by introducing reusable dashboard display structure and clearer Current Target / Server State presentation. v4.3.0 polishes the Current Target card copy and state grouping. v4.4.0 polishes the Server State card copy and state grouping. v4.5.0 adds display-only Logs / Diagnostics guidance for readiness and availability troubleshooting. The goal is to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, or process ownership boundaries.
+v4.1.0 is a documentation-only design step for a future Dashboard UI Refresh. v4.2.0 adds the first small app-code foundation for that direction by introducing reusable dashboard display structure and clearer Current Target / Server State presentation. v4.3.0 polishes the Current Target card copy and state grouping. v4.4.0 polishes the Server State card copy and state grouping. v4.5.0 adds display-only Logs / Diagnostics guidance for readiness and availability troubleshooting. v4.6.0 adds display-only Profiles / Import Export guidance. The goal is to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, or process ownership boundaries.
 
 The refreshed dashboard should help users quickly answer:
 
@@ -138,6 +138,29 @@ The guidance card should answer:
 
 It should not run diagnostics automatically, add background health checks, call new endpoints, change `/v1/models` readiness behavior, or perform lifecycle actions.
 
+## v4.6.0 Profiles / Import Export Polish
+
+v4.6.0 adds a display-only Dashboard guidance card for selected profile metadata and Import / Export safety:
+
+- shows the selected profile display name and model ID,
+- shows the selected profile endpoint,
+- distinguishes selected profile metadata from the current target,
+- explains profile endpoint vs active endpoint,
+- summarizes Export Profiles as metadata-only,
+- summarizes Import Preview and Import Selected Profiles,
+- explains Rename and Replace at a high level,
+- repeats that Import / Export does not download, delete, start, stop, import secrets, or change external ownership.
+
+The guidance card should answer:
+
+- which profile is selected,
+- which model ID and endpoint it uses,
+- whether the current target matches that profile endpoint,
+- what Export Profiles includes at a high level,
+- what Import Preview, Rename, and Replace mean.
+
+It should not change Import / Export behavior, schema, validation, Rename, Replace, profile persistence, selected profile behavior, lifecycle behavior, or readiness behavior.
+
 ## Target Information Architecture
 
 The refreshed dashboard should prioritize these areas in the first viewport:
@@ -212,6 +235,8 @@ Active Profile should show:
 - whether Restart is required to apply the selected profile.
 
 If a managed server is running a different model than the selected profile, the dashboard should show both selected model and running model.
+
+The dashboard should explain that selected profile is saved launch/configuration metadata, while current target is the active managed or adopted endpoint. A profile can be selected even when no server is running.
 
 ### Lifecycle Controls
 
@@ -311,6 +336,8 @@ It should not imply:
 - server start after import,
 - external process ownership changes.
 
+Dashboard Import / Export guidance should stay high-level and should not duplicate the full Import Preview UI. Rename should be described as changing the imported display name to avoid a profile-name conflict. Replace should be described as updating one unambiguous local profile with imported metadata. Ambiguous or duplicate replacement targets remain blocked by the existing import flow.
+
 ### Onboarding / Diagnostics
 
 First-run guidance should remain short and state-aware. It can live near the top of the dashboard when setup is incomplete, then collapse or become less prominent once the app is configured.
@@ -366,6 +393,7 @@ The future dashboard should:
 - Treat v4.3.0 as a Current Target presentation polish step.
 - Treat v4.4.0 as a Server State presentation polish step.
 - Treat v4.5.0 as a Logs / Diagnostics guidance polish step.
+- Treat v4.6.0 as a Profiles / Import Export presentation polish step.
 - Confirm information architecture and safety boundaries.
 - Identify current UI sections that can be reorganized without changing behavior.
 - Keep Import / Export stable release boundaries intact.
@@ -411,7 +439,7 @@ The Dashboard UI Refresh must preserve:
 
 ## Release Positioning
 
-v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity.
+v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity. v4.6.0 is a small app-code polish release for Profiles / Import Export clarity.
 
 v4.1.0 does not:
 
@@ -423,4 +451,4 @@ v4.1.0 does not:
 - create a new app binary,
 - create a release asset.
 
-v4.2.0, v4.3.0, v4.4.0, and v4.5.0 change SwiftUI view code and therefore require new unsigned app zips when released. They still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, or external process ownership.
+v4.2.0, v4.3.0, v4.4.0, v4.5.0, and v4.6.0 change SwiftUI view code and therefore require new unsigned app zips when released. They still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, import/export schema, or external process ownership.

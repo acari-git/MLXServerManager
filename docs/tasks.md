@@ -1467,6 +1467,37 @@
    - It is not the full v5.0.0 Dashboard UI Refresh v1.
    - Because app code changed, v4.5.0 will need a new unsigned app zip when released.
 
+## v4.6.0 Completed: Dashboard Profiles / Import Export Polish
+
+1. Add display-only profile guidance.
+   - Show selected profile metadata, model ID, profile endpoint, current target, and their relationship.
+   - Clarify that selected profile is saved launch/configuration metadata.
+   - Clarify that current target is the active managed or adopted endpoint.
+2. Add display-only Import / Export guidance.
+   - Explain that Export Profiles is metadata-only.
+   - Explain that Import Preview validates before import.
+   - Explain that Import Selected Profiles writes selected valid metadata.
+   - Explain Rename and Replace at a high level.
+3. Preserve Import / Export behavior.
+   - No import/export logic change.
+   - No import/export schema change.
+   - No import/export validation change.
+   - No Rename behavior change.
+   - No Replace behavior change.
+   - No model profile persistence change.
+4. Preserve runtime behavior.
+   - No Start / Stop / Restart behavior change.
+   - No readiness behavior change.
+   - No new network calls.
+   - No `/v1/models` behavior change.
+   - No `/v1/chat/completions` calls by the app.
+   - No model download or deletion.
+   - No external server ownership change.
+5. Release note.
+   - v4.6.0 is a small app-code polish release for Dashboard Profiles / Import Export guidance.
+   - It is not the full v5.0.0 Dashboard UI Refresh v1.
+   - Because app code changed, v4.6.0 will need a new unsigned app zip when released.
+
 ## Later
 
 - v5.0.0 candidate: Dashboard UI Refresh v1 implementation.

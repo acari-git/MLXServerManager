@@ -45,6 +45,8 @@ struct ContentView: View {
                         DashboardOverviewView(
                             targetSummary: viewModel.connectionTargetSummary,
                             runtimeState: viewModel.runtimeState,
+                            selectedModel: viewModel.selectedModel,
+                            exportSummaryText: viewModel.modelProfileExportSummaryText,
                             memoryUsageText: viewModel.memoryUsageText,
                             selectedModelText: viewModel.selectedModelText,
                             runningModelText: viewModel.runningModelText,

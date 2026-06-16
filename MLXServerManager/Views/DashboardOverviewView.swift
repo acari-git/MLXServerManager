@@ -3,6 +3,8 @@ import SwiftUI
 struct DashboardOverviewView: View {
     let targetSummary: ConnectionTargetSummary
     let runtimeState: ModelRuntimeState
+    let selectedModel: ModelConfig?
+    let exportSummaryText: String
     let memoryUsageText: String
     let selectedModelText: String
     let runningModelText: String
@@ -34,6 +36,13 @@ struct DashboardOverviewView: View {
                 DashboardDiagnosticsGuidanceCard(
                     runtimeState: runtimeState,
                     targetSummary: targetSummary
+                )
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+
+                DashboardProfileImportExportCard(
+                    selectedModel: selectedModel,
+                    targetSummary: targetSummary,
+                    exportSummaryText: exportSummaryText
                 )
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
@@ -706,6 +715,139 @@ private struct DashboardDiagnosticsGuidanceDisplay {
     private static func isExternalTarget(_ targetSummary: ConnectionTargetSummary) -> Bool {
         targetSummary.targetType.localizedCaseInsensitiveContains("external")
             || targetSummary.ownershipNote.localizedCaseInsensitiveContains("external")
+    }
+}
+
+struct DashboardProfileImportExportCard: View {
+    let selectedModel: ModelConfig?
+    let targetSummary: ConnectionTargetSummary
+    let exportSummaryText: String
+
+    var body: some View {
+        DashboardStatusCard(
+            title: "Profiles & Import / Export",
+            systemImage: "list.bullet.rectangle",
+            accentColor: .blue
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(display.title)
+                        .font(.callout.weight(.semibold))
+
+                    Text(display.message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Divider()
+
+                HStack(alignment: .top, spacing: 12) {
+                    DashboardKeyValueRow(label: "Selected Profile", value: display.selectedProfile)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    DashboardKeyValueRow(label: "Profile Endpoint", value: display.profileEndpoint)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack(alignment: .top, spacing: 12) {
+                    DashboardKeyValueRow(label: "Current Target", value: display.currentTarget)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    DashboardKeyValueRow(label: "Relationship", value: display.relationship)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack(alignment: .top, spacing: 12) {
+                    DashboardKeyValueRow(label: "Export", value: display.exportSummary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    DashboardKeyValueRow(label: "Import", value: display.importSummary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Label(display.safetyNote, systemImage: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var display: DashboardProfileImportExportDisplay {
+        DashboardProfileImportExportDisplay(
+            selectedModel: selectedModel,
+            targetSummary: targetSummary,
+            exportSummaryText: exportSummaryText
+        )
+    }
+}
+
+private struct DashboardProfileImportExportDisplay {
+    let title: String
+    let message: String
+    let selectedProfile: String
+    let profileEndpoint: String
+    let currentTarget: String
+    let relationship: String
+    let exportSummary: String
+    let importSummary: String
+    let safetyNote: String
+
+    init(
+        selectedModel: ModelConfig?,
+        targetSummary: ConnectionTargetSummary,
+        exportSummaryText: String
+    ) {
+        if let selectedModel {
+            let displayName = selectedModel.displayName.isEmpty
+                ? selectedModel.modelID
+                : selectedModel.displayName
+            let profileBaseURL = "http://\(selectedModel.host):\(selectedModel.serverPort)/v1"
+            let advancedText = selectedModel.advancedLaunchOptions?.isEmpty == false
+                ? "Advanced options set"
+                : "Simple launch defaults"
+
+            title = "Selected profile metadata"
+            message = "Selected profile is saved launch/configuration metadata. Current target is the active managed or adopted endpoint."
+            selectedProfile = "\(displayName) - \(selectedModel.modelID)"
+            profileEndpoint = "\(selectedModel.host):\(selectedModel.serverPort) (\(advancedText))"
+            currentTarget = "\(targetSummary.targetType) - \(targetSummary.baseURL)"
+            relationship = Self.relationshipText(
+                profileBaseURL: profileBaseURL,
+                targetSummary: targetSummary
+            )
+        } else {
+            title = "No selected profile"
+            message = "Create or import a profile before starting a managed server."
+            selectedProfile = "No profile selected"
+            profileEndpoint = "Unavailable"
+            currentTarget = "\(targetSummary.targetType) - \(targetSummary.baseURL)"
+            relationship = "A profile can be selected even when no managed server is running."
+        }
+
+        exportSummary = "\(exportSummaryText) Metadata only: profile names, model IDs, endpoints, and launch options when present."
+        importSummary = "Preview validates first. Import Selected writes selected valid metadata. Rename changes imported display name; Replace updates one unambiguous local profile."
+        safetyNote = "Import / Export does not download models, delete model files, import secrets, start servers, stop servers, or change external process ownership."
+    }
+
+    private static func relationshipText(
+        profileBaseURL: String,
+        targetSummary: ConnectionTargetSummary
+    ) -> String {
+        if !targetSummary.isActiveTarget {
+            return "No active target. Start uses the selected profile for managed launch."
+        }
+
+        if targetSummary.baseURL == profileBaseURL {
+            return "Active endpoint matches the selected profile endpoint."
+        }
+
+        if targetSummary.targetType.localizedCaseInsensitiveContains("external") {
+            return "Current target is external connection context; selected profile remains metadata."
+        }
+
+        return "Profile endpoint and active endpoint differ; check selected/running model state."
     }
 }
 

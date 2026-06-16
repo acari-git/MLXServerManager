@@ -110,7 +110,7 @@ Model download is a current non-goal, but it is not permanently excluded as a fu
 
 Future candidates can be considered if they preserve performance, safety, and Direct Mode boundaries:
 
-- dashboard-style UI refresh, with v4.1.0 design guidance, v4.2.0 foundation work, v4.3.0 Current Target polish, v4.4.0 Server State polish, and v4.5.0 Logs / Diagnostics guidance polish in [Dashboard UI Refresh Design](dashboard_ui_refresh.md),
+- dashboard-style UI refresh, with v4.1.0 design guidance, v4.2.0 foundation work, v4.3.0 Current Target polish, v4.4.0 Server State polish, v4.5.0 Logs / Diagnostics guidance polish, and v4.6.0 Profiles / Import Export polish in [Dashboard UI Refresh Design](dashboard_ui_refresh.md),
 - model download design,
 - local cache awareness,
 - profile templates,
@@ -122,7 +122,7 @@ Each candidate should define what it changes, what it refuses to change, and how
 
 Import conflict handling should follow the same rule. v3.3.0 implements Rename for profile-name conflicts as an explicit metadata operation. v3.4.0 implements Replace only for one unambiguous existing profile target, with explicit confirmation. v3.5.0 adds deterministic fixtures and service-level tests for the current import/export schema and conflict behavior. v4.0.0 treats Import / Export as stable within this metadata-only boundary. Replace remains metadata-only and must not start servers, call readiness endpoints, alter external process ownership, or interfere with active generation.
 
-Dashboard refresh work should follow the same principle. v4.1.0 defines the future dashboard information architecture. v4.2.0 adds a small SwiftUI foundation for clearer Current Target and Server State presentation. v4.3.0 polishes Current Target wording for no target, managed, external, unavailable, and readiness states. v4.4.0 polishes Server State wording for managed process state, external context, readiness, lifecycle, stopped, unavailable, and failed states. v4.5.0 adds display-only guidance for logs, diagnostics, readiness failures, port busy states, unavailable targets, and external server log boundaries. These steps do not change server lifecycle behavior, Direct Mode, import/export behavior, or external process ownership.
+Dashboard refresh work should follow the same principle. v4.1.0 defines the future dashboard information architecture. v4.2.0 adds a small SwiftUI foundation for clearer Current Target and Server State presentation. v4.3.0 polishes Current Target wording for no target, managed, external, unavailable, and readiness states. v4.4.0 polishes Server State wording for managed process state, external context, readiness, lifecycle, stopped, unavailable, and failed states. v4.5.0 adds display-only guidance for logs, diagnostics, readiness failures, port busy states, unavailable targets, and external server log boundaries. v4.6.0 adds display-only guidance for selected profile metadata, profile endpoint, current target relationship, and metadata-only Import / Export safety. These steps do not change server lifecycle behavior, Direct Mode, import/export behavior, import/export schema, or external process ownership.
 
 ## Model Download Position
 

@@ -38,6 +38,7 @@ This document lists known limitations for MLX Server Manager.
 - v4.3.0 polishes Current Target wording and state grouping, but it does not implement the full dashboard refresh.
 - v4.4.0 polishes Server State wording and separates process state, readiness, and lifecycle expectations, but it does not implement the full dashboard refresh.
 - v4.5.0 adds display-only Logs / Diagnostics guidance for readiness failures, port busy states, unavailable targets, and external server log boundaries, but it does not implement a troubleshooting wizard or background health checks.
+- v4.6.0 adds display-only Profiles / Import Export guidance for selected profile metadata, current target relationship, profile endpoint, Export Profiles, Import Preview, Rename, Replace, and metadata-only safety, but it does not change Import / Export behavior or schema.
 - The full Dashboard UI Refresh v1 is still future work.
 - Future dashboard work should continue improving first-glance Current Target, managed vs external state, lifecycle controls, profile overview, readiness, memory, logs, diagnostics, onboarding, and Import / Export placement.
 - Dashboard UI work must continue to preserve Direct Mode, explicit lifecycle actions, managed-process-only Stop/Restart, and external server connection-context boundaries.
