@@ -137,7 +137,7 @@ Screenshot refresh planning is documented in [docs/screenshot_refresh.md](docs/s
 
 First-run guidance is documented in [docs/onboarding_first_run.md](docs/onboarding_first_run.md). v2.4.0 adds a small in-app guidance panel that points first-time users toward executable path setup, model profile selection, diagnostics, Start, and Connection Settings while preserving Direct Mode.
 
-Model Profile export and import are documented in [docs/model_profile_import_export.md](docs/model_profile_import_export.md). v2.7.0 implements Export Profiles for profile metadata only. v2.9.0 implements Import Preview. v3.0.0 implements importing selected valid profiles without conflicts. v3.3.0 implements Rename for profile-name conflicts. v3.4.0 implements explicit Replace for one unambiguous existing profile target. Fixtures/tests remain future work. Import does not include model weights, caches, API keys, tokens, executable paths, or automatic server start.
+Model Profile export and import are documented in [docs/model_profile_import_export.md](docs/model_profile_import_export.md). v2.7.0 implements Export Profiles for profile metadata only. v2.9.0 implements Import Preview. v3.0.0 implements importing selected valid profiles without conflicts. v3.3.0 implements Rename for profile-name conflicts. v3.4.0 implements explicit Replace for one unambiguous existing profile target. v3.5.0 adds deterministic fixtures and XCTest coverage for the current import/export schema, validation, Rename, Replace, and safety boundaries. Import does not include model weights, caches, API keys, tokens, executable paths, or automatic server start.
 
 ## Current Binary Asset
 

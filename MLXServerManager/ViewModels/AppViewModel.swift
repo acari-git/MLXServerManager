@@ -13,6 +13,31 @@ private enum AdvancedLaunchOptionsValidationResult {
     case invalid(String)
 }
 
+struct ModelProfileImportSelectionUpdate: Equatable {
+    let selectedModelID: ModelConfig.ID?
+    let preservedThroughReplacement: Bool
+
+    static func preservingSelection(
+        previousSelectedModelID: ModelConfig.ID?,
+        nextModels: [ModelConfig],
+        replacedProfiles: [ImportReplacedProfileSummary]
+    ) -> ModelProfileImportSelectionUpdate {
+        guard let previousSelectedModelID,
+              !nextModels.contains(where: { $0.id == previousSelectedModelID }),
+              let replacement = replacedProfiles.first(where: { $0.previousModelID == previousSelectedModelID }) else {
+            return ModelProfileImportSelectionUpdate(
+                selectedModelID: previousSelectedModelID,
+                preservedThroughReplacement: false
+            )
+        }
+
+        return ModelProfileImportSelectionUpdate(
+            selectedModelID: replacement.replacementModelID,
+            preservedThroughReplacement: true
+        )
+    }
+}
+
 @MainActor
 final class AppViewModel: ObservableObject {
     @Published var settings: AppSettings = .defaults
@@ -671,18 +696,19 @@ final class AppViewModel: ObservableObject {
             try settingsStore.save(models: nextModels)
             models = nextModels
 
-            var selectionWasPreservedThroughReplacement = false
-            if let previousSelectedModelID,
-               !nextModels.contains(where: { $0.id == previousSelectedModelID }),
-               let replacement = importResult.replacedProfiles.first(where: { $0.previousModelID == previousSelectedModelID }) {
-                selectedModelID = replacement.replacementModelID
-                selectionWasPreservedThroughReplacement = true
-                appendLog("[profile] selected profile identity updated from \(replacement.previousModelID) to \(replacement.replacementModelID) after Replace.")
+            let selectionUpdate = ModelProfileImportSelectionUpdate.preservingSelection(
+                previousSelectedModelID: previousSelectedModelID,
+                nextModels: nextModels,
+                replacedProfiles: importResult.replacedProfiles
+            )
+            if selectionUpdate.preservedThroughReplacement {
+                selectedModelID = selectionUpdate.selectedModelID
+                appendLog("[profile] selected profile identity updated from \(previousSelectedModelID ?? "unknown") to \(selectionUpdate.selectedModelID ?? "unknown") after Replace.")
             }
 
             modelProfileImportMessage = "Imported \(importResult.importedCount) profile(s). Renamed \(importResult.renamedCount) profile(s). Replaced \(importResult.replacedCount) profile(s). Skipped \(importResult.skippedCount) profile(s)."
             appendLog("[profile] profile metadata changes saved to models.json.")
-            if selectionWasPreservedThroughReplacement {
+            if selectionUpdate.preservedThroughReplacement {
                 appendLog("[profile] selected profile was preserved through the explicit Replace action. No server lifecycle action was taken.")
             } else {
                 appendLog("[profile] selected profile was not changed. No server lifecycle action was taken.")

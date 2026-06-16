@@ -1,0 +1,19 @@
+{
+  "app": "MLXServerManager",
+  "exportedAt": "2026-06-16T00:00:00Z",
+  "profiles": [
+    {
+      "host": "127.0.0.1",
+      "modelID": "test/duplicate-name-a-mlx-4bit",
+      "name": "Duplicate Imported Name",
+      "port": 8081
+    },
+    {
+      "host": "127.0.0.1",
+      "modelID": "test/duplicate-name-b-mlx-4bit",
+      "name": "Duplicate Imported Name",
+      "port": 8082
+    }
+  ],
+  "schemaVersion": 1
+}

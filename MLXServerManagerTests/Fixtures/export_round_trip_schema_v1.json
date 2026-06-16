@@ -1,0 +1,17 @@
+{
+  "app": "MLXServerManager",
+  "exportedAt": "2026-06-16T00:00:00Z",
+  "profiles": [
+    {
+      "advancedLaunchOptions": {
+        "defaultTemperature": "0.3",
+        "rawExtraArgs": "--trust-remote-code"
+      },
+      "host": "127.0.0.1",
+      "modelID": "test/export-round-trip-mlx-4bit",
+      "name": "Export Round Trip",
+      "port": 8083
+    }
+  ],
+  "schemaVersion": 1
+}

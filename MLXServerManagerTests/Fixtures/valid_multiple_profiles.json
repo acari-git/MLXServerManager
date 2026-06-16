@@ -1,0 +1,19 @@
+{
+  "app": "MLXServerManager",
+  "exportedAt": "2026-06-16T00:00:00Z",
+  "profiles": [
+    {
+      "host": "127.0.0.1",
+      "modelID": "test/valid-one-mlx-4bit",
+      "name": "Valid One",
+      "port": 8081
+    },
+    {
+      "host": "127.0.0.1",
+      "modelID": "test/valid-two-mlx-4bit",
+      "name": "Valid Two",
+      "port": 8082
+    }
+  ],
+  "schemaVersion": 1
+}

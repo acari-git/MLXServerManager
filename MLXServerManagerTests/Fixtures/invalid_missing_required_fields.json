@@ -1,0 +1,10 @@
+{
+  "app": "MLXServerManager",
+  "exportedAt": "2026-06-16T00:00:00Z",
+  "profiles": [
+    {
+      "name": "Missing Required Fields"
+    }
+  ],
+  "schemaVersion": 1
+}

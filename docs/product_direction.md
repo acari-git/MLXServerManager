@@ -114,15 +114,14 @@ Future candidates can be considered if they preserve performance, safety, and Di
 - model download design,
 - local cache awareness,
 - profile templates,
-- import/export fixtures and conflict handling tests,
-- import/export fixtures and tests,
+- import/export stable release polish,
 - logs and diagnostics polish,
 - connection settings polish,
 - optional speed test polish.
 
 Each candidate should define what it changes, what it refuses to change, and how it avoids interfering with active `mlx_lm.server` generation.
 
-Import conflict handling should follow the same rule. v3.3.0 implements Rename for profile-name conflicts as an explicit metadata operation. v3.4.0 implements Replace only for one unambiguous existing profile target, with explicit confirmation. Replace remains metadata-only and must not start servers, call readiness endpoints, alter external process ownership, or interfere with active generation.
+Import conflict handling should follow the same rule. v3.3.0 implements Rename for profile-name conflicts as an explicit metadata operation. v3.4.0 implements Replace only for one unambiguous existing profile target, with explicit confirmation. v3.5.0 adds deterministic fixtures and service-level tests for the current import/export schema and conflict behavior. Replace remains metadata-only and must not start servers, call readiness endpoints, alter external process ownership, or interfere with active generation.
 
 ## Model Download Position
 

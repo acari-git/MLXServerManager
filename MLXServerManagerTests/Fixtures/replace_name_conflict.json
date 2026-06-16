@@ -1,0 +1,17 @@
+{
+  "app": "MLXServerManager",
+  "exportedAt": "2026-06-16T00:00:00Z",
+  "profiles": [
+    {
+      "advancedLaunchOptions": {
+        "defaultTemperature": "0.4",
+        "promptCacheBytes": "1024"
+      },
+      "host": "127.0.0.1",
+      "modelID": "test/replacement-by-name-mlx-4bit",
+      "name": "Existing Local Profile",
+      "port": 8090
+    }
+  ],
+  "schemaVersion": 1
+}

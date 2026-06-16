@@ -41,9 +41,9 @@ This is a documentation and public presentation update only. It does not change 
 
 ## Future Import / Export Relationship
 
-Model Profile export can help first-run setup by backing up current profile metadata. v2.9.0 adds Import Profiles Preview so users can inspect and validate exported profile metadata. v3.0.0 adds import for selected valid profiles without conflicts. v3.3.0 adds explicit Rename for profile-name conflicts. v3.4.0 adds explicit Replace for one unambiguous existing profile target.
+Model Profile export can help first-run setup by backing up current profile metadata. v2.9.0 adds Import Profiles Preview so users can inspect and validate exported profile metadata. v3.0.0 adds import for selected valid profiles without conflicts. v3.3.0 adds explicit Rename for profile-name conflicts. v3.4.0 adds explicit Replace for one unambiguous existing profile target. v3.5.0 adds deterministic fixtures and XCTest coverage for the current import/export behavior without changing first-run UI behavior.
 
-Conflict handling remains conservative. Replace is metadata-only, requires explicit confirmation, and does not delete model files or affect server processes. Import/export should remain metadata-only: no model install, no model download in the current import/export flow, no automatic server start, no inference proxy, and no external process ownership changes.
+Conflict handling remains conservative. Replace is metadata-only, requires explicit confirmation, and does not delete model files or affect server processes. Import/export tests are metadata-only and do not call readiness endpoints or start servers. Import/export should remain metadata-only: no model install, no model download in the current import/export flow, no automatic server start, no inference proxy, and no external process ownership changes.
 
 ## Goals
 

@@ -1242,10 +1242,47 @@
    - v3.4.0 is an app-code release and requires a new unsigned app binary asset when released.
    - v3.5.0 should focus on import/export fixtures and tests.
 
+## v3.5.0 Completed: Import / Export Fixtures and Tests
+
+1. Add deterministic import/export fixtures.
+   - Add schema v1 fixtures under `MLXServerManagerTests/Fixtures/`.
+   - Cover valid single and multiple profile documents.
+   - Cover invalid missing required fields and whitespace-only names.
+   - Cover duplicate imported profile names and duplicate imported runtime identities.
+   - Cover existing name conflicts, existing runtime identity conflicts, Rename scenarios, Replace scenarios, ambiguous Replace targets, duplicate Replace targets, and export round-trip compatibility.
+2. Add minimal XCTest coverage.
+   - Add `MLXServerManagerTests`.
+   - Cover import preview validation and document-level blocking errors.
+   - Cover Rename behavior for profile-name conflicts.
+   - Cover Replace target detection by name, `modelID`, and `modelID + host + port`.
+   - Cover ambiguous Replace and duplicate selected Replace target blocking.
+   - Cover Replace metadata updates and local-only field preservation.
+   - Cover selected profile tracking after explicit Replace.
+   - Cover export schema output and omission of local-only fields, executable paths, token-like data, and secrets.
+3. Keep tests metadata-only.
+   - No `mlx-lm` dependency.
+   - No model files.
+   - No running server requirement.
+   - No network calls.
+   - No `/v1/models` readiness or detection call from import/export tests.
+   - No `/v1/chat/completions` call.
+4. Preserve product and safety boundaries.
+   - Direct Mode is maintained.
+   - No new import/export UI behavior.
+   - No schema redesign.
+   - No model download or model deletion.
+   - No inference proxy, Chat UI, or multi-backend router.
+   - No automatic server start.
+   - No external process kill, stop, restart, adoption, forget, or ownership change.
+5. Release note.
+   - v3.5.0 is a code/test/docs stabilization release and requires a new unsigned app binary asset when released.
+   - This step does not create a zipped app binary, tag, push, or GitHub release.
+   - v4.0.0 should focus on Import / Export stable release polish, final regression, and release readiness.
+
 ## Later
 
-- Unit tests for services where practical.
 - Refresh README screenshots for the v1.9+ Connection Settings Current Target UI.
+- Import / Export v4.0.0 stable release polish and final regression.
 - LAN Web UI.
 - Automatic unload policies.
 - More advanced resource graphs.

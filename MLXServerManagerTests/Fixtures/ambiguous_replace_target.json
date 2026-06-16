@@ -1,0 +1,13 @@
+{
+  "app": "MLXServerManager",
+  "exportedAt": "2026-06-16T00:00:00Z",
+  "profiles": [
+    {
+      "host": "127.0.0.1",
+      "modelID": "test/second-existing-mlx-4bit",
+      "name": "Existing Local Profile",
+      "port": 8099
+    }
+  ],
+  "schemaVersion": 1
+}

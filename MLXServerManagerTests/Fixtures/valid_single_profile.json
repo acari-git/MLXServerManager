@@ -1,0 +1,17 @@
+{
+  "app": "MLXServerManager",
+  "exportedAt": "2026-06-16T00:00:00Z",
+  "profiles": [
+    {
+      "advancedLaunchOptions": {
+        "defaultTemperature": "0.2",
+        "promptCacheSize": "256"
+      },
+      "host": "127.0.0.1",
+      "modelID": "test/valid-single-mlx-4bit",
+      "name": "Valid Single",
+      "port": 8081
+    }
+  ],
+  "schemaVersion": 1
+}

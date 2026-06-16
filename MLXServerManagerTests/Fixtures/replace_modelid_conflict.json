@@ -1,0 +1,13 @@
+{
+  "app": "MLXServerManager",
+  "exportedAt": "2026-06-16T00:00:00Z",
+  "profiles": [
+    {
+      "host": "127.0.0.1",
+      "modelID": "test/local-existing-mlx-4bit",
+      "name": "Replacement By Model ID",
+      "port": 8091
+    }
+  ],
+  "schemaVersion": 1
+}

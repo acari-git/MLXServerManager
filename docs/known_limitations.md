@@ -29,6 +29,7 @@ This document lists known limitations for MLX Server Manager.
 - Model Profile import currently supports selected valid profiles, explicit Rename for profile-name conflicts, and explicit Replace for one unambiguous existing profile target.
 - Profile-name conflicts can be imported with explicit Rename, or replaced when they map to exactly one local profile and the user confirms.
 - Ambiguous Replace targets and duplicate selected Replace actions remain skipped or disabled.
+- Import/export fixtures and XCTest coverage exist for the current schema, validation, Rename, and Replace behavior, but they are service-level metadata tests and do not run live `mlx_lm.server`.
 
 ## Process Management
 

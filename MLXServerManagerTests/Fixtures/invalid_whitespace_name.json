@@ -1,0 +1,13 @@
+{
+  "app": "MLXServerManager",
+  "exportedAt": "2026-06-16T00:00:00Z",
+  "profiles": [
+    {
+      "host": "127.0.0.1",
+      "modelID": "test/whitespace-name-mlx-4bit",
+      "name": "   ",
+      "port": 8081
+    }
+  ],
+  "schemaVersion": 1
+}

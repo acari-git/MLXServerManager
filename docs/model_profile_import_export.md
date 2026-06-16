@@ -4,7 +4,7 @@
 
 Model Profile Import / Export started as a v2.6.0 docs-only design for backing up, moving, and sharing MLX Server Manager profile metadata safely.
 
-v2.7.0 implements Export Profiles. v2.9.0 implements Import Profiles Preview. v3.0.0 implements importing selected valid profiles without conflicts. v3.3.0 implements Rename for profile-name conflicts. v3.4.0 implements explicit Replace for one unambiguous existing profile target. Broader fixtures/tests remain future work.
+v2.7.0 implements Export Profiles. v2.9.0 implements Import Profiles Preview. v3.0.0 implements importing selected valid profiles without conflicts. v3.3.0 implements Rename for profile-name conflicts. v3.4.0 implements explicit Replace for one unambiguous existing profile target. v3.5.0 adds deterministic fixtures and XCTest coverage for the current schema and conflict behavior.
 
 Import and export apply only to Model Profile metadata. They do not include model weights, Hugging Face cache, local runtime settings, secrets, or app binaries.
 
@@ -24,7 +24,6 @@ Implemented:
 
 Not implemented:
 
-- Import/export fixtures and tests.
 - Selecting an imported profile after import.
 - Model download or install automation in the current import/export flow.
 
@@ -270,7 +269,7 @@ Info examples:
 - v3.2.0: Conflict handling design polish.
 - v3.3.0: Rename profile-name conflicts.
 - v3.4.0: Replace conflicted profiles.
-- v3.5.0 candidate: Import/export schema tests and fixtures.
+- v3.5.0: Import/export schema tests and fixtures.
 - v4.0.0 candidate: Import/export stable release.
 
 ## v2.9.0 Import Preview Implementation Status
@@ -559,7 +558,7 @@ It must not:
 
 - v3.3.0: Rename profile-name conflicts implementation.
 - v3.4.0: Replace conflicted profiles implementation.
-- v3.5.0 candidate: Import/export fixtures and tests.
+- v3.5.0: Import/export fixtures and tests.
 - v4.0.0 candidate: Import/export stable release.
 
 ## v3.3.0 Rename Conflicted Profiles Implementation Status
@@ -642,6 +641,50 @@ Not implemented:
 - external process ownership changes.
 
 Replace remains metadata-only and side-effect-free with respect to server lifecycle. It does not start, stop, restart, adopt, forget, readiness-check, call `/v1/models`, make external HTTP requests, download models, delete files, mutate caches, import secrets, or affect external processes.
+
+## v3.5.0 Import / Export Fixtures and Tests Implementation Status
+
+v3.5.0 adds deterministic import/export fixtures and a minimal XCTest target to lock down behavior implemented from v3.0.0 through v3.4.0.
+
+Fixtures added under `MLXServerManagerTests/Fixtures/` cover:
+
+- valid single-profile import,
+- valid multiple-profile import,
+- invalid missing required fields,
+- invalid whitespace profile name,
+- duplicate imported profile names,
+- duplicate imported runtime identities,
+- existing profile-name conflict,
+- existing runtime identity conflict,
+- Replace by profile name,
+- Replace by `modelID`,
+- Replace by `modelID + host + port`,
+- ambiguous Replace target,
+- duplicate selected Replace target,
+- current schema v1 export round-trip compatibility.
+
+XCTest coverage includes:
+
+- valid non-conflicting profiles remain importable,
+- invalid profiles and document-level schema errors remain blocked,
+- name, `modelID`, and endpoint conflicts are detected,
+- duplicate imported names and duplicate imported runtime identities are detected,
+- Rename can resolve profile-name conflicts only,
+- Rename preserves imported `modelID`, host, port, and Advanced Launch Options,
+- invalid Rename values are rejected,
+- Rename does not resolve runtime identity conflicts,
+- Replace target detection works for name, `modelID`, and endpoint matches,
+- ambiguous Replace targets are not available,
+- duplicate selected Replace targets are blocked,
+- Replace updates schema-backed metadata only,
+- Replace preserves local-only fields not present in the export schema,
+- selected profile tracking is preserved only when the selected profile itself is explicitly replaced,
+- export emits the documented schema and omits local-only fields, executable paths, token-like data, and secrets,
+- exported schema v1 fixtures remain parseable by current import preview logic.
+
+The tests are metadata-only. They do not require `mlx-lm`, model files, network access, running servers, external processes, `/v1/models`, or `/v1/chat/completions`.
+
+v3.5.0 does not add new import/export UI behavior. It does not redesign the schema, change server lifecycle behavior, add model download or deletion, proxy inference, or alter Direct Mode boundaries.
 
 ## Goals
 
@@ -879,7 +922,7 @@ Recommended controls:
 - Validation result list.
 - Privacy warning before export.
 
-v2.7.0 implements only `Export Profiles...` and a short always-visible privacy summary. Import UI remains future work.
+v2.7.0 implemented `Export Profiles...` and a short always-visible privacy summary. Later releases added Import Preview, selected import, Rename, Replace, and v3.5.0 fixtures/tests.
 
 Export summary should show:
 
@@ -942,10 +985,7 @@ Test cases should cover:
 ## Future Work
 
 - Define a concrete Codable import/export schema type.
-- Add Import Preview UI.
-- Add export privacy summary.
-- Add conflict resolution UI.
 - Add JSON schema examples for shared profile templates.
-- Add tests for import validation and conflict behavior.
+- Expand tests if the schema changes or new import/export actions are added.
 - Consider optional path export only after privacy implications are reviewed.
 - Consider template-only exports that omit notes and advanced args for easier public sharing.

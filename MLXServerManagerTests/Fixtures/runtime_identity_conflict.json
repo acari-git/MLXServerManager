@@ -1,0 +1,13 @@
+{
+  "app": "MLXServerManager",
+  "exportedAt": "2026-06-16T00:00:00Z",
+  "profiles": [
+    {
+      "host": "127.0.0.1",
+      "modelID": "test/local-existing-mlx-4bit",
+      "name": "Runtime Identity Conflict",
+      "port": 8081
+    }
+  ],
+  "schemaVersion": 1
+}
