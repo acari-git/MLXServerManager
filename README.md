@@ -137,15 +137,15 @@ Screenshot refresh planning is documented in [docs/screenshot_refresh.md](docs/s
 
 First-run guidance is documented in [docs/onboarding_first_run.md](docs/onboarding_first_run.md). v2.4.0 adds a small in-app guidance panel that points first-time users toward executable path setup, model profile selection, diagnostics, Start, and Connection Settings while preserving Direct Mode.
 
-Model Profile export and import are documented in [docs/model_profile_import_export.md](docs/model_profile_import_export.md). v2.7.0 implements Export Profiles for profile metadata only. v2.9.0 implements Import Preview. v3.0.0 implements importing selected valid profiles without conflicts. v3.3.0 implements Rename for profile-name conflicts. v3.4.0 implements explicit Replace for one unambiguous existing profile target. v3.5.0 adds deterministic fixtures and XCTest coverage for the current import/export schema, validation, Rename, Replace, and safety boundaries. Import does not include model weights, caches, API keys, tokens, executable paths, or automatic server start.
+Model Profile export and import are documented in [docs/model_profile_import_export.md](docs/model_profile_import_export.md). v4.0.0 treats Import / Export as a stable metadata-only feature set: Export Profiles, Import Preview, Import Selected Profiles, Rename for profile-name conflicts, explicit Replace for one unambiguous existing profile target, and deterministic regression tests. Import does not include model weights, caches, API keys, tokens, executable paths, or automatic server start.
 
 ## Current Binary Asset
 
 The current downloadable app binary asset is the latest app-code release:
 
-- `MLXServerManager-v3.0.0-unsigned.zip`
+- `MLXServerManager-v3.5.0-unsigned.zip`
 
-v3.1.0 is a docs-only product-direction release. It updates project principles and documentation, but it does not introduce a new app binary.
+v4.0.0 is Import / Export stable release preparation. If released without additional app-code changes after v3.5.0, it does not require a new binary asset.
 
 ## Target Users
 
@@ -167,7 +167,7 @@ For Hermes Agent and similar clients, see [docs/hermes_agent_connection.md](docs
 
 ## Current Feature Set
 
-As of v1.9.0, MLX Server Manager includes:
+As of v4.0.0, MLX Server Manager includes:
 
 - Start, Stop, and Restart for the `mlx_lm.server` process started by this app.
 - Managed-process-only Stop and Restart behavior.
@@ -177,6 +177,10 @@ As of v1.9.0, MLX Server Manager includes:
 - Model profile add, edit, delete, and selection.
 - Export Profiles for model profile metadata backup.
 - Import selected valid model profiles from JSON metadata.
+- Import Preview validation for schema v1 profile export documents.
+- Rename for imported profile-name conflicts.
+- Explicit Replace for one unambiguous existing profile target.
+- Import / Export fixtures and XCTest regression coverage.
 - Model switching with `Restart required` state.
 - Advanced Launch Options per model profile.
 - External Server Detection for selected host/port endpoints.

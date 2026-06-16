@@ -4,7 +4,7 @@
 
 Model Profile Import / Export started as a v2.6.0 docs-only design for backing up, moving, and sharing MLX Server Manager profile metadata safely.
 
-v2.7.0 implements Export Profiles. v2.9.0 implements Import Profiles Preview. v3.0.0 implements importing selected valid profiles without conflicts. v3.3.0 implements Rename for profile-name conflicts. v3.4.0 implements explicit Replace for one unambiguous existing profile target. v3.5.0 adds deterministic fixtures and XCTest coverage for the current schema and conflict behavior.
+v2.7.0 implements Export Profiles. v2.9.0 implements Import Profiles Preview. v3.0.0 implements importing selected valid profiles without conflicts. v3.3.0 implements Rename for profile-name conflicts. v3.4.0 implements explicit Replace for one unambiguous existing profile target. v3.5.0 adds deterministic fixtures and XCTest coverage for the current schema and conflict behavior. v4.0.0 treats this set as the stable Import / Export feature boundary.
 
 Import and export apply only to Model Profile metadata. They do not include model weights, Hugging Face cache, local runtime settings, secrets, or app binaries.
 
@@ -270,7 +270,7 @@ Info examples:
 - v3.3.0: Rename profile-name conflicts.
 - v3.4.0: Replace conflicted profiles.
 - v3.5.0: Import/export schema tests and fixtures.
-- v4.0.0 candidate: Import/export stable release.
+- v4.0.0: Import/export stable release.
 
 ## v2.9.0 Import Preview Implementation Status
 
@@ -559,7 +559,7 @@ It must not:
 - v3.3.0: Rename profile-name conflicts implementation.
 - v3.4.0: Replace conflicted profiles implementation.
 - v3.5.0: Import/export fixtures and tests.
-- v4.0.0 candidate: Import/export stable release.
+- v4.0.0: Import/export stable release.
 
 ## v3.3.0 Rename Conflicted Profiles Implementation Status
 
@@ -685,6 +685,37 @@ XCTest coverage includes:
 The tests are metadata-only. They do not require `mlx-lm`, model files, network access, running servers, external processes, `/v1/models`, or `/v1/chat/completions`.
 
 v3.5.0 does not add new import/export UI behavior. It does not redesign the schema, change server lifecycle behavior, add model download or deletion, proxy inference, or alter Direct Mode boundaries.
+
+## v4.0.0 Import / Export Stable Release Status
+
+v4.0.0 finalizes the current Import / Export behavior as stable for metadata-only profile backup and transfer.
+
+Stable behavior includes:
+
+- Export Profiles using schema version 1.
+- Import Profiles Preview with document-level and profile-level validation.
+- Import Selected Profiles for valid non-conflicting profiles.
+- explicit Rename for profile-name conflicts.
+- explicit Replace for one unambiguous existing profile target.
+- duplicate imported entry detection.
+- ambiguous Replace target blocking.
+- duplicate selected Replace target blocking.
+- selected profile tracking only when the selected profile itself is explicitly replaced.
+- local-only field preservation during Replace.
+- regression coverage through deterministic fixtures and XCTest.
+
+Stable safety boundaries:
+
+- Import / Export does not start, stop, or restart servers.
+- Import / Export does not call `/v1/models`.
+- Import / Export does not make network requests.
+- Import / Export does not call `/v1/chat/completions`.
+- Import / Export does not download or delete models.
+- Import / Export does not import model weights, Hugging Face cache, executable paths, API keys, tokens, or secrets.
+- Import / Export does not change external process ownership.
+- Import / Export does not change Direct Mode.
+
+v4.0.0 does not add a new schema version, new conflict resolution mode, model installer, model downloader, inference proxy, Chat UI, or multi-backend router.
 
 ## Goals
 

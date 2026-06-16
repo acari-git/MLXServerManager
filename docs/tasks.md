@@ -1279,10 +1279,40 @@
    - This step does not create a zipped app binary, tag, push, or GitHub release.
    - v4.0.0 should focus on Import / Export stable release polish, final regression, and release readiness.
 
+## v4.0.0 Completed: Import / Export Stable Release Preparation
+
+1. Confirm current Import / Export feature boundary.
+   - Export Profiles is stable for schema v1 profile metadata backup.
+   - Import Profiles Preview is stable for schema v1 validation.
+   - Import Selected Profiles is stable for valid non-conflicting profiles.
+   - Rename is stable for profile-name conflicts.
+   - Replace is stable only for one unambiguous existing profile target with explicit confirmation.
+2. Confirm regression coverage.
+   - v3.5.0 fixtures and XCTest cover schema validation, conflict detection, Rename, Replace, local-only field preservation, export shape, and selected-profile tracking after explicit Replace.
+   - No additional tests were needed for v4.0.0 because the stable behavior is already covered by v3.5.0 service-level tests.
+3. Preserve metadata-only boundaries.
+   - Import / Export does not start, stop, or restart servers.
+   - Import / Export does not call `/v1/models`.
+   - Import / Export does not make network requests.
+   - Import / Export does not call `/v1/chat/completions`.
+   - Import / Export does not download or delete models.
+   - Import / Export does not import model weights, Hugging Face cache, executable paths, API keys, tokens, or secrets.
+   - Import / Export does not change external process ownership.
+4. Keep this step conservative.
+   - No new user-facing import/export feature.
+   - No UI redesign.
+   - No schema redesign.
+   - No runtime launch behavior change.
+   - No server lifecycle behavior change.
+   - Direct Mode is maintained.
+5. Release note.
+   - v4.0.0 is a stable Import / Export release preparation step.
+   - This step does not create a zipped app binary, tag, push, or GitHub release.
+   - If v4.0.0 is released without app-code changes after v3.5.0, the v3.5.0 unsigned app binary can remain the current binary asset.
+
 ## Later
 
 - Refresh README screenshots for the v1.9+ Connection Settings Current Target UI.
-- Import / Export v4.0.0 stable release polish and final regression.
 - LAN Web UI.
 - Automatic unload policies.
 - More advanced resource graphs.

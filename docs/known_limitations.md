@@ -26,7 +26,8 @@ This document lists known limitations for MLX Server Manager.
 - The app does not currently download models.
 - The app does not validate that a model exists before `mlx_lm.server` attempts to load it.
 - Model download may be considered in a future release only if it preserves `mlx-lm` runtime performance and keeps explicit safety, privacy, and user-control boundaries.
-- Model Profile import currently supports selected valid profiles, explicit Rename for profile-name conflicts, and explicit Replace for one unambiguous existing profile target.
+- Model Profile import/export is stable for metadata-only profile backup and transfer.
+- Import supports selected valid profiles, explicit Rename for profile-name conflicts, and explicit Replace for one unambiguous existing profile target.
 - Profile-name conflicts can be imported with explicit Rename, or replaced when they map to exactly one local profile and the user confirms.
 - Ambiguous Replace targets and duplicate selected Replace actions remain skipped or disabled.
 - Import/export fixtures and XCTest coverage exist for the current schema, validation, Rename, and Replace behavior, but they are service-level metadata tests and do not run live `mlx_lm.server`.
