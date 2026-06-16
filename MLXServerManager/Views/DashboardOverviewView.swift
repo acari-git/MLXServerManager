@@ -13,7 +13,7 @@ struct DashboardOverviewView: View {
     var body: some View {
         DashboardSectionView(
             title: "Dashboard",
-            subtitle: "Scan in order: next action, current target, server state, troubleshooting, then profile context. Lifecycle actions remain explicit below."
+            subtitle: "Scan in order: next action, target/state, client setup, troubleshooting, then profile context. Lifecycle actions remain explicit below."
         ) {
             VStack(alignment: .leading, spacing: 14) {
                 DashboardGroupHeader(
@@ -51,7 +51,19 @@ struct DashboardOverviewView: View {
                 }
 
                 DashboardGroupHeader(
-                    title: "3. Troubleshooting",
+                    title: "3. Client setup",
+                    subtitle: "Use the active endpoint, model ID, and readiness state before pasting values into an OpenAI-compatible client."
+                )
+
+                DashboardClientSetupCard(
+                    runtimeState: runtimeState,
+                    targetSummary: targetSummary,
+                    selectedModel: selectedModel
+                )
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+
+                DashboardGroupHeader(
+                    title: "4. Troubleshooting",
                     subtitle: "Use diagnostics and logs when readiness, availability, or ownership is unclear."
                 )
 
@@ -62,7 +74,7 @@ struct DashboardOverviewView: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
 
                 DashboardGroupHeader(
-                    title: "4. Profile context",
+                    title: "5. Profile context",
                     subtitle: "Profiles and Import / Export are metadata context, not lifecycle or model-file actions."
                 )
 
@@ -529,6 +541,228 @@ private struct DashboardCurrentTargetDisplay {
             iconName = "exclamationmark.triangle"
             accentColor = .red
         }
+    }
+}
+
+struct DashboardClientSetupCard: View {
+    let runtimeState: ModelRuntimeState
+    let targetSummary: ConnectionTargetSummary
+    let selectedModel: ModelConfig?
+
+    var body: some View {
+        DashboardStatusCard(
+            title: "Client Setup",
+            systemImage: "doc.on.clipboard",
+            accentColor: display.accentColor
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(display.title)
+                        .font(.callout.weight(.semibold))
+
+                    Text(display.message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Divider()
+
+                HStack(alignment: .top, spacing: 12) {
+                    DashboardKeyValueRow(label: "Client Base URL", value: display.clientBaseURL)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    DashboardKeyValueRow(label: "Model ID Guidance", value: display.modelIDGuidance)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack(alignment: .top, spacing: 12) {
+                    DashboardKeyValueRow(label: "Endpoint Source", value: display.endpointSource)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    DashboardKeyValueRow(label: "Readiness Before Client Use", value: display.readinessGuidance)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack(alignment: .top, spacing: 12) {
+                    DashboardKeyValueRow(label: "Profile Endpoint", value: display.profileEndpoint)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    DashboardKeyValueRow(label: "Copy From", value: display.copyGuidance)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Label(display.safetyNote, systemImage: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var display: DashboardClientSetupDisplay {
+        DashboardClientSetupDisplay(
+            runtimeState: runtimeState,
+            targetSummary: targetSummary,
+            selectedModel: selectedModel
+        )
+    }
+}
+
+private struct DashboardClientSetupDisplay {
+    let title: String
+    let message: String
+    let clientBaseURL: String
+    let modelIDGuidance: String
+    let endpointSource: String
+    let readinessGuidance: String
+    let profileEndpoint: String
+    let copyGuidance: String
+    let safetyNote: String
+    let accentColor: Color
+
+    init(
+        runtimeState: ModelRuntimeState,
+        targetSummary: ConnectionTargetSummary,
+        selectedModel: ModelConfig?
+    ) {
+        let selectedProfileEndpoint = selectedModel.map { "http://\($0.host):\($0.serverPort)/v1" }
+        profileEndpoint = selectedProfileEndpoint ?? "No selected profile endpoint"
+
+        let activeEndpoint = Self.activeEndpointText(
+            runtimeState: runtimeState,
+            fallbackBaseURL: targetSummary.baseURL
+        )
+        let activeRelationship = Self.activeRelationshipText(
+            activeEndpoint: activeEndpoint,
+            profileEndpoint: selectedProfileEndpoint,
+            targetSummary: targetSummary
+        )
+
+        modelIDGuidance = Self.modelIDGuidanceText(
+            selectedModel: selectedModel,
+            targetSummary: targetSummary
+        )
+        copyGuidance = "Use Connection Settings to copy Base URL, Model ID, API key placeholder, JSON config, Hermes Agent config, or curl readiness command."
+        safetyNote = "Direct Mode means clients connect directly to the active server endpoint. MLX Server Manager does not proxy inference requests or store API keys or tokens."
+
+        switch runtimeState {
+        case let .externalServerDetected(_, _, baseURL, _):
+            title = "Detected external endpoint"
+            message = "Adopt this endpoint only if you want MLX Server Manager to show it as connection context for client setup."
+            clientBaseURL = baseURL
+            endpointSource = "Detected external server. Not managed by MLX Server Manager. \(activeRelationship)"
+            readinessGuidance = "Ready means /v1/models responded successfully. External lifecycle and logs stay outside the app."
+            accentColor = .orange
+        case let .adoptedExternalServer(_, _, baseURL, _):
+            title = "Use the adopted endpoint"
+            message = "OpenAI-compatible clients should point directly at the adopted external server."
+            clientBaseURL = baseURL
+            endpointSource = "Adopted external connection context only. \(activeRelationship)"
+            readinessGuidance = "Use the external server's exposed model names when they differ from selected profile metadata."
+            accentColor = .orange
+        case let .ready(_, _, processIdentifier):
+            title = "Copy the ready endpoint"
+            message = "The current endpoint passed readiness and can be used by an OpenAI-compatible client."
+            clientBaseURL = activeEndpoint ?? targetSummary.baseURL
+            if processIdentifier != nil {
+                endpointSource = "App-managed server. \(activeRelationship)"
+            } else {
+                endpointSource = "Ready endpoint without managed pid. \(activeRelationship)"
+            }
+            readinessGuidance = "Ready means /v1/models responded successfully before client setup."
+            accentColor = .green
+        case .starting, .loading, .checkingReady:
+            title = "Wait before client setup"
+            message = "A target is starting or being checked; wait for Ready before expecting clients to work."
+            clientBaseURL = activeEndpoint ?? targetSummary.baseURL
+            endpointSource = "Pending target. \(activeRelationship)"
+            readinessGuidance = "Do not treat process startup as readiness; wait for /v1/models success."
+            accentColor = .orange
+        case .stopped, .portAvailable:
+            title = "No active endpoint yet"
+            message = "Start a managed server or adopt a detected external server before using client connection values."
+            clientBaseURL = "No active endpoint"
+            endpointSource = "Selected profile endpoint is saved configuration only. \(activeRelationship)"
+            readinessGuidance = "Readiness is not checked until a server target exists."
+            accentColor = .secondary
+        case .portBusy, .portCheckFailed, .readyCheckFailed, .error, .unknown:
+            title = "Check endpoint before copying"
+            message = "The current endpoint is unavailable, failed, or unclear. Verify state before pasting values into a client."
+            clientBaseURL = activeEndpoint ?? targetSummary.baseURL
+            endpointSource = "Endpoint needs review. \(activeRelationship)"
+            readinessGuidance = "Use Diagnostics, logs, and /v1/models readiness before relying on client setup."
+            accentColor = .red
+        case .checkingPort:
+            title = "Endpoint check in progress"
+            message = "The selected host and port are being checked; this does not create an active client target."
+            clientBaseURL = activeEndpoint ?? targetSummary.baseURL
+            endpointSource = "Port check only. \(activeRelationship)"
+            readinessGuidance = "Port availability is not readiness."
+            accentColor = .orange
+        case .stopping:
+            title = "Endpoint is stopping"
+            message = "Wait for the managed stop to complete before copying client connection values."
+            clientBaseURL = activeEndpoint ?? targetSummary.baseURL
+            endpointSource = "Managed process is stopping. \(activeRelationship)"
+            readinessGuidance = "The endpoint should be treated as unavailable while stopping."
+            accentColor = .orange
+        }
+    }
+
+    private static func activeEndpointText(
+        runtimeState: ModelRuntimeState,
+        fallbackBaseURL: String
+    ) -> String? {
+        switch runtimeState {
+        case let .externalServerDetected(_, _, baseURL, _):
+            return baseURL
+        case let .adoptedExternalServer(_, _, baseURL, _):
+            return baseURL
+        case .stopped, .portAvailable:
+            return nil
+        default:
+            return fallbackBaseURL
+        }
+    }
+
+    private static func activeRelationshipText(
+        activeEndpoint: String?,
+        profileEndpoint: String?,
+        targetSummary: ConnectionTargetSummary
+    ) -> String {
+        guard let activeEndpoint else {
+            return "No active target is available yet."
+        }
+
+        guard let profileEndpoint else {
+            return "No selected profile endpoint is available."
+        }
+
+        if activeEndpoint == profileEndpoint {
+            return "Active endpoint matches the selected profile endpoint."
+        }
+
+        if targetSummary.targetType.localizedCaseInsensitiveContains("external") {
+            return "Adopted or detected external endpoint may differ from selected profile metadata."
+        }
+
+        return "Active endpoint and saved profile endpoint differ; check selected/running model state."
+    }
+
+    private static func modelIDGuidanceText(
+        selectedModel: ModelConfig?,
+        targetSummary: ConnectionTargetSummary
+    ) -> String {
+        guard let selectedModel else {
+            return "No selected profile model ID. Use the model name exposed by the active server."
+        }
+
+        if targetSummary.targetType.localizedCaseInsensitiveContains("external") {
+            return "Selected profile model ID: \(selectedModel.modelID). External servers may expose a different model name."
+        }
+
+        return "Use selected profile model ID: \(selectedModel.modelID). If a client rejects it, check /v1/models or server logs."
     }
 }
 

@@ -1554,6 +1554,35 @@
    - It is not the full v5.0.0 Dashboard UI Refresh v1.
    - Because app code changed, v4.8.0 will need a new unsigned app zip when released.
 
+## v4.9.0 Completed: Dashboard Copy / Client Setup Polish
+
+1. Add display-only Client Setup guidance.
+   - Show client-facing base URL guidance for the current state.
+   - Distinguish active endpoint from selected profile endpoint.
+   - Explain selected profile model ID vs external server model-name expectations.
+   - Point users to existing Connection Settings copy actions.
+2. Clarify OpenAI-compatible client setup.
+   - Use the active endpoint as the client base URL when a target is active.
+   - Wait for `/v1/models` readiness before expecting clients to work.
+   - Keep Direct Mode visible: clients connect directly to the active server endpoint.
+   - Explain managed vs adopted external setup context without changing ownership.
+3. Preserve behavior.
+   - No Start / Stop / Restart behavior change.
+   - No External Server Detection / Adopt / Forget behavior change.
+   - No readiness behavior change.
+   - No new network calls.
+   - No `/v1/chat/completions` calls by the app.
+   - No copy action behavior change.
+   - No API key, token, or secret persistence.
+   - No onboarding persistence or user tracking.
+   - No Import / Export behavior or schema change.
+   - No model download or deletion.
+   - No external server ownership change.
+4. Release note.
+   - v4.9.0 is a small app-code polish release for Dashboard Copy / Client Setup clarity.
+   - It is not the full v5.0.0 Dashboard UI Refresh v1.
+   - Because app code changed, v4.9.0 will need a new unsigned app zip when released.
+
 ## Later
 
 - v5.0.0 candidate: Dashboard UI Refresh v1 implementation.

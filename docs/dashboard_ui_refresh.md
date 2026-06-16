@@ -2,7 +2,7 @@
 
 ## Purpose
 
-v4.1.0 is a documentation-only design step for a future Dashboard UI Refresh. v4.2.0 adds the first small app-code foundation for that direction by introducing reusable dashboard display structure and clearer Current Target / Server State presentation. v4.3.0 polishes the Current Target card copy and state grouping. v4.4.0 polishes the Server State card copy and state grouping. v4.5.0 adds display-only Logs / Diagnostics guidance for readiness and availability troubleshooting. v4.6.0 adds display-only Profiles / Import Export guidance. v4.7.0 adds display-only Onboarding / Next Steps guidance. v4.8.0 polishes Dashboard layout, card ordering, and information hierarchy. The goal is to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, onboarding persistence, or process ownership boundaries.
+v4.1.0 is a documentation-only design step for a future Dashboard UI Refresh. v4.2.0 adds the first small app-code foundation for that direction by introducing reusable dashboard display structure and clearer Current Target / Server State presentation. v4.3.0 polishes the Current Target card copy and state grouping. v4.4.0 polishes the Server State card copy and state grouping. v4.5.0 adds display-only Logs / Diagnostics guidance for readiness and availability troubleshooting. v4.6.0 adds display-only Profiles / Import Export guidance. v4.7.0 adds display-only Onboarding / Next Steps guidance. v4.8.0 polishes Dashboard layout, card ordering, and information hierarchy. v4.9.0 adds display-only Client Setup guidance for OpenAI-compatible clients and copyable connection context. The goal is to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, onboarding persistence, or process ownership boundaries.
 
 The refreshed dashboard should help users quickly answer:
 
@@ -206,6 +206,30 @@ The intended Dashboard scan flow is:
 
 This step should not add new Start / Stop / Restart controls, change existing controls, run diagnostics automatically, add background checks, change readiness behavior, change Import / Export behavior, change onboarding persistence, or alter process ownership.
 
+## v4.9.0 Copy / Client Setup Polish
+
+v4.9.0 adds a display-only Dashboard guidance card for OpenAI-compatible client setup:
+
+- shows which base URL should be treated as the client target when an endpoint is active,
+- distinguishes selected profile endpoint from active managed or adopted external endpoint,
+- clarifies that selected profile model ID is launch/configuration metadata,
+- warns that adopted external servers may expose different model names,
+- reminds users to wait for `/v1/models` readiness before expecting clients to work,
+- points users to the existing Connection Settings copy actions,
+- states that Direct Mode keeps clients connected directly to the active server endpoint,
+- states that MLX Server Manager does not proxy inference requests or store API keys or tokens.
+
+The intended Dashboard scan flow becomes:
+
+1. `Next Steps`: what should I do next?
+2. `Current Target`: what am I connected to?
+3. `Server State`: what is the current process/readiness/lifecycle condition?
+4. `Client Setup`: what should I paste into an OpenAI-compatible client?
+5. `Diagnostics & Logs Guidance`: where should I look when something is not working?
+6. `Profiles & Import / Export`: what configuration/profile metadata is relevant?
+
+This step should not add new network probes, change `/v1/models` readiness or detection behavior, call `/v1/chat/completions`, add API key storage, add token storage, change copy action behavior, change Start / Stop / Restart behavior, change External Server Detection / Adopt / Forget behavior, change Import / Export behavior, change import/export schema, change onboarding persistence, or alter process ownership.
+
 ## Target Information Architecture
 
 The refreshed dashboard should prioritize these areas in the first viewport:
@@ -213,13 +237,14 @@ The refreshed dashboard should prioritize these areas in the first viewport:
 1. Next Steps
 2. Current Target
 3. Server State
-4. Diagnostics & Logs
-5. Profiles / Import Export
-6. Lifecycle Controls
-7. Readiness
-8. Memory
-9. Connection Settings
-10. Detailed Logs and Diagnostics
+4. Client Setup
+5. Diagnostics & Logs
+6. Profiles / Import Export
+7. Lifecycle Controls
+8. Readiness
+9. Memory
+10. Connection Settings
+11. Detailed Logs and Diagnostics
 
 This does not require large visual decoration. The goal is a clearer operational hierarchy.
 
@@ -443,6 +468,7 @@ The future dashboard should:
 - Treat v4.6.0 as a Profiles / Import Export presentation polish step.
 - Treat v4.7.0 as an Onboarding / Next Steps presentation polish step.
 - Treat v4.8.0 as a Dashboard layout and information hierarchy polish step.
+- Treat v4.9.0 as a Copy / Client Setup presentation polish step.
 - Confirm information architecture and safety boundaries.
 - Identify current UI sections that can be reorganized without changing behavior.
 - Keep Import / Export stable release boundaries intact.
@@ -488,7 +514,7 @@ The Dashboard UI Refresh must preserve:
 
 ## Release Positioning
 
-v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity. v4.6.0 is a small app-code polish release for Profiles / Import Export clarity. v4.7.0 is a small app-code polish release for Onboarding / Next Steps clarity. v4.8.0 is a small app-code polish release for layout and information hierarchy clarity.
+v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity. v4.6.0 is a small app-code polish release for Profiles / Import Export clarity. v4.7.0 is a small app-code polish release for Onboarding / Next Steps clarity. v4.8.0 is a small app-code polish release for layout and information hierarchy clarity. v4.9.0 is a small app-code polish release for Copy / Client Setup clarity.
 
 v4.1.0 does not:
 
@@ -500,4 +526,4 @@ v4.1.0 does not:
 - create a new app binary,
 - create a release asset.
 
-v4.2.0, v4.3.0, v4.4.0, v4.5.0, v4.6.0, v4.7.0, and v4.8.0 change SwiftUI view code and therefore require new unsigned app zips when released. They still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, import/export schema, onboarding persistence, or external process ownership.
+v4.2.0, v4.3.0, v4.4.0, v4.5.0, v4.6.0, v4.7.0, v4.8.0, and v4.9.0 change SwiftUI view code and therefore require new unsigned app zips when released. They still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, import/export schema, onboarding persistence, API key/token persistence, or external process ownership.
