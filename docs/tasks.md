@@ -1498,6 +1498,35 @@
    - It is not the full v5.0.0 Dashboard UI Refresh v1.
    - Because app code changed, v4.6.0 will need a new unsigned app zip when released.
 
+## v4.7.0 Completed: Dashboard Onboarding / Next Steps Polish
+
+1. Add display-only Next Steps guidance.
+   - Show what users should consider next for stopped, starting, ready, external, adopted, failed, and unknown states.
+   - Clarify first-run / no-target paths without adding an onboarding wizard.
+   - Keep guidance static and display-only.
+2. Clarify managed and external paths.
+   - Explain that managed Start uses the selected profile.
+   - Explain that external adoption is connection context only.
+   - Explain that Import Profiles can help restore profile metadata.
+3. Clarify readiness and Direct Mode.
+   - Ready means `/v1/models` responded successfully.
+   - Running and Ready remain separate concepts.
+   - OpenAI-compatible clients connect directly to `mlx_lm.server` or the adopted external endpoint.
+4. Preserve behavior.
+   - No Start / Stop / Restart behavior change.
+   - No External Server Detection / Adopt / Forget behavior change.
+   - No readiness behavior change.
+   - No new network calls.
+   - No automatic diagnostics execution.
+   - No onboarding persistence or user tracking.
+   - No Import / Export behavior or schema change.
+   - No model download or deletion.
+   - No external server ownership change.
+5. Release note.
+   - v4.7.0 is a small app-code polish release for Dashboard Onboarding / Next Steps guidance.
+   - It is not the full v5.0.0 Dashboard UI Refresh v1.
+   - Because app code changed, v4.7.0 will need a new unsigned app zip when released.
+
 ## Later
 
 - v5.0.0 candidate: Dashboard UI Refresh v1 implementation.

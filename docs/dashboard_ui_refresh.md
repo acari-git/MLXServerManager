@@ -2,7 +2,7 @@
 
 ## Purpose
 
-v4.1.0 is a documentation-only design step for a future Dashboard UI Refresh. v4.2.0 adds the first small app-code foundation for that direction by introducing reusable dashboard display structure and clearer Current Target / Server State presentation. v4.3.0 polishes the Current Target card copy and state grouping. v4.4.0 polishes the Server State card copy and state grouping. v4.5.0 adds display-only Logs / Diagnostics guidance for readiness and availability troubleshooting. v4.6.0 adds display-only Profiles / Import Export guidance. The goal is to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, or process ownership boundaries.
+v4.1.0 is a documentation-only design step for a future Dashboard UI Refresh. v4.2.0 adds the first small app-code foundation for that direction by introducing reusable dashboard display structure and clearer Current Target / Server State presentation. v4.3.0 polishes the Current Target card copy and state grouping. v4.4.0 polishes the Server State card copy and state grouping. v4.5.0 adds display-only Logs / Diagnostics guidance for readiness and availability troubleshooting. v4.6.0 adds display-only Profiles / Import Export guidance. v4.7.0 adds display-only Onboarding / Next Steps guidance. The goal is to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, onboarding persistence, or process ownership boundaries.
 
 The refreshed dashboard should help users quickly answer:
 
@@ -160,6 +160,29 @@ The guidance card should answer:
 - what Import Preview, Rename, and Replace mean.
 
 It should not change Import / Export behavior, schema, validation, Rename, Replace, profile persistence, selected profile behavior, lifecycle behavior, or readiness behavior.
+
+## v4.7.0 Onboarding / Next Steps Polish
+
+v4.7.0 adds a display-only Dashboard guidance card for first-run and returning-user next steps:
+
+- explains the immediate next step for stopped, starting, ready, external, adopted, failed, and unknown states,
+- distinguishes managed Start from external server adoption,
+- explains that selected profiles are used for managed launch,
+- points users toward Import Profiles as metadata-only setup help,
+- states that Ready means `/v1/models` responded successfully,
+- reiterates Direct Mode in dashboard-friendly language,
+- repeats that no automatic Start, Adopt, diagnostics, restart, kill, model download, or model deletion occurs.
+
+The guidance card should answer:
+
+- what users should do first when no target is active,
+- whether they should start a managed server or adopt an external server,
+- what a selected profile contributes to managed Start,
+- what readiness means after Start or Adopt,
+- where to look if readiness fails,
+- what MLX Server Manager intentionally does not do automatically.
+
+It should not add an onboarding flow, modal, persistence flag, user tracking, background checks, automatic diagnostics, new network calls, lifecycle changes, Import / Export changes, selected profile changes, or process ownership changes.
 
 ## Target Information Architecture
 
@@ -342,6 +365,8 @@ Dashboard Import / Export guidance should stay high-level and should not duplica
 
 First-run guidance should remain short and state-aware. It can live near the top of the dashboard when setup is incomplete, then collapse or become less prominent once the app is configured.
 
+Dashboard Next Steps guidance should remain static and display-only. It can summarize the first action users should consider for the current state, but it must not become a wizard, store completion state, trigger automatic checks, or perform lifecycle actions.
+
 Diagnostics should stay close to setup state:
 
 - executable path,
@@ -394,6 +419,7 @@ The future dashboard should:
 - Treat v4.4.0 as a Server State presentation polish step.
 - Treat v4.5.0 as a Logs / Diagnostics guidance polish step.
 - Treat v4.6.0 as a Profiles / Import Export presentation polish step.
+- Treat v4.7.0 as an Onboarding / Next Steps presentation polish step.
 - Confirm information architecture and safety boundaries.
 - Identify current UI sections that can be reorganized without changing behavior.
 - Keep Import / Export stable release boundaries intact.
@@ -439,7 +465,7 @@ The Dashboard UI Refresh must preserve:
 
 ## Release Positioning
 
-v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity. v4.6.0 is a small app-code polish release for Profiles / Import Export clarity.
+v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity. v4.6.0 is a small app-code polish release for Profiles / Import Export clarity. v4.7.0 is a small app-code polish release for Onboarding / Next Steps clarity.
 
 v4.1.0 does not:
 
@@ -451,4 +477,4 @@ v4.1.0 does not:
 - create a new app binary,
 - create a release asset.
 
-v4.2.0, v4.3.0, v4.4.0, v4.5.0, and v4.6.0 change SwiftUI view code and therefore require new unsigned app zips when released. They still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, import/export schema, or external process ownership.
+v4.2.0, v4.3.0, v4.4.0, v4.5.0, v4.6.0, and v4.7.0 change SwiftUI view code and therefore require new unsigned app zips when released. They still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, import/export schema, onboarding persistence, or external process ownership.

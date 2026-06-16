@@ -16,6 +16,13 @@ struct DashboardOverviewView: View {
             subtitle: "Current target, server state, and troubleshooting hints at a glance. Lifecycle actions remain explicit below."
         ) {
             VStack(alignment: .leading, spacing: 12) {
+                DashboardNextStepsCard(
+                    runtimeState: runtimeState,
+                    targetSummary: targetSummary,
+                    selectedModel: selectedModel
+                )
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+
                 HStack(alignment: .top, spacing: 12) {
                     DashboardCurrentTargetCard(
                         summary: targetSummary,
@@ -79,6 +86,196 @@ struct DashboardSectionView<Content: View>: View {
             content
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct DashboardNextStepsCard: View {
+    let runtimeState: ModelRuntimeState
+    let targetSummary: ConnectionTargetSummary
+    let selectedModel: ModelConfig?
+
+    var body: some View {
+        DashboardStatusCard(
+            title: "Next Steps",
+            systemImage: "list.bullet.clipboard",
+            accentColor: display.accentColor
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(display.title)
+                        .font(.callout.weight(.semibold))
+
+                    Text(display.message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Divider()
+
+                HStack(alignment: .top, spacing: 12) {
+                    DashboardKeyValueRow(label: "Primary Step", value: display.primaryStep)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    DashboardKeyValueRow(label: "Selected Profile", value: display.selectedProfile)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack(alignment: .top, spacing: 12) {
+                    DashboardKeyValueRow(label: "Managed Path", value: display.managedPath)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    DashboardKeyValueRow(label: "External Path", value: display.externalPath)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack(alignment: .top, spacing: 12) {
+                    DashboardKeyValueRow(label: "Readiness", value: display.readiness)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    DashboardKeyValueRow(label: "Direct Mode", value: display.directMode)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Label(display.safetyNote, systemImage: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var display: DashboardNextStepsDisplay {
+        DashboardNextStepsDisplay(
+            runtimeState: runtimeState,
+            targetSummary: targetSummary,
+            selectedModel: selectedModel
+        )
+    }
+}
+
+private struct DashboardNextStepsDisplay {
+    let title: String
+    let message: String
+    let primaryStep: String
+    let selectedProfile: String
+    let managedPath: String
+    let externalPath: String
+    let readiness: String
+    let directMode: String
+    let safetyNote: String
+    let accentColor: Color
+
+    init(
+        runtimeState: ModelRuntimeState,
+        targetSummary: ConnectionTargetSummary,
+        selectedModel: ModelConfig?
+    ) {
+        selectedProfile = Self.selectedProfileText(selectedModel)
+        managedPath = Self.managedPathText(selectedModel)
+        externalPath = "Adopt a detected external endpoint only when you want connection context; lifecycle and logs stay external."
+        directMode = "\(targetSummary.directModeNote). No proxy or chat UI."
+
+        switch runtimeState {
+        case .stopped, .portAvailable:
+            title = "Choose how to connect"
+            message = "Start a managed server from the selected profile, or adopt an already-running external server after it is detected."
+            primaryStep = selectedModel == nil
+                ? "Create, select, or import a profile before managed Start."
+                : "Run Diagnostics if needed, then press Start for a managed server."
+            readiness = "Ready appears after /v1/models responds successfully."
+            safetyNote = "Import Profiles restores metadata only; it does not download models or start servers."
+            accentColor = .blue
+        case .externalServerDetected:
+            title = "External endpoint is available"
+            message = "A compatible server responded on the selected endpoint, but it is not managed by MLX Server Manager."
+            primaryStep = "Adopt External Server to use it as connection context, or leave it unmanaged."
+            readiness = "Detection is based on /v1/models responding successfully."
+            safetyNote = "Adopt is never process ownership. Stop and Restart remain unavailable for this external process."
+            accentColor = .orange
+        case .adoptedExternalServer:
+            title = "External endpoint is adopted"
+            message = "Use Connection Settings for clients, or Forget External Server when this app-side context is no longer useful."
+            primaryStep = "Copy Base URL, Model ID, API key placeholder, or client config."
+            readiness = "Readiness describes endpoint response, not external process ownership."
+            safetyNote = "Forget External Server clears context only and does not stop the server."
+            accentColor = .orange
+        case .starting, .loading, .checkingReady:
+            title = "Wait for readiness"
+            message = "The target is not ready until /v1/models responds successfully."
+            primaryStep = "Watch state and logs before pointing clients at the endpoint."
+            readiness = "Running and Ready are separate states."
+            safetyNote = "The app does not send inference requests, auto-restart, or kill processes while waiting."
+            accentColor = .orange
+        case let .ready(_, _, processIdentifier):
+            if processIdentifier != nil {
+                title = "Managed server is ready"
+                message = "The selected managed endpoint is ready for OpenAI-compatible clients."
+                primaryStep = "Copy connection settings and paste them into your client."
+                safetyNote = "Stop and Restart affect only this app-managed process."
+            } else {
+                title = "Endpoint is ready"
+                message = "The endpoint responded to readiness, but no app-managed pid is attached."
+                primaryStep = "Use connection settings and verify process ownership outside the app."
+                safetyNote = "The app does not infer ownership from readiness alone."
+            }
+            readiness = "Ready means /v1/models responded successfully."
+            accentColor = .green
+        case .stopping:
+            title = "Managed server is stopping"
+            message = "The app is stopping only the app-managed process."
+            primaryStep = "Wait for stopped state before starting again or changing runtime expectations."
+            readiness = "Readiness is unavailable while stopping."
+            safetyNote = "External servers are not affected by managed Stop."
+            accentColor = .orange
+        case .checkingPort:
+            title = "Checking endpoint availability"
+            message = "The app is checking whether the selected host and port can be used safely."
+            primaryStep = "Wait for the port check result before pressing Start."
+            readiness = "Port availability is not readiness."
+            safetyNote = "Port checks do not start, stop, adopt, or inspect external processes."
+            accentColor = .orange
+        case .portBusy:
+            title = "Endpoint needs attention"
+            message = "The selected port is busy. Confirm whether it is the server you intend to use."
+            primaryStep = "Change port, stop your own external server manually, or adopt only after detection confirms compatibility."
+            readiness = "Busy does not mean ready; /v1/models must respond."
+            safetyNote = "The app does not kill or take ownership of busy external processes."
+            accentColor = .red
+        case .portCheckFailed, .readyCheckFailed, .error:
+            title = "Check setup and logs"
+            message = "The current state needs manual review before clients rely on this endpoint."
+            primaryStep = "Check host, port, selected profile, diagnostics, and available logs."
+            readiness = "Readiness has not been confirmed."
+            safetyNote = "No automatic restart, cleanup, model download, or process takeover is attempted."
+            accentColor = .red
+        case .unknown:
+            title = "State is unclear"
+            message = "The app cannot confidently describe what should happen next."
+            primaryStep = "Review logs, rerun diagnostics, or check readiness manually."
+            readiness = "Unknown until a check succeeds or fails clearly."
+            safetyNote = "Unknown state does not trigger automatic lifecycle actions."
+            accentColor = .yellow
+        }
+    }
+
+    private static func selectedProfileText(_ selectedModel: ModelConfig?) -> String {
+        guard let selectedModel else {
+            return "No selected profile. Create, select, or import profile metadata first."
+        }
+
+        let displayName = selectedModel.displayName.isEmpty
+            ? selectedModel.modelID
+            : selectedModel.displayName
+        return "\(displayName) - \(selectedModel.modelID)"
+    }
+
+    private static func managedPathText(_ selectedModel: ModelConfig?) -> String {
+        guard let selectedModel else {
+            return "Managed Start needs a selected profile with model ID, host, and port."
+        }
+
+        return "Start launches app-managed mlx_lm.server using \(selectedModel.host):\(selectedModel.serverPort)."
     }
 }
 
