@@ -2,7 +2,7 @@
 
 ## Purpose
 
-v4.1.0 is a documentation-only design step for a future Dashboard UI Refresh. v4.2.0 adds the first small app-code foundation for that direction by introducing reusable dashboard display structure and clearer Current Target / Server State presentation. v4.3.0 polishes the Current Target card copy and state grouping. v4.4.0 polishes the Server State card copy and state grouping. The goal is to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, or process ownership boundaries.
+v4.1.0 is a documentation-only design step for a future Dashboard UI Refresh. v4.2.0 adds the first small app-code foundation for that direction by introducing reusable dashboard display structure and clearer Current Target / Server State presentation. v4.3.0 polishes the Current Target card copy and state grouping. v4.4.0 polishes the Server State card copy and state grouping. v4.5.0 adds display-only Logs / Diagnostics guidance for readiness and availability troubleshooting. The goal is to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, or process ownership boundaries.
 
 The refreshed dashboard should help users quickly answer:
 
@@ -118,6 +118,26 @@ The Server State card should answer:
 
 It should not change lifecycle behavior. Start, Stop, Restart, Adopt, and Forget remain explicit existing controls outside the display-only card. External servers remain connection context only and are not stopped, restarted, monitored for memory, or owned by MLX Server Manager.
 
+## v4.5.0 Logs / Diagnostics Guidance Polish
+
+v4.5.0 adds a display-only Dashboard guidance card for logs, diagnostics, readiness, and availability:
+
+- explains where to look when `/v1/models` readiness fails,
+- distinguishes managed server logs from external server connection context,
+- clarifies that external server logs must be checked where the external server was launched,
+- explains port busy / unavailable states without automatic remediation,
+- reminds users that Start, Stop, Restart, Adopt, and Forget stay explicit manual actions,
+- states that readiness failures do not trigger automatic restart, kill, or ownership changes.
+
+The guidance card should answer:
+
+- where users should look next,
+- whether the issue is likely managed-process-related or external-context-related,
+- whether logs are available in MLX Server Manager,
+- what the app intentionally does not do automatically.
+
+It should not run diagnostics automatically, add background health checks, call new endpoints, change `/v1/models` readiness behavior, or perform lifecycle actions.
+
 ## Target Information Architecture
 
 The refreshed dashboard should prioritize these areas in the first viewport:
@@ -221,6 +241,8 @@ The dashboard should distinguish:
 
 Readiness display must not call `/v1/chat/completions`.
 
+Readiness guidance should explain that failure can mean the target is not running, still starting, on another port, blocked by a port conflict, or not OpenAI-compatible. Users should verify host, port, logs, and endpoint state manually.
+
 ### Memory
 
 Memory should be visible for app-managed processes only.
@@ -244,6 +266,14 @@ The refreshed dashboard should keep:
 - Clear Logs,
 - warning/error readability,
 - bounded log buffer behavior.
+
+Dashboard guidance should distinguish:
+
+- app logs,
+- managed server logs surfaced by the app,
+- external server logs that must be checked outside MLX Server Manager.
+
+Adopted external servers should not imply server log ingestion.
 
 ### Profiles
 
@@ -335,6 +365,7 @@ The future dashboard should:
 - Treat v4.2.0 as the first small app-code foundation.
 - Treat v4.3.0 as a Current Target presentation polish step.
 - Treat v4.4.0 as a Server State presentation polish step.
+- Treat v4.5.0 as a Logs / Diagnostics guidance polish step.
 - Confirm information architecture and safety boundaries.
 - Identify current UI sections that can be reorganized without changing behavior.
 - Keep Import / Export stable release boundaries intact.
@@ -380,7 +411,7 @@ The Dashboard UI Refresh must preserve:
 
 ## Release Positioning
 
-v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity.
+v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity.
 
 v4.1.0 does not:
 
@@ -392,4 +423,4 @@ v4.1.0 does not:
 - create a new app binary,
 - create a release asset.
 
-v4.2.0, v4.3.0, and v4.4.0 change SwiftUI view code and therefore require new unsigned app zips when released. They still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, or external process ownership.
+v4.2.0, v4.3.0, v4.4.0, and v4.5.0 change SwiftUI view code and therefore require new unsigned app zips when released. They still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, or external process ownership.

@@ -1439,6 +1439,34 @@
    - It is not the full v5.0.0 Dashboard UI Refresh v1.
    - Because app code changed, v4.4.0 will need a new unsigned app zip when released.
 
+## v4.5.0 Completed: Dashboard Logs / Diagnostics Polish
+
+1. Add display-only Dashboard guidance.
+   - Add concise guidance for logs, diagnostics, readiness failures, port busy states, unavailable targets, and external server context.
+   - Explain where users should look next without turning the dashboard into a troubleshooting wizard.
+2. Clarify managed vs external logs.
+   - Managed server logs are available only for app-started servers.
+   - External server logs must be checked where the external server was launched.
+   - Adopted external servers remain connection context only.
+3. Clarify readiness and availability.
+   - Ready means `/v1/models` responded successfully.
+   - Readiness failure should prompt users to check host, port, server logs, and whether the target is still starting or OpenAI-compatible.
+   - Port busy / unavailable guidance stays informational and manual.
+4. Preserve behavior.
+   - No Start / Stop / Restart behavior change.
+   - No automatic diagnostics execution.
+   - No background health checks.
+   - No new network calls.
+   - No `/v1/models` behavior change.
+   - No `/v1/chat/completions` calls by the app.
+   - No Import / Export behavior change.
+   - No model profile schema change.
+   - No external server ownership change.
+5. Release note.
+   - v4.5.0 is a small app-code polish release for Dashboard logs, diagnostics, and readiness guidance.
+   - It is not the full v5.0.0 Dashboard UI Refresh v1.
+   - Because app code changed, v4.5.0 will need a new unsigned app zip when released.
+
 ## Later
 
 - v5.0.0 candidate: Dashboard UI Refresh v1 implementation.

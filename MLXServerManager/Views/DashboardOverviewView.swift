@@ -11,21 +11,29 @@ struct DashboardOverviewView: View {
     var body: some View {
         DashboardSectionView(
             title: "Dashboard",
-            subtitle: "Current target and server state at a glance. Lifecycle actions remain explicit below."
+            subtitle: "Current target, server state, and troubleshooting hints at a glance. Lifecycle actions remain explicit below."
         ) {
-            HStack(alignment: .top, spacing: 12) {
-                DashboardCurrentTargetCard(
-                    summary: targetSummary,
-                    runtimeState: runtimeState
-                )
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
+                    DashboardCurrentTargetCard(
+                        summary: targetSummary,
+                        runtimeState: runtimeState
+                    )
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
 
-                DashboardServerStateCard(
+                    DashboardServerStateCard(
+                        runtimeState: runtimeState,
+                        memoryUsageText: memoryUsageText,
+                        selectedModelText: selectedModelText,
+                        runningModelText: runningModelText,
+                        restartRequired: restartRequired
+                    )
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+
+                DashboardDiagnosticsGuidanceCard(
                     runtimeState: runtimeState,
-                    memoryUsageText: memoryUsageText,
-                    selectedModelText: selectedModelText,
-                    runningModelText: runningModelText,
-                    restartRequired: restartRequired
+                    targetSummary: targetSummary
                 )
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
@@ -485,6 +493,219 @@ private struct DashboardServerStateDisplay {
             lifecycleNote = "The app does not infer or take ownership of unknown processes."
             accentColor = .yellow
         }
+    }
+}
+
+struct DashboardDiagnosticsGuidanceCard: View {
+    let runtimeState: ModelRuntimeState
+    let targetSummary: ConnectionTargetSummary
+
+    var body: some View {
+        DashboardStatusCard(
+            title: "Diagnostics & Logs Guidance",
+            systemImage: "stethoscope",
+            accentColor: display.accentColor
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(display.title)
+                        .font(.callout.weight(.semibold))
+
+                    Text(display.message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Divider()
+
+                HStack(alignment: .top, spacing: 12) {
+                    DashboardKeyValueRow(label: "Next Step", value: display.nextStep)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    DashboardKeyValueRow(label: "Readiness", value: display.readiness)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack(alignment: .top, spacing: 12) {
+                    DashboardKeyValueRow(label: "Logs", value: display.logs)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    DashboardKeyValueRow(label: "Automation", value: display.automation)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Label(display.safetyNote, systemImage: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var display: DashboardDiagnosticsGuidanceDisplay {
+        DashboardDiagnosticsGuidanceDisplay(
+            runtimeState: runtimeState,
+            targetSummary: targetSummary
+        )
+    }
+}
+
+private struct DashboardDiagnosticsGuidanceDisplay {
+    let title: String
+    let message: String
+    let nextStep: String
+    let readiness: String
+    let logs: String
+    let automation: String
+    let safetyNote: String
+    let accentColor: Color
+
+    init(runtimeState: ModelRuntimeState, targetSummary: ConnectionTargetSummary) {
+        switch runtimeState {
+        case .stopped:
+            title = "No active server target"
+            message = "Start a managed server or adopt a detected external server through the existing controls."
+            nextStep = "Run Diagnostics or press Start after setup is complete."
+            readiness = "Not checked until a server target exists."
+            logs = "Only app action logs are available while stopped."
+            automation = "No background diagnostics or automatic Start is running."
+            safetyNote = "The app waits for explicit user actions before changing lifecycle state."
+            accentColor = .secondary
+        case .starting, .loading:
+            title = "Managed server is starting"
+            message = "The app-managed process is attached or launching, but readiness may still be pending."
+            nextStep = "Watch managed logs and wait for Ready before using clients."
+            readiness = "Ready requires /v1/models to respond successfully."
+            logs = "Managed server logs are available in the Logs section."
+            automation = "The app does not send inference requests while waiting."
+            safetyNote = "Running does not always mean ready; readiness and process state are separate."
+            accentColor = .orange
+        case let .ready(_, _, processIdentifier):
+            if processIdentifier != nil {
+                title = "Managed server ready"
+                message = "The managed endpoint passed readiness and can be used by OpenAI-compatible clients."
+                nextStep = "Copy connection settings or continue monitoring logs."
+                logs = "Managed server logs remain available in the Logs section."
+            } else {
+                title = "Endpoint ready"
+                message = "The endpoint passed readiness, but no app-managed pid is attached."
+                nextStep = "Use connection settings, and check the endpoint owner for process logs."
+                logs = "Only app logs are available unless this app started the server."
+            }
+            readiness = "Ready means /v1/models responded successfully."
+            automation = "No automatic restart or request routing is active."
+            safetyNote = "Clients connect directly to the target endpoint in Direct Mode."
+            accentColor = .green
+        case .stopping:
+            title = "Managed server is stopping"
+            message = "The app is stopping only the app-managed process."
+            nextStep = "Wait for stopped state, then inspect logs if shutdown fails."
+            readiness = "Unavailable while the managed process is stopping."
+            logs = "Managed server logs may show shutdown details."
+            automation = "External processes are not affected by this stop operation."
+            safetyNote = "Stop remains scoped to the app-managed process only."
+            accentColor = .orange
+        case let .checkingPort(host, port):
+            title = "Checking port availability"
+            message = "The app is checking whether \(host):\(port) is safe for a managed launch."
+            nextStep = "Wait for the port check result."
+            readiness = "Readiness is not checked during a port availability check."
+            logs = "App logs show the port check result."
+            automation = "Port checks do not start, stop, or adopt servers."
+            safetyNote = "This check is informational and does not take ownership of processes."
+            accentColor = .orange
+        case .portAvailable:
+            title = "Port is available"
+            message = "The selected port is available for an explicit managed Start."
+            nextStep = "Press Start when you want MLX Server Manager to launch the server."
+            readiness = "Not checked until a server is running or an endpoint is checked."
+            logs = "App logs will show the next lifecycle action."
+            automation = "No server is started automatically."
+            safetyNote = "Availability is not a lifecycle action."
+            accentColor = .green
+        case let .portBusy(host, port):
+            title = "Port is busy"
+            message = "\(host):\(port) is already in use by another process or service."
+            nextStep = "Change port, check the external owner, or adopt it only if readiness confirms the intended endpoint."
+            readiness = "Busy does not mean ready; use /v1/models readiness to confirm compatibility."
+            logs = "External process logs are not available in this app."
+            automation = "The app does not kill or take ownership of the busy process."
+            safetyNote = "Port busy guidance is informational; remediation stays manual."
+            accentColor = .red
+        case .externalServerDetected:
+            title = "External server detected"
+            message = "A compatible endpoint responded, but MLX Server Manager does not own the process."
+            nextStep = "Adopt only if you want to use this endpoint as connection context."
+            readiness = "Detection is based on /v1/models responding successfully."
+            logs = "Check external logs in the terminal or app that launched the server."
+            automation = "Adopt is not automatic and does not change process ownership."
+            safetyNote = "Stop and Restart remain unavailable for detected external servers."
+            accentColor = .orange
+        case .adoptedExternalServer:
+            title = "External context adopted"
+            message = "The endpoint is saved as connection context only."
+            nextStep = "Use copied connection settings, or Forget External Server to clear app-side context."
+            readiness = "The app can describe connection status, not external process ownership."
+            logs = "External server logs must be checked outside MLX Server Manager."
+            automation = "Forget removes context only; it does not stop the external server."
+            safetyNote = "Adopted external servers are not monitored for memory or managed logs."
+            accentColor = .orange
+        case let .portCheckFailed(host, port, _):
+            title = "Port check needs attention"
+            message = "The app could not determine the state of \(host):\(port)."
+            nextStep = "Verify host, port, local networking, and app logs."
+            readiness = "Readiness was not confirmed."
+            logs = "Check app logs for the port check failure message."
+            automation = "No automatic recovery is attempted."
+            safetyNote = "The app does not start or stop processes after a failed port check."
+            accentColor = .red
+        case let .checkingReady(host, port):
+            title = "Checking readiness"
+            message = "The app is checking \(host):\(port) with /v1/models."
+            nextStep = "Wait for the readiness result before troubleshooting further."
+            readiness = "/v1/models request is in progress."
+            logs = Self.isExternalTarget(targetSummary)
+                ? "External process logs are outside this app."
+                : "Managed logs are available if the app started the process."
+            automation = "Readiness checks do not send chat completions."
+            safetyNote = "Readiness checks do not change lifecycle state."
+            accentColor = .orange
+        case let .readyCheckFailed(host, port, _):
+            title = "Readiness failed"
+            message = "/v1/models did not confirm readiness for \(host):\(port)."
+            nextStep = "Verify host, port, server logs, and whether the target is still starting or OpenAI-compatible."
+            readiness = "Failed - /v1/models did not succeed."
+            logs = Self.isExternalTarget(targetSummary)
+                ? "Check external logs where that server was launched."
+                : "Check managed server logs and endpoint settings."
+            automation = "The app does not automatically restart or terminate processes."
+            safetyNote = "Readiness failure is diagnostic information, not an ownership change."
+            accentColor = .red
+        case .error:
+            title = "Error state"
+            message = "The app reported an error for the current server state."
+            nextStep = "Check app logs, managed server logs if available, and current settings."
+            readiness = "Unavailable until the error is resolved and readiness succeeds."
+            logs = "Logs are the first place to inspect the failure detail."
+            automation = "No automatic recovery is attempted."
+            safetyNote = "Use explicit lifecycle controls after reviewing the failure."
+            accentColor = .red
+        case .unknown:
+            title = "Unknown state"
+            message = "The app cannot confidently describe the current server state."
+            nextStep = "Check logs and rerun diagnostics or readiness checks as needed."
+            readiness = "Unknown until a check succeeds or fails clearly."
+            logs = "App logs may explain the unknown state."
+            automation = "The app does not infer ownership of unknown processes."
+            safetyNote = "Unknown state does not trigger automatic Start, Stop, or Restart."
+            accentColor = .yellow
+        }
+    }
+
+    private static func isExternalTarget(_ targetSummary: ConnectionTargetSummary) -> Bool {
+        targetSummary.targetType.localizedCaseInsensitiveContains("external")
+            || targetSummary.ownershipNote.localizedCaseInsensitiveContains("external")
     }
 }
 
