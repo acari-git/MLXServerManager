@@ -12,8 +12,8 @@ struct DashboardOverviewView: View {
 
     var body: some View {
         DashboardSectionView(
-            title: "Dashboard",
-            subtitle: "Scan in order: next action, target/state, client setup, troubleshooting, then profile context. Lifecycle actions remain explicit below."
+            title: "Dashboard v1",
+            subtitle: "Stable scan: next action, target/state, client setup, troubleshooting, then profile context. Lifecycle actions remain explicit below."
         ) {
             VStack(alignment: .leading, spacing: 14) {
                 DashboardGroupHeader(

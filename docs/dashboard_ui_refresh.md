@@ -2,7 +2,7 @@
 
 ## Purpose
 
-v4.1.0 is a documentation-only design step for a future Dashboard UI Refresh. v4.2.0 adds the first small app-code foundation for that direction by introducing reusable dashboard display structure and clearer Current Target / Server State presentation. v4.3.0 polishes the Current Target card copy and state grouping. v4.4.0 polishes the Server State card copy and state grouping. v4.5.0 adds display-only Logs / Diagnostics guidance for readiness and availability troubleshooting. v4.6.0 adds display-only Profiles / Import Export guidance. v4.7.0 adds display-only Onboarding / Next Steps guidance. v4.8.0 polishes Dashboard layout, card ordering, and information hierarchy. v4.9.0 adds display-only Client Setup guidance for OpenAI-compatible clients and copyable connection context. The goal is to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, onboarding persistence, or process ownership boundaries.
+v4.1.0 started the Dashboard UI Refresh design. v4.2.0 through v4.9.0 built the Dashboard in small app-code steps: foundation cards, Current Target polish, Server State polish, Logs / Diagnostics guidance, Profiles / Import Export guidance, Onboarding / Next Steps guidance, layout hierarchy, and Client Setup guidance. v5.0.0 finalizes Dashboard UI Refresh v1 as the current stable display-oriented overview. The goal remains to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, onboarding persistence, API key/token persistence, or process ownership boundaries.
 
 The refreshed dashboard should help users quickly answer:
 
@@ -41,17 +41,21 @@ OpenAI-compatible client -> mlx_lm.server or adopted external server -> MLX mode
 
 MLX Server Manager remains a local control surface for process management, state visibility, profile metadata, diagnostics, logs, memory display, and connection settings. It does not sit in the inference request path.
 
-## Current UI Limitations
+## Dashboard v1 Stable Scope
 
-The current app exposes the required functionality, but the dashboard can become dense as features accumulate:
+Dashboard UI Refresh v1 is the current stable dashboard surface. It covers:
 
-- managed server status, selected model, running model, adopted external state, and restart-required state are visible but distributed,
-- Connection Settings has the best target summary, but it is not always the first place users look,
-- Stop / Restart affordances need to remain visibly scoped to app-managed processes,
-- adopted external server state needs stronger separation from managed process ownership,
-- logs and diagnostics are useful but compete with profile editing and connection-copy actions,
-- stable Import / Export actions are available but should be easier to discover without implying model download or install behavior,
-- first-run guidance should be visible without turning into a wizard or hidden automation.
+- Next Steps,
+- Current Target,
+- Server State,
+- Client Setup,
+- Diagnostics & Logs Guidance,
+- Profiles & Import / Export guidance,
+- Direct Mode and lifecycle boundaries,
+- managed vs adopted external server ownership boundaries,
+- metadata-only Import / Export boundaries.
+
+Dashboard v1 is intentionally not a full app shell redesign. Larger layout work such as sidebar navigation, table-based model management, a right-side inspector, richer metrics widgets, or dedicated client panels should be designed separately after v5.0.0.
 
 ## v4.2.0 Foundation Implementation
 
@@ -230,9 +234,31 @@ The intended Dashboard scan flow becomes:
 
 This step should not add new network probes, change `/v1/models` readiness or detection behavior, call `/v1/chat/completions`, add API key storage, add token storage, change copy action behavior, change Start / Stop / Restart behavior, change External Server Detection / Adopt / Forget behavior, change Import / Export behavior, change import/export schema, change onboarding persistence, or alter process ownership.
 
+## v5.0.0 Dashboard UI Refresh v1
+
+v5.0.0 finalizes the Dashboard UI Refresh v1 surface:
+
+- presents the Dashboard as a stable v1 overview,
+- keeps the scan flow explicit and consistent,
+- keeps each card responsibility clear,
+- preserves all existing lifecycle and connection behavior,
+- keeps the dashboard display-oriented rather than action-routing-oriented,
+- leaves larger app layout redesign work for separate future planning.
+
+Dashboard v1 answers:
+
+1. `Next Steps`: what should I do next?
+2. `Current Target`: what am I connected to?
+3. `Server State`: what is the current process/readiness/lifecycle condition?
+4. `Client Setup`: what should I paste into an OpenAI-compatible client?
+5. `Diagnostics & Logs Guidance`: where should I look when something is not working?
+6. `Profiles & Import / Export`: what configuration/profile metadata is relevant?
+
+This release should not add new panels, move runtime controls into a new shell, add a sidebar, add a model table redesign, add background metrics widgets, change Start / Stop / Restart behavior, change Direct Mode, change readiness behavior, change Import / Export behavior, add onboarding tracking, add API key/token storage, or change external process ownership.
+
 ## Target Information Architecture
 
-The refreshed dashboard should prioritize these areas in the first viewport:
+Dashboard v1 prioritizes these areas:
 
 1. Next Steps
 2. Current Target
@@ -446,7 +472,7 @@ Stop and Restart must remain unavailable for adopted external servers.
 
 ## Accessibility and Readability
 
-The future dashboard should:
+Dashboard v1 should:
 
 - use clear text labels instead of relying only on color,
 - keep status labels short and scannable,
@@ -458,7 +484,7 @@ The future dashboard should:
 
 ## Staged Implementation Plan
 
-### v4.x Foundation
+### v4.x Foundation and v5.0.0 Stabilization
 
 - Keep v4.1.0 as the design step.
 - Treat v4.2.0 as the first small app-code foundation.
@@ -469,26 +495,31 @@ The future dashboard should:
 - Treat v4.7.0 as an Onboarding / Next Steps presentation polish step.
 - Treat v4.8.0 as a Dashboard layout and information hierarchy polish step.
 - Treat v4.9.0 as a Copy / Client Setup presentation polish step.
-- Confirm information architecture and safety boundaries.
-- Identify current UI sections that can be reorganized without changing behavior.
+- Treat v5.0.0 as the Dashboard UI Refresh v1 stabilization release.
+- Confirm the v1 information architecture and safety boundaries.
 - Keep Import / Export stable release boundaries intact.
 
-### v5.0.0 Candidate: Dashboard UI Refresh v1
+### Completed v5.0.0: Dashboard UI Refresh v1
 
-Potential v5.0.0 implementation should focus on layout and state presentation only:
+Dashboard UI Refresh v1 focuses on layout and state presentation only:
 
 - Current Target summary in first viewport.
-- clearer Server State and Active Profile sections.
-- grouped lifecycle controls with safer disabled-state explanations.
+- clearer Server State and profile context sections.
+- visible lifecycle boundaries and managed-process-only expectations.
 - managed vs external state labels.
-- visible readiness and memory summaries.
-- improved placement for logs, diagnostics, profiles, and Import / Export.
+- visible readiness, memory, client setup, logs, diagnostics, profiles, and Import / Export guidance.
 
-v5.0.0 should not add new runtime features unless separately designed.
+v5.0.0 does not add runtime features.
 
-### Later Optional Work
+### Later Optional Work After Dashboard v1
 
-- screenshot refresh after the dashboard UI changes,
+- screenshot refresh after Dashboard v1,
+- broader app layout refresh,
+- sidebar navigation,
+- model list table,
+- model detail inspector,
+- logs panel refresh,
+- system metrics panel,
 - keyboard shortcut polish,
 - compact mode,
 - deeper log filtering,
@@ -514,7 +545,7 @@ The Dashboard UI Refresh must preserve:
 
 ## Release Positioning
 
-v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity. v4.6.0 is a small app-code polish release for Profiles / Import Export clarity. v4.7.0 is a small app-code polish release for Onboarding / Next Steps clarity. v4.8.0 is a small app-code polish release for layout and information hierarchy clarity. v4.9.0 is a small app-code polish release for Copy / Client Setup clarity.
+v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity. v4.6.0 is a small app-code polish release for Profiles / Import Export clarity. v4.7.0 is a small app-code polish release for Onboarding / Next Steps clarity. v4.8.0 is a small app-code polish release for layout and information hierarchy clarity. v4.9.0 is a small app-code polish release for Copy / Client Setup clarity. v5.0.0 is the Dashboard UI Refresh v1 stabilization release.
 
 v4.1.0 does not:
 
@@ -526,4 +557,4 @@ v4.1.0 does not:
 - create a new app binary,
 - create a release asset.
 
-v4.2.0, v4.3.0, v4.4.0, v4.5.0, v4.6.0, v4.7.0, v4.8.0, and v4.9.0 change SwiftUI view code and therefore require new unsigned app zips when released. They still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, import/export schema, onboarding persistence, API key/token persistence, or external process ownership.
+v4.2.0, v4.3.0, v4.4.0, v4.5.0, v4.6.0, v4.7.0, v4.8.0, v4.9.0, and v5.0.0 change SwiftUI view code and therefore require new unsigned app zips when released. They still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, import/export schema, onboarding persistence, API key/token persistence, or external process ownership.

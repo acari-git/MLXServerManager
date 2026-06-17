@@ -1583,10 +1583,46 @@
    - It is not the full v5.0.0 Dashboard UI Refresh v1.
    - Because app code changed, v4.9.0 will need a new unsigned app zip when released.
 
+## v5.0.0 Completed: Dashboard UI Refresh v1
+
+1. Stabilize Dashboard v1.
+   - Present Dashboard as the stable v1 overview.
+   - Keep the scan order: Next Steps, Target and State, Client Setup, Troubleshooting, Profile Context.
+   - Keep card responsibilities clear and display-oriented.
+2. Confirm Dashboard v1 scope.
+   - Next Steps answers what to do next.
+   - Current Target answers what the app is connected to.
+   - Server State answers process, readiness, and lifecycle condition.
+   - Client Setup answers what to paste into OpenAI-compatible clients.
+   - Diagnostics & Logs answers where to look when something is not working.
+   - Profiles & Import / Export answers what metadata context is relevant.
+3. Preserve behavior.
+   - No Start / Stop / Restart behavior change.
+   - No External Server Detection / Adopt / Forget behavior change.
+   - No readiness behavior change.
+   - No new network calls.
+   - No `/v1/chat/completions` calls by the app.
+   - No API key, token, or secret persistence.
+   - No onboarding persistence or user tracking.
+   - No Import / Export behavior or schema change.
+   - No model download or deletion.
+   - No external server ownership change.
+4. Separate future work.
+   - Broader app shell redesign is future work.
+   - Sidebar navigation, model table redesign, right-side inspector, metrics widgets, and client-specific panels are not part of Dashboard v1.
+5. Release note.
+   - v5.0.0 is the Dashboard UI Refresh v1 stabilization release.
+   - Because app code changed, v5.0.0 will need a new unsigned app zip when released.
+
 ## Later
 
-- v5.0.0 candidate: Dashboard UI Refresh v1 implementation.
-- Refresh README screenshots after Dashboard UI Refresh implementation.
+- Refresh README screenshots after Dashboard UI Refresh v1.
+- Future app layout refresh design.
+- Signed/notarized distribution.
+- Model download design.
+- Deeper diagnostics design.
+- Model availability documentation.
+- Packaging polish.
 - LAN Web UI.
 - Automatic unload policies.
 - More advanced resource graphs.
