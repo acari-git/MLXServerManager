@@ -1614,6 +1614,31 @@
    - v5.0.0 is the Dashboard UI Refresh v1 stabilization release.
    - Because app code changed, v5.0.0 will need a new unsigned app zip when released.
 
+## v5.1.0 Completed: Dashboard Stable Follow-up
+
+1. Keep Dashboard v1 stable.
+   - Treat the current Dashboard v1 surface as the stable post-v5.0 overview.
+   - Avoid app shell redesign, sidebar navigation, model table redesign, right-side inspector, metrics widgets, or Hermes-specific panels.
+2. Clarify documentation.
+   - Present Dashboard v1 as the current stable dashboard.
+   - Clarify that future full-layout work is separate from Dashboard v1.
+   - Keep future layout ideas documented as optional future work.
+3. Preserve behavior.
+   - No Swift app code changes.
+   - No Start / Stop / Restart behavior change.
+   - No readiness behavior change.
+   - No new network calls.
+   - No `/v1/chat/completions` calls by the app.
+   - No External Server Detection / Adopt / Forget behavior change.
+   - No Import / Export behavior or schema change.
+   - No onboarding persistence or user tracking.
+   - No API key, token, or secret persistence.
+   - No model download or deletion.
+   - No external process ownership change.
+4. Release note.
+   - v5.1.0 is a docs-only Dashboard Stable Follow-up release.
+   - The current downloadable app binary remains the v5.0.0 unsigned app zip unless a later app-code release is created.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.

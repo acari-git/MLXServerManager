@@ -2,7 +2,7 @@
 
 ## Purpose
 
-v4.1.0 started the Dashboard UI Refresh design. v4.2.0 through v4.9.0 built the Dashboard in small app-code steps: foundation cards, Current Target polish, Server State polish, Logs / Diagnostics guidance, Profiles / Import Export guidance, Onboarding / Next Steps guidance, layout hierarchy, and Client Setup guidance. v5.0.0 finalizes Dashboard UI Refresh v1 as the current stable display-oriented overview. The goal remains to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, onboarding persistence, API key/token persistence, or process ownership boundaries.
+v4.1.0 started the Dashboard UI Refresh design. v4.2.0 through v4.9.0 built the Dashboard in small app-code steps: foundation cards, Current Target polish, Server State polish, Logs / Diagnostics guidance, Profiles / Import Export guidance, Onboarding / Next Steps guidance, layout hierarchy, and Client Setup guidance. v5.0.0 finalizes Dashboard UI Refresh v1 as the current stable display-oriented overview. v5.1.0 keeps that surface stable and clarifies future layout boundaries. The goal remains to make MLX Server Manager easier to read at a glance without changing server lifecycle behavior, Direct Mode, import/export behavior, onboarding persistence, API key/token persistence, or process ownership boundaries.
 
 The refreshed dashboard should help users quickly answer:
 
@@ -55,7 +55,7 @@ Dashboard UI Refresh v1 is the current stable dashboard surface. It covers:
 - managed vs adopted external server ownership boundaries,
 - metadata-only Import / Export boundaries.
 
-Dashboard v1 is intentionally not a full app shell redesign. Larger layout work such as sidebar navigation, table-based model management, a right-side inspector, richer metrics widgets, or dedicated client panels should be designed separately after v5.0.0.
+Dashboard v1 is intentionally not a full app shell redesign. Larger layout work such as sidebar navigation, table-based model management, a right-side inspector, richer metrics widgets, or dedicated client panels should be designed separately after Dashboard v1 and should not be treated as part of v5.1.0 stabilization.
 
 ## v4.2.0 Foundation Implementation
 
@@ -255,6 +255,18 @@ Dashboard v1 answers:
 6. `Profiles & Import / Export`: what configuration/profile metadata is relevant?
 
 This release should not add new panels, move runtime controls into a new shell, add a sidebar, add a model table redesign, add background metrics widgets, change Start / Stop / Restart behavior, change Direct Mode, change readiness behavior, change Import / Export behavior, add onboarding tracking, add API key/token storage, or change external process ownership.
+
+## v5.1.0 Dashboard Stable Follow-up
+
+v5.1.0 treats Dashboard v1 as the stable current surface and focuses on post-v5.0 documentation clarity:
+
+- keeps Dashboard v1 wording and structure stable,
+- reinforces that Dashboard v1 is display-oriented,
+- makes future full-layout work explicit and separate,
+- preserves all existing lifecycle, readiness, import/export, profile, external server, and connection behavior,
+- avoids onboarding persistence, API key/token storage, hidden background checks, and new network calls.
+
+Dashboard Stable Follow-up is not a three-column app redesign. It does not add a sidebar, model table redesign, right-side inspector, persistent system metrics widgets, Hermes-specific panels, automatic diagnostics, or any lifecycle action changes.
 
 ## Target Information Architecture
 
@@ -496,6 +508,7 @@ Dashboard v1 should:
 - Treat v4.8.0 as a Dashboard layout and information hierarchy polish step.
 - Treat v4.9.0 as a Copy / Client Setup presentation polish step.
 - Treat v5.0.0 as the Dashboard UI Refresh v1 stabilization release.
+- Treat v5.1.0 as the Dashboard Stable Follow-up documentation release.
 - Confirm the v1 information architecture and safety boundaries.
 - Keep Import / Export stable release boundaries intact.
 
@@ -527,6 +540,8 @@ v5.0.0 does not add runtime features.
 
 These should be separate scoped steps.
 
+These items are intentionally outside Dashboard Stable Follow-up. Any future layout refresh should define its own scope, behavior boundaries, screenshots, and release checklist before implementation.
+
 ## Safety Boundaries
 
 The Dashboard UI Refresh must preserve:
@@ -545,7 +560,7 @@ The Dashboard UI Refresh must preserve:
 
 ## Release Positioning
 
-v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity. v4.6.0 is a small app-code polish release for Profiles / Import Export clarity. v4.7.0 is a small app-code polish release for Onboarding / Next Steps clarity. v4.8.0 is a small app-code polish release for layout and information hierarchy clarity. v4.9.0 is a small app-code polish release for Copy / Client Setup clarity. v5.0.0 is the Dashboard UI Refresh v1 stabilization release.
+v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity. v4.6.0 is a small app-code polish release for Profiles / Import Export clarity. v4.7.0 is a small app-code polish release for Onboarding / Next Steps clarity. v4.8.0 is a small app-code polish release for layout and information hierarchy clarity. v4.9.0 is a small app-code polish release for Copy / Client Setup clarity. v5.0.0 is the Dashboard UI Refresh v1 stabilization release. v5.1.0 is a Dashboard Stable Follow-up documentation release.
 
 v4.1.0 does not:
 
@@ -557,4 +572,4 @@ v4.1.0 does not:
 - create a new app binary,
 - create a release asset.
 
-v4.2.0, v4.3.0, v4.4.0, v4.5.0, v4.6.0, v4.7.0, v4.8.0, v4.9.0, and v5.0.0 change SwiftUI view code and therefore require new unsigned app zips when released. They still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, import/export schema, onboarding persistence, API key/token persistence, or external process ownership.
+v4.2.0, v4.3.0, v4.4.0, v4.5.0, v4.6.0, v4.7.0, v4.8.0, v4.9.0, and v5.0.0 change SwiftUI view code and therefore require new unsigned app zips when released. v5.1.0 is docs-only unless app code changes are added later. These releases still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, import/export schema, onboarding persistence, API key/token persistence, or external process ownership.

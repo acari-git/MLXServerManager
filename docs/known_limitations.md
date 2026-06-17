@@ -43,6 +43,7 @@ This document lists known limitations for MLX Server Manager.
 - v4.8.0 adds display-only grouping headings and clearer Dashboard scan order, but it does not move runtime controls, add new controls, change behavior, or implement the full Dashboard UI Refresh v1.
 - v4.9.0 adds display-only Client Setup guidance for active endpoint, profile endpoint relationship, readiness before client use, and Direct Mode copy context, but it does not add client configuration automation, API key storage, token storage, new network calls, or a proxy.
 - v5.0.0 finalizes Dashboard UI Refresh v1 as the current stable display-oriented overview, but it does not implement a full app shell redesign, sidebar navigation, model table redesign, right-side inspector, persistent metrics widgets, or client-specific panels.
+- v5.1.0 keeps Dashboard v1 stable and documents future layout work separately; it does not add a three-column shell, sidebar, model table, inspector, metrics widgets, or Hermes-specific panels.
 - Future dashboard or app layout work should be treated as separate design work after Dashboard v1.
 - Dashboard UI work must continue to preserve Direct Mode, explicit lifecycle actions, managed-process-only Stop/Restart, and external server connection-context boundaries.
 

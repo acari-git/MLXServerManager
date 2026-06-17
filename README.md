@@ -133,7 +133,7 @@ Adopt External Server behavior is documented in [docs/adopt_external_server.md](
 
 Connection Settings polish is documented in [docs/connection_settings_polish.md](docs/connection_settings_polish.md). v1.9.0 implements the initial Current Target summary and expanded copy actions for Managed, External Detected, Adopted, and Not Running connection states. Direct Mode remains unchanged.
 
-Dashboard UI Refresh v1 is documented in [docs/dashboard_ui_refresh.md](docs/dashboard_ui_refresh.md). v4.2.0 through v4.9.0 built the dashboard in small display-oriented steps. v5.0.0 finalizes Dashboard v1 as the current stable overview for Next Steps, Current Target, Server State, Client Setup, Diagnostics & Logs, and Profiles / Import Export while preserving lifecycle behavior, Direct Mode, external server ownership boundaries, and Import / Export behavior.
+Dashboard UI Refresh v1 is documented in [docs/dashboard_ui_refresh.md](docs/dashboard_ui_refresh.md). v4.2.0 through v4.9.0 built the dashboard in small display-oriented steps. v5.0.0 finalizes Dashboard v1 as the current stable overview for Next Steps, Current Target, Server State, Client Setup, Diagnostics & Logs, and Profiles / Import Export while preserving lifecycle behavior, Direct Mode, external server ownership boundaries, and Import / Export behavior. v5.1.0 keeps that surface stable and documents larger layout ideas as future work rather than part of Dashboard v1.
 
 Screenshot refresh planning is documented in [docs/screenshot_refresh.md](docs/screenshot_refresh.md). Future screenshots should cover the v1.9+ Current Target summary and Adopted External Server states without exposing private paths or secrets.
 
@@ -145,9 +145,9 @@ Model Profile export and import are documented in [docs/model_profile_import_exp
 
 The current downloadable app binary asset is the latest app-code release:
 
-- `MLXServerManager-v4.9.0-unsigned.zip`
+- `MLXServerManager-v5.0.0-unsigned.zip`
 
-v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 through v4.9.0 are app-code dashboard polish releases with unsigned app zip assets. v5.0.0 also changes app UI copy, so it will need a new unsigned app zip when released.
+v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 through v5.0.0 are app-code dashboard polish releases with unsigned app zip assets. v5.1.0 is a Dashboard Stable Follow-up documentation release, so it does not require a new app binary asset.
 
 ## Target Users
 
@@ -169,7 +169,7 @@ For Hermes Agent and similar clients, see [docs/hermes_agent_connection.md](docs
 
 ## Current Feature Set
 
-As of v5.0.0, MLX Server Manager includes:
+As of v5.1.0, MLX Server Manager includes:
 
 - Start, Stop, and Restart for the `mlx_lm.server` process started by this app.
 - Managed-process-only Stop and Restart behavior.
