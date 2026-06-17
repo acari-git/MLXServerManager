@@ -268,6 +268,12 @@ v5.1.0 treats Dashboard v1 as the stable current surface and focuses on post-v5.
 
 Dashboard Stable Follow-up is not a three-column app redesign. It does not add a sidebar, model table redesign, right-side inspector, persistent system metrics widgets, Hermes-specific panels, automatic diagnostics, or any lifecycle action changes.
 
+## v5.2.0 Full App Layout Refresh Planning
+
+v5.2.0 adds [Full App Layout Refresh Design](full_app_layout_refresh.md) as planning for possible future v6.x layout work. Dashboard v1 remains the current stable surface. The planning document may discuss sidebar navigation, model list tables, detail inspectors, logs panels, client setup surfaces, and metrics areas, but those are future candidates only.
+
+v5.2.0 does not implement a new layout, change Dashboard card order, move runtime controls, add background checks, change readiness behavior, change Import / Export behavior, add onboarding tracking, add API key/token storage, or change process ownership.
+
 ## Target Information Architecture
 
 Dashboard v1 prioritizes these areas:
@@ -509,6 +515,7 @@ Dashboard v1 should:
 - Treat v4.9.0 as a Copy / Client Setup presentation polish step.
 - Treat v5.0.0 as the Dashboard UI Refresh v1 stabilization release.
 - Treat v5.1.0 as the Dashboard Stable Follow-up documentation release.
+- Treat v5.2.0 as the Full App Layout Refresh planning release.
 - Confirm the v1 information architecture and safety boundaries.
 - Keep Import / Export stable release boundaries intact.
 
@@ -560,7 +567,7 @@ The Dashboard UI Refresh must preserve:
 
 ## Release Positioning
 
-v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity. v4.6.0 is a small app-code polish release for Profiles / Import Export clarity. v4.7.0 is a small app-code polish release for Onboarding / Next Steps clarity. v4.8.0 is a small app-code polish release for layout and information hierarchy clarity. v4.9.0 is a small app-code polish release for Copy / Client Setup clarity. v5.0.0 is the Dashboard UI Refresh v1 stabilization release. v5.1.0 is a Dashboard Stable Follow-up documentation release.
+v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity. v4.6.0 is a small app-code polish release for Profiles / Import Export clarity. v4.7.0 is a small app-code polish release for Onboarding / Next Steps clarity. v4.8.0 is a small app-code polish release for layout and information hierarchy clarity. v4.9.0 is a small app-code polish release for Copy / Client Setup clarity. v5.0.0 is the Dashboard UI Refresh v1 stabilization release. v5.1.0 is a Dashboard Stable Follow-up documentation release. v5.2.0 is a Full App Layout Refresh planning release.
 
 v4.1.0 does not:
 
@@ -572,4 +579,4 @@ v4.1.0 does not:
 - create a new app binary,
 - create a release asset.
 
-v4.2.0, v4.3.0, v4.4.0, v4.5.0, v4.6.0, v4.7.0, v4.8.0, v4.9.0, and v5.0.0 change SwiftUI view code and therefore require new unsigned app zips when released. v5.1.0 is docs-only unless app code changes are added later. These releases still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, import/export schema, onboarding persistence, API key/token persistence, or external process ownership.
+v4.2.0, v4.3.0, v4.4.0, v4.5.0, v4.6.0, v4.7.0, v4.8.0, v4.9.0, and v5.0.0 change SwiftUI view code and therefore require new unsigned app zips when released. v5.1.0 and v5.2.0 are docs-only unless app code changes are added later. These releases still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, import/export schema, onboarding persistence, API key/token persistence, or external process ownership.

@@ -1639,10 +1639,47 @@
    - v5.1.0 is a docs-only Dashboard Stable Follow-up release.
    - The current downloadable app binary remains the v5.0.0 unsigned app zip unless a later app-code release is created.
 
+## v5.2.0 Completed: Full App Layout Refresh Planning
+
+1. Add future layout design documentation.
+   - Add `docs/full_app_layout_refresh.md`.
+   - Document a candidate future v6.x direction for sidebar navigation, main content, and detail or inspector areas.
+   - Keep Dashboard UI Refresh v1 as the current stable surface.
+2. Define candidate future areas.
+   - Dashboard.
+   - Profiles / Models.
+   - Server.
+   - Logs.
+   - Client Setup.
+   - Settings.
+3. Stage future v6.x work as proposals.
+   - v6.0.0 App Shell / Sidebar Foundation.
+   - v6.1.0 Profiles / Model List Surface.
+   - v6.2.0 Detail Inspector Foundation.
+   - v6.3.0 Logs Panel Refresh.
+   - v6.4.0 Client Setup Surface.
+   - v6.5.0 Metrics / System Context Design.
+4. Preserve behavior.
+   - No Swift app code changes.
+   - No Dashboard behavior or card order change.
+   - No Start / Stop / Restart behavior change.
+   - No readiness behavior change.
+   - No new network calls.
+   - No `/v1/chat/completions` calls by the app.
+   - No External Server Detection / Adopt / Forget behavior change.
+   - No Import / Export behavior or schema change.
+   - No onboarding persistence or user tracking.
+   - No API key, token, or secret persistence.
+   - No model download or deletion.
+   - No external process ownership change.
+5. Release note.
+   - v5.2.0 is a docs-only planning release.
+   - No new unsigned app zip is needed.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Future app layout refresh design.
+- Future app layout refresh implementation after v5.2.0 planning.
 - Signed/notarized distribution.
 - Model download design.
 - Deeper diagnostics design.

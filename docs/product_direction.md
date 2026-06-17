@@ -110,7 +110,7 @@ Model download is a current non-goal, but it is not permanently excluded as a fu
 
 Future candidates can be considered if they preserve performance, safety, and Direct Mode boundaries:
 
-- post-Dashboard-v1 layout polish, after v5.0.0 finalized Dashboard UI Refresh v1 and v5.1.0 clarified the stable follow-up boundary in [Dashboard UI Refresh Design](dashboard_ui_refresh.md),
+- future full app layout refresh planning after v5.0.0 finalized Dashboard UI Refresh v1, v5.1.0 clarified the stable follow-up boundary, and v5.2.0 documented a candidate v6.x direction in [Full App Layout Refresh Design](full_app_layout_refresh.md),
 - model download design,
 - local cache awareness,
 - profile templates,
@@ -122,7 +122,7 @@ Each candidate should define what it changes, what it refuses to change, and how
 
 Import conflict handling should follow the same rule. v3.3.0 implements Rename for profile-name conflicts as an explicit metadata operation. v3.4.0 implements Replace only for one unambiguous existing profile target, with explicit confirmation. v3.5.0 adds deterministic fixtures and service-level tests for the current import/export schema and conflict behavior. v4.0.0 treats Import / Export as stable within this metadata-only boundary. Replace remains metadata-only and must not start servers, call readiness endpoints, alter external process ownership, or interfere with active generation.
 
-Dashboard refresh work should follow the same principle. v4.1.0 defined the dashboard information architecture. v4.2.0 through v4.9.0 added the display-oriented dashboard pieces in small behavior-preserving steps: Current Target, Server State, Logs / Diagnostics guidance, Profiles / Import Export guidance, Next Steps guidance, scan-order grouping, and Client Setup guidance. v5.0.0 finalizes Dashboard UI Refresh v1 as the stable overview for Next Steps, Current Target, Server State, Client Setup, Diagnostics & Logs, and Profiles / Import Export. v5.1.0 keeps Dashboard v1 stable and separates future full-layout work from the current dashboard surface. These steps do not change server lifecycle behavior, Direct Mode, import/export behavior, import/export schema, onboarding persistence, API key/token persistence, or external process ownership. Future broader app layout work should be separate from Dashboard v1.
+Dashboard refresh work should follow the same principle. v4.1.0 defined the dashboard information architecture. v4.2.0 through v4.9.0 added the display-oriented dashboard pieces in small behavior-preserving steps: Current Target, Server State, Logs / Diagnostics guidance, Profiles / Import Export guidance, Next Steps guidance, scan-order grouping, and Client Setup guidance. v5.0.0 finalizes Dashboard UI Refresh v1 as the stable overview for Next Steps, Current Target, Server State, Client Setup, Diagnostics & Logs, and Profiles / Import Export. v5.1.0 keeps Dashboard v1 stable and separates future full-layout work from the current dashboard surface. v5.2.0 documents a possible future v6.x Full App Layout Refresh without implementing it. These steps do not change server lifecycle behavior, Direct Mode, import/export behavior, import/export schema, onboarding persistence, API key/token persistence, or external process ownership. Future broader app layout work should be staged separately from Dashboard v1.
 
 ## Model Download Position
 
