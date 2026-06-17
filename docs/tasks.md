@@ -1753,10 +1753,52 @@
    - v5.4.0 is a docs-only detailed design release.
    - No new unsigned app zip is needed.
 
+## v5.5.0 Completed: Detail Inspector Foundation Design
+
+1. Add detailed v6.2.0 design documentation.
+   - Add `docs/detail_inspector_foundation.md`.
+   - Narrow the broader v6.x layout plan into a future `v6.2.0` Detail Inspector Foundation design.
+   - Keep Dashboard UI Refresh v1 as the current stable overview.
+   - Keep `v6.0.0` App Shell / Sidebar Foundation and `v6.1.0` Profiles / Model List Surface as preceding future steps.
+2. Define candidate inspector contexts.
+   - No Selection.
+   - Selected Profile.
+   - Current Managed Server Target.
+   - Adopted External Server Target.
+   - Import / Export Context.
+3. Define candidate inspector areas.
+   - Header.
+   - Endpoint Summary.
+   - Ownership / Lifecycle.
+   - Readiness.
+   - Metadata.
+   - Safety Notes.
+4. Preserve behavior.
+   - No Swift app code changes.
+   - No detail inspector implementation.
+   - No inspector UI or three-column layout implementation.
+   - No endpoint testing beyond existing readiness behavior.
+   - No selected profile behavior change.
+   - No current target behavior change.
+   - No Import / Export behavior or schema change.
+   - No Rename or Replace behavior change.
+   - No Start / Stop / Restart behavior change.
+   - No readiness behavior change.
+   - No new network calls.
+   - No `/v1/chat/completions` calls by the app.
+   - No onboarding persistence or user tracking.
+   - No API key, token, or secret persistence.
+   - No model download or deletion.
+   - No model file scanning or cache cleanup.
+   - No external process ownership change.
+5. Release note.
+   - v5.5.0 is a docs-only detailed design release.
+   - No new unsigned app zip is needed.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Future app layout refresh implementation after v5.2.0 planning, v5.3.0 shell/sidebar design, and v5.4.0 Profiles surface design.
+- Future app layout refresh implementation after v5.2.0 planning, v5.3.0 shell/sidebar design, v5.4.0 Profiles surface design, and v5.5.0 Detail Inspector design.
 - Signed/notarized distribution.
 - Model download design.
 - Deeper diagnostics design.

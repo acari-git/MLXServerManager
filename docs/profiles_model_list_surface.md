@@ -86,6 +86,8 @@ A future selected profile detail area may show:
 - current target relationship,
 - whether the selected profile is used for managed launch.
 
+Detailed contextual presentation may later move into or populate a future [Detail Inspector Foundation](detail_inspector_foundation.md). The Profiles surface should still keep selected profile metadata understandable without requiring an inspector to perform basic profile management.
+
 Important distinctions:
 
 - Selected profile is configuration metadata.

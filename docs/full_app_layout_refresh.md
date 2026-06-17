@@ -13,6 +13,8 @@ v5.3.0 adds [App Shell / Sidebar Foundation Design](app_shell_sidebar_foundation
 
 v5.4.0 adds [Profiles / Model List Surface Design](profiles_model_list_surface.md) as a detailed planning document for the next possible future implementation step, `v6.1.0`. It focuses on profile metadata browsing and Import / Export placement without implementing model download, model deletion, installed model scanning, or profile behavior changes.
 
+v5.5.0 adds [Detail Inspector Foundation Design](detail_inspector_foundation.md) as a detailed planning document for the next possible future implementation step, `v6.2.0`. It focuses on contextual selected profile, current target, ownership, readiness, endpoint, and metadata summaries without implementing inspector UI or behavior changes.
+
 ## Goals
 
 - Improve scanability for users managing local MLX servers.
@@ -201,6 +203,7 @@ These versions are proposals only. Do not create tags or implement them from thi
 - Add selected profile and server detail summary.
 - Show endpoint, readiness, ownership, and selected profile context.
 - No ownership behavior changes.
+- See [Detail Inspector Foundation Design](detail_inspector_foundation.md) for the detailed planning boundary.
 
 ### v6.3.0 - Logs Panel Refresh
 
@@ -254,3 +257,7 @@ v5.3.0 adds detailed app shell and sidebar foundation planning only. It does not
 ## v5.4.0 Profiles Surface Design Boundary
 
 v5.4.0 adds detailed Profiles / Model List Surface planning only. It does not implement a Profiles section, model list table, sidebar navigation, model detail inspector, installed model scanning, model download, model deletion, cache cleanup, new persistence behavior, new app binary, zip asset, tag, release, or any app behavior change.
+
+## v5.5.0 Detail Inspector Design Boundary
+
+v5.5.0 adds detailed Detail Inspector Foundation planning only. It does not implement inspector UI, a three-column layout, model detail inspector behavior, endpoint testing, model download, model deletion, installed model scanning, cache cleanup, new persistence behavior, new app binary, zip asset, tag, release, or any app behavior change.
