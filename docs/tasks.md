@@ -1676,10 +1676,48 @@
    - v5.2.0 is a docs-only planning release.
    - No new unsigned app zip is needed.
 
+## v5.3.0 Completed: App Shell / Sidebar Foundation Design
+
+1. Add detailed v6.0.0 design documentation.
+   - Add `docs/app_shell_sidebar_foundation.md`.
+   - Narrow the broader v5.2.0 Full App Layout Refresh plan into a future `v6.0.0` App Shell / Sidebar Foundation design.
+   - Keep Dashboard UI Refresh v1 as the current stable surface and future landing page candidate.
+2. Define candidate sidebar sections.
+   - Dashboard.
+   - Profiles.
+   - Server.
+   - Logs.
+   - Client Setup.
+   - Settings.
+3. Define migration and mapping guidance.
+   - Map existing view concepts to possible future sections.
+   - Keep existing controls functional.
+   - Move no runtime behavior in the shell foundation design.
+   - Avoid duplicate or hidden lifecycle controls.
+4. Preserve behavior.
+   - No Swift app code changes.
+   - No `NavigationSplitView` implementation.
+   - No sidebar implementation.
+   - No model table or inspector implementation.
+   - No Dashboard behavior or card order change.
+   - No Start / Stop / Restart behavior change.
+   - No readiness behavior change.
+   - No new network calls.
+   - No `/v1/chat/completions` calls by the app.
+   - No External Server Detection / Adopt / Forget behavior change.
+   - No Import / Export behavior or schema change.
+   - No onboarding persistence or user tracking.
+   - No API key, token, or secret persistence.
+   - No model download or deletion.
+   - No external process ownership change.
+5. Release note.
+   - v5.3.0 is a docs-only detailed design release.
+   - No new unsigned app zip is needed.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Future app layout refresh implementation after v5.2.0 planning.
+- Future app layout refresh implementation after v5.2.0 planning and v5.3.0 shell/sidebar design.
 - Signed/notarized distribution.
 - Model download design.
 - Deeper diagnostics design.
