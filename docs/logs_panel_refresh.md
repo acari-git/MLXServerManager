@@ -198,6 +198,8 @@ Both surfaces should avoid external log capture, telemetry, background scraping,
 
 See [Metrics / System Context Design](metrics_system_context.md) for the future metrics and system context boundary.
 
+Before any future v6 implementation begins, review [v6 Implementation Readiness Review](v6_implementation_readiness.md). Logs Panel Refresh remains a later candidate and should not be included in the initial App Shell / Sidebar Foundation implementation.
+
 ## Relationship to Server / Current Target
 
 The Logs surface can clarify managed vs adopted external target context. It can show lifecycle context without changing lifecycle behavior.

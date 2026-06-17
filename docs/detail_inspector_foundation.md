@@ -279,6 +279,8 @@ Both surfaces must avoid:
 
 See [Metrics / System Context Design](metrics_system_context.md) for the future metrics and system context boundary.
 
+Before any future v6 implementation begins, review [v6 Implementation Readiness Review](v6_implementation_readiness.md). Detail Inspector remains a later candidate and should not be included in the initial App Shell / Sidebar Foundation implementation.
+
 ## Safety Boundaries
 
 - Direct Mode remains unchanged.

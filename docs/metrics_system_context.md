@@ -278,6 +278,8 @@ Neither surface should imply proxying, request inspection, generated credentials
 
 See [Client Setup Surface Design](client_setup_surface.md) for the future Client Setup surface boundary.
 
+Before any future v6 implementation begins, review [v6 Implementation Readiness Review](v6_implementation_readiness.md). Metrics / System Context remains a later candidate and should not be included in the initial App Shell / Sidebar Foundation implementation.
+
 ## Safety Boundaries
 
 - Direct Mode remains unchanged.

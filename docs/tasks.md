@@ -1922,9 +1922,54 @@
    - v5.8.0 is a docs-only detailed design release.
    - No new unsigned app zip is needed.
 
+## v5.9.0 Completed: v6 Implementation Readiness Review
+
+1. Add v6 readiness review documentation.
+   - Add `docs/v6_implementation_readiness.md`.
+   - Consolidate the v5.2.0 through v5.8.0 planning sequence.
+   - Keep Dashboard UI Refresh v1 as the current stable surface.
+   - Recommend future app-code work start with a narrow `v6.0.0` App Shell / Sidebar Foundation only.
+2. Define proposed v6 implementation sequence.
+   - `v6.0.0` App Shell / Sidebar Foundation.
+   - `v6.1.0` Profiles / Model List Surface.
+   - `v6.2.0` Detail Inspector Foundation.
+   - `v6.3.0` Logs Panel Refresh.
+   - `v6.4.0` Client Setup Surface.
+   - `v6.5.0` Metrics / System Context.
+3. Define implementation guardrails.
+   - One major surface per release.
+   - Keep release scope small.
+   - Preserve Dashboard v1.
+   - Keep selected profile distinct from current target.
+   - Keep managed vs adopted external ownership explicit.
+   - Do not add new network calls, persistence, or Import / Export schema changes without separate design.
+4. Preserve behavior.
+   - No Swift app code changes.
+   - No v6 UI implementation.
+   - No app shell, sidebar navigation, Profiles section, Detail Inspector, Logs Panel, Client Setup Surface, or Metrics / System Context implementation.
+   - No selected profile behavior change.
+   - No current target behavior change.
+   - No Import / Export behavior or schema change.
+   - No Rename or Replace behavior change.
+   - No Start / Stop / Restart behavior change.
+   - No readiness behavior change.
+   - No new network calls.
+   - No `/v1/chat/completions` calls by the app.
+   - No onboarding persistence or user tracking.
+   - No API key, token, or secret persistence.
+   - No generated client config persistence.
+   - No telemetry, analytics, request logging, request tracing, inference traffic inspection, metrics persistence, or background monitoring.
+   - No model download or deletion.
+   - No model file scanning or cache cleanup.
+   - No external process ownership change.
+5. Release note.
+   - v5.9.0 is a docs-only readiness review release.
+   - No new unsigned app zip is needed.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
+- Future `v6.0.0` App Shell / Sidebar Foundation implementation after v5.9.0 readiness review.
 - Future app layout refresh implementation after v5.2.0 planning, v5.3.0 shell/sidebar design, v5.4.0 Profiles surface design, v5.5.0 Detail Inspector design, v5.6.0 Logs Panel Refresh design, v5.7.0 Client Setup Surface design, and v5.8.0 Metrics / System Context design.
 - Signed/notarized distribution.
 - Model download design.

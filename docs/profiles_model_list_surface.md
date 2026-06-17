@@ -88,6 +88,8 @@ A future selected profile detail area may show:
 
 Detailed contextual presentation may later move into or populate a future [Detail Inspector Foundation](detail_inspector_foundation.md). The Profiles surface should still keep selected profile metadata understandable without requiring an inspector to perform basic profile management.
 
+Before any future v6 implementation begins, review [v6 Implementation Readiness Review](v6_implementation_readiness.md). Profiles / Model List Surface remains a later candidate after the narrow App Shell / Sidebar Foundation.
+
 Important distinctions:
 
 - Selected profile is configuration metadata.

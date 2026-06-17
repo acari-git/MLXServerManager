@@ -229,6 +229,8 @@ Both surfaces should avoid proxying, request inspection, generated credentials, 
 
 See [Metrics / System Context Design](metrics_system_context.md) for the future metrics and system context boundary.
 
+Before any future v6 implementation begins, review [v6 Implementation Readiness Review](v6_implementation_readiness.md). Client Setup Surface remains a later candidate and should not be included in the initial App Shell / Sidebar Foundation implementation.
+
 ## Relationship to Profiles / Model List Surface
 
 Selected profile metadata can provide model ID and managed launch context. Current target may differ from selected profile.

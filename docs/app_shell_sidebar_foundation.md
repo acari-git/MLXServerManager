@@ -231,6 +231,8 @@ A future implementation may use a native macOS navigation structure such as Swif
 
 This is a candidate implementation shape, not a requirement. v6.0.0 should choose the smallest native structure that preserves behavior and keeps the current Dashboard usable. See [Detail Inspector Foundation Design](detail_inspector_foundation.md) for the later candidate inspector boundary, [Logs Panel Refresh Design](logs_panel_refresh.md) for the future Logs section boundary, [Client Setup Surface Design](client_setup_surface.md) for the future Client Setup section boundary, and [Metrics / System Context Design](metrics_system_context.md) for the future metrics and system context boundary.
 
+Before implementation, review [v6 Implementation Readiness Review](v6_implementation_readiness.md). Future v6.0.0 should stay limited to app shell/sidebar foundation and must not pull in Profiles, Inspector, Logs, Client Setup, Metrics, or behavior changes.
+
 ## Migration Strategy
 
 Future v6.0.0 could migrate safely by:

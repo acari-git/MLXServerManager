@@ -149,6 +149,8 @@ Client Setup Surface design is documented in [docs/client_setup_surface.md](docs
 
 Metrics / System Context design is documented in [docs/metrics_system_context.md](docs/metrics_system_context.md). v5.8.0 is a docs-only detailed design release for a possible future v6.5.0 metrics and system context surface; it does not implement metrics UI, system monitoring, telemetry, request inspection, or behavior changes.
 
+v6 Implementation Readiness Review is documented in [docs/v6_implementation_readiness.md](docs/v6_implementation_readiness.md). v5.9.0 is a docs-only readiness release that consolidates v5.2.0 through v5.8.0 planning and recommends starting future v6 app-code work with a narrow App Shell / Sidebar Foundation only.
+
 Screenshot refresh planning is documented in [docs/screenshot_refresh.md](docs/screenshot_refresh.md). Future screenshots should cover the v1.9+ Current Target summary and Adopted External Server states without exposing private paths or secrets.
 
 First-run guidance is documented in [docs/onboarding_first_run.md](docs/onboarding_first_run.md). v2.4.0 adds a small in-app guidance panel that points first-time users toward executable path setup, model profile selection, diagnostics, Start, and Connection Settings while preserving Direct Mode.
@@ -161,7 +163,7 @@ The current downloadable app binary asset is the latest app-code release:
 
 - `MLXServerManager-v5.0.0-unsigned.zip`
 
-v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 through v5.0.0 are app-code dashboard polish releases with unsigned app zip assets. v5.1.0 through v5.8.0 are documentation releases, so they do not require new app binary assets.
+v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 through v5.0.0 are app-code dashboard polish releases with unsigned app zip assets. v5.1.0 through v5.9.0 are documentation releases, so they do not require new app binary assets.
 
 ## Target Users
 
@@ -183,7 +185,7 @@ For Hermes Agent and similar clients, see [docs/hermes_agent_connection.md](docs
 
 ## Current Feature Set
 
-As of v5.8.0, MLX Server Manager includes:
+As of v5.9.0, MLX Server Manager includes:
 
 - Start, Stop, and Restart for the `mlx_lm.server` process started by this app.
 - Managed-process-only Stop and Restart behavior.

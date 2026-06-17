@@ -21,6 +21,8 @@ v5.7.0 adds [Client Setup Surface Design](client_setup_surface.md) as a detailed
 
 v5.8.0 adds [Metrics / System Context Design](metrics_system_context.md) as a detailed planning document for the next possible future implementation step, `v6.5.0`. It focuses on lightweight readiness, memory, process, and performance context without implementing metrics UI, system monitoring, telemetry, request inspection, or behavior changes.
 
+v5.9.0 adds [v6 Implementation Readiness Review](v6_implementation_readiness.md) as a docs-only readiness checkpoint before any future v6 app-code implementation begins. Future v6 work should start with the narrow `v6.0.0` App Shell / Sidebar Foundation only after passing the readiness criteria.
+
 ## Goals
 
 - Improve scanability for users managing local MLX servers.
@@ -282,3 +284,7 @@ v5.7.0 adds detailed Client Setup Surface planning only. It does not implement c
 ## v5.8.0 Metrics / System Context Design Boundary
 
 v5.8.0 adds detailed Metrics / System Context planning only. It does not implement metrics UI, system monitoring, memory polling, CPU/GPU/ANE polling, process sampling, telemetry, analytics, crash reporting, request logging, request tracing, inference traffic inspection, metrics persistence, benchmarks, token throughput measurement, background monitoring, new app binary, zip asset, tag, release, or any app behavior change.
+
+## v5.9.0 v6 Implementation Readiness Boundary
+
+v5.9.0 adds a readiness review only. It does not implement v6 UI, app shell, sidebar navigation, Profiles section, Detail Inspector, Logs Panel, Client Setup Surface, Metrics / System Context, new network behavior, new persistence, new app binary, zip asset, tag, release, or any app behavior change. Future v6 implementation should begin with `v6.0.0` App Shell / Sidebar Foundation and must not pull in later surfaces.

@@ -51,6 +51,7 @@ This document lists known limitations for MLX Server Manager.
 - v5.6.0 documents a future Logs Panel Refresh design only; a dedicated Logs surface, log filtering, log search, log export, log file persistence, external log capture, background log scraping, telemetry, and background monitoring remain unimplemented.
 - v5.7.0 documents a future Client Setup Surface design only; a dedicated Client Setup surface, client-specific config generation, automatic client configuration, client auto-detection, API key storage, token storage, secret persistence, generated client config persistence, endpoint testing, and new network behavior remain unimplemented.
 - v5.8.0 documents a future Metrics / System Context design only; metrics UI, system monitoring, memory polling, CPU/GPU/ANE polling, process sampling, telemetry, analytics, crash reporting, request logging, request tracing, inference traffic inspection, metrics persistence, benchmarks, token throughput measurement, external process metrics collection, and background monitoring remain unimplemented.
+- v5.9.0 documents v6 implementation readiness only; v6 app shell, sidebar navigation, Profiles section, Detail Inspector, Logs Panel, Client Setup Surface, Metrics / System Context, and v6 app-code behavior remain unimplemented.
 - Future dashboard or app layout work should be treated as separate design work after Dashboard v1.
 - Dashboard UI work must continue to preserve Direct Mode, explicit lifecycle actions, managed-process-only Stop/Restart, and external server connection-context boundaries.
 
