@@ -265,6 +265,20 @@ Both surfaces should use the same Direct Mode and ownership language:
 
 See [Client Setup Surface Design](client_setup_surface.md) for the future Client Setup surface boundary.
 
+## Relationship to Metrics / System Context
+
+The inspector may show compact readiness or system context. A future Metrics / System Context surface can provide broader non-invasive guidance.
+
+Both surfaces must avoid:
+
+- request inspection,
+- telemetry or analytics,
+- background monitoring,
+- external process metrics collection,
+- implying exact model-fit guarantees.
+
+See [Metrics / System Context Design](metrics_system_context.md) for the future metrics and system context boundary.
+
 ## Safety Boundaries
 
 - Direct Mode remains unchanged.

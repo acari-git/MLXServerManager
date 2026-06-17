@@ -221,6 +221,14 @@ Adopted external server troubleshooting should point users to the terminal, app,
 
 See [Logs Panel Refresh Design](logs_panel_refresh.md) for the future Logs surface boundary.
 
+## Relationship to Metrics / System Context
+
+The future Client Setup surface shows Base URL, model ID, and Direct Mode setup. A future Metrics / System Context surface can reinforce readiness and performance boundaries.
+
+Both surfaces should avoid proxying, request inspection, generated credentials, background endpoint testing, telemetry, and background monitoring.
+
+See [Metrics / System Context Design](metrics_system_context.md) for the future metrics and system context boundary.
+
 ## Relationship to Profiles / Model List Surface
 
 Selected profile metadata can provide model ID and managed launch context. Current target may differ from selected profile.

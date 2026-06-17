@@ -284,6 +284,8 @@ v5.6.0 adds [Logs Panel Refresh Design](logs_panel_refresh.md) as a narrower des
 
 v5.7.0 adds [Client Setup Surface Design](client_setup_surface.md) as a narrower design for a possible future v6.4.0 Client Setup surface. Dashboard v1 remains the high-level overview; any future Client Setup surface should provide deeper endpoint guidance without generating credentials, persisting client configs, adding endpoint tests, or changing Direct Mode.
 
+v5.8.0 adds [Metrics / System Context Design](metrics_system_context.md) as a narrower design for a possible future v6.5.0 metrics and system context surface. Dashboard v1 remains the high-level overview; any future Metrics surface should provide lightweight context without telemetry, analytics, request inspection, heavy polling, or background monitoring.
+
 ## Target Information Architecture
 
 Dashboard v1 prioritizes these areas:
@@ -531,6 +533,7 @@ Dashboard v1 should:
 - Treat v5.5.0 as the Detail Inspector Foundation design release.
 - Treat v5.6.0 as the Logs Panel Refresh design release.
 - Treat v5.7.0 as the Client Setup Surface design release.
+- Treat v5.8.0 as the Metrics / System Context design release.
 - Confirm the v1 information architecture and safety boundaries.
 - Keep Import / Export stable release boundaries intact.
 
@@ -582,7 +585,7 @@ The Dashboard UI Refresh must preserve:
 
 ## Release Positioning
 
-v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity. v4.6.0 is a small app-code polish release for Profiles / Import Export clarity. v4.7.0 is a small app-code polish release for Onboarding / Next Steps clarity. v4.8.0 is a small app-code polish release for layout and information hierarchy clarity. v4.9.0 is a small app-code polish release for Copy / Client Setup clarity. v5.0.0 is the Dashboard UI Refresh v1 stabilization release. v5.1.0 is a Dashboard Stable Follow-up documentation release. v5.2.0 is a Full App Layout Refresh planning release. v5.3.0 is an App Shell / Sidebar Foundation design release. v5.4.0 is a Profiles / Model List Surface design release. v5.5.0 is a Detail Inspector Foundation design release. v5.6.0 is a Logs Panel Refresh design release. v5.7.0 is a Client Setup Surface design release.
+v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity. v4.6.0 is a small app-code polish release for Profiles / Import Export clarity. v4.7.0 is a small app-code polish release for Onboarding / Next Steps clarity. v4.8.0 is a small app-code polish release for layout and information hierarchy clarity. v4.9.0 is a small app-code polish release for Copy / Client Setup clarity. v5.0.0 is the Dashboard UI Refresh v1 stabilization release. v5.1.0 is a Dashboard Stable Follow-up documentation release. v5.2.0 is a Full App Layout Refresh planning release. v5.3.0 is an App Shell / Sidebar Foundation design release. v5.4.0 is a Profiles / Model List Surface design release. v5.5.0 is a Detail Inspector Foundation design release. v5.6.0 is a Logs Panel Refresh design release. v5.7.0 is a Client Setup Surface design release. v5.8.0 is a Metrics / System Context design release.
 
 v4.1.0 does not:
 
@@ -594,4 +597,4 @@ v4.1.0 does not:
 - create a new app binary,
 - create a release asset.
 
-v4.2.0, v4.3.0, v4.4.0, v4.5.0, v4.6.0, v4.7.0, v4.8.0, v4.9.0, and v5.0.0 change SwiftUI view code and therefore require new unsigned app zips when released. v5.1.0 through v5.7.0 are docs-only unless app code changes are added later. These releases still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, import/export schema, selected profile behavior, current target behavior, onboarding persistence, API key/token persistence, generated client config persistence, automatic client configuration behavior, new network behavior, external process ownership, external log capture behavior, telemetry behavior, background monitoring behavior, model download behavior, model deletion behavior, model scanning, or cache cleanup.
+v4.2.0, v4.3.0, v4.4.0, v4.5.0, v4.6.0, v4.7.0, v4.8.0, v4.9.0, and v5.0.0 change SwiftUI view code and therefore require new unsigned app zips when released. v5.1.0 through v5.8.0 are docs-only unless app code changes are added later. These releases still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, import/export schema, selected profile behavior, current target behavior, onboarding persistence, API key/token persistence, generated client config persistence, automatic client configuration behavior, new network behavior, request logging/tracing behavior, inference traffic inspection behavior, metrics persistence, external process metrics collection, external process ownership, external log capture behavior, telemetry behavior, background monitoring behavior, model download behavior, model deletion behavior, model scanning, or cache cleanup.

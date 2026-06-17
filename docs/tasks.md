@@ -1879,10 +1879,53 @@
    - v5.7.0 is a docs-only detailed design release.
    - No new unsigned app zip is needed.
 
+## v5.8.0 Completed: Metrics / System Context Design
+
+1. Add detailed v6.5.0 design documentation.
+   - Add `docs/metrics_system_context.md`.
+   - Narrow the broader v6.x layout plan into a future `v6.5.0` Metrics / System Context design.
+   - Keep Dashboard UI Refresh v1 as the current stable overview.
+   - Keep `v6.0.0` App Shell / Sidebar Foundation, `v6.1.0` Profiles / Model List Surface, `v6.2.0` Detail Inspector Foundation, `v6.3.0` Logs Panel Refresh, and `v6.4.0` Client Setup Surface as preceding future steps.
+2. Define candidate metrics and system context categories.
+   - Readiness Context.
+   - Memory Context.
+   - Process Context.
+   - Runtime Performance Context.
+3. Define privacy and performance boundaries.
+   - No telemetry, analytics, or crash reporting.
+   - No request logging, request tracing, or inference traffic inspection.
+   - No benchmarks, token throughput measurement, or instrumentation in the inference path.
+   - No external process metrics collection.
+   - No metrics persistence.
+   - No heavy polling or background monitoring by default.
+4. Preserve behavior.
+   - No Swift app code changes.
+   - No metrics UI or system monitoring implementation.
+   - No memory polling, CPU/GPU/ANE polling, or process sampling.
+   - No automatic diagnostics, background health checks, or background monitoring.
+   - No endpoint testing beyond existing readiness behavior.
+   - No selected profile behavior change.
+   - No current target behavior change.
+   - No Import / Export behavior or schema change.
+   - No Rename or Replace behavior change.
+   - No Start / Stop / Restart behavior change.
+   - No readiness behavior change.
+   - No new network calls.
+   - No `/v1/chat/completions` calls by the app.
+   - No onboarding persistence or user tracking.
+   - No API key, token, or secret persistence.
+   - No generated client config persistence.
+   - No model download or deletion.
+   - No model file scanning or cache cleanup.
+   - No external process ownership change.
+5. Release note.
+   - v5.8.0 is a docs-only detailed design release.
+   - No new unsigned app zip is needed.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Future app layout refresh implementation after v5.2.0 planning, v5.3.0 shell/sidebar design, v5.4.0 Profiles surface design, v5.5.0 Detail Inspector design, v5.6.0 Logs Panel Refresh design, and v5.7.0 Client Setup Surface design.
+- Future app layout refresh implementation after v5.2.0 planning, v5.3.0 shell/sidebar design, v5.4.0 Profiles surface design, v5.5.0 Detail Inspector design, v5.6.0 Logs Panel Refresh design, v5.7.0 Client Setup Surface design, and v5.8.0 Metrics / System Context design.
 - Signed/notarized distribution.
 - Model download design.
 - Deeper diagnostics design.

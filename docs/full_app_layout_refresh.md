@@ -19,6 +19,8 @@ v5.6.0 adds [Logs Panel Refresh Design](logs_panel_refresh.md) as a detailed pla
 
 v5.7.0 adds [Client Setup Surface Design](client_setup_surface.md) as a detailed planning document for the next possible future implementation step, `v6.4.0`. It focuses on active endpoint setup, Base URL and model ID guidance, Direct Mode explanation, and copy constraints without implementing client setup UI or behavior changes.
 
+v5.8.0 adds [Metrics / System Context Design](metrics_system_context.md) as a detailed planning document for the next possible future implementation step, `v6.5.0`. It focuses on lightweight readiness, memory, process, and performance context without implementing metrics UI, system monitoring, telemetry, request inspection, or behavior changes.
+
 ## Goals
 
 - Improve scanability for users managing local MLX servers.
@@ -229,6 +231,7 @@ These versions are proposals only. Do not create tags or implement them from thi
 - Explore memory and system context presentation.
 - Avoid expensive polling.
 - Do not add background automation unless separately designed and reviewed.
+- See [Metrics / System Context Design](metrics_system_context.md) for the detailed planning boundary.
 
 ## Risks
 
@@ -275,3 +278,7 @@ v5.6.0 adds detailed Logs Panel Refresh planning only. It does not implement a L
 ## v5.7.0 Client Setup Surface Design Boundary
 
 v5.7.0 adds detailed Client Setup Surface planning only. It does not implement client setup UI, client-specific configuration generation, API key management, token storage, secret persistence, generated client config files, automatic client configuration, client auto-detection, endpoint testing, new network behavior, telemetry, background monitoring, automatic diagnostics, new app binary, zip asset, tag, release, or any app behavior change.
+
+## v5.8.0 Metrics / System Context Design Boundary
+
+v5.8.0 adds detailed Metrics / System Context planning only. It does not implement metrics UI, system monitoring, memory polling, CPU/GPU/ANE polling, process sampling, telemetry, analytics, crash reporting, request logging, request tracing, inference traffic inspection, metrics persistence, benchmarks, token throughput measurement, background monitoring, new app binary, zip asset, tag, release, or any app behavior change.

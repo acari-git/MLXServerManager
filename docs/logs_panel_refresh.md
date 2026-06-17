@@ -190,6 +190,14 @@ Adopted external server troubleshooting should point users to the terminal, app,
 
 See [Client Setup Surface Design](client_setup_surface.md) for the future Client Setup surface boundary.
 
+## Relationship to Metrics / System Context
+
+The Logs surface provides app-managed log context. A future Metrics / System Context surface can provide system and readiness context.
+
+Both surfaces should avoid external log capture, telemetry, background scraping, background monitoring, request logging, request tracing, and inference traffic inspection.
+
+See [Metrics / System Context Design](metrics_system_context.md) for the future metrics and system context boundary.
+
 ## Relationship to Server / Current Target
 
 The Logs surface can clarify managed vs adopted external target context. It can show lifecycle context without changing lifecycle behavior.
