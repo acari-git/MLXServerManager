@@ -252,6 +252,19 @@ Both surfaces should use the same ownership language:
 
 See [Logs Panel Refresh Design](logs_panel_refresh.md) for the future Logs surface boundary.
 
+## Relationship to Client Setup Surface
+
+The inspector may show compact endpoint details. A future Client Setup surface can provide the larger setup-oriented view.
+
+Both surfaces should use the same Direct Mode and ownership language:
+
+- selected profile metadata may differ from the current target,
+- copied setup values are informational,
+- MLX Server Manager does not proxy inference requests,
+- API keys, tokens, secrets, or generated client config files are not stored.
+
+See [Client Setup Surface Design](client_setup_surface.md) for the future Client Setup surface boundary.
+
 ## Safety Boundaries
 
 - Direct Mode remains unchanged.

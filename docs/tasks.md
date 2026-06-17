@@ -1837,10 +1837,52 @@
    - v5.6.0 is a docs-only detailed design release.
    - No new unsigned app zip is needed.
 
+## v5.7.0 Completed: Client Setup Surface Design
+
+1. Add detailed v6.4.0 design documentation.
+   - Add `docs/client_setup_surface.md`.
+   - Narrow the broader v6.x layout plan into a future `v6.4.0` Client Setup Surface design.
+   - Keep Dashboard UI Refresh v1 as the current stable overview.
+   - Keep `v6.0.0` App Shell / Sidebar Foundation, `v6.1.0` Profiles / Model List Surface, `v6.2.0` Detail Inspector Foundation, and `v6.3.0` Logs Panel Refresh as preceding future steps.
+2. Define candidate Client Setup surface areas.
+   - Header.
+   - Connection Values.
+   - Direct Mode Explanation.
+   - Copy Actions.
+   - Safety Notes.
+   - Troubleshooting Links / Notes.
+3. Define managed vs adopted external setup boundaries.
+   - Managed server setup values are informational and based on app-managed context already available to the app.
+   - Adopted external servers are connection context only.
+   - External processes are not stopped, restarted, killed, inspected, or treated as app-owned.
+   - Client setup values must not imply proxying or external process ownership.
+4. Preserve behavior.
+   - No Swift app code changes.
+   - No Client Setup surface implementation.
+   - No client setup UI or client-specific configuration generation.
+   - No API key management, token storage, secret persistence, or generated client config persistence.
+   - No automatic client configuration or client auto-detection.
+   - No endpoint testing beyond existing readiness behavior.
+   - No selected profile behavior change.
+   - No current target behavior change.
+   - No Import / Export behavior or schema change.
+   - No Rename or Replace behavior change.
+   - No Start / Stop / Restart behavior change.
+   - No readiness behavior change.
+   - No new network calls.
+   - No `/v1/chat/completions` calls by the app.
+   - No onboarding persistence or user tracking.
+   - No model download or deletion.
+   - No model file scanning or cache cleanup.
+   - No external process ownership change.
+5. Release note.
+   - v5.7.0 is a docs-only detailed design release.
+   - No new unsigned app zip is needed.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Future app layout refresh implementation after v5.2.0 planning, v5.3.0 shell/sidebar design, v5.4.0 Profiles surface design, v5.5.0 Detail Inspector design, and v5.6.0 Logs Panel Refresh design.
+- Future app layout refresh implementation after v5.2.0 planning, v5.3.0 shell/sidebar design, v5.4.0 Profiles surface design, v5.5.0 Detail Inspector design, v5.6.0 Logs Panel Refresh design, and v5.7.0 Client Setup Surface design.
 - Signed/notarized distribution.
 - Model download design.
 - Deeper diagnostics design.

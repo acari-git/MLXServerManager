@@ -17,6 +17,8 @@ v5.5.0 adds [Detail Inspector Foundation Design](detail_inspector_foundation.md)
 
 v5.6.0 adds [Logs Panel Refresh Design](logs_panel_refresh.md) as a detailed planning document for the next possible future implementation step, `v6.3.0`. It focuses on managed logs presentation, adopted external log boundaries, lifecycle context, and troubleshooting copy constraints without implementing a Logs panel or behavior changes.
 
+v5.7.0 adds [Client Setup Surface Design](client_setup_surface.md) as a detailed planning document for the next possible future implementation step, `v6.4.0`. It focuses on active endpoint setup, Base URL and model ID guidance, Direct Mode explanation, and copy constraints without implementing client setup UI or behavior changes.
+
 ## Goals
 
 - Improve scanability for users managing local MLX servers.
@@ -220,6 +222,7 @@ These versions are proposals only. Do not create tags or implement them from thi
 - Improve active endpoint copy guidance.
 - Explain Direct Mode clearly.
 - Do not store real API keys, tokens, or secrets.
+- See [Client Setup Surface Design](client_setup_surface.md) for the detailed planning boundary.
 
 ### v6.5.0 - Metrics / System Context Design
 
@@ -268,3 +271,7 @@ v5.5.0 adds detailed Detail Inspector Foundation planning only. It does not impl
 ## v5.6.0 Logs Panel Refresh Design Boundary
 
 v5.6.0 adds detailed Logs Panel Refresh planning only. It does not implement a Logs panel, logs UI, log filtering, log search, log export, log file persistence, external log capture, background log scraping, automatic diagnostics, background health checks, telemetry, metrics widgets, new persistence behavior, new app binary, zip asset, tag, release, or any app behavior change.
+
+## v5.7.0 Client Setup Surface Design Boundary
+
+v5.7.0 adds detailed Client Setup Surface planning only. It does not implement client setup UI, client-specific configuration generation, API key management, token storage, secret persistence, generated client config files, automatic client configuration, client auto-detection, endpoint testing, new network behavior, telemetry, background monitoring, automatic diagnostics, new app binary, zip asset, tag, release, or any app behavior change.

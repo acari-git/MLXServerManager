@@ -182,6 +182,14 @@ Adopted external boundary wording should be consistent across both surfaces:
 
 See [Detail Inspector Foundation Design](detail_inspector_foundation.md) for the future inspector boundary.
 
+## Relationship to Client Setup Surface
+
+The future Logs surface may help troubleshoot managed server startup and readiness. A future Client Setup surface may link conceptually to logs guidance when users need to verify the active endpoint.
+
+Adopted external server troubleshooting should point users to the terminal, app, or service where the external server was launched. Logs and Client Setup should both avoid implying external log capture, request proxying, generated credentials, or client configuration persistence.
+
+See [Client Setup Surface Design](client_setup_surface.md) for the future Client Setup surface boundary.
+
 ## Relationship to Server / Current Target
 
 The Logs surface can clarify managed vs adopted external target context. It can show lifecycle context without changing lifecycle behavior.

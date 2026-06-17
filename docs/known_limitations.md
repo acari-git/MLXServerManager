@@ -49,6 +49,7 @@ This document lists known limitations for MLX Server Manager.
 - v5.4.0 documents a future Profiles / Model List Surface design only; dedicated Profiles navigation, model list table, installed model scanning, model download, model deletion, cache cleanup, and profile behavior changes remain unimplemented.
 - v5.5.0 documents a future Detail Inspector Foundation design only; inspector UI, three-column layout, endpoint testing, model detail inspector behavior, model scanning, model download, model deletion, cache cleanup, selected profile behavior changes, and current target behavior changes remain unimplemented.
 - v5.6.0 documents a future Logs Panel Refresh design only; a dedicated Logs surface, log filtering, log search, log export, log file persistence, external log capture, background log scraping, telemetry, and background monitoring remain unimplemented.
+- v5.7.0 documents a future Client Setup Surface design only; a dedicated Client Setup surface, client-specific config generation, automatic client configuration, client auto-detection, API key storage, token storage, secret persistence, generated client config persistence, endpoint testing, and new network behavior remain unimplemented.
 - Future dashboard or app layout work should be treated as separate design work after Dashboard v1.
 - Dashboard UI work must continue to preserve Direct Mode, explicit lifecycle actions, managed-process-only Stop/Restart, and external server connection-context boundaries.
 
