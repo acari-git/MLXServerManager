@@ -15,6 +15,8 @@ v5.4.0 adds [Profiles / Model List Surface Design](profiles_model_list_surface.m
 
 v5.5.0 adds [Detail Inspector Foundation Design](detail_inspector_foundation.md) as a detailed planning document for the next possible future implementation step, `v6.2.0`. It focuses on contextual selected profile, current target, ownership, readiness, endpoint, and metadata summaries without implementing inspector UI or behavior changes.
 
+v5.6.0 adds [Logs Panel Refresh Design](logs_panel_refresh.md) as a detailed planning document for the next possible future implementation step, `v6.3.0`. It focuses on managed logs presentation, adopted external log boundaries, lifecycle context, and troubleshooting copy constraints without implementing a Logs panel or behavior changes.
+
 ## Goals
 
 - Improve scanability for users managing local MLX servers.
@@ -210,6 +212,7 @@ These versions are proposals only. Do not create tags or implement them from thi
 - Improve managed logs presentation.
 - Keep external log boundary explicit.
 - Do not capture external process logs.
+- See [Logs Panel Refresh Design](logs_panel_refresh.md) for the detailed planning boundary.
 
 ### v6.4.0 - Client Setup Surface
 
@@ -261,3 +264,7 @@ v5.4.0 adds detailed Profiles / Model List Surface planning only. It does not im
 ## v5.5.0 Detail Inspector Design Boundary
 
 v5.5.0 adds detailed Detail Inspector Foundation planning only. It does not implement inspector UI, a three-column layout, model detail inspector behavior, endpoint testing, model download, model deletion, installed model scanning, cache cleanup, new persistence behavior, new app binary, zip asset, tag, release, or any app behavior change.
+
+## v5.6.0 Logs Panel Refresh Design Boundary
+
+v5.6.0 adds detailed Logs Panel Refresh planning only. It does not implement a Logs panel, logs UI, log filtering, log search, log export, log file persistence, external log capture, background log scraping, automatic diagnostics, background health checks, telemetry, metrics widgets, new persistence behavior, new app binary, zip asset, tag, release, or any app behavior change.

@@ -240,6 +240,18 @@ It must not:
 - change External Server Detection / Adopt / Forget behavior,
 - take ownership of external processes.
 
+## Relationship to Logs Panel Refresh
+
+The inspector may show a compact current-target and log-boundary summary. A future Logs surface can provide the larger managed log view.
+
+Both surfaces should use the same ownership language:
+
+- app-managed server logs may be shown only when the app already owns the process context,
+- adopted external server logs are not captured,
+- external processes are not stopped, restarted, killed, inspected, or treated as app-owned.
+
+See [Logs Panel Refresh Design](logs_panel_refresh.md) for the future Logs surface boundary.
+
 ## Safety Boundaries
 
 - Direct Mode remains unchanged.

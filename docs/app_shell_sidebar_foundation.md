@@ -229,7 +229,7 @@ A future implementation may use a native macOS navigation structure such as Swif
 - Optional inspector/detail area deferred until a later step.
 - Dashboard selected by default.
 
-This is a candidate implementation shape, not a requirement. v6.0.0 should choose the smallest native structure that preserves behavior and keeps the current Dashboard usable. See [Detail Inspector Foundation Design](detail_inspector_foundation.md) for the later candidate inspector boundary.
+This is a candidate implementation shape, not a requirement. v6.0.0 should choose the smallest native structure that preserves behavior and keeps the current Dashboard usable. See [Detail Inspector Foundation Design](detail_inspector_foundation.md) for the later candidate inspector boundary and [Logs Panel Refresh Design](logs_panel_refresh.md) for the future Logs section boundary.
 
 ## Migration Strategy
 

@@ -1795,10 +1795,52 @@
    - v5.5.0 is a docs-only detailed design release.
    - No new unsigned app zip is needed.
 
+## v5.6.0 Completed: Logs Panel Refresh Design
+
+1. Add detailed v6.3.0 design documentation.
+   - Add `docs/logs_panel_refresh.md`.
+   - Narrow the broader v6.x layout plan into a future `v6.3.0` Logs Panel Refresh design.
+   - Keep Dashboard UI Refresh v1 as the current stable overview.
+   - Keep `v6.0.0` App Shell / Sidebar Foundation, `v6.1.0` Profiles / Model List Surface, and `v6.2.0` Detail Inspector Foundation as preceding future steps.
+2. Define candidate Logs surface areas.
+   - Header.
+   - Managed Log Stream.
+   - Lifecycle Events.
+   - Troubleshooting Notes.
+   - Copy Actions.
+3. Define managed vs adopted external log boundaries.
+   - App-managed logs may only come from app-owned process context already captured by the app.
+   - Adopted external servers are connection context only.
+   - External stdout/stderr is not captured.
+   - External processes are not stopped, restarted, killed, inspected, or treated as app-owned.
+4. Preserve behavior.
+   - No Swift app code changes.
+   - No Logs panel implementation.
+   - No logs UI, log filtering, log search, log export, or log file persistence.
+   - No external log capture or background log scraping.
+   - No automatic diagnostics, telemetry, or background monitoring.
+   - No endpoint testing beyond existing readiness behavior.
+   - No selected profile behavior change.
+   - No current target behavior change.
+   - No Import / Export behavior or schema change.
+   - No Rename or Replace behavior change.
+   - No Start / Stop / Restart behavior change.
+   - No readiness behavior change.
+   - No new network calls.
+   - No `/v1/chat/completions` calls by the app.
+   - No onboarding persistence or user tracking.
+   - No API key, token, or secret persistence.
+   - No model download or deletion.
+   - No model file scanning or cache cleanup.
+   - No external process ownership change.
+5. Release note.
+   - v5.6.0 is a docs-only detailed design release.
+   - No new unsigned app zip is needed.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Future app layout refresh implementation after v5.2.0 planning, v5.3.0 shell/sidebar design, v5.4.0 Profiles surface design, and v5.5.0 Detail Inspector design.
+- Future app layout refresh implementation after v5.2.0 planning, v5.3.0 shell/sidebar design, v5.4.0 Profiles surface design, v5.5.0 Detail Inspector design, and v5.6.0 Logs Panel Refresh design.
 - Signed/notarized distribution.
 - Model download design.
 - Deeper diagnostics design.
