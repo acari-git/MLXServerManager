@@ -80,6 +80,7 @@ Purpose:
 
 - Provide a future home for model profile list and profile details.
 - Make profile metadata and Import / Export easier to find.
+- Use [Profiles / Model List Surface Design](profiles_model_list_surface.md) as the detailed follow-up design for a possible future `v6.1.0` implementation.
 
 Should show:
 
@@ -103,7 +104,7 @@ Relation to existing v5 Dashboard cards:
 
 Implementation readiness:
 
-- Future-only for v6.0.0 unless the initial shell only links to existing profile controls without moving behavior.
+- Future-only for v6.0.0 unless the initial shell only links to existing profile controls without moving behavior. A dedicated Profiles / Model List Surface should be staged separately after the shell foundation.
 
 ### Server
 

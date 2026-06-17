@@ -46,6 +46,7 @@ This document lists known limitations for MLX Server Manager.
 - v5.1.0 keeps Dashboard v1 stable and documents future layout work separately; it does not add a three-column shell, sidebar, model table, inspector, metrics widgets, or Hermes-specific panels.
 - v5.2.0 documents a future Full App Layout Refresh direction only; sidebar navigation, model table redesign, detail inspector, logs panel refresh, metrics widgets, and client setup surfaces remain unimplemented.
 - v5.3.0 documents a future App Shell / Sidebar Foundation design only; sidebar navigation, `NavigationSplitView`, model table redesign, detail inspector, logs panel refresh, and metrics widgets remain unimplemented.
+- v5.4.0 documents a future Profiles / Model List Surface design only; dedicated Profiles navigation, model list table, installed model scanning, model download, model deletion, cache cleanup, and profile behavior changes remain unimplemented.
 - Future dashboard or app layout work should be treated as separate design work after Dashboard v1.
 - Dashboard UI work must continue to preserve Direct Mode, explicit lifecycle actions, managed-process-only Stop/Restart, and external server connection-context boundaries.
 

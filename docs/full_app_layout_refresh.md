@@ -11,6 +11,8 @@ v5.2.0 documents a possible future full app layout direction. It does not change
 
 v5.3.0 adds [App Shell / Sidebar Foundation Design](app_shell_sidebar_foundation.md) as a detailed planning document for the first possible future implementation step, `v6.0.0`. It narrows the broader layout direction into a candidate shell/sidebar foundation while still implementing no UI behavior.
 
+v5.4.0 adds [Profiles / Model List Surface Design](profiles_model_list_surface.md) as a detailed planning document for the next possible future implementation step, `v6.1.0`. It focuses on profile metadata browsing and Import / Export placement without implementing model download, model deletion, installed model scanning, or profile behavior changes.
+
 ## Goals
 
 - Improve scanability for users managing local MLX servers.
@@ -192,6 +194,7 @@ These versions are proposals only. Do not create tags or implement them from thi
 - Add selected profile summary.
 - Keep model profile metadata separate from installed model files.
 - No model download or deletion.
+- See [Profiles / Model List Surface Design](profiles_model_list_surface.md) for the detailed planning boundary.
 
 ### v6.2.0 - Detail Inspector Foundation
 
@@ -247,3 +250,7 @@ v5.2.0 adds this planning document only. It does not implement the full app layo
 ## v5.3.0 Detailed Design Boundary
 
 v5.3.0 adds detailed app shell and sidebar foundation planning only. It does not implement `NavigationSplitView`, sidebar navigation, model table redesign, detail inspector, logs refresh, metrics widgets, new app binary, zip asset, tag, release, or any app behavior change.
+
+## v5.4.0 Profiles Surface Design Boundary
+
+v5.4.0 adds detailed Profiles / Model List Surface planning only. It does not implement a Profiles section, model list table, sidebar navigation, model detail inspector, installed model scanning, model download, model deletion, cache cleanup, new persistence behavior, new app binary, zip asset, tag, release, or any app behavior change.

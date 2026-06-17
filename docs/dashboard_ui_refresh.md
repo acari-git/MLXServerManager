@@ -276,6 +276,8 @@ v5.2.0 does not implement a new layout, change Dashboard card order, move runtim
 
 v5.3.0 adds [App Shell / Sidebar Foundation Design](app_shell_sidebar_foundation.md) as a narrower design for the first possible future v6.0.0 step. It keeps Dashboard v1 as the future landing surface and does not implement a sidebar, `NavigationSplitView`, or any behavior change.
 
+v5.4.0 adds [Profiles / Model List Surface Design](profiles_model_list_surface.md) as a narrower design for a possible future v6.1.0 Profiles section. Dashboard v1 remains the high-level overview and does not become a model table or model-file management surface.
+
 ## Target Information Architecture
 
 Dashboard v1 prioritizes these areas:
@@ -519,6 +521,7 @@ Dashboard v1 should:
 - Treat v5.1.0 as the Dashboard Stable Follow-up documentation release.
 - Treat v5.2.0 as the Full App Layout Refresh planning release.
 - Treat v5.3.0 as the App Shell / Sidebar Foundation design release.
+- Treat v5.4.0 as the Profiles / Model List Surface design release.
 - Confirm the v1 information architecture and safety boundaries.
 - Keep Import / Export stable release boundaries intact.
 
@@ -570,7 +573,7 @@ The Dashboard UI Refresh must preserve:
 
 ## Release Positioning
 
-v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity. v4.6.0 is a small app-code polish release for Profiles / Import Export clarity. v4.7.0 is a small app-code polish release for Onboarding / Next Steps clarity. v4.8.0 is a small app-code polish release for layout and information hierarchy clarity. v4.9.0 is a small app-code polish release for Copy / Client Setup clarity. v5.0.0 is the Dashboard UI Refresh v1 stabilization release. v5.1.0 is a Dashboard Stable Follow-up documentation release. v5.2.0 is a Full App Layout Refresh planning release. v5.3.0 is an App Shell / Sidebar Foundation design release.
+v4.1.0 is a docs-only design release. v4.2.0 is an app-code foundation release for the dashboard refresh direction. v4.3.0 is a small app-code polish release for Current Target clarity. v4.4.0 is a small app-code polish release for Server State clarity. v4.5.0 is a small app-code polish release for Logs / Diagnostics guidance clarity. v4.6.0 is a small app-code polish release for Profiles / Import Export clarity. v4.7.0 is a small app-code polish release for Onboarding / Next Steps clarity. v4.8.0 is a small app-code polish release for layout and information hierarchy clarity. v4.9.0 is a small app-code polish release for Copy / Client Setup clarity. v5.0.0 is the Dashboard UI Refresh v1 stabilization release. v5.1.0 is a Dashboard Stable Follow-up documentation release. v5.2.0 is a Full App Layout Refresh planning release. v5.3.0 is an App Shell / Sidebar Foundation design release. v5.4.0 is a Profiles / Model List Surface design release.
 
 v4.1.0 does not:
 
@@ -582,4 +585,4 @@ v4.1.0 does not:
 - create a new app binary,
 - create a release asset.
 
-v4.2.0, v4.3.0, v4.4.0, v4.5.0, v4.6.0, v4.7.0, v4.8.0, v4.9.0, and v5.0.0 change SwiftUI view code and therefore require new unsigned app zips when released. v5.1.0, v5.2.0, and v5.3.0 are docs-only unless app code changes are added later. These releases still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, import/export schema, onboarding persistence, API key/token persistence, or external process ownership.
+v4.2.0, v4.3.0, v4.4.0, v4.5.0, v4.6.0, v4.7.0, v4.8.0, v4.9.0, and v5.0.0 change SwiftUI view code and therefore require new unsigned app zips when released. v5.1.0 through v5.4.0 are docs-only unless app code changes are added later. These releases still do not change server lifecycle semantics, Direct Mode, readiness behavior, Import / Export behavior, import/export schema, onboarding persistence, API key/token persistence, external process ownership, model download behavior, or model deletion behavior.

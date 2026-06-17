@@ -1714,10 +1714,49 @@
    - v5.3.0 is a docs-only detailed design release.
    - No new unsigned app zip is needed.
 
+## v5.4.0 Completed: Profiles / Model List Surface Design
+
+1. Add detailed v6.1.0 design documentation.
+   - Add `docs/profiles_model_list_surface.md`.
+   - Narrow the broader v6.x layout plan into a future `v6.1.0` Profiles / Model List Surface design.
+   - Keep Dashboard UI Refresh v1 as the current stable overview.
+   - Keep `v6.0.0` App Shell / Sidebar Foundation as the preceding future step.
+2. Define candidate Profiles surface.
+   - Candidate profile list columns.
+   - Selected profile details.
+   - Model ID, endpoint, base URL, and Advanced Launch Options summary.
+   - Import / Export placement.
+   - Rename / Replace guidance.
+3. Preserve metadata-only boundaries.
+   - Profile metadata is not installed model files.
+   - Import / Export remains metadata-only.
+   - No model file copy, model download, model deletion, Hugging Face cache mutation, log transfer, secrets transfer, or external process ownership transfer.
+4. Preserve behavior.
+   - No Swift app code changes.
+   - No Profiles section implementation.
+   - No model list table implementation.
+   - No sidebar implementation.
+   - No selected profile behavior change.
+   - No profile persistence rewrite.
+   - No Import / Export behavior or schema change.
+   - No Rename or Replace behavior change.
+   - No Start / Stop / Restart behavior change.
+   - No readiness behavior change.
+   - No new network calls.
+   - No `/v1/chat/completions` calls by the app.
+   - No onboarding persistence or user tracking.
+   - No API key, token, or secret persistence.
+   - No model download or deletion.
+   - No model file scanning or cache cleanup.
+   - No external process ownership change.
+5. Release note.
+   - v5.4.0 is a docs-only detailed design release.
+   - No new unsigned app zip is needed.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Future app layout refresh implementation after v5.2.0 planning and v5.3.0 shell/sidebar design.
+- Future app layout refresh implementation after v5.2.0 planning, v5.3.0 shell/sidebar design, and v5.4.0 Profiles surface design.
 - Signed/notarized distribution.
 - Model download design.
 - Deeper diagnostics design.
