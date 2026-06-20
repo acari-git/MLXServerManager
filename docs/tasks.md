@@ -2307,10 +2307,18 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.13.1 Completed: Signed Zip Dry-Run Checklist Polish
+
+- Add dry-run pass / fail criteria to `docs/signed_zip_dry_run_checklist.md`.
+- Add evidence expectations for local-only signed zip dry runs.
+- Add stop conditions for unclear scope, credential exposure risk, forbidden entries, or Direct Mode boundary changes.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Signed zip dry-run checklist polish.
+- Signed zip local dry-run execution notes.
 - Packaging checklist polish.
 - Model download design.
 - Deeper diagnostics design.

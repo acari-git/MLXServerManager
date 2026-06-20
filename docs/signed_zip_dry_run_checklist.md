@@ -3,6 +3,7 @@
 ## Release
 
 - Added in `v6.13.0`.
+- Polished in `v6.13.1` with pass/fail criteria, evidence expectations, and stop conditions.
 - Docs-only dry-run checklist for a future signed zip release.
 - Follows `v6.11.0` / `v6.11.1` Signed Zip Implementation Readiness and `v6.12.0` / `v6.12.1` Local Signing Command Draft.
 - No new app binary is produced for this release.
@@ -71,6 +72,25 @@ Disallowed dry-run actions for this docs-only release:
 - add release automation;
 - change Swift source files;
 - change app runtime behavior.
+
+## Dry-Run Pass / Fail Criteria
+
+Pass only if:
+
+- repository state is clean;
+- release scope remains docs-only or explicitly local-only;
+- no binary upload is planned;
+- no private signing or Apple account values are recorded;
+- release notes structure is complete;
+- fallback policy is selected before any real signed release.
+
+Fail if:
+
+- an app asset would be uploaded from the dry run;
+- real signing or notarization is required to complete the dry run;
+- credentials would appear in docs, logs, or release notes;
+- zip naming does not match the actual verification state;
+- runtime behavior changes are included.
 
 ## Checklist
 
@@ -193,6 +213,28 @@ Choose one before a real signed release:
 
 Do not publish an asset with a more trusted name than its actual state.
 
+## Evidence Expectations
+
+A dry run may record:
+
+- git status summary;
+- intended release scope;
+- planned asset name;
+- planned signing status;
+- planned notarization status;
+- release notes section check;
+- fallback policy;
+- explicit `Binary upload planned: No` value.
+
+A dry run must not record:
+
+- certificate names if they are private;
+- Apple account identifiers;
+- app-specific passwords;
+- notary profiles;
+- keychain paths;
+- private local paths beyond generic placeholders.
+
 ## Dry-Run Log Template
 
 Use this local-only log:
@@ -212,6 +254,18 @@ Binary upload planned:
 ```
 
 For this release, `Binary upload planned` must be `No`.
+
+## Stop Conditions
+
+Stop the dry run if:
+
+- repository state is not clean;
+- release scope is unclear;
+- signing identity handling is unclear;
+- private credential values would be exposed;
+- any generated archive contains forbidden entries;
+- release notes cannot clearly state the asset and status;
+- Direct Mode boundaries would be changed.
 
 ## Direct Mode Boundary
 
@@ -235,7 +289,7 @@ After this checklist, safe follow-up releases may include:
 
 ## Release Acceptance
 
-`v6.13.0` is acceptable if:
+`v6.13.0` and `v6.13.1` are acceptable if:
 
 - it remains docs-only;
 - no Swift source files are changed;
