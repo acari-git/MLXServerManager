@@ -2354,10 +2354,17 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.17.0 Completed: Model Download Design
+
+- Add `docs/model_download_design.md` as a docs-only design for possible future model download support.
+- Define design goals, non-goals, Direct Mode boundary, user flow candidate, repository identifier handling, destination path policy, credential boundary, download task boundary, progress/cancellation behavior, compatibility wording, profile integration boundary, safety checklist, and verification expectations.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no model download, model deletion, model scanning, cache cleanup, token persistence, auto-start, profile overwrite, telemetry, background monitoring, runtime behavior change, or release automation.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Model download design.
+- Model Download Design Polish.
 - Deeper diagnostics design.
 - Model availability documentation.
 - Packaging polish.
