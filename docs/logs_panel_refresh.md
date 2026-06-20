@@ -3,13 +3,14 @@
 ## Status
 
 - Implemented in `v6.3.0` as the first Logs Panel Refresh surface.
+- Polished in `v6.3.1` with shared LogView entry count display and stable identifiers.
 - Initially documented in `v5.6.0` as a planning-only design.
 - Follows `v6.0.0` App Shell / Sidebar Foundation.
 - Follows `v6.1.0` Profiles / Model List Surface.
 - Follows `v6.2.0` Detail Inspector Foundation.
 - Dashboard UI Refresh v1 remains the current stable surface.
 
-v6.3.0 adds a top-level Logs destination for app-managed lifecycle and log context. It does not implement log filtering, log search, log export, log file persistence, external log capture, background log scraping, automatic diagnostics, background health checks, telemetry, metrics widgets, model download, model deletion, installed model scanning, cache cleanup, new persistence behavior, or runtime behavior changes.
+v6.3.0 adds a top-level Logs destination for app-managed lifecycle and log context. v6.3.1 keeps the same behavior and polishes the shared LogView with entry count display plus stable identifiers for the header, title, entry count, copy button, clear button, entry list, and empty state. It does not implement log filtering, log search, log export, log file persistence, external log capture, background log scraping, automatic diagnostics, background health checks, telemetry, metrics widgets, model download, model deletion, installed model scanning, cache cleanup, new persistence behavior, or runtime behavior changes.
 
 ## Goals
 
@@ -267,4 +268,4 @@ These versions remain proposals only:
 
 ## v5.6.0 Planning Boundary
 
-v5.6.0 added this detailed design only. v6.3.0 is the first app-code Logs Panel Refresh implementation and keeps the original safety boundaries intact.
+v5.6.0 added this detailed design only. v6.3.0 is the first app-code Logs Panel Refresh implementation. v6.3.1 is a focused Logs Surface polish release. Both keep the original safety boundaries intact.

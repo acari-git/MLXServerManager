@@ -10,6 +10,12 @@ struct LogView: View {
             HStack {
                 Text("Logs")
                     .font(.headline)
+                    .accessibilityIdentifier("log-view-title")
+
+                Text("\(entries.count) entries")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("log-view-entry-count")
 
                 Spacer()
 
@@ -18,13 +24,16 @@ struct LogView: View {
                 } label: {
                     Label("Copy Logs", systemImage: "doc.on.doc")
                 }
+                .accessibilityIdentifier("log-view-copy-button")
 
                 Button {
                     onClear()
                 } label: {
                     Label("Clear Logs", systemImage: "trash")
                 }
+                .accessibilityIdentifier("log-view-clear-button")
             }
+            .accessibilityIdentifier("log-view-header")
 
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 6) {
@@ -33,6 +42,7 @@ struct LogView: View {
                             .font(.system(.caption, design: .monospaced))
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityIdentifier("log-view-empty-state")
                     } else {
                         ForEach(entries) { entry in
                             LogEntryRow(entry: entry)
@@ -40,6 +50,7 @@ struct LogView: View {
                     }
                 }
                 .padding(12)
+                .accessibilityIdentifier("log-view-entry-list")
             }
             .frame(minHeight: 180)
             .background(Color(nsColor: .textBackgroundColor))
@@ -50,6 +61,7 @@ struct LogView: View {
             }
         }
         .panelStyle()
+        .accessibilityIdentifier("log-view")
     }
 }
 

@@ -2140,6 +2140,15 @@
 - Preserve Dashboard model list, runtime controls, selected profile behavior, current target behavior, Import / Export behavior, and External Server Detection / Adopt / Forget behavior.
 - Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, external log capture, background scraping, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.3.1 Completed: Logs Surface Polish
+
+- Add shared `LogView` entry count display.
+- Add stable identifiers for the shared log view header, title, entry count, copy button, clear button, entry list, and empty state.
+- Keep existing copy and clear log actions unchanged.
+- Preserve Dashboard LogView availability and Logs surface LogView reuse.
+- Preserve Dashboard model list, runtime controls, selected profile behavior, current target behavior, Import / Export behavior, and External Server Detection / Adopt / Forget behavior.
+- Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, external log capture, background scraping, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
