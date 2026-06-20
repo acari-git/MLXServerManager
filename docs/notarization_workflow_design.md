@@ -3,6 +3,7 @@
 ## Release
 
 - Added in `v6.10.0`.
+- Polished in `v6.10.1` with implementation entry criteria, status wording rules, and fallback decision criteria.
 - Docs-only notarization workflow design.
 - Follows `v6.9.0` / `v6.9.1` Signed Distribution Design.
 - No new app binary is produced for this release.
@@ -72,6 +73,19 @@ Notarization must not be used to introduce:
 - privileged helpers;
 - launch agents;
 - installer-only distribution.
+
+## Notarization Implementation Entry Criteria
+
+Start implementation only when all of the following are true:
+
+- a Developer ID signed build path already exists or is explicitly included in the same scoped release;
+- notarization credentials can be supplied without committing secrets;
+- submission, waiting, and result retrieval behavior is documented before execution;
+- stapling policy is chosen before the release starts;
+- fallback asset policy is chosen before the release starts;
+- release notes will state signing, notarization, and stapling status separately;
+- failure handling avoids publishing rejected artifacts as notarized;
+- no app runtime behavior changes are bundled into the notarization release.
 
 ## Workflow Prerequisites
 
@@ -180,6 +194,22 @@ release.zip
 
 If both signed-only and notarized assets are published, include separate checksums and status for each.
 
+## Status Wording Rules
+
+Use exact, conservative status labels:
+
+- `Signing status: Not signed`
+- `Signing status: Developer ID signed`
+- `Notarization status: Not submitted`
+- `Notarization status: Accepted`
+- `Notarization status: Rejected`
+- `Notarization status: Timed out`
+- `Stapling status: Not applicable`
+- `Stapling status: Not stapled`
+- `Stapling status: Stapled`
+
+Do not use vague labels such as `secure`, `verified`, `trusted`, or `Apple-approved` unless the release notes also state the exact signing and notarization state.
+
 ## Release Notes Requirements
 
 Future notarized release notes should include:
@@ -235,6 +265,30 @@ Choose fallback policy before implementation:
 
 Release notes must accurately state which policy was used.
 
+Choose notarized-only when:
+
+- signing and notarization verification are reliable;
+- stapling behavior is verified;
+- README install guidance is ready for notarized assets.
+
+Choose signed plus notarized when:
+
+- notarization is newly introduced;
+- users may need a signed-only fallback;
+- both assets can be clearly named and checksummed.
+
+Choose signed-only fallback when:
+
+- notarization is rejected, unavailable, or timed out;
+- the signed asset is otherwise verified;
+- release notes clearly state that notarization was not completed.
+
+Choose unsigned-only when:
+
+- signing or notarization identity is unavailable;
+- credential handling is not ready;
+- publishing a signed or notarized asset would be ambiguous.
+
 ## Direct Mode Boundary
 
 Notarized distribution does not change the app architecture:
@@ -260,7 +314,7 @@ Actual notarization should be implemented in a dedicated app-code or release-wor
 
 ## Release Acceptance
 
-`v6.10.0` is acceptable if:
+`v6.10.0` and `v6.10.1` are acceptable if:
 
 - it remains docs-only;
 - no Swift source files are changed;

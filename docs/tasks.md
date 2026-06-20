@@ -2262,10 +2262,17 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.10.1 Completed: Notarization Workflow Polish
+
+- Add notarization implementation entry criteria to `docs/notarization_workflow_design.md`.
+- Add conservative signing, notarization, and stapling status wording rules.
+- Add fallback decision criteria for notarized-only, signed plus notarized, signed-only fallback, and unsigned-only releases.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Notarization workflow polish.
 - Signed Zip Implementation Readiness.
 - Packaging checklist polish.
 - Model download design.
