@@ -2205,11 +2205,22 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, endpoint testing, generated client config persistence, client auto-detection, API key storage, token storage, secret persistence, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.7.0 Completed: Distribution / Packaging Readiness Review
+
+- Add `docs/distribution_packaging_readiness.md` as a docs-only review for future distribution work.
+- Record the current distribution state and current binary asset.
+- Define future distribution goals for unsigned zip, signed zip, notarized zip, DMG, and installer package decisions.
+- Document release asset naming expectations and the required release settings block.
+- Add packaging and signing/notarization safety checklists.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no signing, notarization, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Future app layout refresh stabilization after v6.6.1 review polish.
-- Signed/notarized distribution.
+- Signed/notarized distribution design.
+- README install section refresh.
+- Packaging checklist polish.
 - Model download design.
 - Deeper diagnostics design.
 - Model availability documentation.
