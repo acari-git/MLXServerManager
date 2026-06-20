@@ -2338,10 +2338,17 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.16.0 Completed: Packaging Checklist Polish
+
+- Polish `docs/distribution_packaging_readiness.md` after the signed zip readiness closeout.
+- Add post-closeout packaging decision order for signed zip readiness versus non-signing packaging polish.
+- Add docs-only packaging release status wording for asset, signing, notarization, and stapling status.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Packaging checklist polish.
 - Model download design.
 - Deeper diagnostics design.
 - Model availability documentation.

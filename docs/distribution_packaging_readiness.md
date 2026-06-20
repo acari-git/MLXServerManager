@@ -4,6 +4,7 @@
 
 - Added in `v6.7.0`.
 - Polished in `v6.7.1` with install documentation planning and manual packaging verification notes.
+- Polished in `v6.16.0` with post-closeout packaging checklist guidance.
 - Docs-only readiness review.
 - Follows the `v6.6.0` / `v6.6.1` App Layout Stabilization Review.
 - No new app binary is produced for this release.
@@ -23,7 +24,8 @@ Current release asset policy:
 - App-code releases may publish an unsigned zip asset.
 - Docs-only releases publish GitHub Release notes only.
 - `v6.5.1` is the current downloadable app binary.
-- `v6.6.0`, `v6.6.1`, and `v6.7.0` are docs-only releases and do not replace the app binary.
+- `v6.6.0` through `v6.16.0` include multiple docs-only distribution and readiness releases after the current app binary.
+- Docs-only releases do not replace the app binary.
 
 Current binary:
 
@@ -177,6 +179,25 @@ Before publishing any binary asset, verify:
 - release asset name matches signing/notarization status;
 - GitHub Release title and release body match the tag.
 
+## Post-Closeout Packaging Checklist
+
+After `v6.15.0`, packaging work should follow this decision order:
+
+1. Use signed zip distribution only when Developer ID signing is ready.
+2. Use packaging checklist polish when signing is not ready.
+3. Keep docs-only releases explicit about the current public binary.
+4. Do not publish a binary asset from a docs-only release.
+5. Do not use signed or notarized asset names unless verification actually passed.
+
+For any docs-only packaging release, record:
+
+```text
+Asset: No new app binary; current binary remains MLXServerManager-v6.5.1-unsigned.zip
+Signing status: Not executed
+Notarization status: Not submitted
+Stapling status: Not applicable
+```
+
 ## Manual Packaging Verification Notes
 
 For any later app-code release with a binary asset, manually record:
@@ -239,9 +260,25 @@ After this readiness review, safe follow-up releases may include:
 
 Any actual signed/notarized/DMG implementation should be scoped separately and should not be bundled into an unrelated UI or runtime release.
 
+## Packaging Checklist Polish Acceptance
+
+`v6.16.0` is acceptable if:
+
+- it remains docs-only;
+- no Swift source files are changed;
+- no runtime behavior changes are introduced;
+- no app binary zip is produced;
+- no signing is executed;
+- no notarization is executed;
+- no stapling is executed;
+- no DMG or installer is produced;
+- no release automation is added;
+- release notes state that the current binary remains `v6.5.1`;
+- the next real binary release remains explicitly scoped.
+
 ## Release Acceptance
 
-`v6.7.0` and `v6.7.1` are acceptable if:
+`v6.7.0`, `v6.7.1`, and `v6.16.0` are acceptable if:
 
 - it remains docs-only;
 - no Swift source files are changed;
