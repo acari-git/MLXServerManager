@@ -3,6 +3,7 @@
 ## Release
 
 - Added in `v6.11.0`.
+- Polished in `v6.11.1`.
 - Docs-only readiness review for a future signed zip implementation.
 - Follows `v6.9.0` / `v6.9.1` Signed Distribution Design and `v6.10.0` / `v6.10.1` Notarization Workflow Design.
 - No new app binary is produced for this release.
@@ -51,6 +52,25 @@ A future signed zip implementation should not start until all of the following a
 - release notes include signing status, notarization status, asset name, and SHA-256;
 - fallback behavior is clear if signing fails;
 - no unrelated UI or runtime behavior changes are bundled into the implementation release.
+
+## Go / No-Go Criteria
+
+Go only when:
+
+- the release owner can build a clean Release app;
+- the signing identity is available outside the repository;
+- verification steps are known before the release starts;
+- signed zip asset naming is agreed;
+- release notes can state signing and notarization status precisely;
+- fallback behavior is agreed before publishing.
+
+No-Go when:
+
+- signing identity is unavailable;
+- verification cannot be recorded;
+- credentials would need to be committed or exposed;
+- the signed zip would include unrelated files;
+- the release would bundle runtime or UI changes with signing work.
 
 ## Proposed Implementation Scope
 
@@ -115,6 +135,17 @@ A future manual signed zip flow may be:
 ```
 
 This review does not implement these commands.
+
+## Release Artifact Matrix
+
+Use one of these release asset states:
+
+- Docs-only: no asset, signing not applicable, notarization not applicable.
+- Unsigned zip: `MLXServerManager-vX.Y.Z-unsigned.zip`, not signed, not submitted.
+- Signed zip: `MLXServerManager-vX.Y.Z-signed.zip`, Developer ID signed, not submitted.
+- Notarized zip: `MLXServerManager-vX.Y.Z-notarized.zip`, Developer ID signed, accepted.
+
+Do not publish an asset with a more trusted name than its actual verification state.
 
 ## Required Checks Before Publishing
 
@@ -182,6 +213,24 @@ Notarization status: Not submitted
 SHA-256: <hash>
 ```
 
+## Manual Verification Log Template
+
+A future signed zip release should record a compact verification log:
+
+```text
+Release:
+Commit:
+Asset:
+Signing status:
+Notarization status:
+SHA-256:
+Zip contents checked:
+Forbidden entries checked:
+Release URL:
+```
+
+Keep private credential details out of this log.
+
 ## README Install Update Requirement
 
 Before publishing a signed zip, README Install should state:
@@ -236,7 +285,7 @@ After this readiness review, safe follow-up releases may include:
 
 ## Release Acceptance
 
-`v6.11.0` is acceptable if:
+`v6.11.0` and `v6.11.1` are acceptable if:
 
 - it remains docs-only;
 - no Swift source files are changed;

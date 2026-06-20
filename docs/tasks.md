@@ -2277,10 +2277,18 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.11.1 Completed: Signed Zip Readiness Polish
+
+- Add Go / No-Go criteria to `docs/signed_zip_implementation_readiness.md`.
+- Add release artifact states for docs-only, unsigned zip, signed zip, and notarized zip releases.
+- Add a compact manual verification log template for future signed zip releases.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Signed Zip Readiness Polish.
+- Local signing command draft.
 - Packaging checklist polish.
 - Model download design.
 - Deeper diagnostics design.
