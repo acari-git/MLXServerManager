@@ -3,6 +3,7 @@
 ## Release
 
 - Added in `v6.14.0`.
+- Polished in `v6.14.1` with scrub checklist, public summary wording, and handoff criteria.
 - Docs-only execution notes for a future local signed zip dry run.
 - Follows `v6.13.0` / `v6.13.1` Signed Zip Dry-Run Checklist.
 - No new app binary is produced for this release.
@@ -198,6 +199,20 @@ Do not publish or commit local evidence containing:
 - credentials;
 - tokens.
 
+## Public Summary Wording
+
+Use conservative public wording for local dry runs:
+
+```text
+Signing status: Not executed
+Notarization status: Not submitted
+Stapling status: Not applicable
+New binary asset: None
+Current public binary: MLXServerManager-v6.5.1-unsigned.zip
+```
+
+Avoid wording such as `signed build verified`, `notarization-ready`, or `release candidate binary` unless a scoped binary release actually produced and verified that artifact.
+
 ## Public Documentation Criteria
 
 Public docs may include:
@@ -216,6 +231,23 @@ Public docs must not include:
 - local keychain details;
 - private failure logs;
 - private CI secret names if they reveal account structure.
+
+## Scrub Checklist
+
+Before any local dry-run notes are made public, remove:
+
+- user home directory paths;
+- machine names;
+- Apple account identifiers;
+- certificate serial details;
+- keychain names or paths;
+- notary profile names;
+- CI secret names that expose account structure;
+- private command output;
+- local-only failure logs;
+- tokens or credentials.
+
+Keep only generalized placeholders and release-relevant status.
 
 ## Fallback Policy
 
@@ -244,6 +276,18 @@ OpenAI-compatible client -> mlx_lm.server or adopted external server -> MLX mode
 
 The app remains a control and context surface. It must not become part of the inference request path.
 
+## Handoff Criteria
+
+Move from local dry-run notes to real signed zip implementation only when:
+
+- signed zip scope is explicitly approved;
+- signing identity handling is ready outside the repository;
+- private evidence does not need to be published;
+- release notes can state exact signing and notarization status;
+- asset naming is chosen before build work starts;
+- fallback policy is agreed before build work starts;
+- Direct Mode boundaries remain unchanged.
+
 ## Future Implementation Candidates
 
 After this execution-notes release, safe follow-up releases may include:
@@ -256,7 +300,7 @@ After this execution-notes release, safe follow-up releases may include:
 
 ## Release Acceptance
 
-`v6.14.0` is acceptable if:
+`v6.14.0` and `v6.14.1` are acceptable if:
 
 - it remains docs-only;
 - no Swift source files are changed;
