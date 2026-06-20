@@ -10,6 +10,7 @@ struct DetailInspectorSurfaceView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
+                summaryCards
 
                 if let selectedModel {
                     selectedProfileCard(selectedModel)
@@ -24,6 +25,18 @@ struct DetailInspectorSurfaceView: View {
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .accessibilityIdentifier("detail-inspector-surface")
+    }
+
+    private var selectedProfileText: String {
+        selectedModel?.displayName ?? "None"
+    }
+
+    private var targetStatusText: String {
+        targetSummary.isActiveTarget ? "Active" : "Inactive"
+    }
+
+    private var restartRequiredText: String {
+        restartRequired ? "Yes" : "No"
     }
 
     private var header: some View {
@@ -43,6 +56,41 @@ struct DetailInspectorSurfaceView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("detail-inspector-header")
+    }
+
+    private var summaryCards: some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 160), spacing: 12)],
+            alignment: .leading,
+            spacing: 12
+        ) {
+            summaryCard("Selected", value: selectedProfileText, identifier: "detail-inspector-summary-selected")
+            summaryCard("Target", value: targetStatusText, identifier: "detail-inspector-summary-target")
+            summaryCard("Running", value: runningModelText, identifier: "detail-inspector-summary-running")
+            summaryCard("Restart required", value: restartRequiredText, identifier: "detail-inspector-summary-restart-required")
+        }
+        .accessibilityIdentifier("detail-inspector-summary")
+    }
+
+    private func summaryCard(_ title: String, value: String, identifier: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.headline)
+                .lineLimit(1)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(Color.secondary.opacity(0.12))
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(identifier)
     }
 
     private func selectedProfileCard(_ model: ModelConfig) -> some View {
@@ -93,8 +141,16 @@ struct DetailInspectorSurfaceView: View {
 
     private var connectionTargetCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Connection Target")
-                .font(.headline)
+            HStack(alignment: .firstTextBaseline) {
+                Text("Connection Target")
+                    .font(.headline)
+
+                Spacer()
+
+                Text(targetStatusText)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(targetSummary.isActiveTarget ? Color.accentColor : Color.secondary)
+            }
 
             DetailGrid(rows: [
                 ("Target Type", targetSummary.targetType),

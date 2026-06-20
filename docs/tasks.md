@@ -2119,6 +2119,15 @@
 - Preserve Dashboard model list, runtime controls, selected profile behavior, current target behavior, Import / Export behavior, and External Server Detection / Adopt / Forget behavior.
 - Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.2.1 Completed: Detail Inspector Polish
+
+- Add Inspector summary cards for selected profile, target status, running model, and restart-required state.
+- Add stable identifiers for the Inspector summary area and summary cards.
+- Keep Inspector read-only for runtime lifecycle behavior.
+- Preserve the existing Dashboard `ModelDetailView` edit/delete entry points.
+- Preserve Dashboard model list, runtime controls, selected profile behavior, current target behavior, Import / Export behavior, and External Server Detection / Adopt / Forget behavior.
+- Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.

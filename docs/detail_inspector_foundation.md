@@ -3,12 +3,13 @@
 ## Status
 
 - Implemented in `v6.2.0` as the first read-only Detail Inspector Foundation.
+- Polished in `v6.2.1` with Inspector summary cards and clearer target status identifiers.
 - Initially documented in `v5.5.0` as a planning-only design.
 - Follows `v6.0.0` App Shell / Sidebar Foundation.
 - Follows `v6.1.0` Profiles / Model List Surface.
 - Dashboard UI Refresh v1 remains the current stable surface.
 
-v6.2.0 adds a top-level Inspector destination for selected profile and connection target details. It does not implement a three-column layout, endpoint testing, model file management, logs panel refresh, metrics widgets, model download, model deletion, installed model scanning, cache cleanup, new persistence behavior, or runtime behavior changes.
+v6.2.0 adds a top-level Inspector destination for selected profile and connection target details. v6.2.1 keeps that surface read-only and adds summary cards for selected profile, target status, running model, and restart-required state. It does not implement a three-column layout, endpoint testing, model file management, logs panel refresh, metrics widgets, model download, model deletion, installed model scanning, cache cleanup, new persistence behavior, or runtime behavior changes.
 
 ## Goals
 
