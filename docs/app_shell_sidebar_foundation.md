@@ -4,6 +4,7 @@
 
 - Implemented in `v6.0.0` as the App Shell / Sidebar Foundation.
 - Polished in `v6.0.1` with small sidebar refinements.
+- Cleaned up in `v6.0.2` with sidebar release hygiene before v6.1.0.
 - Dashboard remains the default and only active top-level section for this stage.
 - Dashboard UI Refresh v1 remains the current stable surface.
 - Later sections remain future-only.
@@ -232,7 +233,7 @@ The `v6.0.0` implementation uses a native macOS `NavigationSplitView` app shell:
 
 The initial implementation chooses the smallest native structure that preserves behavior and keeps the current Dashboard usable. See [Detail Inspector Foundation Design](detail_inspector_foundation.md) for the later candidate inspector boundary, [Logs Panel Refresh Design](logs_panel_refresh.md) for the future Logs section boundary, [Client Setup Surface Design](client_setup_surface.md) for the future Client Setup section boundary, and [Metrics / System Context Design](metrics_system_context.md) for the future metrics and system context boundary.
 
-The implemented shell remains limited to app shell/sidebar foundation and does not pull in Profiles, Inspector, Logs, Client Setup, Metrics, or behavior changes. v6.0.1 keeps that boundary while adding small sidebar polish.
+The implemented shell remains limited to app shell/sidebar foundation and does not pull in Profiles, Inspector, Logs, Client Setup, Metrics, or behavior changes. v6.0.1 keeps that boundary while adding small sidebar polish. v6.0.2 keeps accessibility ownership inside the sidebar row and records the v6.0.x shell state before v6.1.0 begins.
 
 ## Migration Strategy
 

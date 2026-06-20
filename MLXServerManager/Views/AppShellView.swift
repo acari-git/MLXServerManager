@@ -15,8 +15,6 @@ struct AppShellView<Content: View>: View {
             List(AppSection.allCases, selection: $selectedSection) { section in
                 AppSectionSidebarRow(section: section)
                     .tag(section)
-                    .accessibilityLabel(section.title)
-                    .accessibilityHint(section.subtitle)
             }
             .listStyle(.sidebar)
             .navigationTitle("MLX Server Manager")
@@ -45,7 +43,9 @@ private struct AppSectionSidebarRow: View {
             Image(systemName: section.systemImageName)
         }
         .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(section.title)
+        .accessibilityHint(section.subtitle)
     }
 }
 

@@ -2012,6 +2012,32 @@
    - v6.0.1 is an app-code sidebar polish release.
    - v6.1.0 Profiles / Model List Surface remains future work.
 
+## v6.0.2 Completed: App Shell Release Hygiene
+
+1. Clean up sidebar accessibility ownership.
+   - Keep sidebar accessibility label and hint on `AppSectionSidebarRow`.
+   - Keep the section list responsible only for selection and tagging.
+   - Preserve macOS sidebar list styling.
+2. Document the completed v6.0.x shell state.
+   - Update README current binary asset notes.
+   - Update App Shell / Sidebar Foundation documentation.
+   - Keep v6.1.0 Profiles / Model List Surface as the next future implementation step.
+3. Preserve runtime and safety boundaries.
+   - No Dashboard card order change.
+   - No Start / Stop / Restart behavior change.
+   - No selected profile behavior change.
+   - No Current Target behavior change.
+   - No Import / Export behavior change.
+   - No External Server Detection / Adopt / Forget behavior change.
+   - No new network calls.
+   - No `/v1/chat/completions` calls by the app.
+   - No new persistence.
+   - No API key, token, or secret persistence.
+   - No model download, deletion, scanning, or cache cleanup.
+4. Release note.
+   - v6.0.2 is an app-code release hygiene follow-up.
+   - v6.1.0 Profiles / Model List Surface remains future work.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
