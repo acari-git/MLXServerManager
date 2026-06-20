@@ -2240,10 +2240,18 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no signing, notarization, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.9.0 Completed: Signed Distribution Design
+
+- Add `docs/signed_distribution_design.md` as a docs-only design for future signed zip distribution.
+- Define signing goals, non-goals, proposed signed zip asset naming, signing identity boundaries, local signing flow design, required verification, release notes requirements, unsigned build coexistence options, and notarization separation.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no signing, notarization, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Signed/notarized distribution design.
+- Signed distribution checklist polish.
+- Notarization workflow design.
 - Packaging checklist polish.
 - Model download design.
 - Deeper diagnostics design.
