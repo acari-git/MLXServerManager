@@ -2,12 +2,12 @@
 
 ## Status
 
-- Planning only.
-- Target implementation: future `v6.0.0`.
-- Not implemented in `v5.3.0`.
+- Implemented in `v6.0.0` as the App Shell / Sidebar Foundation.
+- Dashboard remains the default and only active top-level section for this stage.
 - Dashboard UI Refresh v1 remains the current stable surface.
+- Later sections remain future-only.
 
-v5.3.0 narrows the broader [Full App Layout Refresh Design](full_app_layout_refresh.md) into a concrete design for the first possible future implementation step: an app shell and sidebar foundation. It does not change Swift app code, Dashboard behavior, server lifecycle behavior, Direct Mode, import/export behavior, onboarding persistence, API key/token persistence, or process ownership boundaries.
+The `v6.0.0` implementation narrows the broader [Full App Layout Refresh Design](full_app_layout_refresh.md) into a concrete app shell and sidebar foundation. It adds native top-level navigation while preserving Dashboard behavior, server lifecycle behavior, Direct Mode, import/export behavior, onboarding persistence, API key/token persistence, and process ownership boundaries.
 
 ## Goals
 
@@ -38,9 +38,9 @@ v5.3.0 narrows the broader [Full App Layout Refresh Design](full_app_layout_refr
 - No change to `/v1/models` readiness or detection behavior.
 - No `/v1/chat/completions` calls by the app.
 
-## Candidate Navigation Structure
+## Navigation Structure
 
-This is a candidate structure for future `v6.0.0`; it is not implemented in `v5.3.0`.
+This structure starts in `v6.0.0` with Dashboard only. Other destinations remain intentionally deferred so the shell can land without moving controls or changing behavior.
 
 ### Dashboard
 
@@ -220,22 +220,22 @@ Implementation readiness:
 
 - Future-only unless existing settings content is embedded unchanged.
 
-## App Shell Layout Candidate
+## App Shell Layout
 
-A future implementation may use a native macOS navigation structure such as SwiftUI `NavigationSplitView` or an equivalent app shell:
+The `v6.0.0` implementation uses a native macOS `NavigationSplitView` app shell:
 
 - Sidebar for major sections.
 - Main content area for the selected section.
 - Optional inspector/detail area deferred until a later step.
 - Dashboard selected by default.
 
-This is a candidate implementation shape, not a requirement. v6.0.0 should choose the smallest native structure that preserves behavior and keeps the current Dashboard usable. See [Detail Inspector Foundation Design](detail_inspector_foundation.md) for the later candidate inspector boundary, [Logs Panel Refresh Design](logs_panel_refresh.md) for the future Logs section boundary, [Client Setup Surface Design](client_setup_surface.md) for the future Client Setup section boundary, and [Metrics / System Context Design](metrics_system_context.md) for the future metrics and system context boundary.
+The initial implementation chooses the smallest native structure that preserves behavior and keeps the current Dashboard usable. See [Detail Inspector Foundation Design](detail_inspector_foundation.md) for the later candidate inspector boundary, [Logs Panel Refresh Design](logs_panel_refresh.md) for the future Logs section boundary, [Client Setup Surface Design](client_setup_surface.md) for the future Client Setup section boundary, and [Metrics / System Context Design](metrics_system_context.md) for the future metrics and system context boundary.
 
-Before implementation, review [v6 Implementation Readiness Review](v6_implementation_readiness.md). Future v6.0.0 should stay limited to app shell/sidebar foundation and must not pull in Profiles, Inspector, Logs, Client Setup, Metrics, or behavior changes.
+The implemented shell remains limited to app shell/sidebar foundation and does not pull in Profiles, Inspector, Logs, Client Setup, Metrics, or behavior changes.
 
 ## Migration Strategy
 
-Future v6.0.0 could migrate safely by:
+`v6.0.0` migrates safely by:
 
 1. Introduce the shell and sidebar.
 2. Place existing Dashboard v1 as the first/default section.
@@ -284,9 +284,9 @@ Views should continue to render state and send user intents. Process launch, ter
 - Model profile metadata may be confused with installed model files.
 - A larger layout may increase complexity without improving safety.
 
-## Acceptance Criteria for Future v6.0.0
+## Acceptance Criteria for v6.0.0
 
-Future implementation should only be accepted if:
+The implementation should only be accepted if:
 
 - Dashboard v1 remains available.
 - Existing runtime behavior is unchanged.
@@ -309,6 +309,6 @@ These versions remain proposals only:
 - `v6.4.0`: Client Setup Surface.
 - `v6.5.0`: Metrics / System Context Design.
 
-## v5.3.0 Planning Boundary
+## v6.0.0 Implementation Boundary
 
-v5.3.0 adds this detailed design only. It does not implement the app shell, sidebar navigation, `NavigationSplitView`, model table, detail inspector, logs panel refresh, metrics widgets, new app binary, zip asset, tag, release, or any app behavior change.
+`v6.0.0` implements only the app shell, sidebar navigation, and default Dashboard mounting. It does not implement model table, detail inspector, logs panel refresh, metrics widgets, Chat UI, model download, new network behavior, new persistence, new app binary packaging, zip asset, tag, release, or any runtime behavior change.

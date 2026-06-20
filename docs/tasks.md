@@ -1966,11 +1966,35 @@
    - v5.9.0 is a docs-only readiness review release.
    - No new unsigned app zip is needed.
 
+## v6.0.0 Completed: App Shell / Sidebar Foundation
+
+1. Add native app shell foundation.
+   - Add `AppSection` as the staged top-level app destination model.
+   - Add `AppShellView` using native SwiftUI `NavigationSplitView`.
+   - Keep Dashboard as the default and only active top-level section.
+2. Preserve existing Dashboard surface.
+   - Mount the existing Dashboard content without changing card order or behavior.
+   - Keep existing model list, settings, onboarding, dashboard overview, diagnostics, status, model detail, connection settings, and logs available in the Dashboard surface.
+3. Preserve runtime and safety boundaries.
+   - No Start / Stop / Restart behavior change.
+   - No selected profile behavior change.
+   - No Current Target behavior change.
+   - No Import / Export behavior change.
+   - No External Server Detection / Adopt / Forget behavior change.
+   - No new network calls.
+   - No `/v1/chat/completions` calls by the app.
+   - No new persistence.
+   - No API key, token, or secret persistence.
+   - No model download, deletion, scanning, or cache cleanup.
+4. Release note.
+   - v6.0.0 is an app-code shell foundation release.
+   - Tag, push, GitHub Release, and zip asset remain release-preparation steps only.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Future `v6.0.0` App Shell / Sidebar Foundation implementation after v5.9.0 readiness review.
-- Future app layout refresh implementation after v5.2.0 planning, v5.3.0 shell/sidebar design, v5.4.0 Profiles surface design, v5.5.0 Detail Inspector design, v5.6.0 Logs Panel Refresh design, v5.7.0 Client Setup Surface design, and v5.8.0 Metrics / System Context design.
+- Future `v6.1.0` Profiles / Model List Surface implementation after v6.0.0 App Shell / Sidebar Foundation.
+- Future app layout refresh implementation after v6.0.0 shell/sidebar foundation, v6.1.0 Profiles surface, v6.2.0 Detail Inspector, v6.3.0 Logs Panel Refresh, v6.4.0 Client Setup Surface, and v6.5.0 Metrics / System Context.
 - Signed/notarized distribution.
 - Model download design.
 - Deeper diagnostics design.

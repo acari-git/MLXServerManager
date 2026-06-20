@@ -2,22 +2,22 @@
 
 ## Status
 
-- Planning / readiness review only.
-- Not implemented in `v5.9.0`.
-- Target implementation series: future `v6.x`.
+- Readiness review completed in `v5.9.0`.
+- Initial `v6.0.0` App Shell / Sidebar Foundation implementation completed.
 - Dashboard UI Refresh v1 remains the current stable surface.
+- Later v6 surfaces remain future-only.
 
-v5.9.0 consolidates the future v6 planning docs and defines readiness criteria before app-code implementation starts. It does not implement v6 UI, app shell, sidebar navigation, Profiles section, Detail Inspector, Logs Panel, Client Setup Surface, Metrics / System Context, new persistence, new network behavior, or app behavior changes.
+`v5.9.0` consolidated the future v6 planning docs and defined readiness criteria before app-code implementation started. `v6.0.0` implements only the initial app shell/sidebar foundation and does not implement Profiles section, Detail Inspector, Logs Panel, Client Setup Surface, Metrics / System Context, new persistence, new network behavior, or runtime behavior changes.
 
 ## Purpose
 
-The v6 planning sequence now has detailed design documents for each proposed surface. This readiness review defines the order, guardrails, and acceptance criteria that should be checked before any future v6 app-code release begins.
+The v6 planning sequence has detailed design documents for each proposed surface. This readiness review defines the order, guardrails, and acceptance criteria that should be checked before each v6 app-code release.
 
-The main decision is conservative:
+The main decision remains conservative:
 
-- v6 implementation may start with a narrow `v6.0.0 App Shell / Sidebar Foundation`.
-- v6.0.0 must preserve Dashboard UI Refresh v1.
-- v6.0.0 must not pull in later surfaces.
+- v6 implementation starts with a narrow `v6.0.0 App Shell / Sidebar Foundation`.
+- v6.0.0 preserves Dashboard UI Refresh v1.
+- v6.0.0 does not pull in later surfaces.
 - every future v6 release must preserve Direct Mode, lifecycle, external ownership, Import / Export, and privacy boundaries.
 
 ## Reviewed Planning Docs
@@ -32,20 +32,20 @@ The main decision is conservative:
 
 ## Proposed v6 Sequence
 
-These versions are proposals only. Implementation should remain staged and independently reviewable.
+Implementation should remain staged and independently reviewable.
 
-1. `v6.0.0` - App Shell / Sidebar Foundation
-2. `v6.1.0` - Profiles / Model List Surface
-3. `v6.2.0` - Detail Inspector Foundation
-4. `v6.3.0` - Logs Panel Refresh
-5. `v6.4.0` - Client Setup Surface
-6. `v6.5.0` - Metrics / System Context
+1. `v6.0.0` - App Shell / Sidebar Foundation - implemented
+2. `v6.1.0` - Profiles / Model List Surface - future
+3. `v6.2.0` - Detail Inspector Foundation - future
+4. `v6.3.0` - Logs Panel Refresh - future
+5. `v6.4.0` - Client Setup Surface - future
+6. `v6.5.0` - Metrics / System Context - future
 
 Each release should avoid pulling in later-stage scope.
 
-## v6.0.0 Readiness
+## v6.0.0 Implementation Review
 
-Future v6.0.0 should focus only on:
+`v6.0.0` focuses only on:
 
 - app shell foundation,
 - sidebar or navigation structure,
@@ -53,7 +53,7 @@ Future v6.0.0 should focus only on:
 - minimal wiring needed to preserve existing behavior,
 - no runtime behavior changes.
 
-Future v6.0.0 should not include:
+`v6.0.0` does not include:
 
 - Profiles model table,
 - Detail Inspector,
@@ -161,7 +161,7 @@ Future v6 implementation PRs or commits should follow these guardrails:
 
 ## v6.0.0 Acceptance Criteria
 
-Future v6.0.0 should only be accepted if:
+`v6.0.0` should only be accepted if:
 
 - Dashboard v1 remains available and is default or easy to access,
 - existing behavior remains unchanged,
@@ -179,7 +179,7 @@ Future v6.0.0 should only be accepted if:
 
 ## Release Verification Checklist
 
-Future v6 implementation releases should run:
+Each v6 implementation release should run:
 
 - `git diff --check`,
 - Xcode build,
@@ -200,7 +200,7 @@ Future v6 implementation releases should run:
 
 ## Manual Review Checklist
 
-Future v6 implementation releases should manually confirm:
+Each v6 implementation release should manually confirm:
 
 - app launches,
 - Dashboard v1 still appears,
@@ -258,10 +258,10 @@ These remain not ready for implementation unless separately designed:
 ## Decision
 
 - v6 planning is documented.
-- v6 implementation may start with a narrow `v6.0.0 App Shell / Sidebar Foundation`.
-- v6.0.0 must not include later surfaces.
+- v6 implementation starts with a narrow `v6.0.0 App Shell / Sidebar Foundation`.
+- v6.0.0 does not include later surfaces.
 - All safety invariants must hold.
 
-## v5.9.0 Planning Boundary
+## v6.0.0 Implementation Boundary
 
-v5.9.0 adds this readiness review only. It does not implement v6 UI, app shell, sidebar navigation, Profiles section, model list table, Detail Inspector, Logs Panel, Client Setup Surface, Metrics / System Context, telemetry, background monitoring, request logging, request tracing, inference traffic inspection, external process metrics collection, external log capture, new network behavior, model download, model deletion, installed model scanning, cache cleanup, new app binary, zip asset, tag, release, or any app behavior change.
+`v6.0.0` implements only the initial app shell/sidebar foundation. It does not implement Profiles section, model list table, Detail Inspector, Logs Panel, Client Setup Surface, Metrics / System Context, telemetry, background monitoring, request logging, request tracing, inference traffic inspection, external process metrics collection, external log capture, new network behavior, model download, model deletion, installed model scanning, cache cleanup, new app binary packaging, zip asset, tag, release, or runtime behavior change.

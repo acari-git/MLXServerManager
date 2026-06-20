@@ -137,7 +137,7 @@ Dashboard UI Refresh v1 is documented in [docs/dashboard_ui_refresh.md](docs/das
 
 Future Full App Layout Refresh planning is documented in [docs/full_app_layout_refresh.md](docs/full_app_layout_refresh.md). v5.2.0 is a docs-only planning release for possible future v6.x sidebar, profiles, server, logs, client setup, and inspector surfaces. It does not implement a new layout or change Dashboard v1 behavior.
 
-App Shell / Sidebar Foundation design is documented in [docs/app_shell_sidebar_foundation.md](docs/app_shell_sidebar_foundation.md). v5.3.0 is a docs-only detailed design release for the first possible future v6.0.0 layout step; it does not implement sidebar navigation or change app behavior.
+App Shell / Sidebar Foundation is documented in [docs/app_shell_sidebar_foundation.md](docs/app_shell_sidebar_foundation.md). v5.3.0 introduced the docs-only design, and v6.0.0 implements the initial native sidebar shell with Dashboard as the default and only active top-level section. It does not change runtime behavior, Direct Mode, lifecycle controls, Import / Export behavior, network behavior, or persistence.
 
 Profiles / Model List Surface design is documented in [docs/profiles_model_list_surface.md](docs/profiles_model_list_surface.md). v5.4.0 is a docs-only detailed design release for a possible future v6.1.0 Profiles section; it does not implement a model list table, model download, model deletion, or profile behavior changes.
 
@@ -149,7 +149,7 @@ Client Setup Surface design is documented in [docs/client_setup_surface.md](docs
 
 Metrics / System Context design is documented in [docs/metrics_system_context.md](docs/metrics_system_context.md). v5.8.0 is a docs-only detailed design release for a possible future v6.5.0 metrics and system context surface; it does not implement metrics UI, system monitoring, telemetry, request inspection, or behavior changes.
 
-v6 Implementation Readiness Review is documented in [docs/v6_implementation_readiness.md](docs/v6_implementation_readiness.md). v5.9.0 is a docs-only readiness release that consolidates v5.2.0 through v5.8.0 planning and recommends starting future v6 app-code work with a narrow App Shell / Sidebar Foundation only.
+v6 Implementation Readiness Review is documented in [docs/v6_implementation_readiness.md](docs/v6_implementation_readiness.md). v5.9.0 is a docs-only readiness release that consolidates v5.2.0 through v5.8.0 planning; v6.0.0 starts app-code work with the narrow App Shell / Sidebar Foundation only.
 
 Screenshot refresh planning is documented in [docs/screenshot_refresh.md](docs/screenshot_refresh.md). Future screenshots should cover the v1.9+ Current Target summary and Adopted External Server states without exposing private paths or secrets.
 
@@ -163,7 +163,7 @@ The current downloadable app binary asset is the latest app-code release:
 
 - `MLXServerManager-v5.0.0-unsigned.zip`
 
-v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 through v5.0.0 are app-code dashboard polish releases with unsigned app zip assets. v5.1.0 through v5.9.0 are documentation releases, so they do not require new app binary assets.
+v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 through v5.0.0 are app-code dashboard polish releases with unsigned app zip assets. v5.1.0 through v5.9.0 are documentation releases. v6.0.0 is an app-code shell foundation release; an unsigned app zip asset should be created only when explicitly preparing the release.
 
 ## Target Users
 
