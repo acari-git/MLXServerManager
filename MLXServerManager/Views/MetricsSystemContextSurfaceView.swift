@@ -14,6 +14,7 @@ struct MetricsSystemContextSurfaceView: View {
             VStack(alignment: .leading, spacing: 18) {
                 header
                 summaryCards
+                contextScopeCard
                 readinessContextCard
                 memoryContextCard
                 processOwnershipCard
@@ -84,6 +85,22 @@ struct MetricsSystemContextSurfaceView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(identifier)
+    }
+
+    private var contextScopeCard: some View {
+        contextCard(
+            title: "Context Scope",
+            systemImage: "scope",
+            identifier: "metrics-context-scope",
+            rows: [
+                ("Source", "Existing app state only"),
+                ("Collection", "No new polling or sampling"),
+                ("Persistence", "No metrics history is stored"),
+                ("External servers", "Connection context only"),
+                ("Diagnostics", "No automatic diagnostics are run")
+            ],
+            note: "This surface summarizes context the app already has. It does not collect new system metrics, inspect traffic, or monitor external processes."
+        )
     }
 
     private var readinessContextCard: some View {

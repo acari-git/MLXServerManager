@@ -2181,10 +2181,17 @@
 - Preserve Dashboard model list, runtime controls, selected profile behavior, current target behavior, Import / Export behavior, External Server Detection / Adopt / Forget behavior, and existing Dashboard metrics-related context.
 - Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, request tracing, traffic inspection, active system monitoring, metrics persistence, benchmark runner, token throughput measurement, external process metrics collection, external log capture, endpoint testing, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.5.1 Completed: Metrics Surface Polish
+
+- Add a Metrics context scope card that clarifies source, collection, persistence, external server scope, and diagnostics behavior.
+- Keep Metrics read-only and based on existing app state only.
+- Preserve Dashboard model list, runtime controls, selected profile behavior, current target behavior, Import / Export behavior, and External Server Detection / Adopt / Forget behavior.
+- Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, request tracing, traffic inspection, active system monitoring, metrics persistence, benchmark runner, token throughput measurement, external process metrics collection, external log capture, endpoint testing, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Future app layout refresh stabilization after v6.5.0 Metrics / System Context.
+- Future app layout refresh stabilization after v6.5.1 Metrics Surface Polish.
 - Signed/notarized distribution.
 - Model download design.
 - Deeper diagnostics design.

@@ -3,6 +3,7 @@
 ## Status
 
 - Implemented in `v6.5.0` as the first Metrics / System Context surface.
+- Polished in `v6.5.1` with a context scope card.
 - Initially documented in `v5.8.0` as a planning-only design.
 - Follows `v6.0.0` App Shell / Sidebar Foundation.
 - Follows `v6.1.0` Profiles / Model List Surface.
@@ -11,7 +12,7 @@
 - Follows `v6.4.0` Client Setup Surface.
 - Dashboard UI Refresh v1 remains the current stable surface.
 
-v6.5.0 adds a top-level Metrics / System Context destination for existing readiness, memory, runtime, and boundary context. It does not implement active system monitoring, system monitoring, memory polling, CPU/GPU/ANE polling, process sampling, telemetry, analytics, crash reporting, request logging, request tracing, inference traffic inspection, metrics persistence, benchmarks, token throughput measurement, background monitoring, or app behavior changes.
+v6.5.0 adds a top-level Metrics / System Context destination for existing readiness, memory, runtime, and boundary context. v6.5.1 keeps that surface read-only and adds a context scope card that clarifies Metrics summarizes existing app state only. It does not implement active system monitoring, memory polling, CPU/GPU/ANE polling, process sampling, telemetry, analytics, crash reporting, request logging, request tracing, inference traffic inspection, metrics persistence, benchmarks, token throughput measurement, background monitoring, or app behavior changes.
 
 ## Goals
 
@@ -343,4 +344,4 @@ These versions remain proposals only:
 
 ## v5.8.0 Planning Boundary
 
-v5.8.0 added this detailed design only. v6.5.0 is the first app-code Metrics / System Context implementation. It does not implement active system monitoring, system monitoring, memory polling, CPU/GPU/ANE polling, process sampling, telemetry, analytics, crash reporting, request logging, request tracing, inference traffic inspection, metrics persistence, benchmarks, token throughput measurement, background monitoring, new app binary, zip asset, tag, release, or any app behavior change.
+v5.8.0 added this detailed design only. v6.5.0 is the first app-code Metrics / System Context implementation. v6.5.1 is a focused Metrics Surface polish release. Both keep the original safety boundaries intact.
