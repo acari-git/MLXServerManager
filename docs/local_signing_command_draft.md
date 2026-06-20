@@ -3,6 +3,7 @@
 ## Release
 
 - Added in `v6.12.0`.
+- Polished in `v6.12.1` with preflight notes, dry-run expectations, and safer signing command caveats.
 - Docs-only local signing command draft.
 - Follows `v6.11.0` / `v6.11.1` Signed Zip Implementation Readiness.
 - No new app binary is produced for this release.
@@ -58,6 +59,17 @@ SIGNING_IDENTITY="Developer ID Application: <Team or Developer Name> (<TEAMID>)"
 ```
 
 Do not commit real certificate names, keychain details, Apple account identifiers, app-specific passwords, or notary profiles unless they are intentionally documented as placeholders.
+
+## Release Preflight
+
+Before using any command from this draft, confirm:
+
+- the release is explicitly scoped as a signed zip release;
+- the current checkout is clean;
+- the target version, asset name, and release notes format are agreed;
+- signing identity values remain outside the repository;
+- notarization is either out of scope or explicitly included in the release plan;
+- fallback behavior is known before command execution begins.
 
 ## Draft Command Sequence
 
@@ -118,6 +130,8 @@ codesign \
 ```
 
 This command is a draft. A future implementation should verify whether `--deep` is appropriate for the final app bundle structure before use.
+
+`--deep` should not be treated as a default safety guarantee. Prefer an explicit signing plan if the bundle later gains nested frameworks, helper tools, login items, or extensions.
 
 ### 5. Verify signature
 
@@ -224,6 +238,18 @@ A future signing command implementation must not:
 - add proxying;
 - add request inspection.
 
+## Dry-Run Expectations
+
+Before a real signed release, run a docs-only or local-only dry run that records:
+
+- whether Release build output appears at the expected path;
+- whether unsigned bundle contents are predictable;
+- whether the intended signing identity can be detected locally;
+- whether zip contents match the expected app-only structure;
+- whether checksum recording fits the release notes template.
+
+The dry run should not upload a binary asset unless the signed zip release is explicitly approved.
+
 ## Verification Log Template
 
 Use this compact log for a future signed zip release:
@@ -290,7 +316,7 @@ After this draft, safe follow-up releases may include:
 
 ## Release Acceptance
 
-`v6.12.0` is acceptable if:
+`v6.12.0` and `v6.12.1` are acceptable if:
 
 - it remains docs-only;
 - no Swift source files are changed;
