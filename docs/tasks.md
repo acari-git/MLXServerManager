@@ -2222,10 +2222,19 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no signing, notarization, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.8.0 Completed: README Install Section Refresh
+
+- Refresh README Install and Quick Start sections around the current downloadable app-code release asset.
+- Replace the stale `v1.9.0` Quick Start asset reference with `MLXServerManager-v6.5.1-unsigned.zip`.
+- Add checksum verification guidance for the current binary asset.
+- Clarify that `v6.6.0`, `v6.6.1`, `v6.7.0`, `v6.7.1`, and `v6.8.0` are documentation releases and do not replace the app binary.
+- Clarify that users should download the named release asset, not the source archive, when they want the app binary.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no signing, notarization, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- README install section refresh.
 - Signed/notarized distribution design.
 - Packaging checklist polish.
 - Model download design.
