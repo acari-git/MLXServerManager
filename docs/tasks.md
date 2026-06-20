@@ -2084,6 +2084,14 @@
    - v6.0.4 is an app-code AppSection metadata test follow-up.
    - v6.1.0 Profiles / Model List Surface remains future work.
 
+## v6.0.5 Completed: v6.1 Implementation Handoff
+
+- Add `docs/v6.1_implementation_handoff.md`.
+- Summarize completed v6.0.x App Shell foundation work.
+- Define v6.1.0 Profiles / Model List Surface minimum scope, guardrails, acceptance criteria, and release checklist.
+- Keep this release docs-only: no app-code changes and no new app zip.
+- Keep v6.1.0 Profiles / Model List Surface as the next implementation target.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
