@@ -23,6 +23,13 @@ struct ContentView: View {
                     runningModelID: viewModel.runningModelID,
                     restartRequired: viewModel.restartRequired
                 )
+            case .inspector:
+                DetailInspectorSurfaceView(
+                    selectedModel: viewModel.selectedModel,
+                    runningModelText: viewModel.runningModelText,
+                    restartRequired: viewModel.restartRequired,
+                    targetSummary: viewModel.connectionTargetSummary
+                )
             }
         }
         .frame(minWidth: 900, minHeight: 620)

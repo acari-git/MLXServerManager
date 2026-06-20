@@ -9,9 +9,10 @@
 - Covered in `v6.0.4` with focused AppSection metadata tests.
 - Extended in `v6.1.0` with the first staged Profiles / Model List Surface.
 - Polished in `v6.1.1` with Profiles summary cards and list identifiers.
+- Extended in `v6.2.0` with the first read-only Detail Inspector Foundation.
 - Dashboard remains the default top-level section.
 - Dashboard UI Refresh v1 remains the current stable surface.
-- Later sections remain future-only.
+- Later Logs, Client Setup, and Metrics sections remain future-only.
 
 The `v6.0.0` implementation narrows the broader [Full App Layout Refresh Design](full_app_layout_refresh.md) into a concrete app shell and sidebar foundation. It adds native top-level navigation while preserving Dashboard behavior, server lifecycle behavior, Direct Mode, import/export behavior, onboarding persistence, API key/token persistence, and process ownership boundaries.
 

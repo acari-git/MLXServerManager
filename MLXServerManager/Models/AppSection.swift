@@ -7,6 +7,7 @@ import SwiftUI
 enum AppSection: String, CaseIterable, Identifiable {
     case dashboard
     case profiles
+    case inspector
 
     var id: String { rawValue }
 
@@ -16,6 +17,8 @@ enum AppSection: String, CaseIterable, Identifiable {
             "Dashboard"
         case .profiles:
             "Profiles"
+        case .inspector:
+            "Inspector"
         }
     }
 
@@ -25,6 +28,8 @@ enum AppSection: String, CaseIterable, Identifiable {
             "Current Direct Mode control surface"
         case .profiles:
             "Model profile list surface"
+        case .inspector:
+            "Selected profile detail surface"
         }
     }
 
@@ -34,6 +39,8 @@ enum AppSection: String, CaseIterable, Identifiable {
             "rectangle.grid.2x2"
         case .profiles:
             "list.bullet.rectangle"
+        case .inspector:
+            "sidebar.right"
         }
     }
 
