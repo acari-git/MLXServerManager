@@ -2330,10 +2330,17 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.15.0 Completed: Signed Zip Implementation Readiness Closeout
+
+- Add `docs/signed_zip_implementation_readiness_closeout.md` as a docs-only closeout for signed zip readiness work.
+- Map the signed distribution, notarization, implementation readiness, local signing draft, dry-run checklist, and local dry-run execution notes documents.
+- Define signed zip implementation entry criteria, no-go criteria, candidate next releases, public wording policy, asset naming policy, and first signed zip verification expectations.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Signed zip implementation readiness closeout.
 - Packaging checklist polish.
 - Model download design.
 - Deeper diagnostics design.
