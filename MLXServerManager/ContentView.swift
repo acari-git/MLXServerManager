@@ -38,6 +38,21 @@ struct ContentView: View {
                     onCopy: viewModel.copyLogsRequested,
                     onClear: viewModel.clearLogsRequested
                 )
+            case .clientSetup:
+                ClientSetupSurfaceView(
+                    targetSummary: viewModel.connectionTargetSummary,
+                    baseURL: viewModel.baseURL,
+                    modelID: viewModel.selectedModelIdentifier,
+                    apiKeyPlaceholder: viewModel.apiKeyPlaceholder,
+                    onCopyBaseURL: viewModel.copyBaseURL,
+                    onCopyModelID: viewModel.copyModelID,
+                    onCopyAPIKeyPlaceholder: viewModel.copyAPIKeyPlaceholder,
+                    onCopyConfig: viewModel.copyConfig,
+                    onCopyAllConnectionSettings: viewModel.copyAllConnectionSettings,
+                    onCopyHermesAgentConfig: viewModel.copyHermesAgentConfig,
+                    onCopyModelsCurl: viewModel.copyModelsCurl,
+                    onCopyChatCompletionsCurl: viewModel.copyChatCompletionsCurl
+                )
             }
         }
         .frame(minWidth: 900, minHeight: 620)

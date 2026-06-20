@@ -3,8 +3,8 @@ import XCTest
 
 @MainActor
 final class AppSectionTests: XCTestCase {
-    func testV6ThreeSectionsAreStable() {
-        XCTAssertEqual(AppSection.allCases, [.dashboard, .profiles, .inspector, .logs])
+    func testV6FourSectionsAreStable() {
+        XCTAssertEqual(AppSection.allCases, [.dashboard, .profiles, .inspector, .logs, .clientSetup])
     }
 
     func testDashboardMetadataIsStable() {
@@ -45,5 +45,15 @@ final class AppSectionTests: XCTestCase {
         XCTAssertEqual(section.subtitle, "Managed log context surface")
         XCTAssertEqual(section.systemImageName, "doc.text.magnifyingglass")
         XCTAssertEqual(section.accessibilityIdentifier, "app-section-logs")
+    }
+
+    func testClientSetupMetadataIsStable() {
+        let section = AppSection.clientSetup
+
+        XCTAssertEqual(section.id, "clientSetup")
+        XCTAssertEqual(section.title, "Client Setup")
+        XCTAssertEqual(section.subtitle, "OpenAI-compatible setup values")
+        XCTAssertEqual(section.systemImageName, "link.badge.plus")
+        XCTAssertEqual(section.accessibilityIdentifier, "app-section-clientSetup")
     }
 }

@@ -9,6 +9,7 @@ enum AppSection: String, CaseIterable, Identifiable {
     case profiles
     case inspector
     case logs
+    case clientSetup
 
     var id: String { rawValue }
 
@@ -22,6 +23,8 @@ enum AppSection: String, CaseIterable, Identifiable {
             "Inspector"
         case .logs:
             "Logs"
+        case .clientSetup:
+            "Client Setup"
         }
     }
 
@@ -35,6 +38,8 @@ enum AppSection: String, CaseIterable, Identifiable {
             "Selected profile detail surface"
         case .logs:
             "Managed log context surface"
+        case .clientSetup:
+            "OpenAI-compatible setup values"
         }
     }
 
@@ -48,6 +53,8 @@ enum AppSection: String, CaseIterable, Identifiable {
             "sidebar.right"
         case .logs:
             "doc.text.magnifyingglass"
+        case .clientSetup:
+            "link.badge.plus"
         }
     }
 

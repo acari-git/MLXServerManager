@@ -2,16 +2,15 @@
 
 ## Status
 
-- Planning only.
-- Target implementation: future `v6.4.0`.
-- Not implemented in `v5.7.0`.
-- Follows future `v6.0.0` App Shell / Sidebar Foundation.
-- Follows future `v6.1.0` Profiles / Model List Surface.
-- Follows future `v6.2.0` Detail Inspector Foundation.
-- Follows future `v6.3.0` Logs Panel Refresh.
+- Implemented in `v6.4.0` as the first Client Setup Surface.
+- Initially documented in `v5.7.0` as a planning-only design.
+- Follows `v6.0.0` App Shell / Sidebar Foundation.
+- Follows `v6.1.0` Profiles / Model List Surface.
+- Follows `v6.2.0` Detail Inspector Foundation.
+- Follows `v6.3.0` Logs Panel Refresh.
 - Dashboard UI Refresh v1 remains the current stable surface.
 
-v5.7.0 documents a future Client Setup surface. It does not implement client setup UI, client-specific configuration generation, API key management, token storage, secret persistence, generated client config files, automatic client configuration, client auto-detection, endpoint testing, new network behavior, telemetry, background monitoring, automatic diagnostics, or app behavior changes.
+v6.4.0 adds a top-level Client Setup destination for copy-safe OpenAI-compatible setup values. It does not implement client-specific configuration generation, API key management, token storage, secret persistence, generated client config files, automatic client configuration, client auto-detection, endpoint testing, new network behavior, telemetry, background monitoring, automatic diagnostics, proxying, or runtime behavior changes.
 
 ## Goals
 
@@ -267,9 +266,9 @@ See [Profiles / Model List Surface Design](profiles_model_list_surface.md) for t
 - Client-specific examples may become outdated.
 - Too much setup detail may overwhelm non-CLI users.
 
-## Acceptance Criteria for Future v6.4.0
+## Acceptance Criteria for v6.4.0
 
-Future implementation should only be accepted if:
+The implementation is acceptable because:
 
 - Base URL and model ID are clearly tied to the active or current target,
 - selected profile vs current target is clearly separated,
@@ -297,4 +296,4 @@ These versions remain proposals only:
 
 ## v5.7.0 Planning Boundary
 
-v5.7.0 adds this detailed design only. It does not implement a Client Setup surface, client setup UI, client-specific configuration generation, API key management, token storage, secret persistence, generated client config files, automatic client configuration, client auto-detection, endpoint testing, new network behavior, telemetry, background monitoring, automatic diagnostics, new app binary, zip asset, tag, release, or any app behavior change.
+v5.7.0 added this detailed design only. v6.4.0 is the first app-code Client Setup Surface implementation and keeps the original safety boundaries intact.
