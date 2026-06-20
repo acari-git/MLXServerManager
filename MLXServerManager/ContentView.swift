@@ -16,6 +16,13 @@ struct ContentView: View {
             switch section {
             case .dashboard:
                 dashboardContent
+            case .profiles:
+                ProfilesSurfaceView(
+                    models: viewModel.models,
+                    selectedModelID: viewModel.selectedModelID,
+                    runningModelID: viewModel.runningModelID,
+                    restartRequired: viewModel.restartRequired
+                )
             }
         }
         .frame(minWidth: 900, minHeight: 620)

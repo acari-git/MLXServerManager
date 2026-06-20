@@ -2092,10 +2092,19 @@
 - Keep this release docs-only: no app-code changes and no new app zip.
 - Keep v6.1.0 Profiles / Model List Surface as the next implementation target.
 
+## v6.1.0 Completed: Profiles / Model List Surface
+
+- Add `AppSection.profiles` with stable metadata and accessibility identifier.
+- Add `ProfilesSurfaceView` as a lightweight top-level model profile list surface.
+- Mount Profiles through the App Shell while keeping Dashboard as the default section.
+- Preserve Dashboard model list, runtime controls, selected profile behavior, current target behavior, Import / Export behavior, and External Server Detection / Adopt / Forget behavior.
+- Expand `AppSectionTests` to cover Dashboard and Profiles metadata.
+- Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Future `v6.1.0` Profiles / Model List Surface implementation after v6.0.0 App Shell / Sidebar Foundation.
+- Future `v6.2.0` Detail Inspector Foundation after v6.1.0 Profiles / Model List Surface.
 - Future app layout refresh implementation after v6.0.0 shell/sidebar foundation, v6.1.0 Profiles surface, v6.2.0 Detail Inspector, v6.3.0 Logs Panel Refresh, v6.4.0 Client Setup Surface, and v6.5.0 Metrics / System Context.
 - Signed/notarized distribution.
 - Model download design.
