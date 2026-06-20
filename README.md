@@ -151,7 +151,7 @@ Metrics / System Context design is documented in [docs/metrics_system_context.md
 
 v6 Implementation Readiness Review is documented in [docs/v6_implementation_readiness.md](docs/v6_implementation_readiness.md). v5.9.0 is a docs-only readiness release that consolidates v5.2.0 through v5.8.0 planning; v6.0.0 starts app-code work with the narrow App Shell / Sidebar Foundation only.
 
-v6.0.1 is a small App Shell / Sidebar polish release. It keeps Dashboard as the only active top-level section and adds macOS sidebar list styling plus sidebar accessibility polish. v6.0.2 follows up with App Shell release hygiene before v6.1.0 work begins. v6.0.3 adds stable App Shell accessibility identifiers for the sidebar, detail area, and section rows without changing runtime behavior.
+v6.0.1 is a small App Shell / Sidebar polish release. It keeps Dashboard as the only active top-level section and adds macOS sidebar list styling plus sidebar accessibility polish. v6.0.2 follows up with App Shell release hygiene before v6.1.0 work begins. v6.0.3 adds stable App Shell accessibility identifiers for the sidebar, detail area, and section rows without changing runtime behavior. v6.0.4 adds focused AppSection metadata tests to lock the Dashboard-only v6.0.x shell boundary before v6.1.0 work begins.
 
 Screenshot refresh planning is documented in [docs/screenshot_refresh.md](docs/screenshot_refresh.md). Future screenshots should cover the v1.9+ Current Target summary and Adopted External Server states without exposing private paths or secrets.
 
@@ -163,9 +163,9 @@ Model Profile export and import are documented in [docs/model_profile_import_exp
 
 The current downloadable app binary asset is the latest app-code release:
 
-- `MLXServerManager-v6.0.3-unsigned.zip`
+- `MLXServerManager-v6.0.4-unsigned.zip`
 
-v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 through v5.0.0 are app-code dashboard polish releases with unsigned app zip assets. v5.1.0 through v5.9.0 are documentation releases. v6.0.0 is an app-code shell foundation release. v6.0.1 is an app-code sidebar polish release. v6.0.2 is an app-code release hygiene follow-up. v6.0.3 is an app-code App Shell identifier follow-up with an unsigned app zip asset.
+v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 through v5.0.0 are app-code dashboard polish releases with unsigned app zip assets. v5.1.0 through v5.9.0 are documentation releases. v6.0.0 is an app-code shell foundation release. v6.0.1 is an app-code sidebar polish release. v6.0.2 is an app-code release hygiene follow-up. v6.0.3 is an app-code App Shell identifier follow-up. v6.0.4 is an app-code AppSection metadata test follow-up with an unsigned app zip asset.
 
 ## Target Users
 
