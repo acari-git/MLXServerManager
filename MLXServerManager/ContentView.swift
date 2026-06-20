@@ -9,8 +9,52 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var viewModel: AppViewModel
+    @State private var selectedSection = AppSection.dashboard
 
     var body: some View {
+        AppShellView(selectedSection: $selectedSection) { section in
+            switch section {
+            case .dashboard:
+                dashboardContent
+            }
+        }
+        .frame(minWidth: 900, minHeight: 620)
+        .confirmationDialog(
+            "Delete Model Profile?",
+            isPresented: $viewModel.isDeleteProfileConfirmationPresented,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Profile", role: .destructive) {
+                viewModel.confirmDeleteProfile()
+            }
+
+            Button("Cancel", role: .cancel) {
+                viewModel.cancelDeleteProfile()
+            }
+        } message: {
+            Text("This removes only the saved profile. Model files and Hugging Face cache are not deleted.")
+        }
+        .sheet(isPresented: $viewModel.isImportPreviewPresented) {
+            if let result = viewModel.importPreviewResult {
+                ImportProfilesPreviewView(
+                    result: result,
+                    importMessage: viewModel.modelProfileImportMessage,
+                    onImportSelected: viewModel.importSelectedProfilesRequested,
+                    onClose: viewModel.dismissImportPreview
+                )
+            } else {
+                VStack(spacing: 12) {
+                    Text("No import preview is available.")
+                    Button("Close") {
+                        viewModel.dismissImportPreview()
+                    }
+                }
+                .padding(20)
+            }
+        }
+    }
+
+    private var dashboardContent: some View {
         VStack(spacing: 0) {
             statusHeader
 
@@ -144,40 +188,6 @@ struct ContentView: View {
                     .padding(20)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-            }
-        }
-        .frame(minWidth: 900, minHeight: 620)
-        .confirmationDialog(
-            "Delete Model Profile?",
-            isPresented: $viewModel.isDeleteProfileConfirmationPresented,
-            titleVisibility: .visible
-        ) {
-            Button("Delete Profile", role: .destructive) {
-                viewModel.confirmDeleteProfile()
-            }
-
-            Button("Cancel", role: .cancel) {
-                viewModel.cancelDeleteProfile()
-            }
-        } message: {
-            Text("This removes only the saved profile. Model files and Hugging Face cache are not deleted.")
-        }
-        .sheet(isPresented: $viewModel.isImportPreviewPresented) {
-            if let result = viewModel.importPreviewResult {
-                ImportProfilesPreviewView(
-                    result: result,
-                    importMessage: viewModel.modelProfileImportMessage,
-                    onImportSelected: viewModel.importSelectedProfilesRequested,
-                    onClose: viewModel.dismissImportPreview
-                )
-            } else {
-                VStack(spacing: 12) {
-                    Text("No import preview is available.")
-                    Button("Close") {
-                        viewModel.dismissImportPreview()
-                    }
-                }
-                .padding(20)
             }
         }
     }
