@@ -15,9 +15,9 @@
 - Polished in `v6.3.1` with shared LogView entry count display and stable identifiers.
 - Extended in `v6.4.0` with the first Client Setup Surface.
 - Polished in `v6.4.1` with a Client Setup copy scope card.
+- Extended in `v6.5.0` with the first Metrics / System Context surface.
 - Dashboard remains the default top-level section.
 - Dashboard UI Refresh v1 remains the current stable surface.
-- Later Metrics section remains future-only.
 
 The `v6.0.0` implementation narrows the broader [Full App Layout Refresh Design](full_app_layout_refresh.md) into a concrete app shell and sidebar foundation. It adds native top-level navigation while preserving Dashboard behavior, server lifecycle behavior, Direct Mode, import/export behavior, onboarding persistence, API key/token persistence, and process ownership boundaries.
 
@@ -241,9 +241,9 @@ The `v6.0.0` implementation uses a native macOS `NavigationSplitView` app shell:
 - Optional inspector/detail area deferred until a later step.
 - Dashboard selected by default.
 
-The initial implementation chooses the smallest native structure that preserves behavior and keeps the current Dashboard usable. See [Detail Inspector Foundation Design](detail_inspector_foundation.md) for the later candidate inspector boundary, [Logs Panel Refresh Design](logs_panel_refresh.md) for the Logs section boundary, [Client Setup Surface Design](client_setup_surface.md) for the Client Setup section boundary, and [Metrics / System Context Design](metrics_system_context.md) for the future metrics and system context boundary.
+The initial implementation chooses the smallest native structure that preserves behavior and keeps the current Dashboard usable. See [Detail Inspector Foundation Design](detail_inspector_foundation.md) for the later candidate inspector boundary, [Logs Panel Refresh Design](logs_panel_refresh.md) for the Logs section boundary, [Client Setup Surface Design](client_setup_surface.md) for the Client Setup section boundary, and [Metrics / System Context Design](metrics_system_context.md) for the metrics and system context boundary.
 
-The implemented shell remains limited to app shell/sidebar foundation and staged read-only surfaces. It does not pull in Metrics or behavior changes. v6.0.1 keeps that boundary while adding small sidebar polish. v6.0.2 keeps accessibility ownership inside the sidebar row and records the v6.0.x shell state before v6.1.0 begins. v6.0.3 adds stable identifiers for the shell sidebar, detail area, and section rows so later UI tests and staged sections have a predictable surface. v6.0.4 adds focused tests for AppSection metadata. v6.1.0 adds Profiles as a top-level destination while preserving Dashboard as the default Direct Mode control surface. v6.1.1 keeps that behavior and adds Profiles summary cards plus clearer Profiles list identifiers. v6.4.0 adds Client Setup as a copy-safe setup surface without generated client config persistence, secret storage, endpoint testing, proxying, or runtime behavior changes. v6.4.1 keeps that behavior and adds a copy scope card to clarify that copy actions produce text values and examples only.
+The implemented shell remains limited to app shell/sidebar foundation and staged read-only surfaces. It does not pull in behavior changes. v6.0.1 keeps that boundary while adding small sidebar polish. v6.0.2 keeps accessibility ownership inside the sidebar row and records the v6.0.x shell state before v6.1.0 begins. v6.0.3 adds stable identifiers for the shell sidebar, detail area, and section rows so later UI tests and staged sections have a predictable surface. v6.0.4 adds focused tests for AppSection metadata. v6.1.0 adds Profiles as a top-level destination while preserving Dashboard as the default Direct Mode control surface. v6.1.1 keeps that behavior and adds Profiles summary cards plus clearer Profiles list identifiers. v6.4.0 adds Client Setup as a copy-safe setup surface without generated client config persistence, secret storage, endpoint testing, proxying, or runtime behavior changes. v6.4.1 keeps that behavior and adds a copy scope card to clarify that copy actions produce text values and examples only. v6.5.0 adds Metrics as a read-only system context surface without active monitoring, telemetry, persistence, endpoint testing, or runtime behavior changes.
 
 ## Migration Strategy
 

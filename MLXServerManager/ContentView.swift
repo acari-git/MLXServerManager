@@ -53,6 +53,16 @@ struct ContentView: View {
                     onCopyModelsCurl: viewModel.copyModelsCurl,
                     onCopyChatCompletionsCurl: viewModel.copyChatCompletionsCurl
                 )
+            case .metrics:
+                MetricsSystemContextSurfaceView(
+                    targetSummary: viewModel.connectionTargetSummary,
+                    runtimeState: viewModel.runtimeState,
+                    memoryUsageText: viewModel.memoryUsageText,
+                    selectedModelText: viewModel.selectedModelText,
+                    runningModelText: viewModel.runningModelText,
+                    restartRequired: viewModel.restartRequired,
+                    logEntryCount: viewModel.logEntries.count
+                )
             }
         }
         .frame(minWidth: 900, minHeight: 620)

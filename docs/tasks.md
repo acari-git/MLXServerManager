@@ -2169,11 +2169,22 @@
 - Preserve Dashboard model list, runtime controls, selected profile behavior, current target behavior, Import / Export behavior, and External Server Detection / Adopt / Forget behavior.
 - Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, endpoint testing, generated client config persistence, client auto-detection, API key storage, token storage, secret persistence, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.5.0 Completed: Metrics / System Context
+
+- Add `AppSection.metrics` with stable metadata and accessibility identifier.
+- Add `MetricsSystemContextSurfaceView` as a top-level read-only system and readiness context surface.
+- Mount Metrics through the App Shell while keeping Dashboard as the default section.
+- Reuse existing runtime state, connection target summary, memory text, selected model text, running model text, restart-required state, and log entry count.
+- Add summary cards for runtime, readiness, memory, and restart-required state.
+- Add read-only context cards for readiness, memory guidance, process ownership, privacy/performance boundary, and troubleshooting.
+- Expand `AppSectionTests` to cover Dashboard, Profiles, Inspector, Logs, Client Setup, and Metrics metadata.
+- Preserve Dashboard model list, runtime controls, selected profile behavior, current target behavior, Import / Export behavior, External Server Detection / Adopt / Forget behavior, and existing Dashboard metrics-related context.
+- Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, request tracing, traffic inspection, active system monitoring, metrics persistence, benchmark runner, token throughput measurement, external process metrics collection, external log capture, endpoint testing, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Future `v6.5.0` Metrics / System Context after v6.4.0 Client Setup Surface.
-- Future app layout refresh implementation after v6.0.0 shell/sidebar foundation, v6.1.0 Profiles surface, v6.2.0 Detail Inspector, v6.3.0 Logs Panel Refresh, v6.4.0 Client Setup Surface, and v6.5.0 Metrics / System Context.
+- Future app layout refresh stabilization after v6.5.0 Metrics / System Context.
 - Signed/notarized distribution.
 - Model download design.
 - Deeper diagnostics design.

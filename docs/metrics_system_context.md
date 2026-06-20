@@ -2,17 +2,16 @@
 
 ## Status
 
-- Planning only.
-- Target implementation: future `v6.5.0`.
-- Not implemented in `v5.8.0`.
-- Follows future `v6.0.0` App Shell / Sidebar Foundation.
-- Follows future `v6.1.0` Profiles / Model List Surface.
-- Follows future `v6.2.0` Detail Inspector Foundation.
-- Follows future `v6.3.0` Logs Panel Refresh.
-- Follows future `v6.4.0` Client Setup Surface.
+- Implemented in `v6.5.0` as the first Metrics / System Context surface.
+- Initially documented in `v5.8.0` as a planning-only design.
+- Follows `v6.0.0` App Shell / Sidebar Foundation.
+- Follows `v6.1.0` Profiles / Model List Surface.
+- Follows `v6.2.0` Detail Inspector Foundation.
+- Follows `v6.3.0` Logs Panel Refresh.
+- Follows `v6.4.0` Client Setup Surface.
 - Dashboard UI Refresh v1 remains the current stable surface.
 
-v5.8.0 documents a future Metrics / System Context surface. It does not implement metrics UI, system monitoring, memory polling, CPU/GPU/ANE polling, process sampling, telemetry, analytics, crash reporting, request logging, request tracing, inference traffic inspection, metrics persistence, benchmarks, token throughput measurement, background monitoring, or app behavior changes.
+v6.5.0 adds a top-level Metrics / System Context destination for existing readiness, memory, runtime, and boundary context. It does not implement active system monitoring, system monitoring, memory polling, CPU/GPU/ANE polling, process sampling, telemetry, analytics, crash reporting, request logging, request tracing, inference traffic inspection, metrics persistence, benchmarks, token throughput measurement, background monitoring, or app behavior changes.
 
 ## Goals
 
@@ -85,7 +84,7 @@ It must not become:
 
 ## Candidate Metrics Categories
 
-These categories are candidate design only, not implemented behavior.
+These categories describe the v6.5.0 read-only surface and future constraints.
 
 ### Readiness Context
 
@@ -152,7 +151,7 @@ Constraints:
 
 ## Candidate Layout
 
-These layout details are candidate design only, not implemented UI.
+These layout details are implemented as a first read-only surface in v6.5.0.
 
 ### Header
 
@@ -312,9 +311,9 @@ Before any future v6 implementation begins, review [v6 Implementation Readiness 
 - Memory guidance may be mistaken for a guarantee that a model will fit.
 - Too many metrics may overwhelm non-CLI users.
 
-## Acceptance Criteria for Future v6.5.0
+## Acceptance Criteria for v6.5.0
 
-Future implementation should only be accepted if:
+The implementation is acceptable because:
 
 - metrics are lightweight and non-invasive,
 - Direct Mode remains obvious,
@@ -340,8 +339,8 @@ These versions remain proposals only:
 - `v6.2.0`: Detail Inspector Foundation.
 - `v6.3.0`: Logs Panel Refresh.
 - `v6.4.0`: Client Setup Surface.
-- `v6.5.0`: Metrics / System Context Design.
+- `v6.5.0`: Metrics / System Context.
 
 ## v5.8.0 Planning Boundary
 
-v5.8.0 adds this detailed design only. It does not implement metrics UI, system monitoring, memory polling, CPU/GPU/ANE polling, process sampling, telemetry, analytics, crash reporting, request logging, request tracing, inference traffic inspection, metrics persistence, benchmarks, token throughput measurement, background monitoring, new app binary, zip asset, tag, release, or any app behavior change.
+v5.8.0 added this detailed design only. v6.5.0 is the first app-code Metrics / System Context implementation. It does not implement active system monitoring, system monitoring, memory polling, CPU/GPU/ANE polling, process sampling, telemetry, analytics, crash reporting, request logging, request tracing, inference traffic inspection, metrics persistence, benchmarks, token throughput measurement, background monitoring, new app binary, zip asset, tag, release, or any app behavior change.

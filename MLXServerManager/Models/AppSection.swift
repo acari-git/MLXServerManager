@@ -10,6 +10,7 @@ enum AppSection: String, CaseIterable, Identifiable {
     case inspector
     case logs
     case clientSetup
+    case metrics
 
     var id: String { rawValue }
 
@@ -25,6 +26,8 @@ enum AppSection: String, CaseIterable, Identifiable {
             "Logs"
         case .clientSetup:
             "Client Setup"
+        case .metrics:
+            "Metrics"
         }
     }
 
@@ -40,6 +43,8 @@ enum AppSection: String, CaseIterable, Identifiable {
             "Managed log context surface"
         case .clientSetup:
             "OpenAI-compatible setup values"
+        case .metrics:
+            "Read-only system context"
         }
     }
 
@@ -55,6 +60,8 @@ enum AppSection: String, CaseIterable, Identifiable {
             "doc.text.magnifyingglass"
         case .clientSetup:
             "link.badge.plus"
+        case .metrics:
+            "gauge.with.dots.needle.67percent"
         }
     }
 

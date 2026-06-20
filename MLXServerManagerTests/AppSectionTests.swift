@@ -3,8 +3,8 @@ import XCTest
 
 @MainActor
 final class AppSectionTests: XCTestCase {
-    func testV6FourSectionsAreStable() {
-        XCTAssertEqual(AppSection.allCases, [.dashboard, .profiles, .inspector, .logs, .clientSetup])
+    func testV6FiveSectionsAreStable() {
+        XCTAssertEqual(AppSection.allCases, [.dashboard, .profiles, .inspector, .logs, .clientSetup, .metrics])
     }
 
     func testDashboardMetadataIsStable() {
@@ -55,5 +55,15 @@ final class AppSectionTests: XCTestCase {
         XCTAssertEqual(section.subtitle, "OpenAI-compatible setup values")
         XCTAssertEqual(section.systemImageName, "link.badge.plus")
         XCTAssertEqual(section.accessibilityIdentifier, "app-section-clientSetup")
+    }
+
+    func testMetricsMetadataIsStable() {
+        let section = AppSection.metrics
+
+        XCTAssertEqual(section.id, "metrics")
+        XCTAssertEqual(section.title, "Metrics")
+        XCTAssertEqual(section.subtitle, "Read-only system context")
+        XCTAssertEqual(section.systemImageName, "gauge.with.dots.needle.67percent")
+        XCTAssertEqual(section.accessibilityIdentifier, "app-section-metrics")
     }
 }
