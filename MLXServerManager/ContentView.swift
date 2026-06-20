@@ -30,6 +30,14 @@ struct ContentView: View {
                     restartRequired: viewModel.restartRequired,
                     targetSummary: viewModel.connectionTargetSummary
                 )
+            case .logs:
+                LogsSurfaceView(
+                    entries: viewModel.logEntries,
+                    targetSummary: viewModel.connectionTargetSummary,
+                    runningModelText: viewModel.runningModelText,
+                    onCopy: viewModel.copyLogsRequested,
+                    onClear: viewModel.clearLogsRequested
+                )
             }
         }
         .frame(minWidth: 900, minHeight: 620)

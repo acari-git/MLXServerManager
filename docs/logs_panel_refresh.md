@@ -2,15 +2,14 @@
 
 ## Status
 
-- Planning only.
-- Target implementation: future `v6.3.0`.
-- Not implemented in `v5.6.0`.
-- Follows future `v6.0.0` App Shell / Sidebar Foundation.
-- Follows future `v6.1.0` Profiles / Model List Surface.
-- Follows future `v6.2.0` Detail Inspector Foundation.
+- Implemented in `v6.3.0` as the first Logs Panel Refresh surface.
+- Initially documented in `v5.6.0` as a planning-only design.
+- Follows `v6.0.0` App Shell / Sidebar Foundation.
+- Follows `v6.1.0` Profiles / Model List Surface.
+- Follows `v6.2.0` Detail Inspector Foundation.
 - Dashboard UI Refresh v1 remains the current stable surface.
 
-v5.6.0 documents a future Logs surface. It does not implement a Logs panel, logs UI, log filtering, log search, log export, log file persistence, external log capture, background log scraping, automatic diagnostics, background health checks, telemetry, metrics widgets, detail inspector behavior, sidebar navigation, model list table, model download, model deletion, installed model scanning, cache cleanup, new persistence behavior, or app behavior changes.
+v6.3.0 adds a top-level Logs destination for app-managed lifecycle and log context. It does not implement log filtering, log search, log export, log file persistence, external log capture, background log scraping, automatic diagnostics, background health checks, telemetry, metrics widgets, model download, model deletion, installed model scanning, cache cleanup, new persistence behavior, or runtime behavior changes.
 
 ## Goals
 
@@ -238,9 +237,9 @@ It must not:
 - Too much log detail may confuse non-CLI users.
 - Automatic refresh wording may imply background monitoring if not constrained.
 
-## Acceptance Criteria for Future v6.3.0
+## Acceptance Criteria for v6.3.0
 
-Future implementation should only be accepted if:
+The implementation is acceptable because:
 
 - managed vs adopted external logs are clearly separated,
 - external logs are not captured,
@@ -268,4 +267,4 @@ These versions remain proposals only:
 
 ## v5.6.0 Planning Boundary
 
-v5.6.0 adds this detailed design only. It does not implement a Logs panel, logs UI, log filtering, log search, log export, log file persistence, external log capture, background log scraping, automatic diagnostics, background health checks, telemetry, metrics widgets, detail inspector behavior, sidebar navigation, model list table, model download, model deletion, installed model scanning, cache cleanup, new persistence behavior, new app binary, zip asset, tag, release, or any app behavior change.
+v5.6.0 added this detailed design only. v6.3.0 is the first app-code Logs Panel Refresh implementation and keeps the original safety boundaries intact.

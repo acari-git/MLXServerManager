@@ -2128,10 +2128,22 @@
 - Preserve Dashboard model list, runtime controls, selected profile behavior, current target behavior, Import / Export behavior, and External Server Detection / Adopt / Forget behavior.
 - Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.3.0 Completed: Logs Panel Refresh
+
+- Add `AppSection.logs` with stable metadata and accessibility identifier.
+- Add `LogsSurfaceView` as a top-level app-managed lifecycle and log context surface.
+- Mount Logs through the App Shell while keeping Dashboard as the default section.
+- Reuse the existing `LogView` and existing copy/clear log actions.
+- Add Logs summary cards for entry count, target type, readiness, and running model.
+- Add a Logs boundary card that clarifies external server logs are not captured or owned.
+- Expand `AppSectionTests` to cover Dashboard, Profiles, Inspector, and Logs metadata.
+- Preserve Dashboard model list, runtime controls, selected profile behavior, current target behavior, Import / Export behavior, and External Server Detection / Adopt / Forget behavior.
+- Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, external log capture, background scraping, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Future `v6.3.0` Logs Panel Refresh after v6.2.0 Detail Inspector Foundation.
+- Future `v6.4.0` Client Setup Surface after v6.3.0 Logs Panel Refresh.
 - Future app layout refresh implementation after v6.0.0 shell/sidebar foundation, v6.1.0 Profiles surface, v6.2.0 Detail Inspector, v6.3.0 Logs Panel Refresh, v6.4.0 Client Setup Surface, and v6.5.0 Metrics / System Context.
 - Signed/notarized distribution.
 - Model download design.

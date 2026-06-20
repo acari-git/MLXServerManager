@@ -3,8 +3,8 @@ import XCTest
 
 @MainActor
 final class AppSectionTests: XCTestCase {
-    func testV6TwoSectionsAreStable() {
-        XCTAssertEqual(AppSection.allCases, [.dashboard, .profiles, .inspector])
+    func testV6ThreeSectionsAreStable() {
+        XCTAssertEqual(AppSection.allCases, [.dashboard, .profiles, .inspector, .logs])
     }
 
     func testDashboardMetadataIsStable() {
@@ -35,5 +35,15 @@ final class AppSectionTests: XCTestCase {
         XCTAssertEqual(section.subtitle, "Selected profile detail surface")
         XCTAssertEqual(section.systemImageName, "sidebar.right")
         XCTAssertEqual(section.accessibilityIdentifier, "app-section-inspector")
+    }
+
+    func testLogsMetadataIsStable() {
+        let section = AppSection.logs
+
+        XCTAssertEqual(section.id, "logs")
+        XCTAssertEqual(section.title, "Logs")
+        XCTAssertEqual(section.subtitle, "Managed log context surface")
+        XCTAssertEqual(section.systemImageName, "doc.text.magnifyingglass")
+        XCTAssertEqual(section.accessibilityIdentifier, "app-section-logs")
     }
 }

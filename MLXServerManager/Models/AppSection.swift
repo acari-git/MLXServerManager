@@ -8,6 +8,7 @@ enum AppSection: String, CaseIterable, Identifiable {
     case dashboard
     case profiles
     case inspector
+    case logs
 
     var id: String { rawValue }
 
@@ -19,6 +20,8 @@ enum AppSection: String, CaseIterable, Identifiable {
             "Profiles"
         case .inspector:
             "Inspector"
+        case .logs:
+            "Logs"
         }
     }
 
@@ -30,6 +33,8 @@ enum AppSection: String, CaseIterable, Identifiable {
             "Model profile list surface"
         case .inspector:
             "Selected profile detail surface"
+        case .logs:
+            "Managed log context surface"
         }
     }
 
@@ -41,6 +46,8 @@ enum AppSection: String, CaseIterable, Identifiable {
             "list.bullet.rectangle"
         case .inspector:
             "sidebar.right"
+        case .logs:
+            "doc.text.magnifyingglass"
         }
     }
 
