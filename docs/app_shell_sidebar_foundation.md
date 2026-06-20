@@ -8,6 +8,7 @@
 - Extended in `v6.0.3` with stable App Shell accessibility identifiers.
 - Covered in `v6.0.4` with focused AppSection metadata tests.
 - Extended in `v6.1.0` with the first staged Profiles / Model List Surface.
+- Polished in `v6.1.1` with Profiles summary cards and list identifiers.
 - Dashboard remains the default top-level section.
 - Dashboard UI Refresh v1 remains the current stable surface.
 - Later sections remain future-only.
@@ -236,7 +237,7 @@ The `v6.0.0` implementation uses a native macOS `NavigationSplitView` app shell:
 
 The initial implementation chooses the smallest native structure that preserves behavior and keeps the current Dashboard usable. See [Detail Inspector Foundation Design](detail_inspector_foundation.md) for the later candidate inspector boundary, [Logs Panel Refresh Design](logs_panel_refresh.md) for the future Logs section boundary, [Client Setup Surface Design](client_setup_surface.md) for the future Client Setup section boundary, and [Metrics / System Context Design](metrics_system_context.md) for the future metrics and system context boundary.
 
-The implemented shell remains limited to app shell/sidebar foundation and the first staged Profiles surface. It does not pull in Inspector, Logs, Client Setup, Metrics, or behavior changes. v6.0.1 keeps that boundary while adding small sidebar polish. v6.0.2 keeps accessibility ownership inside the sidebar row and records the v6.0.x shell state before v6.1.0 begins. v6.0.3 adds stable identifiers for the shell sidebar, detail area, and section rows so later UI tests and staged sections have a predictable surface. v6.0.4 adds focused tests for AppSection metadata. v6.1.0 adds Profiles as a top-level destination while preserving Dashboard as the default Direct Mode control surface.
+The implemented shell remains limited to app shell/sidebar foundation and the first staged Profiles surface. It does not pull in Inspector, Logs, Client Setup, Metrics, or behavior changes. v6.0.1 keeps that boundary while adding small sidebar polish. v6.0.2 keeps accessibility ownership inside the sidebar row and records the v6.0.x shell state before v6.1.0 begins. v6.0.3 adds stable identifiers for the shell sidebar, detail area, and section rows so later UI tests and staged sections have a predictable surface. v6.0.4 adds focused tests for AppSection metadata. v6.1.0 adds Profiles as a top-level destination while preserving Dashboard as the default Direct Mode control surface. v6.1.1 keeps that behavior and adds Profiles summary cards plus clearer Profiles list identifiers.
 
 ## Migration Strategy
 

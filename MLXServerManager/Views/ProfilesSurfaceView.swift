@@ -10,15 +10,21 @@ struct ProfilesSurfaceView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
+                summaryCards
 
                 if models.isEmpty {
                     emptyState
                 } else {
+                    Text("Model Profiles")
+                        .font(.headline)
+                        .accessibilityIdentifier("profiles-surface-list-heading")
+
                     LazyVStack(alignment: .leading, spacing: 12) {
                         ForEach(models) { model in
                             profileCard(model)
                         }
                     }
+                    .accessibilityIdentifier("profiles-surface-profile-list")
                 }
             }
             .padding(20)
@@ -26,6 +32,22 @@ struct ProfilesSurfaceView: View {
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .accessibilityIdentifier("profiles-surface")
+    }
+
+    private var selectedModel: ModelConfig? {
+        models.first { model in
+            model.id == selectedModelID
+        }
+    }
+
+    private var runningModel: ModelConfig? {
+        models.first { model in
+            model.id == runningModelID
+        }
+    }
+
+    private var restartRequiredText: String {
+        restartRequired ? "Yes" : "No"
     }
 
     private var header: some View {
@@ -45,6 +67,41 @@ struct ProfilesSurfaceView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("profiles-surface-header")
+    }
+
+    private var summaryCards: some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 160), spacing: 12)],
+            alignment: .leading,
+            spacing: 12
+        ) {
+            summaryCard("Profiles", value: String(models.count))
+            summaryCard("Selected", value: selectedModel?.displayName ?? "None")
+            summaryCard("Running", value: runningModel?.displayName ?? "None")
+            summaryCard("Restart required", value: restartRequiredText)
+        }
+        .accessibilityIdentifier("profiles-surface-summary")
+    }
+
+    private func summaryCard(_ title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.headline)
+                .lineLimit(1)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(Color.secondary.opacity(0.12))
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("profiles-surface-summary-\(sanitizedIdentifier(title.lowercased()))")
     }
 
     private var emptyState: some View {

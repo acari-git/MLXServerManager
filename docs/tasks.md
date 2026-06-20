@@ -2101,6 +2101,14 @@
 - Expand `AppSectionTests` to cover Dashboard and Profiles metadata.
 - Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.1.1 Completed: Profiles Surface Polish
+
+- Add Profiles summary cards for profile count, selected profile, running profile, and restart-required state.
+- Add stable identifiers for the Profiles summary area, list heading, and profile list.
+- Keep Profiles read-only for runtime lifecycle behavior.
+- Preserve Dashboard model list, runtime controls, selected profile behavior, current target behavior, Import / Export behavior, and External Server Detection / Adopt / Forget behavior.
+- Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
