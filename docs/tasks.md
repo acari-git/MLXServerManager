@@ -2232,6 +2232,14 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no signing, notarization, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.8.1 Completed: README Install Section Polish
+
+- Clarify that users should download the named asset under GitHub Release Assets, not source archives.
+- Add a concrete `shasum -a 256` command for verifying the current app zip.
+- Clarify that `v6.8.1` is docs-only and does not replace the current app binary.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no signing, notarization, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
