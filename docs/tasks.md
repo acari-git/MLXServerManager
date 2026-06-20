@@ -2315,10 +2315,17 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.14.0 Completed: Signed Zip Local Dry-Run Execution Notes
+
+- Add `docs/signed_zip_local_dry_run_execution_notes.md` as docs-only execution notes for future local-only signed zip dry runs.
+- Define dry-run execution boundaries, suggested local records, scope checks, public asset checks, placeholder status wording, stop conditions, evidence handling, public documentation criteria, and fallback policy.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Signed zip local dry-run execution notes.
+- Signed zip local dry-run execution notes polish.
 - Packaging checklist polish.
 - Model download design.
 - Deeper diagnostics design.
