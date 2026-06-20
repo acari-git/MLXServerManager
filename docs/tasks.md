@@ -2285,10 +2285,17 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.12.0 Completed: Local Signing Command Draft
+
+- Add `docs/local_signing_command_draft.md` as a docs-only draft for future local signed zip creation.
+- Define placeholders, draft build/sign/verify/zip/checksum flow, safety boundaries, verification log template, and fallback rules.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Local signing command draft.
+- Local Signing Command Polish.
 - Packaging checklist polish.
 - Model download design.
 - Deeper diagnostics design.
