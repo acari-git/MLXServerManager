@@ -3,6 +3,7 @@
 ## Release
 
 - Added in `v6.7.0`.
+- Polished in `v6.7.1` with install documentation planning and manual packaging verification notes.
 - Docs-only readiness review.
 - Follows the `v6.6.0` / `v6.6.1` App Layout Stabilization Review.
 - No new app binary is produced for this release.
@@ -144,6 +145,22 @@ Docs-only releases should explicitly state:
 Asset: No new app binary; current binary remains <previous app asset>
 ```
 
+## Install Documentation Plan
+
+A future README install section refresh should cover:
+
+- which release asset to download;
+- how to distinguish docs-only releases from app-code releases;
+- how to verify the SHA-256 checksum;
+- how to unzip the app;
+- where to place the app;
+- what unsigned local-use distribution means;
+- what to do when macOS warns about an unsigned app;
+- how to confirm the app version from GitHub Release context;
+- how to avoid downloading source archives when the user wants the app binary.
+
+The install section should not imply that unsigned builds are signed, notarized, or Apple-verified.
+
 ## Packaging Safety Checklist
 
 Before publishing any binary asset, verify:
@@ -159,6 +176,21 @@ Before publishing any binary asset, verify:
 - SHA-256 is calculated and included in release notes;
 - release asset name matches signing/notarization status;
 - GitHub Release title and release body match the tag.
+
+## Manual Packaging Verification Notes
+
+For any later app-code release with a binary asset, manually record:
+
+- local app launch result;
+- zip or DMG path;
+- asset size;
+- SHA-256;
+- top-level archive entries;
+- forbidden-entry scan result;
+- signing status;
+- notarization status;
+- release URL;
+- whether the asset replaces the current downloadable binary.
 
 ## Signing / Notarization Safety Checklist
 
@@ -209,7 +241,7 @@ Any actual signed/notarized/DMG implementation should be scoped separately and s
 
 ## Release Acceptance
 
-`v6.7.0` is acceptable if:
+`v6.7.0` and `v6.7.1` are acceptable if:
 
 - it remains docs-only;
 - no Swift source files are changed;

@@ -2215,11 +2215,18 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no signing, notarization, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.7.1 Completed: Distribution / Packaging Readiness Polish
+
+- Add install documentation planning to the Distribution / Packaging Readiness Review.
+- Add manual packaging verification notes for later app-code releases with binary assets.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no signing, notarization, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Signed/notarized distribution design.
 - README install section refresh.
+- Signed/notarized distribution design.
 - Packaging checklist polish.
 - Model download design.
 - Deeper diagnostics design.
