@@ -2038,6 +2038,29 @@
    - v6.0.2 is an app-code release hygiene follow-up.
    - v6.1.0 Profiles / Model List Surface remains future work.
 
+## v6.0.3 Completed: App Shell Stable Identifiers
+
+1. Add stable App Shell identifiers.
+   - Add a section-level accessibility identifier on `AppSection`.
+   - Add a stable identifier for the App Shell sidebar.
+   - Add a stable identifier for the App Shell detail area.
+   - Add stable identifiers for sidebar section rows.
+2. Preserve runtime and safety boundaries.
+   - No Dashboard card order change.
+   - No Start / Stop / Restart behavior change.
+   - No selected profile behavior change.
+   - No Current Target behavior change.
+   - No Import / Export behavior change.
+   - No External Server Detection / Adopt / Forget behavior change.
+   - No new network calls.
+   - No `/v1/chat/completions` calls by the app.
+   - No new persistence.
+   - No API key, token, or secret persistence.
+   - No model download, deletion, scanning, or cache cleanup.
+3. Release note.
+   - v6.0.3 is an app-code App Shell identifier follow-up.
+   - v6.1.0 Profiles / Model List Surface remains future work.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.

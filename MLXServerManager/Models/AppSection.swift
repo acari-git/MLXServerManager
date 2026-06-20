@@ -30,4 +30,8 @@ enum AppSection: String, CaseIterable, Identifiable {
             "rectangle.grid.2x2"
         }
     }
+
+    var accessibilityIdentifier: String {
+        "app-section-\(rawValue)"
+    }
 }

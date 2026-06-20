@@ -18,10 +18,12 @@ struct AppShellView<Content: View>: View {
             }
             .listStyle(.sidebar)
             .navigationTitle("MLX Server Manager")
+            .accessibilityIdentifier("app-shell-sidebar")
             .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 280)
         } detail: {
             content(selectedSection)
                 .navigationTitle(selectedSection.title)
+                .accessibilityIdentifier("app-shell-detail-\(selectedSection.rawValue)")
         }
     }
 }
@@ -46,6 +48,7 @@ private struct AppSectionSidebarRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(section.title)
         .accessibilityHint(section.subtitle)
+        .accessibilityIdentifier(section.accessibilityIdentifier)
     }
 }
 
