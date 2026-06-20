@@ -5,6 +5,7 @@
 - Added in `v6.7.0`.
 - Polished in `v6.7.1` with install documentation planning and manual packaging verification notes.
 - Polished in `v6.16.0` with post-closeout packaging checklist guidance.
+- Polished in `v6.16.1` with binary release go/no-go, asset naming failure cases, and release body verification notes.
 - Docs-only readiness review.
 - Follows the `v6.6.0` / `v6.6.1` App Layout Stabilization Review.
 - No new app binary is produced for this release.
@@ -130,6 +131,15 @@ release.zip
 MLXServerManager.zip
 ```
 
+Asset naming failure cases:
+
+- `signed.zip` name for an unsigned zip;
+- `notarized.zip` name for a signed-only zip;
+- docs-only release with an attached app binary;
+- source archive referenced as the app download;
+- checksum copied from a previous binary asset;
+- release title implying a binary replacement when no binary is produced.
+
 ## Required Release Settings Block
 
 GitHub Release notes should continue to include:
@@ -139,6 +149,18 @@ Tag:
 Title:
 Asset:
 Pre-release:
+```
+
+Release body verification should confirm these sections are present:
+
+```text
+## Release Settings
+## Summary
+## Changed
+## Asset
+## Preserved Behavior
+## Boundaries
+## Verification
 ```
 
 Docs-only releases should explicitly state:
@@ -197,6 +219,27 @@ Signing status: Not executed
 Notarization status: Not submitted
 Stapling status: Not applicable
 ```
+
+## Binary Release Go / No-Go
+
+Proceed with a binary release only if:
+
+- Release build succeeds;
+- app launch is checked locally;
+- test results are recorded;
+- asset name matches unsigned, signed, or notarized state;
+- final archive contents are checked;
+- SHA-256 is recorded;
+- release notes state exactly whether the asset replaces the current public binary.
+
+Do not proceed if:
+
+- the release scope is docs-only;
+- asset status cannot be stated accurately;
+- forbidden entries are present;
+- signing or notarization status is unclear;
+- the archive contains source files instead of the app bundle;
+- the release notes body does not include the required release settings block.
 
 ## Manual Packaging Verification Notes
 
@@ -262,7 +305,7 @@ Any actual signed/notarized/DMG implementation should be scoped separately and s
 
 ## Packaging Checklist Polish Acceptance
 
-`v6.16.0` is acceptable if:
+`v6.16.0` and `v6.16.1` are acceptable if:
 
 - it remains docs-only;
 - no Swift source files are changed;

@@ -2346,6 +2346,14 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.16.1 Completed: Packaging Checklist Polish Follow-up
+
+- Add binary release go / no-go guidance to `docs/distribution_packaging_readiness.md`.
+- Add asset naming failure cases for unsigned, signed, notarized, docs-only, and source archive confusion.
+- Add release body verification notes for required release sections.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
