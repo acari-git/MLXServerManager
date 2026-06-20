@@ -151,6 +151,8 @@ Metrics / System Context design is documented in [docs/metrics_system_context.md
 
 v6 Implementation Readiness Review is documented in [docs/v6_implementation_readiness.md](docs/v6_implementation_readiness.md). v5.9.0 is a docs-only readiness release that consolidates v5.2.0 through v5.8.0 planning; v6.0.0 starts app-code work with the narrow App Shell / Sidebar Foundation only.
 
+v6.0.1 is a small App Shell / Sidebar polish release. It keeps Dashboard as the only active top-level section and adds macOS sidebar list styling plus sidebar accessibility polish.
+
 Screenshot refresh planning is documented in [docs/screenshot_refresh.md](docs/screenshot_refresh.md). Future screenshots should cover the v1.9+ Current Target summary and Adopted External Server states without exposing private paths or secrets.
 
 First-run guidance is documented in [docs/onboarding_first_run.md](docs/onboarding_first_run.md). v2.4.0 adds a small in-app guidance panel that points first-time users toward executable path setup, model profile selection, diagnostics, Start, and Connection Settings while preserving Direct Mode.
@@ -161,9 +163,9 @@ Model Profile export and import are documented in [docs/model_profile_import_exp
 
 The current downloadable app binary asset is the latest app-code release:
 
-- `MLXServerManager-v5.0.0-unsigned.zip`
+- `MLXServerManager-v6.0.1-unsigned.zip`
 
-v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 through v5.0.0 are app-code dashboard polish releases with unsigned app zip assets. v5.1.0 through v5.9.0 are documentation releases. v6.0.0 is an app-code shell foundation release; an unsigned app zip asset should be created only when explicitly preparing the release.
+v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 through v5.0.0 are app-code dashboard polish releases with unsigned app zip assets. v5.1.0 through v5.9.0 are documentation releases. v6.0.0 is an app-code shell foundation release. v6.0.1 is an app-code sidebar polish release with an unsigned app zip asset.
 
 ## Target Users
 

@@ -4,6 +4,8 @@ import SwiftUI
 ///
 /// The shell owns only navigation selection. It does not own process control,
 /// networking, persistence, import/export, or inference behavior.
+/// v6.0.x intentionally exposes Dashboard as the only active section while
+/// preserving room for later staged destinations.
 struct AppShellView<Content: View>: View {
     @Binding var selectedSection: AppSection
     @ViewBuilder var content: (AppSection) -> Content
@@ -13,7 +15,10 @@ struct AppShellView<Content: View>: View {
             List(AppSection.allCases, selection: $selectedSection) { section in
                 AppSectionSidebarRow(section: section)
                     .tag(section)
+                    .accessibilityLabel(section.title)
+                    .accessibilityHint(section.subtitle)
             }
+            .listStyle(.sidebar)
             .navigationTitle("MLX Server Manager")
             .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 280)
         } detail: {
@@ -40,6 +45,7 @@ private struct AppSectionSidebarRow: View {
             Image(systemName: section.systemImageName)
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
     }
 }
 

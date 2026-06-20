@@ -1990,6 +1990,28 @@
    - v6.0.0 is an app-code shell foundation release.
    - Tag, push, GitHub Release, and zip asset remain release-preparation steps only.
 
+## v6.0.1 Completed: App Shell Sidebar Polish
+
+1. Polish the native sidebar shell.
+   - Add macOS sidebar list styling to the app shell section list.
+   - Add sidebar row accessibility label and hint wiring.
+   - Clarify in code comments that v6.0.x intentionally exposes Dashboard as the only active section.
+2. Preserve runtime and safety boundaries.
+   - No Dashboard card order change.
+   - No Start / Stop / Restart behavior change.
+   - No selected profile behavior change.
+   - No Current Target behavior change.
+   - No Import / Export behavior change.
+   - No External Server Detection / Adopt / Forget behavior change.
+   - No new network calls.
+   - No `/v1/chat/completions` calls by the app.
+   - No new persistence.
+   - No API key, token, or secret persistence.
+   - No model download, deletion, scanning, or cache cleanup.
+3. Release note.
+   - v6.0.1 is an app-code sidebar polish release.
+   - v6.1.0 Profiles / Model List Surface remains future work.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
