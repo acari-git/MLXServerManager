@@ -3,6 +3,7 @@
 ## Release
 
 - Added in `v6.9.0`.
+- Polished in `v6.9.1` with signing entry criteria, manual verification notes, and asset coexistence decision criteria.
 - Docs-only signed distribution design.
 - Follows the `v6.7.0` / `v6.7.1` Distribution / Packaging Readiness Review and the `v6.8.0` / `v6.8.1` README Install refresh.
 - No new app binary is produced for this release.
@@ -70,6 +71,19 @@ Signing must not be used to introduce:
 - privileged helpers;
 - launch agents;
 - installer-only distribution.
+
+## Signing Implementation Entry Criteria
+
+Start implementation only when all of the following are true:
+
+- the signing identity is known and intentionally selected outside the repository;
+- local signing can be run without committing certificates, keys, tokens, or account credentials;
+- the release asset naming policy is chosen before the release starts;
+- the release will state signing and notarization status explicitly;
+- fallback behavior is clear if signing fails;
+- the unsigned local-use path is either preserved or intentionally deprecated by release notes;
+- verification commands are documented before the signed asset is published;
+- no app runtime behavior changes are bundled into the signing release.
 
 ## Proposed Signed Zip Asset
 
@@ -157,6 +171,21 @@ Before publishing a signed zip, verify:
 - GitHub Release `Asset` field identifies the signed zip;
 - release body states whether notarization was or was not performed.
 
+## Manual Verification Notes
+
+For a future signed binary release, record:
+
+- signing identity label used in the release notes;
+- whether the app bundle signature was verified;
+- whether Gatekeeper assessment was run;
+- whether notarization was intentionally omitted or completed;
+- zip path and size;
+- SHA-256;
+- top-level archive entries;
+- forbidden-entry scan result;
+- release URL;
+- whether unsigned and signed assets both exist for the same tag.
+
 ## Release Notes Requirements
 
 Signed release notes should include:
@@ -194,6 +223,24 @@ Acceptable options:
 3. Continue unsigned-only until notarization is ready.
 
 If both signed and unsigned assets are published, release notes must clearly distinguish them and include a separate SHA-256 for each asset.
+
+Choose signed-only when:
+
+- signing verification is reliable;
+- install documentation is updated for signed assets;
+- unsigned fallback is no longer needed for local testing.
+
+Choose signed plus unsigned when:
+
+- signed distribution is new;
+- users may need a temporary fallback;
+- both assets can be named and verified clearly.
+
+Choose unsigned-only when:
+
+- signing identity is unavailable;
+- verification is incomplete;
+- notarization design is not ready and signed status would confuse users.
 
 ## Relationship to Notarization
 
@@ -237,7 +284,7 @@ Actual signing should be implemented in a dedicated app-code or release-workflow
 
 ## Release Acceptance
 
-`v6.9.0` is acceptable if:
+`v6.9.0` and `v6.9.1` are acceptable if:
 
 - it remains docs-only;
 - no Swift source files are changed;
