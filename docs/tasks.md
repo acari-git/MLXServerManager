@@ -2361,10 +2361,19 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no model download, model deletion, model scanning, cache cleanup, token persistence, auto-start, profile overwrite, telemetry, background monitoring, runtime behavior change, or release automation.
 
+## v6.17.1 Completed: Model Download Design Polish
+
+- Add failure states to `docs/model_download_design.md`.
+- Add destination and disk-space preflight guidance.
+- Add token redaction requirement for status and error text.
+- Add partial download policy that avoids automatic deletion or false usable status.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no model download, model deletion, model scanning, cache cleanup, token persistence, auto-start, profile overwrite, telemetry, background monitoring, runtime behavior change, or release automation.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Model Download Design Polish.
+- Model Availability Documentation.
 - Deeper diagnostics design.
 - Model availability documentation.
 - Packaging polish.

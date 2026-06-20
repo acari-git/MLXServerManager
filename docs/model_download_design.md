@@ -3,6 +3,7 @@
 ## Release
 
 - Added in `v6.17.0`.
+- Polished in `v6.17.1` with failure states, disk-space preflight, token redaction, and partial download policy.
 - Docs-only design for future model download support.
 - No model download implementation is included in this release.
 - No new app binary is produced for this release.
@@ -108,6 +109,14 @@ Before download starts, the app should display:
 - whether the app can proceed without credentials;
 - that compatibility is not guaranteed until user verifies launch behavior.
 
+Preflight should also include:
+
+- destination parent exists or can be created;
+- destination is not inside the app bundle;
+- destination is not inside the project checkout;
+- estimated disk-space requirement is visible when available;
+- user can cancel before any file write begins.
+
 ## Destination Path Policy
 
 A future implementation should require an explicit base directory preference or user-selected destination.
@@ -136,6 +145,7 @@ Allowed in a future scoped implementation:
 
 - user provides a token for one explicit download session;
 - token is held in memory only for that action;
+- token is redacted from status messages and errors;
 - token is not logged;
 - token is not written to profiles;
 - token is not committed to exported settings.
@@ -165,6 +175,22 @@ behind a service/controller boundary.
 
 SwiftUI views should present state and user controls only.
 
+## Failure States
+
+A future implementation should distinguish at least:
+
+- invalid repository identifier;
+- authentication required;
+- authentication failed;
+- destination unavailable;
+- insufficient disk space;
+- network failure;
+- user cancellation;
+- partial download present;
+- unknown failure.
+
+Failure messages should be short, non-sensitive, and should not expose tokens, full private paths, or raw command output by default.
+
 ## Progress And Cancellation
 
 A future implementation should show:
@@ -178,6 +204,14 @@ A future implementation should show:
 - last safe error summary.
 
 Cancellation should stop the active download task, but first implementation should not automatically delete partial files unless a separate cleanup design is approved.
+
+Partial download policy:
+
+- do not hide partial directories from the user;
+- do not automatically delete partial files;
+- do not mark a partial download as usable;
+- show a clear incomplete status;
+- require a separate explicit retry or cleanup action in a later scoped release.
 
 ## Compatibility Wording
 
@@ -247,7 +281,7 @@ Safe follow-up releases may include:
 
 ## Release Acceptance
 
-`v6.17.0` is acceptable if:
+`v6.17.0` and `v6.17.1` are acceptable if:
 
 - it remains docs-only;
 - no Swift source files are changed;
