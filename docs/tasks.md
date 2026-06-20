@@ -2255,10 +2255,18 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no signing, notarization, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.10.0 Completed: Notarization Workflow Design
+
+- Add `docs/notarization_workflow_design.md` as a docs-only design for future notarized distribution.
+- Define notarization goals, non-goals, workflow prerequisites, conceptual flow, result handling, asset naming, release notes requirements, verification notes, and fallback policy.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no signing, notarization, stapling, DMG, installer, auto-update, release automation, runtime behavior change, telemetry, background monitoring, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Notarization workflow design.
+- Notarization workflow polish.
+- Signed Zip Implementation Readiness.
 - Packaging checklist polish.
 - Model download design.
 - Deeper diagnostics design.
