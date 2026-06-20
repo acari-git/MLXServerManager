@@ -3,6 +3,7 @@
 ## Status
 
 - Implemented in `v6.4.0` as the first Client Setup Surface.
+- Polished in `v6.4.1` with a copy scope card.
 - Initially documented in `v5.7.0` as a planning-only design.
 - Follows `v6.0.0` App Shell / Sidebar Foundation.
 - Follows `v6.1.0` Profiles / Model List Surface.
@@ -10,7 +11,7 @@
 - Follows `v6.3.0` Logs Panel Refresh.
 - Dashboard UI Refresh v1 remains the current stable surface.
 
-v6.4.0 adds a top-level Client Setup destination for copy-safe OpenAI-compatible setup values. It does not implement client-specific configuration generation, API key management, token storage, secret persistence, generated client config files, automatic client configuration, client auto-detection, endpoint testing, new network behavior, telemetry, background monitoring, automatic diagnostics, proxying, or runtime behavior changes.
+v6.4.0 adds a top-level Client Setup destination for copy-safe OpenAI-compatible setup values. v6.4.1 keeps that surface copy-safe and adds a copy scope card that clarifies copied values and examples remain text-only. It does not implement client-specific configuration generation, API key management, token storage, secret persistence, generated client config files, automatic client configuration, client auto-detection, endpoint testing, new network behavior, telemetry, background monitoring, automatic diagnostics, proxying, or runtime behavior changes.
 
 ## Goals
 
@@ -296,4 +297,4 @@ These versions remain proposals only:
 
 ## v5.7.0 Planning Boundary
 
-v5.7.0 added this detailed design only. v6.4.0 is the first app-code Client Setup Surface implementation and keeps the original safety boundaries intact.
+v5.7.0 added this detailed design only. v6.4.0 is the first app-code Client Setup Surface implementation. v6.4.1 is a focused Client Setup Surface polish release. Both keep the original safety boundaries intact.

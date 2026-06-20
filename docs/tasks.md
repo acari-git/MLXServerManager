@@ -2161,6 +2161,14 @@
 - Preserve Dashboard model list, runtime controls, selected profile behavior, current target behavior, Import / Export behavior, External Server Detection / Adopt / Forget behavior, and existing Dashboard Connection Settings availability.
 - Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, endpoint testing, generated client config persistence, client auto-detection, API key storage, token storage, secret persistence, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.4.1 Completed: Client Setup Surface Polish
+
+- Add a Client Setup copy scope card that clarifies Base URL, model ID, API key placeholder, and config example copy behavior.
+- Keep existing `ConnectionSettingsView` reuse and existing copy actions unchanged.
+- Preserve Dashboard Connection Settings availability.
+- Preserve Dashboard model list, runtime controls, selected profile behavior, current target behavior, Import / Export behavior, and External Server Detection / Adopt / Forget behavior.
+- Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, endpoint testing, generated client config persistence, client auto-detection, API key storage, token storage, secret persistence, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.

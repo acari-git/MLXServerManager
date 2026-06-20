@@ -21,6 +21,7 @@ struct ClientSetupSurfaceView: View {
                 summaryCards
                 directModeCard
                 safetyCard
+                copyScopeCard
 
                 ConnectionSettingsView(
                     targetSummary: targetSummary,
@@ -127,6 +128,30 @@ struct ClientSetupSurfaceView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("client-setup-direct-mode")
+    }
+
+    private var copyScopeCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Copy Scope", systemImage: "doc.on.doc")
+                .font(.headline)
+
+            DetailGrid(rows: [
+                ("Base URL", "Copies the active endpoint base URL."),
+                ("Model ID", "Copies the selected model identifier for OpenAI-compatible clients."),
+                ("API key placeholder", "Copies the documented placeholder only; no secret is created."),
+                ("Config examples", "Copies text examples only; no files are generated or written.")
+            ])
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(Color.secondary.opacity(0.12))
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("client-setup-copy-scope")
     }
 
     private var safetyCard: some View {
