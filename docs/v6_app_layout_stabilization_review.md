@@ -3,6 +3,7 @@
 ## Release
 
 - Added in `v6.6.0`.
+- Polished in `v6.6.1` with next-phase entry criteria and a manual verification checklist.
 - Docs-only stabilization review.
 - Follows `v6.0.0` through `v6.5.1` App Shell and top-level surface work.
 - No new app binary is produced for this release.
@@ -133,11 +134,38 @@ Do not introduce the following through incremental polish releases:
 - benchmark runner;
 - token throughput measurement.
 
+## Next-Phase Entry Criteria
+
+Start the next implementation phase only when all of the following are true:
+
+- the intended feature has a scoped design document or a new readiness review;
+- the feature can preserve the Direct Mode path;
+- the feature does not require request proxying, routing, rewriting, or inspection;
+- the feature does not require telemetry, background monitoring, or automatic diagnostics;
+- the feature does not require secret persistence or generated client config persistence;
+- the feature does not require model weight download, deletion, scanning, or cache cleanup unless that work has its own dedicated design and safety review;
+- the Dashboard default-section behavior remains intentionally preserved or is explicitly changed by design;
+- rollback behavior is clear.
+
+## Manual Verification Checklist
+
+Before starting a later app-code release, manually verify:
+
+- Dashboard is still the default selected section.
+- Sidebar order remains Dashboard, Profiles, Inspector, Logs, Client Setup, Metrics.
+- Dashboard Start, Stop, and Restart remain explicit user actions.
+- Profiles, Inspector, Logs, Client Setup, and Metrics do not add hidden lifecycle side effects.
+- Client Setup copy actions remain text-only.
+- Metrics does not trigger polling, sampling, endpoint testing, or diagnostics.
+- Logs do not capture adopted external server stdout or stderr.
+- Import / Export remains metadata-only.
+- External Server Detection / Adopt / Forget behavior remains unchanged.
+
 ## Release Acceptance
 
-`v6.6.0` is acceptable if:
+`v6.6.0` and `v6.6.1` are acceptable if:
 
-- it remains docs-only;
+- they remain docs-only;
 - no Swift source files are changed;
 - no runtime behavior changes are introduced;
 - no app binary zip is produced;

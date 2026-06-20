@@ -2198,10 +2198,17 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, endpoint testing, generated client config persistence, client auto-detection, API key storage, token storage, secret persistence, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.6.1 Completed: App Layout Stabilization Review Polish
+
+- Add next-phase entry criteria to the v6 App Layout Stabilization Review.
+- Add a manual verification checklist for later app-code releases.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no inference proxying, Chat UI, routing, request rewriting, telemetry, background monitoring, endpoint testing, generated client config persistence, client auto-detection, API key storage, token storage, secret persistence, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Future app layout refresh stabilization after v6.6.0 review.
+- Future app layout refresh stabilization after v6.6.1 review polish.
 - Signed/notarized distribution.
 - Model download design.
 - Deeper diagnostics design.
