@@ -2558,6 +2558,18 @@
 - Preserve Direct Mode; no inference proxying, chat UI, search, ranking, model card browsing, HF token storage, model deletion, model scanning, cache cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
 - Produce `MLXServerManager-v7.2.0-unsigned.zip` after Release build verification.
 
+## v7.2.1 Completed: Hugging Face CLI Detection Polish
+
+- Detect `hf` from user-local and Homebrew paths before falling back to PATH-derived candidates.
+- Prefer `~/.local/bin/hf` so the official Hugging Face CLI installer works for GUI-launched apps.
+- Include `/opt/homebrew/bin/hf`, `/usr/local/bin/hf`, and PATH-derived `hf` candidates.
+- Execute the resolved `hf` path directly instead of relying only on `/usr/bin/env hf`.
+- Add a log line showing the resolved `hf` path used for the download.
+- Expand the missing-CLI error with the checked paths.
+- Add focused tests for candidate path ordering and Homebrew/user-local path inclusion.
+- Preserve Direct Mode; no inference proxying, chat UI, search, ranking, model card browsing, HF token storage, model deletion, model scanning, cache cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
+- Produce `MLXServerManager-v7.2.1-unsigned.zip` after Release build verification.
+
 ## Later
 
 - More advanced resource graphs.

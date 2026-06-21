@@ -51,6 +51,20 @@ final class HuggingFaceDownloadTests: XCTestCase {
         XCTAssertNil(HuggingFaceDownloadPlanner.progressFraction(from: "working"))
     }
 
+    func testCandidateExecutablePathsIncludeUserLocalAndHomebrewPaths() {
+        let candidates = HuggingFaceDownloadManager.candidateExecutablePaths(
+            environment: [
+                "HOME": "/Users/example",
+                "PATH": "/custom/bin:/usr/bin"
+            ]
+        )
+
+        XCTAssertEqual(candidates.first, "/Users/example/.local/bin/hf")
+        XCTAssertTrue(candidates.contains("/opt/homebrew/bin/hf"))
+        XCTAssertTrue(candidates.contains("/usr/local/bin/hf"))
+        XCTAssertTrue(candidates.contains("/custom/bin/hf"))
+    }
+
     private func success(_ result: Result<HuggingFaceModelReference, HuggingFaceModelReferenceError>) throws -> HuggingFaceModelReference {
         switch result {
         case let .success(reference):

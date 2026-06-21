@@ -11,9 +11,18 @@ struct HuggingFaceDownloadResult: Equatable {
     let terminationStatus: Int32
 }
 
+struct HuggingFaceCLIResolution: Equatable {
+    let executablePath: String
+    let searchedPaths: [String]
+
+    var displayPath: String {
+        ModelAvailabilityPathFormatter.compact(path: executablePath)
+    }
+}
+
 enum HuggingFaceDownloadError: LocalizedError, Equatable {
     case cancelled
-    case commandNotAvailable
+    case commandNotAvailable(searchedPaths: [String])
     case destinationPreparationFailed(String)
     case processLaunchFailed(String)
     case processFailed(status: Int32)
@@ -22,8 +31,8 @@ enum HuggingFaceDownloadError: LocalizedError, Equatable {
         switch self {
         case .cancelled:
             "Download cancelled. The model was not added."
-        case .commandNotAvailable:
-            "The hf command is not available. Install huggingface_hub CLI and try again."
+        case let .commandNotAvailable(searchedPaths):
+            "The hf command is not available. Checked: \(searchedPaths.map { ModelAvailabilityPathFormatter.compact(path: $0) }.joined(separator: ", ")). Install Hugging Face CLI or restart the app after installing it."
         case let .destinationPreparationFailed(message):
             "Could not prepare the destination folder: \(message)"
         case let .processLaunchFailed(message):
@@ -44,12 +53,17 @@ protocol HuggingFaceModelDownloading: AnyObject {
 
 final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
     private let fileManager: FileManager
+    private let environment: [String: String]
     private var activeProcess: Process?
     private var stdoutPipe: Pipe?
     private var stderrPipe: Pipe?
 
-    init(fileManager: FileManager = .default) {
+    init(
+        fileManager: FileManager = .default,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) {
         self.fileManager = fileManager
+        self.environment = environment
     }
 
     func download(
@@ -58,16 +72,38 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
     ) async throws -> HuggingFaceDownloadResult {
         let destinationURL = URL(fileURLWithPath: request.destinationPath, isDirectory: true)
         let parentURL = destinationURL.deletingLastPathComponent()
+        let searchEnvironment = environment
+
         do {
             try fileManager.createDirectory(at: parentURL, withIntermediateDirectories: true)
         } catch {
             throw HuggingFaceDownloadError.destinationPreparationFailed(error.localizedDescription)
         }
 
+        guard let resolution = Self.resolveCLI(
+            fileManager: fileManager,
+            environment: searchEnvironment
+        ) else {
+            throw HuggingFaceDownloadError.commandNotAvailable(
+                searchedPaths: Self.candidateExecutablePaths(environment: searchEnvironment)
+            )
+        }
+
+        outputHandler("[hf] using \(resolution.displayPath)")
+
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.executableURL = URL(fileURLWithPath: resolution.executablePath)
         let subcommand = "down" + "load"
-        process.arguments = ["hf", subcommand, request.repositoryID, "--local-dir", request.destinationPath]
+        process.arguments = [subcommand, request.repositoryID, "--local-dir", request.destinationPath]
+
+        var processEnvironment = searchEnvironment
+        let candidateDirectories = Self.candidateExecutablePaths(environment: searchEnvironment)
+            .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
+        let path = processEnvironment["PATH", default: ""]
+        processEnvironment["PATH"] = (candidateDirectories + [path])
+            .filter { !$0.isEmpty }
+            .joined(separator: ":")
+        process.environment = processEnvironment
 
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
@@ -89,9 +125,19 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
                 }
 
                 if status == 0 {
-                    continuation.resume(returning: HuggingFaceDownloadResult(repositoryID: request.repositoryID, destinationPath: request.destinationPath, terminationStatus: status))
+                    continuation.resume(
+                        returning: HuggingFaceDownloadResult(
+                            repositoryID: request.repositoryID,
+                            destinationPath: request.destinationPath,
+                            terminationStatus: status
+                        )
+                    )
                 } else if status == 127 {
-                    continuation.resume(throwing: HuggingFaceDownloadError.commandNotAvailable)
+                    continuation.resume(
+                        throwing: HuggingFaceDownloadError.commandNotAvailable(
+                            searchedPaths: Self.candidateExecutablePaths(environment: searchEnvironment)
+                        )
+                    )
                 } else {
                     continuation.resume(throwing: HuggingFaceDownloadError.processFailed(status: status))
                 }
@@ -127,6 +173,55 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
                 outputHandler("[hf:\(label)] \(line)")
             }
         }
+    }
+
+    nonisolated static func resolveCLI(
+        fileManager: FileManager = .default,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> HuggingFaceCLIResolution? {
+        let candidates = candidateExecutablePaths(environment: environment)
+        guard let executablePath = candidates.first(where: { path in
+            fileManager.isExecutableFile(atPath: path)
+        }) else {
+            return nil
+        }
+
+        return HuggingFaceCLIResolution(
+            executablePath: executablePath,
+            searchedPaths: candidates
+        )
+    }
+
+    nonisolated static func candidateExecutablePaths(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> [String] {
+        var candidates: [String] = []
+        let home = environment["HOME"] ?? FileManager.default.homeDirectoryForCurrentUser.path
+        if !home.isEmpty {
+            candidates.append(URL(fileURLWithPath: home).appendingPathComponent(".local/bin/hf").path)
+            candidates.append(URL(fileURLWithPath: home).appendingPathComponent(".hf-cli/bin/hf").path)
+        }
+
+        candidates.append("/opt/homebrew/bin/hf")
+        candidates.append("/usr/local/bin/hf")
+        candidates.append("/usr/bin/hf")
+
+        let pathEntries = environment["PATH", default: ""]
+            .split(separator: ":")
+            .map(String.init)
+            .filter { !$0.isEmpty }
+        for directory in pathEntries {
+            candidates.append(URL(fileURLWithPath: directory).appendingPathComponent("hf").path)
+        }
+
+        var unique: [String] = []
+        for candidate in candidates {
+            let standardized = URL(fileURLWithPath: candidate).standardizedFileURL.path
+            if !unique.contains(standardized) {
+                unique.append(standardized)
+            }
+        }
+        return unique
     }
 
     private func clearIfMatching(_ process: Process) {
