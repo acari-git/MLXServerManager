@@ -2801,6 +2801,12 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v9.9.0; release output is deferred until v10.0.0.
 
+## v10.0.0 Completed: Daily-Use Model Management Milestone
+
+- Complete the v9.x staged path from search filtering, model preview, failure guidance, retry, first-launch setup, profile organization, runtime clarity, and layout refinement.
+- Produce the requested final release asset: `MLXServerManager-v10.0.0-unsigned.zip`.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+
 ## Later
 
 - More advanced resource graphs.
