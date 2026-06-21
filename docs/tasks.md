@@ -2709,6 +2709,13 @@
 - Preserve Direct Mode and avoid proxying, chat UI, credential storage, model deletion, cache cleanup, telemetry, or background automation.
 - No GitHub Release is produced for v8.7.0; release output is deferred until v9.0.0.
 
+## v8.8.0 Completed: Dashboard Visual Refinement
+
+- Add a compact Dashboard workflow banner for Search → Download → Register → Start → Copy.
+- Move closer to the one-screen management layout while preserving existing runtime behavior.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v8.8.0; release output is deferred until v9.0.0.
+
 ## Later
 
 - More advanced resource graphs.

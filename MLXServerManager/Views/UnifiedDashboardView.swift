@@ -17,6 +17,10 @@ struct UnifiedDashboardView: View {
 
     private var mainColumn: some View {
         VStack(spacing: 0) {
+            dashboardWorkflowBanner
+
+            Divider()
+
             modelListPanel
 
             Divider()
@@ -80,6 +84,32 @@ struct UnifiedDashboardView: View {
         }
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.35))
         .accessibilityIdentifier("unified-dashboard-right-inspector")
+    }
+
+    private var dashboardWorkflowBanner: some View {
+        HStack(spacing: 12) {
+            Text("MLX Server Manager")
+                .font(.headline)
+            Spacer()
+            workflowStep("Search")
+            workflowStep("Download")
+            workflowStep("Register")
+            workflowStep("Start")
+            workflowStep("Copy")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.65))
+        .accessibilityIdentifier("unified-dashboard-workflow-banner")
+    }
+
+    private func workflowStep(_ title: String) -> some View {
+        Text(title)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.accentColor.opacity(0.12))
+            .clipShape(Capsule())
     }
 
     private var modelListPanel: some View {
