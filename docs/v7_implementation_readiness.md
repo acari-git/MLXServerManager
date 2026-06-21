@@ -3,6 +3,7 @@
 ## Release
 
 - Added in `v6.30.0`.
+- Polished in `v6.30.1` with first-implementation file boundaries, test order, and release asset handoff checks.
 - Docs-only readiness review for the first v7 app-code implementation.
 - No Swift source, tests, app binary, release asset, runtime behavior, model checks, endpoint calls, downloads, deletion, telemetry, or release automation is added in this release.
 
@@ -215,6 +216,19 @@ Focused test candidates:
 
 Tests must not require real model files, real Hugging Face downloads, real network access, real inference, or user-specific paths.
 
+## v7.0.0 Minimal File Boundary
+
+A first implementation should prefer a small file boundary:
+
+- one pure availability state model;
+- one local path checker abstraction;
+- one selected-profile availability mapper;
+- one copy-safe path formatter if existing helpers are insufficient;
+- one read-only UI card in the chosen surface;
+- focused unit tests for state mapping, local check behavior, and copy-safe display.
+
+Avoid broad refactors, cross-surface rewrites, new persistence layers, new networking helpers, or model-management services in the first release.
+
 ## Implementation Order For v7.0.0
 
 Recommended order:
@@ -230,6 +244,19 @@ Recommended order:
 9. Build and test.
 10. Produce a new app-code release asset only if UI source changes are included and Release build verification is completed.
 
+## v7.0.0 Test Order
+
+Recommended test order:
+
+1. Add pure state mapping tests before UI changes.
+2. Add checker test doubles for present, missing, external, and not-inspectable states.
+3. Add copy-safe display tests.
+4. Add selected-profile stale/reset behavior tests.
+5. Add accessibility identifier tests only after UI identifiers are chosen.
+6. Run the full existing test suite before packaging.
+
+Do not require real models, real downloads, network access, or inference servers.
+
 ## Binary Release Decision
 
 Unlike recent docs-only v6 releases, `v7.0.0` is expected to be an app-code release if it changes Swift UI or runtime code.
@@ -243,6 +270,14 @@ If v7.0.0 includes Swift source changes:
 - compute SHA-256 for the new zip;
 - attach the zip to the GitHub Release;
 - update release notes with the new asset name and checksum.
+
+Expected first v7 app-code asset name:
+
+```text
+MLXServerManager-v7.0.0-unsigned.zip
+```
+
+The release body must not reuse the `v6.5.1` checksum if a new zip is produced.
 
 If v7.0.0 is only another design release, do not call it v7.0.0. Keep it in v6.x.
 
@@ -286,9 +321,24 @@ Do not start v7.0.0 if:
 - it bundles LAN Web UI, App Intents, automatic unload, packaging automation, or notarization;
 - release notes cannot accurately state the asset and checksum.
 
+## v6.30.1 Readiness Polish Acceptance
+
+`v6.30.1` is acceptable if:
+
+- this document records minimal file boundaries for v7.0.0;
+- this document records test order before UI implementation;
+- this document records the expected first v7 app-code asset name;
+- README and tasks are updated;
+- no Swift source files change;
+- no tests change;
+- no model checks are implemented;
+- no endpoint calls are added;
+- no new app binary zip is produced;
+- Direct Mode remains unchanged.
+
 ## Release Acceptance
 
-`v6.30.0` is acceptable if:
+`v6.30.0` and `v6.30.1` are acceptable if:
 
 - this readiness document is added;
 - README references the v7 readiness handoff;

@@ -2517,6 +2517,13 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no Swift source changes, tests, model checks, endpoint calls, downloads, model deletion, model scanning, telemetry, runtime behavior change, or release automation.
 
+## v6.30.1 Completed: v7 Readiness Polish
+
+- Polish `docs/v7_implementation_readiness.md` with first-implementation file boundaries, test order, and release asset handoff checks.
+- Define the expected first v7 app-code asset name as `MLXServerManager-v7.0.0-unsigned.zip` if Swift source changes are included and Release packaging is completed.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no Swift source changes, tests, model checks, endpoint calls, downloads, model deletion, model scanning, telemetry, runtime behavior change, or release automation.
+
 ## Later
 
 - More advanced resource graphs.
