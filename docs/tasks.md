@@ -2716,6 +2716,14 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v8.8.0; release output is deferred until v9.0.0.
 
+## v8.9.0 Completed: v9 Readiness Stabilization
+
+- Update README Quick Start to start from Hugging Face search when desired.
+- Clarify source badges and the searchable acquisition workflow before v9.0.0.
+- Keep v9.0.0 as the only release for this sequence.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v8.9.0; release output is deferred until v9.0.0.
+
 ## Later
 
 - More advanced resource graphs.

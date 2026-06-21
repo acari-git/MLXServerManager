@@ -137,16 +137,17 @@ Do not download the source archive if you want the app binary. Use the named `ML
 1. Open `MLXServerManager.app`.
 2. In Settings, set the `mlx_lm.server executable path`.
 3. Add a model using one of the Dashboard paths:
+   - search Hugging Face, choose a result, then download it;
    - paste a Hugging Face model ID / URL and download it;
    - register an existing local model folder;
    - or use the advanced profile editor.
-4. Confirm the model appears in the model list and is selected.
+4. Confirm the model appears in the model list, has the expected source badge, and is selected.
 5. Press Start. The app runs preflight checks before launching `mlx_lm.server`.
 6. Confirm the Current Target summary in Connection Settings or the Dashboard connection card.
 7. Copy Base URL, Model ID, API key placeholder, JSON config, Hermes Agent config, or curl readiness check.
 8. Paste those values into an OpenAI-compatible client.
 
-You must provide your own `mlx-lm` environment and `mlx_lm.server` executable. You can either register existing model files or use the Dashboard Hugging Face card to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: the client connects directly to `mlx_lm.server`; MLX Server Manager does not proxy inference traffic or run chat completions.
+You must provide your own `mlx-lm` environment and `mlx_lm.server` executable. You can register existing model files, search Hugging Face and choose a result, or use the Dashboard Hugging Face card to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: the client connects directly to `mlx_lm.server`; MLX Server Manager does not proxy inference traffic or run chat completions.
 
 See [docs/distribution.md](docs/distribution.md) for release asset and Gatekeeper details, and [docs/known_limitations.md](docs/known_limitations.md) for the full stable-scope boundary.
 
