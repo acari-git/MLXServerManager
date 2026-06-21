@@ -2464,10 +2464,16 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no Swift source changes, tests, diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, diagnostics history persistence, runtime behavior change, or release automation.
 
+## v6.24.0 Completed: Diagnostics Result Fixture Loading Tests
+
+- Add `MLXServerManagerTests/DiagnosticFixtureLoadingTests.swift`.
+- Verify diagnostics result fixtures load and use allowed status, severity, scope, category, and copy-safe redaction values.
+- Verify redaction, negative, aggregation, and copied-summary fixtures remain loadable and copy-safe.
+- Keep Direct Mode unchanged; no production diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, diagnostics history persistence, runtime behavior change, or release automation.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Diagnostics result fixture loading tests.
 - Model availability surface design.
 - Packaging polish.
 - LAN Web UI.
