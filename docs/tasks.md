@@ -2408,10 +2408,19 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, diagnostics history persistence, runtime behavior change, or release automation.
 
+## v6.20.1 Completed: Diagnostics Result Model Design Polish
+
+- Add stable ID policy to `docs/diagnostics_result_model_design.md`.
+- Add copy/export eligibility guidance.
+- Add aggregation precedence for compact summary state.
+- Add fixture expectations for future diagnostics result model tests.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, diagnostics history persistence, runtime behavior change, or release automation.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Diagnostics Result Model Design Polish.
+- Diagnostics result fixture design.
 - Model availability surface design.
 - Packaging polish.
 - LAN Web UI.

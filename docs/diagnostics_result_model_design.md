@@ -3,6 +3,7 @@
 ## Release
 
 - Added in `v6.20.0`.
+- Polished in `v6.20.1`.
 - Docs-only design for future diagnostics result modeling.
 - Follows `v6.19.0` / `v6.19.1` Deeper Diagnostics Design.
 - No diagnostics result model implementation is included in this release.
@@ -85,6 +86,13 @@ DiagnosticResult
 - timestamp
 ```
 
+Stable ID policy:
+
+- `id` should be stable across app launches for the same check definition;
+- `id` should not include local paths, tokens, ports, or user-specific values;
+- display order should not depend on localized title strings;
+- copied summaries may include titles, but tests should prefer stable IDs.
+
 This is conceptual only and does not require these exact field names.
 
 ## Status Values
@@ -151,6 +159,17 @@ Recommended categories:
 
 A result should belong to one primary category. Secondary labels should be avoided unless a separate grouping design is approved.
 
+## Copy And Export Eligibility
+
+A future result should have explicit copy/export eligibility:
+
+- include in compact summary;
+- include only in detailed local view;
+- exclude from copied summaries;
+- exclude from exported diagnostics.
+
+Default should be exclusion until redaction rules are applied.
+
 ## Redaction Model
 
 Each result should be treated as one of:
@@ -210,6 +229,16 @@ summary: The selected readiness check timed out.
 ```
 
 Timeout must not trigger automatic retries unless user-triggered.
+
+## Aggregation Precedence
+
+When a compact summary needs one headline state, use this precedence:
+
+```text
+blocking > error > warning > timeout > cancelled > unknown > skipped > info
+```
+
+This headline is only a summary of diagnostics results. It must not be described as overall app health.
 
 ## Aggregation Rules
 
@@ -285,6 +314,20 @@ OpenAI-compatible client -> mlx_lm.server or adopted external server -> MLX mode
 
 A result model organizes app diagnostics output. It must not put the app into the inference request path.
 
+## Fixture Expectations
+
+A future implementation should include fixtures for:
+
+- all status values;
+- all severity values;
+- skipped and unknown states;
+- timeout and cancellation states;
+- redacted copy-safe summaries;
+- external server results that do not imply ownership;
+- selected-profile results that do not mutate profiles.
+
+Fixtures should avoid real local paths, tokens, account names, and raw command output.
+
 ## Verification Expectations
 
 A future app-code release should verify:
@@ -311,7 +354,7 @@ Safe follow-up releases may include:
 
 ## Release Acceptance
 
-`v6.20.0` is acceptable if:
+`v6.20.0` and `v6.20.1` are acceptable if:
 
 - it remains docs-only;
 - no Swift source files are changed;
