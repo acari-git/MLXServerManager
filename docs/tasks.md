@@ -2636,6 +2636,15 @@
 - Preserve Direct Mode; no proxying, chat UI, network search, ranking, credential storage, model deletion, scanning, cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
 - No GitHub Release is produced for v7.8.0; release output is deferred until v8.0.0.
 
+## v7.9.0 Completed: v8 Readiness Stabilization
+
+- Update the README Quick Start around the v8-bound beginner workflow.
+- Document the primary path as add/download/register → select → preflight Start → copy connection values.
+- Clarify that preflight checks run before launch.
+- Keep the release pipeline deferred to v8.0.0 only, as requested.
+- Preserve Direct Mode and avoid adding unrelated runtime automation.
+- No GitHub Release is produced for v7.9.0; release output is deferred until v8.0.0.
+
 ## Later
 
 - More advanced resource graphs.
