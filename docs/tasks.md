@@ -2370,10 +2370,17 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no model download, model deletion, model scanning, cache cleanup, token persistence, auto-start, profile overwrite, telemetry, background monitoring, runtime behavior change, or release automation.
 
+## v6.18.0 Completed: Model Availability Documentation
+
+- Add `docs/model_availability_documentation.md` as docs-only documentation for future model availability surfaces.
+- Define conservative availability terms, local profile availability, external server availability, compatibility boundary, user actions, path checking policy, privacy and safety guidance, documentation wording examples, and verification expectations.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no model download, model deletion, model scanning, cache cleanup, background availability polling, token persistence, telemetry, runtime behavior change, or release automation.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Model Availability Documentation.
+- Model Availability Documentation Polish.
 - Deeper diagnostics design.
 - Model availability documentation.
 - Packaging polish.
