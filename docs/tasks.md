@@ -2724,6 +2724,12 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v8.9.0; release output is deferred until v9.0.0.
 
+## v9.0.0 Completed: Searchable Model Management Milestone
+
+- Complete the v8.x staged path from search to selection, download, auto-add, start, and connection copy.
+- Produce the requested final release asset: `MLXServerManager-v9.0.0-unsigned.zip`.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+
 ## Later
 
 - More advanced resource graphs.
