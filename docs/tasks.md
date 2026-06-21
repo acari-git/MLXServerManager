@@ -2417,10 +2417,17 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, diagnostics history persistence, runtime behavior change, or release automation.
 
+## v6.21.0 Completed: Diagnostics Result Fixture Design
+
+- Add `docs/diagnostics_result_fixture_design.md` as docs-only design for future diagnostics result fixtures.
+- Define fixture naming policy, required status fixtures, severity fixtures, scope fixtures, category fixtures, redaction fixtures, copy summary fixtures, timeout/cancellation fixtures, external server ownership fixtures, selected profile mutation fixtures, aggregation fixtures, fixture data safety, and verification expectations.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no Swift source changes, tests, diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, diagnostics history persistence, runtime behavior change, or release automation.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Diagnostics result fixture design.
+- Diagnostics Result Fixture Design Polish.
 - Model availability surface design.
 - Packaging polish.
 - LAN Web UI.
