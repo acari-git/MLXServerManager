@@ -46,6 +46,14 @@ struct HuggingFaceSearchResult: Identifiable, Equatable {
     var qualityRank: Int {
         (isMLXLikely ? 1_000_000 : 0) + (downloads ?? 0) + ((likes ?? 0) * 100)
     }
+
+    var webURL: String {
+        "https://huggingface.co/\(id)"
+    }
+
+    var tagsSummary: String {
+        tags.isEmpty ? "No tags" : tags.prefix(8).joined(separator: ", ")
+    }
 }
 
 struct HuggingFaceSearchResponseItem: Decodable {

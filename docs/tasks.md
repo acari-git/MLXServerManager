@@ -2738,6 +2738,15 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v9.1.0; release output is deferred until v10.0.0.
 
+## v9.2.0 Completed: Model Card Preview Foundation
+
+- Track the selected Hugging Face search result.
+- Show a model detail preview with repo, owner, name, stats, tags, and URL.
+- Add a copy action for the selected Hugging Face URL.
+- Keep README/model-card full rendering out of scope for this foundation pass.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v9.2.0; release output is deferred until v10.0.0.
+
 ## Later
 
 - More advanced resource graphs.

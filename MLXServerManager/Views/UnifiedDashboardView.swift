@@ -528,6 +528,32 @@ struct UnifiedDashboardView: View {
                 }
                 .frame(maxHeight: 180)
             }
+
+            if let selected = viewModel.selectedHuggingFaceSearchResult {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Model detail preview")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    DetailGrid(rows: [
+                        ("Repo", selected.id),
+                        ("Owner", selected.owner),
+                        ("Name", selected.name),
+                        ("Stats", selected.qualitySummary),
+                        ("Tags", selected.tagsSummary),
+                        ("URL", selected.webURL)
+                    ])
+                    Button {
+                        viewModel.copySelectedHuggingFaceModelURL()
+                    } label: {
+                        Label("Hugging Face URL をコピー", systemImage: "link")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .padding(8)
+                .background(Color(nsColor: .textBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
         }
         .panelStyle()
         .accessibilityIdentifier("unified-dashboard-hf-search-foundation")

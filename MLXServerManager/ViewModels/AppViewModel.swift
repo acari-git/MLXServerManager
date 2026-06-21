@@ -85,6 +85,7 @@ final class AppViewModel: ObservableObject {
     @Published var showOnlyMLXLikelySearchResults = false
     @Published private(set) var huggingFaceSearchMessage = "Search Hugging Face explicitly, then choose a result for the download form."
     @Published private(set) var huggingFaceSearchResults: [HuggingFaceSearchResult] = []
+    @Published private(set) var selectedHuggingFaceSearchResult: HuggingFaceSearchResult?
     @Published private(set) var isHuggingFaceSearching = false
 
     private let settingsStore: SettingsStore
@@ -707,6 +708,7 @@ final class AppViewModel: ObservableObject {
         let query = huggingFaceSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else {
             huggingFaceSearchResults = []
+            selectedHuggingFaceSearchResult = nil
             huggingFaceSearchMessage = "Enter a search term before searching."
             appendLog("[hf] search skipped: empty query.")
             return
@@ -721,12 +723,14 @@ final class AppViewModel: ObservableObject {
             do {
                 let results = try await huggingFaceSearchService.search(query: query, limit: 10)
                 huggingFaceSearchResults = results
+                selectedHuggingFaceSearchResult = nil
                 huggingFaceSearchMessage = results.isEmpty
                     ? "No matching models found. Try another query or paste an exact ID / URL."
                     : "Found \(results.count) models. Choose one to fill the download form."
                 appendLog("[hf] search completed with \(results.count) results.")
             } catch {
                 huggingFaceSearchResults = []
+                selectedHuggingFaceSearchResult = nil
                 huggingFaceSearchMessage = error.localizedDescription
                 appendLog("[hf] search failed: \(error.localizedDescription)")
             }
@@ -735,12 +739,22 @@ final class AppViewModel: ObservableObject {
     }
 
     func selectHuggingFaceSearchResult(_ result: HuggingFaceSearchResult) {
+        selectedHuggingFaceSearchResult = result
         huggingFaceDownloadDraft.source = result.id
         if huggingFaceDownloadDraft.displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             huggingFaceDownloadDraft.displayName = result.name
         }
         huggingFaceSearchMessage = result.selectionWarning
         appendLog("[hf] search result selected for download: \(result.id) — \(result.qualitySummary)")
+    }
+
+    func copySelectedHuggingFaceModelURL() {
+        guard let selectedHuggingFaceSearchResult else {
+            appendLog("[hf] no selected search result URL to copy.")
+            return
+        }
+        copyToPasteboard(selectedHuggingFaceSearchResult.webURL)
+        appendLog("[hf] copied Hugging Face URL for \(selectedHuggingFaceSearchResult.id).")
     }
 
     func registerLocalModelRequested() {
