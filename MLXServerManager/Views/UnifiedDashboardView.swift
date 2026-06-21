@@ -873,6 +873,10 @@ struct UnifiedDashboardView: View {
             Text("Hermes Agent 接続情報")
                 .font(.headline)
 
+            Text(viewModel.connectionTargetSummary.isActiveTarget ? "起動中です。以下を OpenAI互換クライアントへ貼り付けます。" : "未起動です。起動後にこの値をクライアントへ貼り付けます。")
+                .font(.caption)
+                .foregroundStyle(viewModel.connectionTargetSummary.isActiveTarget ? .green : .secondary)
+
             copyRow("Base URL", value: viewModel.baseURL, action: viewModel.copyBaseURL)
             copyRow("API Key", value: viewModel.apiKeyPlaceholder, action: viewModel.copyAPIKeyPlaceholder)
             copyRow("Model", value: viewModel.selectedModelIdentifier, action: viewModel.copyModelID)
@@ -884,6 +888,14 @@ struct UnifiedDashboardView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+
+            Button {
+                viewModel.copyModelsCurl()
+            } label: {
+                Text("/v1/models 確認 curl をコピー")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
         }
         .panelStyle()
         .accessibilityIdentifier("unified-dashboard-connection")

@@ -2701,6 +2701,14 @@
 - Preserve Direct Mode and avoid proxying, chat UI, credential storage, model deletion, cache cleanup, telemetry, or background automation.
 - No GitHub Release is produced for v8.6.0; release output is deferred until v9.0.0.
 
+## v8.7.0 Completed: Connection Workflow Polish
+
+- Clarify whether connection values are ready to paste or waiting for server start.
+- Add a Dashboard button to copy the `/v1/models` readiness curl command from the connection panel.
+- Keep Direct Mode explicit for OpenAI-compatible clients and Hermes Agent.
+- Preserve Direct Mode and avoid proxying, chat UI, credential storage, model deletion, cache cleanup, telemetry, or background automation.
+- No GitHub Release is produced for v8.7.0; release output is deferred until v9.0.0.
+
 ## Later
 
 - More advanced resource graphs.
