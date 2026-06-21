@@ -69,6 +69,7 @@ struct UnifiedDashboardView: View {
                         onCopyPreview: viewModel.copyLaunchCommandPreview
                     )
                 } else {
+                    firstLaunchSetupPanel
                     modelAddFlowGuidePanel
                     huggingFaceSearchFoundationPanel
                     localModelRegistrationPanel
@@ -397,6 +398,60 @@ struct UnifiedDashboardView: View {
         .padding(.vertical, 10)
         .background(Color(nsColor: .controlBackgroundColor))
         .accessibilityIdentifier("unified-dashboard-status-footer")
+    }
+
+    private var firstLaunchSetupPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("初回セットアップ")
+                .font(.headline)
+
+            Text("まずここを順番に確認します。Direct Mode なので、クライアントは mlx_lm.server に直接接続します。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            setupCheckRow(
+                title: "mlx_lm.server executable path",
+                isComplete: !viewModel.settings.mlxServerExecutablePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                detail: viewModel.settings.mlxServerExecutablePath.isEmpty ? "Settings で設定" : ModelAvailabilityPathFormatter.compact(path: viewModel.settings.mlxServerExecutablePath)
+            )
+            setupCheckRow(
+                title: "Hugging Face CLI",
+                isComplete: viewModel.isHuggingFaceCLIAvailable,
+                detail: viewModel.huggingFaceCLIPath
+            )
+            setupCheckRow(
+                title: "Model profile",
+                isComplete: !viewModel.models.isEmpty,
+                detail: viewModel.models.isEmpty ? "検索・ダウンロード・ローカル登録のいずれかで追加" : "\(viewModel.models.count) profiles"
+            )
+            setupCheckRow(
+                title: "Default endpoint",
+                isComplete: true,
+                detail: "\(viewModel.settings.defaultHost):\(viewModel.settings.defaultPort)"
+            )
+        }
+        .panelStyle()
+        .accessibilityIdentifier("unified-dashboard-first-launch-setup")
+    }
+
+    private func setupCheckRow(title: String, isComplete: Bool, detail: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: isComplete ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                .foregroundStyle(isComplete ? Color.green : Color.orange)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                Text(detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            Spacer()
+        }
+        .padding(8)
+        .background(Color(nsColor: .textBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private var modelAddFlowGuidePanel: some View {

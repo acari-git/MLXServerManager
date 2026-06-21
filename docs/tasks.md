@@ -2763,6 +2763,14 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v9.4.0; release output is deferred until v10.0.0.
 
+## v9.5.0 Completed: First Launch Setup Guide
+
+- Add a Dashboard first-launch checklist.
+- Surface executable path, Hugging Face CLI, model profile, and default endpoint readiness.
+- Explain Direct Mode before model search/download/start actions.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v9.5.0; release output is deferred until v10.0.0.
+
 ## Later
 
 - More advanced resource graphs.
