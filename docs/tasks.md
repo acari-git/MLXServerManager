@@ -2645,6 +2645,14 @@
 - Preserve Direct Mode and avoid adding unrelated runtime automation.
 - No GitHub Release is produced for v7.9.0; release output is deferred until v8.0.0.
 
+## v8.0.0 Completed: Beginner-Ready Direct Mode Milestone
+
+- Complete the staged v7 path from model acquisition to local registration, selection, preflight Start, and connection copying.
+- Keep Dashboard as the primary beginner workflow surface.
+- Confirm Hugging Face ID / URL downloads, local folder registration, CLI preflight, destination reliability, Start preflight, and connection-copy flow are represented in the UI.
+- Produce the only requested release for this sequence: `MLXServerManager-v8.0.0-unsigned.zip`.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+
 ## Later
 
 - More advanced resource graphs.
