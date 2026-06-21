@@ -2502,9 +2502,15 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no Swift source changes, tests, fixture files, web server, network listener, route, browser UI, authentication implementation, inference proxying, chat UI, remote actions, telemetry, runtime behavior change, or release automation.
 
+## v6.29.0 Completed: Automatic Unload Policy Design
+
+- Add `docs/automatic_unload_policy_design.md` as docs-only design for possible future automatic unload policies.
+- Define default-off behavior, app-managed-only scope, app-observed idle wording, external server boundaries, persistence boundaries, log safety, LAN Web UI relationship, App Intents relationship, verification expectations, and implementation entry criteria.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no Swift source changes, tests, fixture files, timers, background monitors, request observers, network hooks, lifecycle behavior changes, request inspection, inference proxying, telemetry, runtime behavior change, or release automation.
+
 ## Later
 
-- Automatic unload policies.
 - More advanced resource graphs.
 - App Intents for start, stop, restart, and status.
 - Hugging Face download manager.
