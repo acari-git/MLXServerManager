@@ -2807,6 +2807,14 @@
 - Produce the requested final release asset: `MLXServerManager-v10.0.0-unsigned.zip`.
 - Preserve Direct Mode and avoid unrelated runtime automation.
 
+## v10.1.0 Completed: Setup Fix Actions
+
+- Add next-action guidance to each first-launch checklist row.
+- Add a Retry CLI action directly in the setup checklist when `hf` is missing.
+- Keep setup guidance explicit without automatically mutating shell or credential state.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v10.1.0; release output is deferred until v11.0.0.
+
 ## Later
 
 - More advanced resource graphs.

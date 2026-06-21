@@ -441,29 +441,43 @@ struct UnifiedDashboardView: View {
             setupCheckRow(
                 title: "mlx_lm.server executable path",
                 isComplete: !viewModel.settings.mlxServerExecutablePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                detail: viewModel.settings.mlxServerExecutablePath.isEmpty ? "Settings で設定" : ModelAvailabilityPathFormatter.compact(path: viewModel.settings.mlxServerExecutablePath)
+                detail: viewModel.settings.mlxServerExecutablePath.isEmpty ? "Settings で設定" : ModelAvailabilityPathFormatter.compact(path: viewModel.settings.mlxServerExecutablePath),
+                nextAction: "未設定なら Settings または picker で指定"
             )
             setupCheckRow(
                 title: "Hugging Face CLI",
                 isComplete: viewModel.isHuggingFaceCLIAvailable,
-                detail: viewModel.huggingFaceCLIPath
+                detail: viewModel.huggingFaceCLIPath,
+                nextAction: viewModel.isHuggingFaceCLIAvailable ? "Ready" : "hf を install して Retry CLI"
             )
             setupCheckRow(
                 title: "Model profile",
                 isComplete: !viewModel.models.isEmpty,
-                detail: viewModel.models.isEmpty ? "検索・ダウンロード・ローカル登録のいずれかで追加" : "\(viewModel.models.count) profiles"
+                detail: viewModel.models.isEmpty ? "検索・ダウンロード・ローカル登録のいずれかで追加" : "\(viewModel.models.count) profiles",
+                nextAction: "Search / Download / Local Register"
             )
             setupCheckRow(
                 title: "Default endpoint",
                 isComplete: true,
-                detail: "\(viewModel.settings.defaultHost):\(viewModel.settings.defaultPort)"
+                detail: "\(viewModel.settings.defaultHost):\(viewModel.settings.defaultPort)",
+                nextAction: "必要なら Settings で変更"
             )
+
+            if !viewModel.isHuggingFaceCLIAvailable {
+                Button {
+                    viewModel.refreshHuggingFaceCLIRequested()
+                } label: {
+                    Label("Retry CLI", systemImage: "arrow.clockwise")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
         }
         .panelStyle()
         .accessibilityIdentifier("unified-dashboard-first-launch-setup")
     }
 
-    private func setupCheckRow(title: String, isComplete: Bool, detail: String) -> some View {
+    private func setupCheckRow(title: String, isComplete: Bool, detail: String, nextAction: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: isComplete ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                 .foregroundStyle(isComplete ? Color.green : Color.orange)
@@ -477,6 +491,10 @@ struct UnifiedDashboardView: View {
                     .truncationMode(.middle)
             }
             Spacer()
+            Text(nextAction)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(isComplete ? Color.secondary : Color.orange)
+                .lineLimit(1)
         }
         .padding(8)
         .background(Color(nsColor: .textBackgroundColor))
