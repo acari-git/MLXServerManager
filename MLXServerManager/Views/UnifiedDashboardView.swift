@@ -27,6 +27,8 @@ struct UnifiedDashboardView: View {
 
             unifiedLogPanel
 
+            systemStatusRibbon
+
             statusFooter
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -310,6 +312,39 @@ struct UnifiedDashboardView: View {
             return .purple
         }
         return .secondary
+    }
+
+    private var systemStatusRibbon: some View {
+        HStack(spacing: 10) {
+            statusPill("Manager", value: viewModel.runtimeState.title)
+            statusPill("Profiles", value: String(viewModel.models.count))
+            statusPill("hf CLI", value: viewModel.isHuggingFaceCLIAvailable ? viewModel.huggingFaceCLIPath : "Missing")
+            statusPill("Mode", value: "Direct")
+            Spacer()
+            Text("初心者向け導線: download/register → select → start → copy")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.7))
+        .accessibilityIdentifier("unified-dashboard-system-ribbon")
+    }
+
+    private func statusPill(_ label: String, value: String) -> some View {
+        HStack(spacing: 5) {
+            Text(label)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.caption2)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color(nsColor: .textBackgroundColor))
+        .clipShape(Capsule())
     }
 
     private var statusFooter: some View {

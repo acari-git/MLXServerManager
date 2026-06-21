@@ -2619,6 +2619,15 @@
 - Preserve Direct Mode; no proxying, chat UI, search, credential storage, model deletion, scanning, cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
 - No GitHub Release is produced for v7.6.0; release output is deferred until v8.0.0.
 
+## v7.7.0 Completed: Unified Dashboard Status Ribbon
+
+- Add a bottom system ribbon to the unified Dashboard.
+- Surface Manager state, profile count, resolved `hf` status, and Direct Mode in one row.
+- Add a compact workflow hint for download/register → select → start → copy.
+- Move closer to the uploaded one-screen GUI direction without adding new runtime automation.
+- Preserve Direct Mode; no proxying, chat UI, search, credential storage, model deletion, scanning, cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
+- No GitHub Release is produced for v7.7.0; release output is deferred until v8.0.0.
+
 ## Later
 
 - More advanced resource graphs.
