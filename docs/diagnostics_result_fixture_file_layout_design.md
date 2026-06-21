@@ -3,6 +3,7 @@
 ## Release
 
 - Added in `v6.22.0`.
+- Polished in `v6.22.1`.
 - Docs-only design for future diagnostics result fixture file layout.
 - Follows `v6.21.0` / `v6.21.1` Diagnostics Result Fixture Design.
 - No diagnostics fixture files, tests, or Swift source changes are included in this release.
@@ -183,6 +184,20 @@ johns_model_path.json
 latest_result.json
 ```
 
+## Schema Validation Boundary
+
+A future implementation should validate fixture shape in tests only.
+
+Schema validation should confirm:
+
+- required fields exist;
+- enum-like values use approved names;
+- copy-safe fields contain no forbidden strings;
+- IDs are stable and deterministic;
+- optional fields do not introduce local environment values.
+
+Schema validation should not become production runtime behavior unless a separate runtime fixture-loading design is approved.
+
 ## Fixture Schema Expectations
 
 A future JSON fixture may include:
@@ -269,6 +284,18 @@ Bearer FAKE_TOKEN_REDACTED
 
 Do not include real credentials or user-specific paths.
 
+## File Inclusion Rules
+
+Future fixture files should be included in test resources only.
+
+Rules:
+
+- app target should not bundle diagnostic fixture data;
+- release app archives should not contain fixture directories;
+- fixture helper code should stay in the test target;
+- fixture data should not be generated at runtime;
+- fixture data should not be copied into user-facing logs or exports.
+
 ## Test Target Boundary
 
 If fixtures are added later, they should belong to the test target only unless a separate runtime fixture-loading design is approved.
@@ -289,6 +316,18 @@ Do not treat docs as the single source of truth for test data once fixture files
 - design docs for rationale;
 - fixture files for deterministic data;
 - test helpers for loading and assertions.
+
+## Fixture Review Checklist
+
+Before fixture files are accepted later, review:
+
+- fixture file names are stable;
+- fixture IDs are stable;
+- copy-safe fields are redacted;
+- negative fixtures assert unsafe data absence;
+- snapshot outputs contain no unstable local values;
+- app bundle inclusion is not introduced;
+- production code does not depend on fixtures.
 
 ## Review Checklist
 
@@ -315,6 +354,17 @@ A future app-code/test release should verify:
 - negative fixtures fail if unsafe strings appear;
 - fixture files are not included in the app bundle;
 - existing tests still pass.
+
+## Implementation Entry Criteria
+
+Move from layout design to actual fixture files only when:
+
+- diagnostics result model concepts are stable enough for tests;
+- fixture directory naming is approved;
+- JSON schema expectations are agreed;
+- negative fixture expectations are agreed;
+- app target exclusion can be verified;
+- no runtime fixture dependency is introduced.
 
 ## Future Implementation Candidates
 
