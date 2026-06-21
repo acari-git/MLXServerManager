@@ -2471,10 +2471,16 @@
 - Verify redaction, negative, aggregation, and copied-summary fixtures remain loadable and copy-safe.
 - Keep Direct Mode unchanged; no production diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, diagnostics history persistence, runtime behavior change, or release automation.
 
+## v6.25.0 Completed: Model Availability Surface Design
+
+- Add `docs/model_availability_surface_design.md` as docs-only design for a future model availability surface.
+- Define conservative placement options, primary user questions, availability states, data sources, explicit check behavior, UI content model, copy-safe path display, profile boundaries, diagnostics boundaries, model download boundaries, external server boundaries, accessibility identifiers, empty/error states, manual verification, and implementation entry criteria.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no Swift source changes, tests, fixture files, model availability checks, endpoint calls, inference requests, downloads, model deletion, model scanning, cache cleanup, background monitoring, telemetry, diagnostics execution, runtime behavior change, or release automation.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Model availability surface design.
 - Packaging polish.
 - LAN Web UI.
 - Automatic unload policies.
