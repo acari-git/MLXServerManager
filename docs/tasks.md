@@ -2694,6 +2694,13 @@
 - Preserve Direct Mode and avoid proxying, chat UI, credential storage, deletion, cleanup, telemetry, or background automation.
 - No GitHub Release is produced for v8.5.0; release output is deferred until v9.0.0.
 
+## v8.6.0 Completed: Start Guidance and Recovery
+
+- Add runtime recovery hints for executable path errors, missing model paths, busy ports, and ready-check failures.
+- Surface next-step guidance in the Dashboard runtime panel instead of requiring users to infer fixes from logs only.
+- Preserve Direct Mode and avoid proxying, chat UI, credential storage, model deletion, cache cleanup, telemetry, or background automation.
+- No GitHub Release is produced for v8.6.0; release output is deferred until v9.0.0.
+
 ## Later
 
 - More advanced resource graphs.

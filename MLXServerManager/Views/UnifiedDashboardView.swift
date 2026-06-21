@@ -853,6 +853,16 @@ struct UnifiedDashboardView: View {
                 ("メモリ使用量", viewModel.memoryUsageText),
                 ("再起動必要", viewModel.restartRequired ? "Yes" : "No")
             ])
+
+            if let hint = startRecoveryHint {
+                Label(hint, systemImage: "wrench.and.screwdriver")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.orange.opacity(0.10))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
         }
         .panelStyle()
         .accessibilityIdentifier("unified-dashboard-runtime-status")
@@ -902,6 +912,25 @@ struct UnifiedDashboardView: View {
             } label: {
                 Text("コピー")
             }
+        }
+    }
+
+    private var startRecoveryHint: String? {
+        switch viewModel.runtimeState {
+        case let .error(message):
+            if message.localizedCaseInsensitiveContains("executable") {
+                return "Settings で mlx_lm.server executable path を確認してください。"
+            }
+            if message.localizedCaseInsensitiveContains("model path") {
+                return "モデル一覧で別モデルを選ぶか、ローカルモデルフォルダを登録し直してください。"
+            }
+            return "ログの直前の preflight / process メッセージを確認してください。"
+        case .portBusy:
+            return "別のポートへ変更するか、既存サーバーを停止してください。"
+        case .readyCheckFailed:
+            return "サーバー起動直後の読み込みに時間がかかっている可能性があります。ログを確認してください。"
+        default:
+            return nil
         }
     }
 
