@@ -2787,6 +2787,13 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v9.7.0; release output is deferred until v10.0.0.
 
+## v9.8.0 Completed: Dashboard Layout Refinement
+
+- Group Hugging Face search, local registration, and Hugging Face download into collapsible Dashboard inspector sections.
+- Reduce visual density while keeping the v9 searchable acquisition workflow visible.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v9.8.0; release output is deferred until v10.0.0.
+
 ## Later
 
 - More advanced resource graphs.

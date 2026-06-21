@@ -2,6 +2,9 @@ import SwiftUI
 
 struct UnifiedDashboardView: View {
     @ObservedObject var viewModel: AppViewModel
+    @State private var isSearchSectionExpanded = true
+    @State private var isLocalRegistrationExpanded = true
+    @State private var isDownloadSectionExpanded = true
 
     var body: some View {
         HSplitView {
@@ -71,9 +74,18 @@ struct UnifiedDashboardView: View {
                 } else {
                     firstLaunchSetupPanel
                     modelAddFlowGuidePanel
-                    huggingFaceSearchFoundationPanel
-                    localModelRegistrationPanel
-                    huggingFaceDownloadPanel
+                    DisclosureGroup("Hugging Face 検索", isExpanded: $isSearchSectionExpanded) {
+                        huggingFaceSearchFoundationPanel
+                    }
+                    .panelStyle()
+                    DisclosureGroup("ローカルモデル登録", isExpanded: $isLocalRegistrationExpanded) {
+                        localModelRegistrationPanel
+                    }
+                    .panelStyle()
+                    DisclosureGroup("Hugging Face ダウンロード", isExpanded: $isDownloadSectionExpanded) {
+                        huggingFaceDownloadPanel
+                    }
+                    .panelStyle()
                     selectedModelSettingsPanel
                     availabilityPanel
                     runtimeStatusPanel
