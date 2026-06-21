@@ -2747,6 +2747,14 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v9.2.0; release output is deferred until v10.0.0.
 
+## v9.3.0 Completed: Download Error Classification
+
+- Classify common Hugging Face download failures into user-facing recovery guidance.
+- Cover missing CLI, gated/auth-required models, invalid repository IDs, permission issues, network failures, and disk/destination problems.
+- Surface classified guidance in the Dashboard status and queue entry.
+- Preserve Direct Mode and avoid credential storage or unrelated runtime automation.
+- No GitHub Release is produced for v9.3.0; release output is deferred until v10.0.0.
+
 ## Later
 
 - More advanced resource graphs.

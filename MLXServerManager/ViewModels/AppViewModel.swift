@@ -1421,13 +1421,38 @@ final class AppViewModel: ObservableObject {
                 updateHuggingFaceQueueEntry(queueEntryID, phase: .cancelled, message: "Cancelled")
                 appendLog("[hf] download cancelled.")
             } else {
+                let guidance = huggingFaceDownloadFailureGuidance(from: error)
                 huggingFaceDownloadStatus.phase = .failed
-                huggingFaceDownloadStatus.message = error.localizedDescription
-                updateHuggingFaceQueueEntry(queueEntryID, phase: .failed, message: error.localizedDescription)
-                appendLog("[hf] download failed: \(error.localizedDescription)")
+                huggingFaceDownloadStatus.message = guidance
+                updateHuggingFaceQueueEntry(queueEntryID, phase: .failed, message: guidance)
+                appendLog("[hf] download failed: \(guidance)")
             }
             huggingFaceDownloadTask = nil
         }
+    }
+
+    private func huggingFaceDownloadFailureGuidance(from error: Error) -> String {
+        let message = error.localizedDescription
+        let lowercased = message.lowercased()
+        if lowercased.contains("command is not available") || lowercased.contains("no such file") {
+            return "Hugging Face CLI was not found. Install `hf`, then press Retry CLI."
+        }
+        if lowercased.contains("401") || lowercased.contains("403") || lowercased.contains("gated") || lowercased.contains("unauthorized") {
+            return "This may be gated or require authentication. Open the model page in a browser and confirm access."
+        }
+        if lowercased.contains("404") || lowercased.contains("not found") || lowercased.contains("invalid") {
+            return "Repository was not found. Confirm the model ID or choose another search result."
+        }
+        if lowercased.contains("permission") || lowercased.contains("denied") {
+            return "Permission denied. Choose another save folder or check folder permissions."
+        }
+        if lowercased.contains("network") || lowercased.contains("timed out") || lowercased.contains("offline") || lowercased.contains("could not resolve") {
+            return "Network failure. Check the connection and retry the download."
+        }
+        if lowercased.contains("disk") || lowercased.contains("space") || lowercased.contains("no space") {
+            return "Disk or destination problem. Check free space and the save folder."
+        }
+        return message
     }
 
     private func updateHuggingFaceQueueEntry(_ id: UUID, phase: HuggingFaceDownloadPhase, message: String) {
