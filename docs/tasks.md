@@ -2570,6 +2570,16 @@
 - Preserve Direct Mode; no inference proxying, chat UI, search, ranking, model card browsing, HF token storage, model deletion, model scanning, cache cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
 - Produce `MLXServerManager-v7.2.1-unsigned.zip` after Release build verification.
 
+## v7.2.2 Completed: CLI Preflight UX
+
+- Show CLI availability directly in the Dashboard download panel.
+- Show the resolved `hf` path before Download.
+- Disable Download when the CLI is missing.
+- Add a Retry CLI action so users can re-check after installation.
+- Convert missing-CLI failures into a visible Dashboard status before starting the download process.
+- Preserve Direct Mode; no proxying, chat UI, search, token storage, model deletion, scanning, cache cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
+- No GitHub Release is produced for v7.2.2; release output is deferred until v8.0.0.
+
 ## Later
 
 - More advanced resource graphs.

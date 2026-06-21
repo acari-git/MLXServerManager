@@ -403,7 +403,15 @@ struct UnifiedDashboardView: View {
                 .toggleStyle(.checkbox)
                 .disabled(isRunning || !viewModel.huggingFaceDownloadDraft.autoAddToModelList)
 
+            if !viewModel.isHuggingFaceCLIAvailable {
+                Label(viewModel.huggingFaceCLIMessage, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+
             DetailGrid(rows: [
+                ("hf CLI", viewModel.isHuggingFaceCLIAvailable ? "Available" : "Missing"),
+                ("hf Path", viewModel.huggingFaceCLIPath),
                 ("Repository", preview.reference?.repositoryID ?? "未確定"),
                 ("Save to", preview.compactDestinationPath),
                 ("Display", preview.displayName),
@@ -453,8 +461,16 @@ struct UnifiedDashboardView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(isRunning || !preview.canDownload)
+                .disabled(!viewModel.canStartHuggingFaceDownload)
                 .accessibilityIdentifier("hf-download-start")
+
+                Button {
+                    viewModel.refreshHuggingFaceCLIRequested()
+                } label: {
+                    Text("Retry CLI")
+                }
+                .disabled(isRunning)
+                .accessibilityIdentifier("hf-cli-retry")
 
                 Button {
                     viewModel.cancelHuggingFaceDownloadRequested()

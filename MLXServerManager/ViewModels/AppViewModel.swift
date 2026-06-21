@@ -72,6 +72,9 @@ final class AppViewModel: ObservableObject {
         defaultPort: AppSettings.defaults.defaultPort
     )
     @Published private(set) var huggingFaceDownloadStatus: HuggingFaceDownloadStatus = .waiting
+    @Published private(set) var isHuggingFaceCLIAvailable = false
+    @Published private(set) var huggingFaceCLIPath = "Not checked"
+    @Published private(set) var huggingFaceCLIMessage = "Check Hugging Face CLI before downloading."
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
@@ -130,6 +133,7 @@ final class AppViewModel: ObservableObject {
             defaultHost: settings.defaultHost,
             defaultPort: settings.defaultPort
         )
+        refreshHuggingFaceCLIStatus(logResult: false)
         selectedModelID = models.first?.id
         resetModelAvailabilityForCurrentSelection()
     }
@@ -144,6 +148,10 @@ final class AppViewModel: ObservableObject {
 
     var isHuggingFaceDownloadRunning: Bool {
         huggingFaceDownloadTask != nil
+    }
+
+    var canStartHuggingFaceDownload: Bool {
+        huggingFaceDownloadPreview.canDownload && isHuggingFaceCLIAvailable && !isHuggingFaceDownloadRunning
     }
 
     var modelAvailabilitySummary: ModelAvailabilitySummary {
@@ -556,6 +564,20 @@ final class AppViewModel: ObservableObject {
     }
 
     func startHuggingFaceDownloadRequested() {
+        refreshHuggingFaceCLIStatus(logResult: false)
+        guard isHuggingFaceCLIAvailable else {
+            huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
+                phase: .failed,
+                message: huggingFaceCLIMessage,
+                repositoryID: nil,
+                destinationPath: nil,
+                progress: nil,
+                outputLines: []
+            )
+            appendLog("[hf] download not started: hf CLI is not available.")
+            return
+        }
+
         let preview = huggingFaceDownloadPreview
         guard let reference = preview.reference,
               let destinationPath = preview.destinationPath else {
@@ -620,6 +642,32 @@ final class AppViewModel: ObservableObject {
         }
 
         huggingFaceDownloadStatus = .waiting
+    }
+
+    func refreshHuggingFaceCLIRequested() {
+        refreshHuggingFaceCLIStatus(logResult: true)
+    }
+
+    private func refreshHuggingFaceCLIStatus(logResult: Bool) {
+        if let resolution = HuggingFaceDownloadManager.resolveCLI() {
+            isHuggingFaceCLIAvailable = true
+            huggingFaceCLIPath = resolution.displayPath
+            huggingFaceCLIMessage = "Available"
+            if logResult {
+                appendLog("[hf] CLI detected at \(resolution.displayPath).")
+            }
+        } else {
+            let candidates = HuggingFaceDownloadManager.candidateExecutablePaths()
+            let checked = candidates
+                .map { ModelAvailabilityPathFormatter.compact(path: $0) }
+                .joined(separator: ", ")
+            isHuggingFaceCLIAvailable = false
+            huggingFaceCLIPath = "Not found"
+            huggingFaceCLIMessage = "Install Hugging Face CLI, then press Retry CLI or restart the app."
+            if logResult {
+                appendLog("[hf] CLI not found. Checked: \(checked)")
+            }
+        }
     }
 
     func checkModelAvailabilityRequested() {
