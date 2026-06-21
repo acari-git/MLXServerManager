@@ -421,10 +421,17 @@ struct UnifiedDashboardView: View {
 
     private var huggingFaceSearchFoundationPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Hugging Face 検索準備")
-                .font(.headline)
+            HStack {
+                Text("Hugging Face 検索")
+                    .font(.headline)
+                Spacer()
+                if viewModel.isHuggingFaceSearching {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                }
+            }
 
-            Text("oMLX のような検索は後続実装です。ここでは検索導線だけを独立させ、ID / URL ダウンロードと混同しないようにします。")
+            Text("検索して候補を選ぶと、Download form に Model ID を反映します。検索は明示ボタンのみで実行します。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -437,13 +444,53 @@ struct UnifiedDashboardView: View {
                 .foregroundStyle(.secondary)
 
             Button {
-                viewModel.prepareHuggingFaceSearchRequested()
+                viewModel.performHuggingFaceSearchRequested()
             } label: {
-                Label("検索条件を準備", systemImage: "magnifyingglass")
+                Label("Search", systemImage: "magnifyingglass")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier("hf-search-prepare")
+            .buttonStyle(.borderedProminent)
+            .disabled(viewModel.isHuggingFaceSearching)
+            .accessibilityIdentifier("hf-search-run")
+
+            if !viewModel.huggingFaceSearchResults.isEmpty {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        ForEach(viewModel.huggingFaceSearchResults) { result in
+                            Button {
+                                viewModel.selectHuggingFaceSearchResult(result)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text(result.id)
+                                            .font(.caption.weight(.semibold))
+                                            .lineLimit(1)
+                                            .truncationMode(.middle)
+                                        Spacer()
+                                        if result.isMLXLikely {
+                                            Text("MLX")
+                                                .font(.caption2.weight(.bold))
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 2)
+                                                .background(Color.blue.opacity(0.18))
+                                                .clipShape(Capsule())
+                                        }
+                                    }
+                                    Text(result.qualitySummary)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(8)
+                            .background(Color(nsColor: .textBackgroundColor))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                    }
+                }
+                .frame(maxHeight: 180)
+            }
         }
         .panelStyle()
         .accessibilityIdentifier("unified-dashboard-hf-search-foundation")

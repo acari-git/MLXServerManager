@@ -2653,6 +2653,15 @@
 - Produce the only requested release for this sequence: `MLXServerManager-v8.0.0-unsigned.zip`.
 - Preserve Direct Mode and avoid unrelated runtime automation.
 
+## v8.1.0 Completed: Hugging Face Search Implementation
+
+- Add explicit Hugging Face model search through the public model API.
+- Show search results in Dashboard with repo ID, basic stats, and MLX-likely badge.
+- Allow choosing a result to fill the existing Download form.
+- Keep download execution explicit; selecting a search result does not download automatically.
+- Preserve Direct Mode and avoid proxying, chat UI, credential storage, model deletion, cache cleanup, telemetry, or background automation.
+- No GitHub Release is produced for v8.1.0; release output is deferred until v9.0.0.
+
 ## Later
 
 - More advanced resource graphs.

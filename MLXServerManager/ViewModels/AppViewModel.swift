@@ -81,7 +81,9 @@ final class AppViewModel: ObservableObject {
     @Published var localModelEnableThinking = false
     @Published private(set) var localModelMessage = "Paste an existing local model folder path, then add it to the model list."
     @Published var huggingFaceSearchQuery = ""
-    @Published private(set) var huggingFaceSearchMessage = "Search is staged as a future explicit action. Use ID / URL download for now."
+    @Published private(set) var huggingFaceSearchMessage = "Search Hugging Face explicitly, then choose a result for the download form."
+    @Published private(set) var huggingFaceSearchResults: [HuggingFaceSearchResult] = []
+    @Published private(set) var isHuggingFaceSearching = false
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
@@ -93,6 +95,7 @@ final class AppViewModel: ObservableObject {
     private let modelProfileImportPreviewService: ModelProfileImportPreviewService
     private let modelAvailabilityChecker: LocalModelAvailabilityChecking
     private let huggingFaceDownloadManager: HuggingFaceModelDownloading
+    private let huggingFaceSearchService: HuggingFaceModelSearching
     private var logBuffer: LogBuffer
     private var memoryMonitorTask: Task<Void, Never>?
     private var huggingFaceDownloadTask: Task<Void, Never>?
@@ -116,7 +119,8 @@ final class AppViewModel: ObservableObject {
         modelProfileExportService: ModelProfileExportService? = nil,
         modelProfileImportPreviewService: ModelProfileImportPreviewService? = nil,
         modelAvailabilityChecker: LocalModelAvailabilityChecking? = nil,
-        huggingFaceDownloadManager: HuggingFaceModelDownloading? = nil
+        huggingFaceDownloadManager: HuggingFaceModelDownloading? = nil,
+        huggingFaceSearchService: HuggingFaceModelSearching? = nil
     ) {
         self.settingsStore = settingsStore ?? SettingsStore()
         self.portChecker = portChecker ?? PortChecker()
@@ -132,6 +136,7 @@ final class AppViewModel: ObservableObject {
         self.modelProfileImportPreviewService = modelProfileImportPreviewService ?? ModelProfileImportPreviewService()
         self.modelAvailabilityChecker = modelAvailabilityChecker ?? FileSystemLocalModelAvailabilityChecker()
         self.huggingFaceDownloadManager = huggingFaceDownloadManager ?? HuggingFaceDownloadManager()
+        self.huggingFaceSearchService = huggingFaceSearchService ?? HuggingFaceSearchService()
         self.logBuffer = LogBuffer(initialLines: Self.initialLogLines)
         self.logText = logBuffer.text
         self.logEntries = logBuffer.entries
@@ -678,15 +683,44 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    func prepareHuggingFaceSearchRequested() {
+    func performHuggingFaceSearchRequested() {
         let query = huggingFaceSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        if query.isEmpty {
-            huggingFaceSearchMessage = "Enter a search term to prepare a future Hugging Face search."
-            appendLog("[hf] search preparation skipped: empty query.")
-        } else {
-            huggingFaceSearchMessage = "Search foundation ready for: \(query). Exact ID / URL download remains the active path."
-            appendLog("[hf] search foundation captured query: \(query). No network search is run in this release.")
+        guard !query.isEmpty else {
+            huggingFaceSearchResults = []
+            huggingFaceSearchMessage = "Enter a search term before searching."
+            appendLog("[hf] search skipped: empty query.")
+            return
         }
+
+        isHuggingFaceSearching = true
+        huggingFaceSearchMessage = "Searching Hugging Face for: \(query)"
+        appendLog("[hf] search started: \(query)")
+
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let results = try await huggingFaceSearchService.search(query: query, limit: 10)
+                huggingFaceSearchResults = results
+                huggingFaceSearchMessage = results.isEmpty
+                    ? "No matching models found. Try another query or paste an exact ID / URL."
+                    : "Found \(results.count) models. Choose one to fill the download form."
+                appendLog("[hf] search completed with \(results.count) results.")
+            } catch {
+                huggingFaceSearchResults = []
+                huggingFaceSearchMessage = error.localizedDescription
+                appendLog("[hf] search failed: \(error.localizedDescription)")
+            }
+            isHuggingFaceSearching = false
+        }
+    }
+
+    func selectHuggingFaceSearchResult(_ result: HuggingFaceSearchResult) {
+        huggingFaceDownloadDraft.source = result.id
+        if huggingFaceDownloadDraft.displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            huggingFaceDownloadDraft.displayName = result.name
+        }
+        huggingFaceSearchMessage = "Selected \(result.id). Review the download form, then press Download."
+        appendLog("[hf] search result selected for download: \(result.id)")
     }
 
     func registerLocalModelRequested() {
