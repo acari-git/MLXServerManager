@@ -2662,6 +2662,15 @@
 - Preserve Direct Mode and avoid proxying, chat UI, credential storage, model deletion, cache cleanup, telemetry, or background automation.
 - No GitHub Release is produced for v8.1.0; release output is deferred until v9.0.0.
 
+## v8.2.0 Completed: Search Result Quality Polish
+
+- Sort search results so MLX-likely and higher-signal models are easier to find.
+- Show MLX-likely status first in result summaries.
+- Add selection warning text for non-MLX-looking search results.
+- Preserve explicit user action: selecting a result only fills the download form and never downloads automatically.
+- Preserve Direct Mode and avoid proxying, chat UI, credential storage, model deletion, cache cleanup, telemetry, or background automation.
+- No GitHub Release is produced for v8.2.0; release output is deferred until v9.0.0.
+
 ## Later
 
 - More advanced resource graphs.

@@ -54,7 +54,11 @@ final class HuggingFaceSearchService: HuggingFaceModelSearching {
                 throw HuggingFaceSearchError.invalidResponse
             }
             let items = try JSONDecoder().decode([HuggingFaceSearchResponseItem].self, from: data)
-            return items.map { $0.result() }
+            return items
+                .map { $0.result() }
+                .sorted { lhs, rhs in
+                    lhs.qualityRank == rhs.qualityRank ? lhs.id < rhs.id : lhs.qualityRank > rhs.qualityRank
+                }
         } catch let error as HuggingFaceSearchError {
             throw error
         } catch {

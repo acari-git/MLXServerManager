@@ -24,16 +24,27 @@ struct HuggingFaceSearchResult: Identifiable, Equatable {
 
     var qualitySummary: String {
         var parts: [String] = []
+        if isMLXLikely {
+            parts.append("MLX-like")
+        }
         if let downloads {
             parts.append("Downloads \(downloads)")
         }
         if let likes {
             parts.append("Likes \(likes)")
         }
-        if isMLXLikely {
-            parts.append("MLX-like")
-        }
         return parts.isEmpty ? "No public stats" : parts.joined(separator: " · ")
+    }
+
+    var selectionWarning: String {
+        if isMLXLikely {
+            return "Selected MLX-like model. Review the download form, then press Download."
+        }
+        return "Selected model. It may not be MLX-ready; confirm the repository before downloading."
+    }
+
+    var qualityRank: Int {
+        (isMLXLikely ? 1_000_000 : 0) + (downloads ?? 0) + ((likes ?? 0) * 100)
     }
 }
 

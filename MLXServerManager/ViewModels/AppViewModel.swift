@@ -719,8 +719,8 @@ final class AppViewModel: ObservableObject {
         if huggingFaceDownloadDraft.displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             huggingFaceDownloadDraft.displayName = result.name
         }
-        huggingFaceSearchMessage = "Selected \(result.id). Review the download form, then press Download."
-        appendLog("[hf] search result selected for download: \(result.id)")
+        huggingFaceSearchMessage = result.selectionWarning
+        appendLog("[hf] search result selected for download: \(result.id) — \(result.qualitySummary)")
     }
 
     func registerLocalModelRequested() {
