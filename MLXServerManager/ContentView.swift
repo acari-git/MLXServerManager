@@ -15,7 +15,7 @@ struct ContentView: View {
         AppShellView(selectedSection: $selectedSection) { section in
             switch section {
             case .dashboard:
-                dashboardContent
+                UnifiedDashboardView(viewModel: viewModel)
             case .profiles:
                 ProfilesSurfaceView(
                     models: viewModel.models,

@@ -2534,6 +2534,16 @@
 - Keep Direct Mode unchanged; no inference proxying, endpoint probing, `/v1/chat/completions` calls, model downloads, model deletion, model scanning, cache cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
 - Produce `MLXServerManager-v7.0.0-unsigned.zip` after Release build verification.
 
+## v7.1.0 Completed: Unified Dashboard GUI Foundation
+
+- Add `UnifiedDashboardView` as the new primary Dashboard surface.
+- Consolidate model list, lifecycle controls, logs, selected model settings, model availability, runtime status, and Hermes connection values into one Dashboard view.
+- Keep model add/edit/delete flows reachable from the unified Dashboard right pane.
+- Keep Start, Stop, Restart, Check Port, and Ready Check visible in the main Dashboard action bar.
+- Keep Speed Test visible but disabled as a future explicit action instead of adding inference traffic in this release.
+- Produce `MLXServerManager-v7.1.0-unsigned.zip` after Release build verification.
+- Preserve Direct Mode; no inference proxying, endpoint probing beyond existing explicit Ready checks, `/v1/chat/completions` calls, model downloads, model deletion, model scanning, cache cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
+
 ## Later
 
 - More advanced resource graphs.
