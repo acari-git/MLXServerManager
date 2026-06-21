@@ -63,6 +63,7 @@ struct UnifiedDashboardView: View {
                         onCopyPreview: viewModel.copyLaunchCommandPreview
                     )
                 } else {
+                    huggingFaceDownloadPanel
                     selectedModelSettingsPanel
                     availabilityPanel
                     runtimeStatusPanel
@@ -328,6 +329,144 @@ struct UnifiedDashboardView: View {
         .padding(.vertical, 10)
         .background(Color(nsColor: .controlBackgroundColor))
         .accessibilityIdentifier("unified-dashboard-status-footer")
+    }
+
+    private var huggingFaceDownloadPanel: some View {
+        let preview = viewModel.huggingFaceDownloadPreview
+        let status = viewModel.huggingFaceDownloadStatus
+        let isRunning = viewModel.isHuggingFaceDownloadRunning
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Hugging Face から追加")
+                    .font(.headline)
+                Spacer()
+                Text(status.phase.title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(status.phase == .completed ? Color.green : Color.secondary)
+            }
+
+            Text("Model ID または huggingface.co のURLを貼ると、保存後にモデル一覧へ自動追加します。検索は後続リリースで追加します。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Model ID / URL")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                TextField("mlx-community/model-name or https://huggingface.co/...", text: $viewModel.huggingFaceDownloadDraft.source)
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(isRunning)
+                    .accessibilityIdentifier("hf-download-source")
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("保存先フォルダ")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                TextField("~/Models/mlx", text: $viewModel.huggingFaceDownloadDraft.saveDirectory)
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(isRunning)
+                    .accessibilityIdentifier("hf-download-save-directory")
+            }
+
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("表示名")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    TextField("モデル名から自動入力", text: $viewModel.huggingFaceDownloadDraft.displayName)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(isRunning)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Port")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    TextField("8080", text: $viewModel.huggingFaceDownloadDraft.serverPortText)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 76)
+                        .disabled(isRunning)
+                }
+            }
+
+            Toggle("Thinking を有効にする", isOn: $viewModel.huggingFaceDownloadDraft.enableThinking)
+                .toggleStyle(.checkbox)
+                .disabled(isRunning)
+
+            Toggle("完了後にモデル一覧へ自動追加", isOn: $viewModel.huggingFaceDownloadDraft.autoAddToModelList)
+                .toggleStyle(.checkbox)
+                .disabled(isRunning)
+
+            Toggle("追加したモデルを自動選択", isOn: $viewModel.huggingFaceDownloadDraft.autoSelectAfterAdd)
+                .toggleStyle(.checkbox)
+                .disabled(isRunning || !viewModel.huggingFaceDownloadDraft.autoAddToModelList)
+
+            DetailGrid(rows: [
+                ("Repository", preview.reference?.repositoryID ?? "未確定"),
+                ("Save to", preview.compactDestinationPath),
+                ("Display", preview.displayName),
+                ("Status", status.message)
+            ])
+
+            if isRunning {
+                if let progress = status.progress {
+                    ProgressView(value: progress)
+                        .accessibilityIdentifier("hf-download-progress")
+                } else {
+                    ProgressView()
+                        .accessibilityIdentifier("hf-download-progress")
+                }
+            } else if status.phase == .completed {
+                ProgressView(value: 1)
+                    .accessibilityIdentifier("hf-download-progress-completed")
+            }
+
+            if !status.outputLines.isEmpty {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 4) {
+                        ForEach(Array(status.outputLines.enumerated()), id: \.offset) { _, line in
+                            Text(line)
+                                .font(.system(.caption2, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                    .padding(8)
+                }
+                .frame(minHeight: 82, maxHeight: 120)
+                .background(Color(nsColor: .textBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                }
+            }
+
+            HStack {
+                Button {
+                    viewModel.startHuggingFaceDownloadRequested()
+                } label: {
+                    Label("Download", systemImage: "arrow.down.circle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isRunning || !preview.canDownload)
+                .accessibilityIdentifier("hf-download-start")
+
+                Button {
+                    viewModel.cancelHuggingFaceDownloadRequested()
+                } label: {
+                    Text("Cancel")
+                }
+                .disabled(!isRunning)
+                .accessibilityIdentifier("hf-download-cancel")
+            }
+        }
+        .panelStyle()
+        .accessibilityIdentifier("unified-dashboard-hf-download")
     }
 
     private var selectedModelSettingsPanel: some View {

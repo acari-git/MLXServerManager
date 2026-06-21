@@ -2544,6 +2544,20 @@
 - Produce `MLXServerManager-v7.1.0-unsigned.zip` after Release build verification.
 - Preserve Direct Mode; no inference proxying, endpoint probing beyond existing explicit Ready checks, `/v1/chat/completions` calls, model downloads, model deletion, model scanning, cache cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
 
+## v7.2.0 Completed: Hugging Face Download by ID / URL
+
+- Add a Dashboard Hugging Face download panel for explicit model downloads.
+- Accept Hugging Face model IDs such as `owner/model-name`.
+- Accept `https://huggingface.co/owner/model-name` URLs and ignore model page subpaths such as `/tree/main`.
+- Plan local destinations under `~/Models/mlx/<model-name>` by default.
+- Run `hf download <repo_id> --local-dir <destination>` only after the user presses Download.
+- Show download phase, message, optional progress, and recent `hf` output lines in the Dashboard.
+- Allow cancelling the active download process.
+- Add the downloaded local destination path as a model profile after successful download when auto-add is enabled.
+- Add tests for repository parsing, URL parsing, destination preview, invalid IDs, and percent progress parsing.
+- Preserve Direct Mode; no inference proxying, chat UI, search, ranking, model card browsing, HF token storage, model deletion, model scanning, cache cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
+- Produce `MLXServerManager-v7.2.0-unsigned.zip` after Release build verification.
+
 ## Later
 
 - More advanced resource graphs.

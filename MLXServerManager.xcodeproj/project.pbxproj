@@ -6,6 +6,16 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		B4C35F000000000000000007 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B4B1B0EE2FDAFAE700377F7C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B4B1B0F52FDAFAE700377F7C;
+			remoteInfo = MLXServerManager;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		B4B1B0F62FDAFAE700377F7C /* MLXServerManager.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MLXServerManager.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B4C35F000000000000000001 /* MLXServerManagerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MLXServerManagerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -61,16 +71,6 @@
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
-
-/* Begin PBXContainerItemProxy section */
-		B4C35F000000000000000007 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = B4B1B0EE2FDAFAE700377F7C /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = B4B1B0F52FDAFAE700377F7C;
-			remoteInfo = MLXServerManager;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin PBXNativeTarget section */
 		B4B1B0F52FDAFAE700377F7C /* MLXServerManager */ = {

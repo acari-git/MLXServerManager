@@ -67,6 +67,11 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var modelProfileImportMessage: String?
     @Published var isImportPreviewPresented = false
     @Published private(set) var importPreviewResult: ImportPreviewResult?
+    @Published var huggingFaceDownloadDraft: HuggingFaceDownloadDraft = .defaults(
+        defaultHost: AppSettings.defaults.defaultHost,
+        defaultPort: AppSettings.defaults.defaultPort
+    )
+    @Published private(set) var huggingFaceDownloadStatus: HuggingFaceDownloadStatus = .waiting
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
@@ -77,8 +82,11 @@ final class AppViewModel: ObservableObject {
     private let modelProfileExportService: ModelProfileExportService
     private let modelProfileImportPreviewService: ModelProfileImportPreviewService
     private let modelAvailabilityChecker: LocalModelAvailabilityChecking
+    private let huggingFaceDownloadManager: HuggingFaceModelDownloading
     private var logBuffer: LogBuffer
     private var memoryMonitorTask: Task<Void, Never>?
+    private var huggingFaceDownloadTask: Task<Void, Never>?
+    private var huggingFaceDownloadCancellationRequested = false
     private var pendingDeleteModelID: ModelConfig.ID?
 
     private static let initialLogLines = [
@@ -97,7 +105,8 @@ final class AppViewModel: ObservableObject {
         setupDiagnostics: SetupDiagnostics? = nil,
         modelProfileExportService: ModelProfileExportService? = nil,
         modelProfileImportPreviewService: ModelProfileImportPreviewService? = nil,
-        modelAvailabilityChecker: LocalModelAvailabilityChecking? = nil
+        modelAvailabilityChecker: LocalModelAvailabilityChecking? = nil,
+        huggingFaceDownloadManager: HuggingFaceModelDownloading? = nil
     ) {
         self.settingsStore = settingsStore ?? SettingsStore()
         self.portChecker = portChecker ?? PortChecker()
@@ -112,16 +121,29 @@ final class AppViewModel: ObservableObject {
         self.modelProfileExportService = modelProfileExportService ?? ModelProfileExportService()
         self.modelProfileImportPreviewService = modelProfileImportPreviewService ?? ModelProfileImportPreviewService()
         self.modelAvailabilityChecker = modelAvailabilityChecker ?? FileSystemLocalModelAvailabilityChecker()
+        self.huggingFaceDownloadManager = huggingFaceDownloadManager ?? HuggingFaceDownloadManager()
         self.logBuffer = LogBuffer(initialLines: Self.initialLogLines)
         self.logText = logBuffer.text
         self.logEntries = logBuffer.entries
         loadSettings()
+        huggingFaceDownloadDraft = .defaults(
+            defaultHost: settings.defaultHost,
+            defaultPort: settings.defaultPort
+        )
         selectedModelID = models.first?.id
         resetModelAvailabilityForCurrentSelection()
     }
 
     var selectedModel: ModelConfig? {
         models.first { $0.id == selectedModelID } ?? models.first
+    }
+
+    var huggingFaceDownloadPreview: HuggingFaceDownloadPreview {
+        HuggingFaceDownloadPreview.make(draft: huggingFaceDownloadDraft)
+    }
+
+    var isHuggingFaceDownloadRunning: Bool {
+        huggingFaceDownloadTask != nil
     }
 
     var modelAvailabilitySummary: ModelAvailabilitySummary {
@@ -531,6 +553,73 @@ final class AppViewModel: ObservableObject {
         } catch {
             appendLog("[settings] Failed to save settings: \(error.localizedDescription)")
         }
+    }
+
+    func startHuggingFaceDownloadRequested() {
+        let preview = huggingFaceDownloadPreview
+        guard let reference = preview.reference,
+              let destinationPath = preview.destinationPath else {
+            huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
+                phase: .failed,
+                message: preview.message,
+                repositoryID: nil,
+                destinationPath: nil,
+                progress: nil,
+                outputLines: []
+            )
+            appendLog("[hf] download not started: \(preview.message)")
+            return
+        }
+
+        guard huggingFaceDownloadTask == nil else {
+            appendLog("[hf] download already running.")
+            return
+        }
+
+        let displayName = preview.displayName
+        let draft = huggingFaceDownloadDraft
+        huggingFaceDownloadCancellationRequested = false
+        huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
+            phase: .preparing,
+            message: "Preparing destination: \(ModelAvailabilityPathFormatter.compact(path: destinationPath))",
+            repositoryID: reference.repositoryID,
+            destinationPath: destinationPath,
+            progress: nil,
+            outputLines: []
+        )
+        appendLog("[hf] starting Hugging Face download for \(reference.repositoryID).")
+        appendLog("[hf] destination: \(ModelAvailabilityPathFormatter.compact(path: destinationPath))")
+
+        huggingFaceDownloadTask = Task { [weak self] in
+            await self?.runHuggingFaceDownload(
+                reference: reference,
+                destinationPath: destinationPath,
+                displayName: displayName,
+                draft: draft
+            )
+        }
+    }
+
+    func cancelHuggingFaceDownloadRequested() {
+        guard huggingFaceDownloadTask != nil else {
+            appendLog("[hf] no active download to cancel.")
+            return
+        }
+
+        huggingFaceDownloadCancellationRequested = true
+        huggingFaceDownloadStatus.phase = .cancelled
+        huggingFaceDownloadStatus.message = "Cancelling download. The model will not be added."
+        huggingFaceDownloadManager.cancel()
+        huggingFaceDownloadTask?.cancel()
+        appendLog("[hf] cancel requested.")
+    }
+
+    func resetHuggingFaceDownloadStatus() {
+        guard huggingFaceDownloadTask == nil else {
+            return
+        }
+
+        huggingFaceDownloadStatus = .waiting
     }
 
     func checkModelAvailabilityRequested() {
@@ -1071,6 +1160,148 @@ final class AppViewModel: ObservableObject {
             )
         } else {
             runtimeState = .stopped
+        }
+    }
+
+    private func runHuggingFaceDownload(
+        reference: HuggingFaceModelReference,
+        destinationPath: String,
+        displayName: String,
+        draft: HuggingFaceDownloadDraft
+    ) async {
+        do {
+            huggingFaceDownloadStatus.phase = .downloading
+            huggingFaceDownloadStatus.message = "Downloading \(reference.repositoryID)..."
+
+            let result = try await huggingFaceDownloadManager.download(
+                request: HuggingFaceDownloadRequest(
+                    repositoryID: reference.repositoryID,
+                    destinationPath: destinationPath
+                ),
+                outputHandler: { [weak self] line in
+                    Task { @MainActor in
+                        self?.appendHuggingFaceOutputLine(line)
+                    }
+                }
+            )
+
+            guard !huggingFaceDownloadCancellationRequested else {
+                huggingFaceDownloadStatus.phase = .cancelled
+                huggingFaceDownloadStatus.message = "Download cancelled. The model was not added."
+                appendLog("[hf] download cancelled for \(reference.repositoryID).")
+                huggingFaceDownloadTask = nil
+                return
+            }
+
+            huggingFaceDownloadStatus.phase = .finalizing
+            huggingFaceDownloadStatus.message = "Finalizing downloaded model profile..."
+            huggingFaceDownloadStatus.progress = 1
+
+            if draft.autoAddToModelList {
+                let didAddProfile = addDownloadedHuggingFaceModelProfile(
+                    reference: reference,
+                    destinationPath: result.destinationPath,
+                    displayName: displayName,
+                    draft: draft
+                )
+
+                guard didAddProfile else {
+                    huggingFaceDownloadTask = nil
+                    return
+                }
+            }
+
+            huggingFaceDownloadStatus.phase = .completed
+            huggingFaceDownloadStatus.message = draft.autoAddToModelList
+                ? "Download completed. Added to model list and selected. Ready to start."
+                : "Download completed. Auto-add was disabled."
+            huggingFaceDownloadStatus.progress = 1
+            appendLog("[hf] download completed for \(reference.repositoryID).")
+            appendLog("[hf] saved to \(ModelAvailabilityPathFormatter.compact(path: result.destinationPath)).")
+            huggingFaceDownloadTask = nil
+        } catch {
+            if huggingFaceDownloadCancellationRequested {
+                huggingFaceDownloadStatus.phase = .cancelled
+                huggingFaceDownloadStatus.message = "Download cancelled. The model was not added."
+                appendLog("[hf] download cancelled.")
+            } else {
+                huggingFaceDownloadStatus.phase = .failed
+                huggingFaceDownloadStatus.message = error.localizedDescription
+                appendLog("[hf] download failed: \(error.localizedDescription)")
+            }
+            huggingFaceDownloadTask = nil
+        }
+    }
+
+    private func appendHuggingFaceOutputLine(_ line: String) {
+        let sanitizedLine = HuggingFaceDownloadPlanner.sanitizedOutputLine(line)
+        guard !sanitizedLine.isEmpty else {
+            return
+        }
+
+        var outputLines = huggingFaceDownloadStatus.outputLines
+        outputLines.append(sanitizedLine)
+        if outputLines.count > 24 {
+            outputLines.removeFirst(outputLines.count - 24)
+        }
+        huggingFaceDownloadStatus.outputLines = outputLines
+
+        if let progress = HuggingFaceDownloadPlanner.progressFraction(from: sanitizedLine) {
+            huggingFaceDownloadStatus.progress = progress
+            huggingFaceDownloadStatus.message = "Downloading... \(Int(progress * 100))%"
+        }
+
+        appendLog(sanitizedLine)
+    }
+
+    private func addDownloadedHuggingFaceModelProfile(
+        reference: HuggingFaceModelReference,
+        destinationPath: String,
+        displayName: String,
+        draft: HuggingFaceDownloadDraft
+    ) -> Bool {
+        if models.contains(where: { $0.modelID == destinationPath }) {
+            selectedModelID = destinationPath
+            appendLog("[hf] existing profile selected for \(ModelAvailabilityPathFormatter.compact(path: destinationPath)).")
+            return true
+        }
+
+        let host = draft.host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? settings.defaultHost
+            : draft.host.trimmingCharacters(in: .whitespacesAndNewlines)
+        let port = Int(draft.serverPortText.trimmingCharacters(in: .whitespacesAndNewlines)) ?? settings.defaultPort
+
+        let model = ModelConfig(
+            modelID: destinationPath,
+            displayName: displayName,
+            family: "Downloaded",
+            quantization: "Hugging Face",
+            localName: reference.name,
+            host: host,
+            serverPort: port,
+            enableThinking: draft.enableThinking,
+            notes: "Downloaded from \(reference.repositoryID).",
+            advancedLaunchOptions: nil
+        )
+
+        let nextModels = models + [model]
+        do {
+            try settingsStore.save(models: nextModels)
+            models = nextModels
+            if draft.autoSelectAfterAdd {
+                selectedModelID = model.id
+            }
+            selectedModelAvailabilitySummary = ModelAvailabilitySummary.checked(
+                for: model,
+                result: .present(path: destinationPath)
+            )
+            appendLog("[hf] added downloaded model to list: \(displayName).")
+            return true
+        } catch {
+            huggingFaceDownloadStatus.phase = .failed
+            huggingFaceDownloadStatus.message = "Downloaded, but profile add failed: \(error.localizedDescription)"
+            appendLog("[hf] profile add failed after download: \(error.localizedDescription)")
+            return false
         }
     }
 
