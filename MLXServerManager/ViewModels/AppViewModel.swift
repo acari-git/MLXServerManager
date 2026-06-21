@@ -82,6 +82,7 @@ final class AppViewModel: ObservableObject {
     @Published var localModelEnableThinking = false
     @Published private(set) var localModelMessage = "Paste an existing local model folder path, then add it to the model list."
     @Published var huggingFaceSearchQuery = ""
+    @Published var showOnlyMLXLikelySearchResults = false
     @Published private(set) var huggingFaceSearchMessage = "Search Hugging Face explicitly, then choose a result for the download form."
     @Published private(set) var huggingFaceSearchResults: [HuggingFaceSearchResult] = []
     @Published private(set) var isHuggingFaceSearching = false
@@ -166,6 +167,12 @@ final class AppViewModel: ObservableObject {
 
     var canStartHuggingFaceDownload: Bool {
         huggingFaceDownloadPreview.canDownload && isHuggingFaceCLIAvailable && !isHuggingFaceDownloadRunning
+    }
+
+    var visibleHuggingFaceSearchResults: [HuggingFaceSearchResult] {
+        showOnlyMLXLikelySearchResults
+            ? huggingFaceSearchResults.filter(\.isMLXLikely)
+            : huggingFaceSearchResults
     }
 
     var modelAvailabilitySummary: ModelAvailabilitySummary {

@@ -473,6 +473,10 @@ struct UnifiedDashboardView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
+            Toggle("MLX-like の候補だけ表示", isOn: $viewModel.showOnlyMLXLikelySearchResults)
+                .toggleStyle(.checkbox)
+                .disabled(viewModel.huggingFaceSearchResults.isEmpty)
+
             Button {
                 viewModel.performHuggingFaceSearchRequested()
             } label: {
@@ -483,10 +487,10 @@ struct UnifiedDashboardView: View {
             .disabled(viewModel.isHuggingFaceSearching)
             .accessibilityIdentifier("hf-search-run")
 
-            if !viewModel.huggingFaceSearchResults.isEmpty {
+            if !viewModel.visibleHuggingFaceSearchResults.isEmpty {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
-                        ForEach(viewModel.huggingFaceSearchResults) { result in
+                        ForEach(Array(viewModel.visibleHuggingFaceSearchResults.enumerated()), id: \.element.id) { _, result in
                             Button {
                                 viewModel.selectHuggingFaceSearchResult(result)
                             } label: {
@@ -509,6 +513,9 @@ struct UnifiedDashboardView: View {
                                     Text(result.qualitySummary)
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
+                                    Text(result.selectionWarning)
+                                        .font(.caption2)
+                                        .foregroundStyle(result.isMLXLikely ? Color.secondary : Color.orange)
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             }

@@ -2730,6 +2730,14 @@
 - Produce the requested final release asset: `MLXServerManager-v9.0.0-unsigned.zip`.
 - Preserve Direct Mode and avoid unrelated runtime automation.
 
+## v9.1.0 Completed: Search Filter Polish
+
+- Add an MLX-like-only search result filter.
+- Show non-MLX-looking selection warnings directly in result rows.
+- Keep result selection explicit and download separate.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v9.1.0; release output is deferred until v10.0.0.
+
 ## Later
 
 - More advanced resource graphs.
