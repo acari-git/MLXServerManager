@@ -3,6 +3,7 @@
 ## Release
 
 - Added in `v6.19.0`.
+- Polished in `v6.19.1` with run trigger guardrails, severity policy, timeout/cancellation notes, and export redaction checklist.
 - Docs-only design for future deeper diagnostics surfaces.
 - No deeper diagnostics implementation is included in this release.
 - No new app binary is produced for this release.
@@ -81,6 +82,24 @@ Potential categories:
 
 Each category should have visible scope and conservative status wording.
 
+## Run Trigger Guardrails
+
+Future deeper diagnostics should run only from explicit user actions such as:
+
+- Run Diagnostics;
+- Check Selected Target;
+- Copy Diagnostics Summary after results exist;
+- retrying a failed diagnostic group.
+
+Do not trigger deeper diagnostics from:
+
+- opening a read-only surface;
+- selecting a profile;
+- switching sidebar sections;
+- app launch;
+- timer-based refresh;
+- background observation.
+
 ## Diagnostic Result Terms
 
 Use simple terms:
@@ -103,6 +122,13 @@ The app has not checked this state.
 ```
 
 Do not use `healthy`, `compatible`, `optimized`, or `ready` unless the exact scope of that claim is visible.
+
+Severity policy:
+
+- `Fail` should be reserved for blocking setup issues inside the explicit check scope;
+- `Warning` should be used for user-actionable but non-blocking issues;
+- `Skipped` should be used when a check is not applicable or was not selected;
+- `Unknown` should be used when the app has not checked the state.
 
 ## Explicit Check Scope
 
@@ -197,6 +223,24 @@ Paths should be handled carefully:
 - full paths should appear only in detailed view or copy actions;
 - diagnostics exports should require explicit user action.
 
+## Timeout And Cancellation
+
+Each future diagnostic group should have a visible timeout policy.
+
+Timeouts should:
+
+- stop the active check;
+- mark the result as `Warning` or `Fail` only within the explicit scope;
+- avoid retry loops unless user-triggered;
+- avoid background continuation after the UI reports completion.
+
+Cancellation should:
+
+- stop remaining checks in the selected diagnostic run;
+- keep completed results visible;
+- mark unrun checks as `Skipped`;
+- avoid modifying profiles or runtime state.
+
 ## Copy Diagnostics Summary
 
 A future deeper summary may include:
@@ -222,6 +266,15 @@ It should not include:
 - raw command output by default;
 - full private paths unless user chooses detailed export;
 - inference prompts or responses.
+
+Export redaction checklist:
+
+- remove API keys and bearer tokens;
+- remove Hugging Face tokens;
+- remove Apple credentials;
+- redact private query strings;
+- avoid full home-directory paths in compact summaries;
+- omit raw command output unless user requests detailed export.
 
 ## Repair Actions Boundary
 
@@ -288,7 +341,7 @@ Safe follow-up releases may include:
 
 ## Release Acceptance
 
-`v6.19.0` is acceptable if:
+`v6.19.0` and `v6.19.1` are acceptable if:
 
 - it remains docs-only;
 - no Swift source files are changed;

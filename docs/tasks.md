@@ -2392,10 +2392,19 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, runtime behavior change, or release automation.
 
+## v6.19.1 Completed: Deeper Diagnostics Design Polish
+
+- Add run trigger guardrails to `docs/deeper_diagnostics_design.md`.
+- Add diagnostic severity policy for pass, warning, fail, skipped, and unknown states.
+- Add timeout and cancellation notes for future diagnostic groups.
+- Add export redaction checklist for copied diagnostics summaries.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, runtime behavior change, or release automation.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Deeper Diagnostics Design Polish.
+- Diagnostics Result Model Design.
 - Model availability surface design.
 - Packaging polish.
 - LAN Web UI.
