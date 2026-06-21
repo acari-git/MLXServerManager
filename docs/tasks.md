@@ -2401,10 +2401,17 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, runtime behavior change, or release automation.
 
+## v6.20.0 Completed: Diagnostics Result Model Design
+
+- Add `docs/diagnostics_result_model_design.md` as docs-only design for a future diagnostics result model.
+- Define candidate result shape, status values, severity values, scope values, category policy, redaction model, message fields, timestamp policy, cancellation/timeout results, aggregation rules, copy summary format, UI surface boundary, and verification expectations.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, diagnostics history persistence, runtime behavior change, or release automation.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Diagnostics Result Model Design.
+- Diagnostics Result Model Design Polish.
 - Model availability surface design.
 - Packaging polish.
 - LAN Web UI.
