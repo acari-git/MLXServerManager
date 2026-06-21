@@ -3,6 +3,7 @@
 ## Release
 
 - Added in `v6.21.0`.
+- Polished in `v6.21.1` with fixture matrix, negative fixtures, ordering rules, and snapshot safety.
 - Docs-only design for future diagnostics result fixtures.
 - Follows `v6.20.0` / `v6.20.1` Diagnostics Result Model Design.
 - No diagnostics fixture implementation is included in this release.
@@ -86,6 +87,22 @@ copySummary.redactedTokens.pass
 ```
 
 Fixture names must not include user-specific paths, tokens, ports, account names, or machine names.
+
+## Fixture Matrix
+
+A future fixture set should intentionally cover combinations, not only isolated values.
+
+Minimum matrix:
+
+- one fixture per status value;
+- one fixture per severity value;
+- one fixture per approved scope;
+- one fixture per stable category;
+- one fixture for each redaction level;
+- one copied-summary fixture with mixed statuses;
+- one aggregation fixture with blocking precedence.
+
+The matrix should remain small enough for deterministic review and should avoid duplicating the same case under different names.
 
 ## Required Status Fixtures
 
@@ -256,6 +273,18 @@ Suggested cases:
 - unknown model availability skipped;
 - profile copy summary includes no token or secret.
 
+## Ordering Rules
+
+Fixture ordering should be deterministic:
+
+1. category order;
+2. scope order;
+3. severity precedence;
+4. status order;
+5. stable ID.
+
+Ordering must not depend on localized display strings, timestamps, random IDs, or local path values.
+
 ## Aggregation Fixtures
 
 Future aggregation fixtures should cover:
@@ -269,6 +298,33 @@ Future aggregation fixtures should cover:
 - blocking result precedence.
 
 Aggregation should preserve counts and should not collapse results into a generic `healthy` label.
+
+## Negative Fixtures
+
+Future fixture tests should include negative cases that assert unsafe data is absent:
+
+- no bearer token appears in copied summaries;
+- no Hugging Face token appears in copied summaries;
+- no full private path appears in compact summaries;
+- no raw command output appears by default;
+- no external server fixture claims process ownership;
+- no selected profile fixture mutates profile state.
+
+Negative fixtures should fail loudly if redaction or boundary assumptions regress.
+
+## Snapshot Safety
+
+Snapshot-style fixtures should avoid unstable values:
+
+- timestamps;
+- localized date strings;
+- random IDs;
+- local user paths;
+- machine names;
+- live port numbers;
+- command output from the current environment.
+
+Use placeholders and deterministic example values only.
 
 ## Fixture Data Safety
 

@@ -2424,10 +2424,19 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no Swift source changes, tests, diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, diagnostics history persistence, runtime behavior change, or release automation.
 
+## v6.21.1 Completed: Diagnostics Result Fixture Design Polish
+
+- Add fixture matrix guidance to `docs/diagnostics_result_fixture_design.md`.
+- Add negative fixtures for redaction and boundary regression checks.
+- Add deterministic ordering rules for fixture and copied-summary output.
+- Add snapshot safety guidance to avoid unstable local values.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no Swift source changes, tests, diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, diagnostics history persistence, runtime behavior change, or release automation.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Diagnostics Result Fixture Design Polish.
+- Diagnostics result fixture file layout design.
 - Model availability surface design.
 - Packaging polish.
 - LAN Web UI.
