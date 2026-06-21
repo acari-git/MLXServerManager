@@ -945,10 +945,19 @@ private struct UnifiedModelRow: View {
                             .font(.body.weight(.semibold))
                             .foregroundStyle(.primary)
                             .lineLimit(1)
-                        Text(model.notes.isEmpty ? model.modelID : model.notes)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                        HStack(spacing: 6) {
+                            Text(sourceBadgeText)
+                                .font(.caption2.weight(.bold))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(sourceBadgeColor.opacity(0.15))
+                                .foregroundStyle(sourceBadgeColor)
+                                .clipShape(Capsule())
+                            Text(model.notes.isEmpty ? model.modelID : model.notes)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
                     }
                     .frame(width: 210, alignment: .leading)
 
@@ -996,6 +1005,26 @@ private struct UnifiedModelRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("unified-dashboard-model-row-\(model.id)")
+    }
+
+    private var sourceBadgeText: String {
+        if ModelAvailabilityPathFormatter.localPathCandidate(for: model) != nil {
+            return model.notes.localizedCaseInsensitiveContains("downloaded") ? "Downloaded" : "Local"
+        }
+        return model.modelID.contains("/") ? "HF ID" : "Advanced"
+    }
+
+    private var sourceBadgeColor: Color {
+        switch sourceBadgeText {
+        case "Downloaded":
+            return .green
+        case "Local":
+            return .blue
+        case "HF ID":
+            return .orange
+        default:
+            return .secondary
+        }
     }
 
     private var statusText: String {

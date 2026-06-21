@@ -2687,6 +2687,13 @@
 - Preserve Direct Mode and avoid proxying, chat UI, credential storage, model deletion, cache cleanup, telemetry, or background automation.
 - No GitHub Release is produced for v8.4.0; release output is deferred until v9.0.0.
 
+## v8.5.0 Completed: Model List Management Polish
+
+- Add source badges to model rows so downloaded, local, raw ID, and advanced profiles are easier to distinguish.
+- Keep model-file deletion out of scope; this is profile visibility polish only.
+- Preserve Direct Mode and avoid proxying, chat UI, credential storage, deletion, cleanup, telemetry, or background automation.
+- No GitHub Release is produced for v8.5.0; release output is deferred until v9.0.0.
+
 ## Later
 
 - More advanced resource graphs.
