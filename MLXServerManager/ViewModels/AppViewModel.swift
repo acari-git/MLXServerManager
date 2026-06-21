@@ -176,6 +176,20 @@ final class AppViewModel: ObservableObject {
             : huggingFaceSearchResults
     }
 
+    var huggingFaceDownloadQueueSummary: String {
+        guard !huggingFaceDownloadQueue.isEmpty else {
+            return "No downloads in this session."
+        }
+        let completed = huggingFaceDownloadQueue.filter { $0.phase == .completed }.count
+        let failed = huggingFaceDownloadQueue.filter { $0.phase == .failed }.count
+        let cancelled = huggingFaceDownloadQueue.filter { $0.phase == .cancelled }.count
+        return "Session downloads: \(huggingFaceDownloadQueue.count), completed \(completed), failed \(failed), cancelled \(cancelled)"
+    }
+
+    var canRetryHuggingFaceDownload: Bool {
+        !isHuggingFaceDownloadRunning && (huggingFaceDownloadStatus.phase == .failed || huggingFaceDownloadStatus.phase == .cancelled)
+    }
+
     var modelAvailabilitySummary: ModelAvailabilitySummary {
         if runtimeState.isExternalServerContext {
             return ModelAvailabilitySummary.external(for: selectedModel)
@@ -654,6 +668,15 @@ final class AppViewModel: ObservableObject {
                 queueEntryID: queueEntryID
             )
         }
+    }
+
+    func retryHuggingFaceDownloadRequested() {
+        guard canRetryHuggingFaceDownload else {
+            appendLog("[hf] retry skipped: no failed or cancelled download is ready to retry.")
+            return
+        }
+        appendLog("[hf] retry requested for current download form.")
+        startHuggingFaceDownloadRequested()
     }
 
     func cancelHuggingFaceDownloadRequested() {

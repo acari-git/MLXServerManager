@@ -722,6 +722,9 @@ struct UnifiedDashboardView: View {
                     Text("Download queue")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
+                    Text(viewModel.huggingFaceDownloadQueueSummary)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                     ForEach(viewModel.huggingFaceDownloadQueue.prefix(5)) { entry in
                         HStack {
                             Text(entry.repositoryID)
@@ -813,6 +816,13 @@ struct UnifiedDashboardView: View {
                 }
                 .disabled(isRunning)
                 .accessibilityIdentifier("hf-cli-retry")
+
+                Button {
+                    viewModel.retryHuggingFaceDownloadRequested()
+                } label: {
+                    Text("Retry")
+                }
+                .disabled(!viewModel.canRetryHuggingFaceDownload)
 
                 Button {
                     viewModel.cancelHuggingFaceDownloadRequested()

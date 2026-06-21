@@ -2755,6 +2755,14 @@
 - Preserve Direct Mode and avoid credential storage or unrelated runtime automation.
 - No GitHub Release is produced for v9.3.0; release output is deferred until v10.0.0.
 
+## v9.4.0 Completed: Download Progress Polish
+
+- Add session download queue summary counts.
+- Add a Retry action for failed or cancelled downloads.
+- Keep retry explicit and tied to the current download form.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v9.4.0; release output is deferred until v10.0.0.
+
 ## Later
 
 - More advanced resource graphs.
