@@ -6,6 +6,7 @@
 - Polished in `v6.7.1` with install documentation planning and manual packaging verification notes.
 - Polished in `v6.16.0` with post-closeout packaging checklist guidance.
 - Polished in `v6.16.1` with binary release go/no-go, asset naming failure cases, and release body verification notes.
+- Polished in `v6.27.0` with current-download handoff wording and docs-only release checks.
 - Docs-only readiness review.
 - Follows the `v6.6.0` / `v6.6.1` App Layout Stabilization Review.
 - No new app binary is produced for this release.
@@ -220,6 +221,8 @@ Notarization status: Not submitted
 Stapling status: Not applicable
 ```
 
+Also confirm that the release body does not point users to GitHub source archives when they want the app download.
+
 ## Binary Release Go / No-Go
 
 Proceed with a binary release only if:
@@ -234,7 +237,8 @@ Proceed with a binary release only if:
 
 Do not proceed if:
 
-- the release scope is docs-only;
+- the release scope is docs-only or documentation-only;
+- the release would make users confuse GitHub source archives with the app download;
 - asset status cannot be stated accurately;
 - forbidden entries are present;
 - signing or notarization status is unclear;

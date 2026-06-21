@@ -2487,9 +2487,16 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no Swift source changes, tests, fixture files, image assets, README image link changes, app bundle, zip asset, debug symbols, model files, settings files, logs, telemetry, runtime behavior change, or release automation.
 
+## v6.27.0 Completed: Packaging Handoff Polish
+
+- Polish `docs/distribution_packaging_readiness.md` with v6.27.0 current-download handoff wording.
+- Clarify that docs-only releases should not direct users to GitHub source archives when they want the app download.
+- Update README release history and current binary asset notes for v6.27.0.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no Swift source changes, tests, fixture files, app bundle, zip asset, signing, notarization, DMG, installer, release automation, telemetry, runtime behavior change, model download, model deletion, model scanning, or cache cleanup.
+
 ## Later
 
-- Packaging polish.
 - LAN Web UI.
 - Automatic unload policies.
 - More advanced resource graphs.
