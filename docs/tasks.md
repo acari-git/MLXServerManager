@@ -2562,7 +2562,7 @@
 
 - More advanced resource graphs.
 - App Intents for start, stop, restart, and status.
-- Hugging Face download manager.
+- Hugging Face search and model-card browsing.
 - Presets for frequently used model configurations.
 - DMG or zip packaging.
 - Notarization.
