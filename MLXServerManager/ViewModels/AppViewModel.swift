@@ -624,6 +624,52 @@ final class AppViewModel: ObservableObject {
         }
     }
 
+    func chooseMLXServerExecutableRequested() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose mlx_lm.server executable"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else {
+            appendLog("[settings] executable picker cancelled.")
+            return
+        }
+        settings.mlxServerExecutablePath = url.path
+        saveSettingsRequested()
+        appendLog("[settings] executable path set to \(ModelAvailabilityPathFormatter.compact(path: url.path)).")
+    }
+
+    func chooseLocalModelFolderRequested() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose local model folder"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else {
+            appendLog("[profile] local model folder picker cancelled.")
+            return
+        }
+        localModelPath = url.path
+        if localModelDisplayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            localModelDisplayName = url.lastPathComponent
+        }
+        appendLog("[profile] local model folder selected: \(ModelAvailabilityPathFormatter.compact(path: url.path)).")
+    }
+
+    func chooseHuggingFaceDownloadDirectoryRequested() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose Hugging Face download save directory"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else {
+            appendLog("[hf] download directory picker cancelled.")
+            return
+        }
+        huggingFaceDownloadDraft.saveDirectory = url.path
+        appendLog("[hf] download save directory selected: \(ModelAvailabilityPathFormatter.compact(path: url.path)).")
+    }
+
     func startHuggingFaceDownloadRequested() {
         refreshHuggingFaceCLIStatus(logResult: false)
         guard isHuggingFaceCLIAvailable else {

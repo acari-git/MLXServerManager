@@ -2815,6 +2815,15 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v10.1.0; release output is deferred until v11.0.0.
 
+## v10.2.0 Completed: Folder / File Picker UX
+
+- Add an executable picker for `mlx_lm.server` from the first-launch checklist.
+- Add a local model folder picker for local profile registration.
+- Add a download save-directory picker for Hugging Face downloads.
+- Keep picker actions explicit and user-initiated.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v10.2.0; release output is deferred until v11.0.0.
+
 ## Later
 
 - More advanced resource graphs.

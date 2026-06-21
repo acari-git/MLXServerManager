@@ -463,14 +463,24 @@ struct UnifiedDashboardView: View {
                 nextAction: "必要なら Settings で変更"
             )
 
-            if !viewModel.isHuggingFaceCLIAvailable {
+            HStack {
                 Button {
-                    viewModel.refreshHuggingFaceCLIRequested()
+                    viewModel.chooseMLXServerExecutableRequested()
                 } label: {
-                    Label("Retry CLI", systemImage: "arrow.clockwise")
+                    Label("executable を選択", systemImage: "terminal")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
+
+                if !viewModel.isHuggingFaceCLIAvailable {
+                    Button {
+                        viewModel.refreshHuggingFaceCLIRequested()
+                    } label: {
+                        Label("Retry CLI", systemImage: "arrow.clockwise")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
         }
         .panelStyle()
@@ -674,9 +684,16 @@ struct UnifiedDashboardView: View {
                 Text("ローカルモデルフォルダ")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                TextField("~/Models/mlx/model-name", text: $viewModel.localModelPath)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier("local-model-path")
+                HStack {
+                    TextField("~/Models/mlx/model-name", text: $viewModel.localModelPath)
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityIdentifier("local-model-path")
+                    Button {
+                        viewModel.chooseLocalModelFolderRequested()
+                    } label: {
+                        Text("Choose")
+                    }
+                }
             }
 
             HStack(spacing: 8) {
@@ -751,10 +768,18 @@ struct UnifiedDashboardView: View {
                 Text("保存先フォルダ")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                TextField("~/Models/mlx", text: $viewModel.huggingFaceDownloadDraft.saveDirectory)
-                    .textFieldStyle(.roundedBorder)
+                HStack {
+                    TextField("~/Models/mlx", text: $viewModel.huggingFaceDownloadDraft.saveDirectory)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(isRunning)
+                        .accessibilityIdentifier("hf-download-save-directory")
+                    Button {
+                        viewModel.chooseHuggingFaceDownloadDirectoryRequested()
+                    } label: {
+                        Text("Choose")
+                    }
                     .disabled(isRunning)
-                    .accessibilityIdentifier("hf-download-save-directory")
+                }
             }
 
             HStack(spacing: 8) {
