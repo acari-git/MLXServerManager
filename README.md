@@ -92,7 +92,7 @@ See [docs/product_direction.md](docs/product_direction.md) for the full project 
 
 - Not a chat UI.
 - Not an inference proxy.
-- Does not currently include model download or install automation.
+- Does not include Hugging Face search, model-card browsing, HF token storage, model deletion, or cache cleanup.
 - Not a model deletion tool.
 - Not a multi-backend wrapper.
 - Not a replacement for `mlx-lm` or model setup.
@@ -112,7 +112,7 @@ On the GitHub Release page, use the file listed under **Assets** with this exact
 Verify the checksum before opening the app:
 
 ```text
-SHA-256: bca10bb55640d296f0cd7ff62dea3720846b013d0d10b50455ee7fcb4b0b4d85
+SHA-256: 53a45aed3fcad32c42a521f50e01140833932fe93ab9dcf8b8df9239796da3f2
 ```
 
 From the folder containing the downloaded zip, you can check it with:
@@ -143,7 +143,7 @@ Do not download the source archive if you want the app binary. Use the named `ML
 7. Copy Base URL, Model ID, API key placeholder, JSON config, Hermes Agent config, or curl readiness check from Connection Settings.
 8. Paste those values into an OpenAI-compatible client.
 
-You must provide your own `mlx-lm` environment, `mlx_lm.server` executable, and model files or Hugging Face cache. The app keeps Direct Mode: the client connects directly to `mlx_lm.server`; MLX Server Manager does not proxy inference traffic or run chat completions.
+You must provide your own `mlx-lm` environment and `mlx_lm.server` executable. You can either point a profile at existing model files or use the Dashboard Hugging Face card to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: the client connects directly to `mlx_lm.server`; MLX Server Manager does not proxy inference traffic or run chat completions.
 
 See [docs/distribution.md](docs/distribution.md) for release asset and Gatekeeper details, and [docs/known_limitations.md](docs/known_limitations.md) for the full stable-scope boundary.
 
