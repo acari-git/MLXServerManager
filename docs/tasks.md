@@ -2524,6 +2524,16 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no Swift source changes, tests, model checks, endpoint calls, downloads, model deletion, model scanning, telemetry, runtime behavior change, or release automation.
 
+## v7.0.0 Completed: Model Availability Surface
+
+- Add a selected-profile Model Availability card to Detail Inspector.
+- Add conservative availability states for unknown, configured, present, missing, external, not inspectable, and stale.
+- Add explicit user-triggered local path checks for selected profiles whose `modelID` or `localName` is a local path.
+- Add copy-safe home path display and avoid exposing full home paths in compact summaries.
+- Add focused model availability tests for identifier-only targets, local paths, external targets, present/missing checks, and path formatting.
+- Keep Direct Mode unchanged; no inference proxying, endpoint probing, `/v1/chat/completions` calls, model downloads, model deletion, model scanning, cache cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
+- Produce `MLXServerManager-v7.0.0-unsigned.zip` after Release build verification.
+
 ## Later
 
 - More advanced resource graphs.

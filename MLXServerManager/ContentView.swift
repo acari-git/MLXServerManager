@@ -28,7 +28,9 @@ struct ContentView: View {
                     selectedModel: viewModel.selectedModel,
                     runningModelText: viewModel.runningModelText,
                     restartRequired: viewModel.restartRequired,
-                    targetSummary: viewModel.connectionTargetSummary
+                    targetSummary: viewModel.connectionTargetSummary,
+                    modelAvailability: viewModel.modelAvailabilitySummary,
+                    onCheckModelAvailability: viewModel.checkModelAvailabilityRequested
                 )
             case .logs:
                 LogsSurfaceView(

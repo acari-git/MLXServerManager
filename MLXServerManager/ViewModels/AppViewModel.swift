@@ -54,6 +54,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var logEntries: [LogEntry]
     @Published private(set) var diagnosticsResults: [DiagnosticsResult] = []
     @Published private(set) var diagnosticsDidRun = false
+    @Published private var selectedModelAvailabilitySummary: ModelAvailabilitySummary = .noSelection
     @Published var profileEditorDraft: ModelProfileDraft = .empty
     @Published private(set) var isProfileEditorPresented = false
     @Published private(set) var profileEditorMessage: String?
@@ -75,6 +76,7 @@ final class AppViewModel: ObservableObject {
     private let setupDiagnostics: SetupDiagnostics
     private let modelProfileExportService: ModelProfileExportService
     private let modelProfileImportPreviewService: ModelProfileImportPreviewService
+    private let modelAvailabilityChecker: LocalModelAvailabilityChecking
     private var logBuffer: LogBuffer
     private var memoryMonitorTask: Task<Void, Never>?
     private var pendingDeleteModelID: ModelConfig.ID?
@@ -94,7 +96,8 @@ final class AppViewModel: ObservableObject {
         memoryMonitor: MemoryMonitor? = nil,
         setupDiagnostics: SetupDiagnostics? = nil,
         modelProfileExportService: ModelProfileExportService? = nil,
-        modelProfileImportPreviewService: ModelProfileImportPreviewService? = nil
+        modelProfileImportPreviewService: ModelProfileImportPreviewService? = nil,
+        modelAvailabilityChecker: LocalModelAvailabilityChecking? = nil
     ) {
         self.settingsStore = settingsStore ?? SettingsStore()
         self.portChecker = portChecker ?? PortChecker()
@@ -108,15 +111,25 @@ final class AppViewModel: ObservableObject {
         )
         self.modelProfileExportService = modelProfileExportService ?? ModelProfileExportService()
         self.modelProfileImportPreviewService = modelProfileImportPreviewService ?? ModelProfileImportPreviewService()
+        self.modelAvailabilityChecker = modelAvailabilityChecker ?? FileSystemLocalModelAvailabilityChecker()
         self.logBuffer = LogBuffer(initialLines: Self.initialLogLines)
         self.logText = logBuffer.text
         self.logEntries = logBuffer.entries
         loadSettings()
         selectedModelID = models.first?.id
+        resetModelAvailabilityForCurrentSelection()
     }
 
     var selectedModel: ModelConfig? {
         models.first { $0.id == selectedModelID } ?? models.first
+    }
+
+    var modelAvailabilitySummary: ModelAvailabilitySummary {
+        if runtimeState.isExternalServerContext {
+            return ModelAvailabilitySummary.external(for: selectedModel)
+        }
+
+        return selectedModelAvailabilitySummary
     }
 
     var baseURL: String {
@@ -517,6 +530,41 @@ final class AppViewModel: ObservableObject {
             appendLog("[settings] Saved settings.json and models.json to \(settingsDirectoryPath).")
         } catch {
             appendLog("[settings] Failed to save settings: \(error.localizedDescription)")
+        }
+    }
+
+    func checkModelAvailabilityRequested() {
+        guard let selectedModel else {
+            selectedModelAvailabilitySummary = .noSelection
+            appendLog("[availability] check skipped: no selected profile.")
+            return
+        }
+
+        guard !runtimeState.isExternalServerContext else {
+            selectedModelAvailabilitySummary = ModelAvailabilitySummary.external(for: selectedModel)
+            appendLog("[availability] check skipped: external targets are not managed by MLX Server Manager.")
+            return
+        }
+
+        guard let localPath = ModelAvailabilityPathFormatter.localPathCandidate(for: selectedModel) else {
+            selectedModelAvailabilitySummary = ModelAvailabilitySummary.initial(
+                for: selectedModel,
+                isExternalTarget: false
+            )
+            appendLog("[availability] check skipped: selected profile uses a model identifier, not a local path.")
+            return
+        }
+
+        let result = modelAvailabilityChecker.check(path: localPath)
+        selectedModelAvailabilitySummary = ModelAvailabilitySummary.checked(for: selectedModel, result: result)
+
+        switch result {
+        case .present:
+            appendLog("[availability] configured local path appears present for selected profile. Compatibility is not verified.")
+        case .missing:
+            appendLog("[availability] configured local path was not found for selected profile.")
+        case let .notInspectable(message):
+            appendLog("[availability] check unavailable: \(message)")
         }
     }
 
@@ -1400,11 +1448,19 @@ final class AppViewModel: ObservableObject {
         }
 
         appendLog("[model] selected modelID: \(selectedModel.modelID)")
+        resetModelAvailabilityForCurrentSelection()
         if runtimeState.isExternalServerContext {
             runtimeState = .stopped
             appendLog("[model] external server context cleared after model selection changed.")
         }
         logRestartRequiredIfNeeded()
+    }
+
+    private func resetModelAvailabilityForCurrentSelection() {
+        selectedModelAvailabilitySummary = ModelAvailabilitySummary.initial(
+            for: selectedModel,
+            isExternalTarget: runtimeState.isExternalServerContext
+        )
     }
 
     private func detectExternalServer(
