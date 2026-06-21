@@ -2779,6 +2779,14 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v9.6.0; release output is deferred until v10.0.0.
 
+## v9.7.0 Completed: Runtime State Polish
+
+- Add a clear warning when the selected profile differs from the running model.
+- Add a restart-required guidance card in the runtime panel.
+- Clarify that runtime changes require stop/restart before they apply.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v9.7.0; release output is deferred until v10.0.0.
+
 ## Later
 
 - More advanced resource graphs.

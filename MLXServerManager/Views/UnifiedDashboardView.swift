@@ -999,6 +999,26 @@ struct UnifiedDashboardView: View {
                 ("再起動必要", viewModel.restartRequired ? "Yes" : "No")
             ])
 
+            if let warning = viewModel.runtimeSelectionWarning {
+                Label(warning, systemImage: "arrow.triangle.2.circlepath")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.orange.opacity(0.10))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
+            if viewModel.restartRequired {
+                Label("Restart required: selected profile changes are not applied to the running server yet.", systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.orange.opacity(0.10))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
             if let hint = startRecoveryHint {
                 Label(hint, systemImage: "wrench.and.screwdriver")
                     .font(.caption)

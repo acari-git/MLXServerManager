@@ -194,6 +194,13 @@ final class AppViewModel: ObservableObject {
             : huggingFaceSearchResults
     }
 
+    var runtimeSelectionWarning: String? {
+        guard let runningModelID, let selectedModelID, runningModelID != selectedModelID else {
+            return nil
+        }
+        return "Selected model differs from the running model. Stop or restart before expecting runtime changes."
+    }
+
     var huggingFaceDownloadQueueSummary: String {
         guard !huggingFaceDownloadQueue.isEmpty else {
             return "No downloads in this session."
