@@ -2794,6 +2794,13 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v9.8.0; release output is deferred until v10.0.0.
 
+## v9.9.0 Completed: v10 Readiness Stabilization
+
+- Update README Quick Start for the first-launch checklist, model preview, and source filter workflow.
+- Keep v10.0.0 as the only release for this sequence.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v9.9.0; release output is deferred until v10.0.0.
+
 ## Later
 
 - More advanced resource graphs.
