@@ -985,6 +985,14 @@ struct UnifiedDashboardView: View {
             }
 
             if let model = viewModel.selectedModel {
+                Label("削除は profile metadata のみです。model files / Hugging Face cache は削除しません。起動中は削除できません。", systemImage: "shield")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
                 DetailGrid(rows: [
                     ("モデル名", model.displayName),
                     ("モデルID", model.modelID),

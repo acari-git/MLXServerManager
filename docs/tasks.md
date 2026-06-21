@@ -2824,6 +2824,14 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v10.2.0; release output is deferred until v11.0.0.
 
+## v10.3.0 Completed: Profile Safety Actions
+
+- Reinforce that profile deletion removes metadata only.
+- Surface that model files and Hugging Face cache are not deleted.
+- Make the running-server deletion safety condition visible in the model settings panel.
+- Preserve Direct Mode and avoid model-file deletion or unrelated runtime automation.
+- No GitHub Release is produced for v10.3.0; release output is deferred until v11.0.0.
+
 ## Later
 
 - More advanced resource graphs.
