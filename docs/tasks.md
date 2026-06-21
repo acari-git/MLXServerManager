@@ -2509,6 +2509,14 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no Swift source changes, tests, fixture files, timers, background monitors, request observers, network hooks, lifecycle behavior changes, request inspection, inference proxying, telemetry, runtime behavior change, or release automation.
 
+## v6.30.0 Completed: v7 Implementation Readiness Review
+
+- Add `docs/v7_implementation_readiness.md` as docs-only handoff for the first v7 app-code implementation.
+- Recommend `v7.0.0 — Model Availability Surface` as selected-profile, read-only, explicit-check implementation scope.
+- Define v7.0.0 allowed behavior, non-goals, Direct Mode boundary, data sources, UI wording rules, state mapping, copy-safe display, expected tests, implementation order, binary release decision, Go criteria, and No-Go criteria.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no Swift source changes, tests, model checks, endpoint calls, downloads, model deletion, model scanning, telemetry, runtime behavior change, or release automation.
+
 ## Later
 
 - More advanced resource graphs.
