@@ -2599,6 +2599,16 @@
 - Preserve Direct Mode; no proxying, chat UI, search, credential storage, model deletion, scanning, cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
 - No GitHub Release is produced for v7.4.0; release output is deferred until v8.0.0.
 
+## v7.5.0 Completed: Local Model Registration
+
+- Add a Dashboard local model registration panel.
+- Allow users to paste an existing local model folder path.
+- Validate that the local path exists and is a directory before adding a profile.
+- Create a local-path model profile with display name, port, and Thinking options.
+- Auto-select the registered local model and mark availability as present.
+- Preserve Direct Mode; no proxying, chat UI, search, credential storage, model deletion, scanning, cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
+- No GitHub Release is produced for v7.5.0; release output is deferred until v8.0.0.
+
 ## Later
 
 - More advanced resource graphs.

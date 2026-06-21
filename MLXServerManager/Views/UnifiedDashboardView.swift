@@ -64,6 +64,7 @@ struct UnifiedDashboardView: View {
                     )
                 } else {
                     modelAddFlowGuidePanel
+                    localModelRegistrationPanel
                     huggingFaceDownloadPanel
                     selectedModelSettingsPanel
                     availabilityPanel
@@ -380,6 +381,63 @@ struct UnifiedDashboardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(nsColor: .textBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var localModelRegistrationPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("ローカルモデルを追加")
+                .font(.headline)
+
+            Text("既にダウンロード済みのモデルフォルダを、モデル一覧へ local path profile として追加します。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("ローカルモデルフォルダ")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                TextField("~/Models/mlx/model-name", text: $viewModel.localModelPath)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("local-model-path")
+            }
+
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("表示名")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    TextField("フォルダ名から自動入力", text: $viewModel.localModelDisplayName)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Port")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    TextField("8080", text: $viewModel.localModelPortText)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 76)
+                }
+            }
+
+            Toggle("Thinking を有効にする", isOn: $viewModel.localModelEnableThinking)
+                .toggleStyle(.checkbox)
+
+            Text(viewModel.localModelMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Button {
+                viewModel.registerLocalModelRequested()
+            } label: {
+                Label("ローカルモデルを一覧に追加", systemImage: "folder.badge.plus")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("local-model-add")
+        }
+        .panelStyle()
+        .accessibilityIdentifier("unified-dashboard-local-model-registration")
     }
 
     private var huggingFaceDownloadPanel: some View {

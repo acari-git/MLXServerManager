@@ -75,6 +75,11 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var isHuggingFaceCLIAvailable = false
     @Published private(set) var huggingFaceCLIPath = "Not checked"
     @Published private(set) var huggingFaceCLIMessage = "Check Hugging Face CLI before downloading."
+    @Published var localModelPath = ""
+    @Published var localModelDisplayName = ""
+    @Published var localModelPortText = String(AppSettings.defaults.defaultPort)
+    @Published var localModelEnableThinking = false
+    @Published private(set) var localModelMessage = "Paste an existing local model folder path, then add it to the model list."
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
@@ -134,6 +139,7 @@ final class AppViewModel: ObservableObject {
             defaultPort: settings.defaultPort
         )
         refreshHuggingFaceCLIStatus(logResult: false)
+        localModelPortText = String(settings.defaultPort)
         selectedModelID = models.first?.id
         resetModelAvailabilityForCurrentSelection()
     }
@@ -667,6 +673,62 @@ final class AppViewModel: ObservableObject {
             if logResult {
                 appendLog("[hf] CLI not found. Checked: \(checked)")
             }
+        }
+    }
+
+    func registerLocalModelRequested() {
+        let trimmedPath = localModelPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let expandedPath = HuggingFaceDownloadPlanner.expandedLocalPath(from: trimmedPath) else {
+            localModelMessage = "Enter a local folder path such as ~/Models/mlx/model-name."
+            appendLog("[profile] local model add failed: invalid local path.")
+            return
+        }
+
+        var isDirectory = ObjCBool(false)
+        guard FileManager.default.fileExists(atPath: expandedPath, isDirectory: &isDirectory), isDirectory.boolValue else {
+            localModelMessage = "Local model folder was not found."
+            appendLog("[profile] local model add failed: folder not found at \(ModelAvailabilityPathFormatter.compact(path: expandedPath)).")
+            return
+        }
+
+        if models.contains(where: { $0.modelID == expandedPath }) {
+            selectedModelID = expandedPath
+            localModelMessage = "Existing local model profile selected."
+            appendLog("[profile] existing local model profile selected: \(ModelAvailabilityPathFormatter.compact(path: expandedPath)).")
+            return
+        }
+
+        let displayName = localModelDisplayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? URL(fileURLWithPath: expandedPath, isDirectory: true).lastPathComponent
+            : localModelDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let port = Int(localModelPortText.trimmingCharacters(in: .whitespacesAndNewlines)) ?? settings.defaultPort
+        let model = ModelConfig(
+            modelID: expandedPath,
+            displayName: displayName,
+            family: "Local",
+            quantization: "Existing Folder",
+            localName: URL(fileURLWithPath: expandedPath, isDirectory: true).lastPathComponent,
+            host: settings.defaultHost,
+            serverPort: port,
+            enableThinking: localModelEnableThinking,
+            notes: "Registered from an existing local model folder.",
+            advancedLaunchOptions: nil
+        )
+
+        let nextModels = models + [model]
+        do {
+            try settingsStore.save(models: nextModels)
+            models = nextModels
+            selectedModelID = model.id
+            selectedModelAvailabilitySummary = ModelAvailabilitySummary.checked(
+                for: model,
+                result: .present(path: expandedPath)
+            )
+            localModelMessage = "Local model added and selected."
+            appendLog("[profile] local model added: \(displayName).")
+        } catch {
+            localModelMessage = "Could not save local model profile: \(error.localizedDescription)"
+            appendLog("[profile] local model add failed: \(error.localizedDescription)")
         }
     }
 
