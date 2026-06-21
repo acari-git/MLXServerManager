@@ -868,6 +868,23 @@ struct UnifiedDashboardView: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                             .truncationMode(.middle)
+                        HStack {
+                            Button {
+                                viewModel.restoreHuggingFaceDownloadForm(from: entry)
+                            } label: {
+                                Text("Restore form")
+                            }
+                            .font(.caption2)
+
+                            Button {
+                                viewModel.copyHuggingFaceDownloadURL(from: entry)
+                            } label: {
+                                Text("Copy URL")
+                            }
+                            .font(.caption2)
+
+                            Spacer()
+                        }
                     }
                 }
                 .padding(8)

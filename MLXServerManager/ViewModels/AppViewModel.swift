@@ -741,6 +741,27 @@ final class AppViewModel: ObservableObject {
         }
     }
 
+    func restoreHuggingFaceDownloadForm(from entry: HuggingFaceDownloadQueueEntry) {
+        huggingFaceDownloadDraft.source = entry.repositoryID
+        let destinationURL = URL(fileURLWithPath: entry.destinationPath, isDirectory: true)
+        huggingFaceDownloadDraft.saveDirectory = destinationURL.deletingLastPathComponent().path
+        huggingFaceDownloadDraft.displayName = destinationURL.lastPathComponent
+        huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
+            phase: .waiting,
+            message: "Restored download form from queue entry. Review it, then press Download or Retry.",
+            repositoryID: entry.repositoryID,
+            destinationPath: entry.destinationPath,
+            progress: nil,
+            outputLines: []
+        )
+        appendLog("[hf] restored download form from queue entry: \(entry.repositoryID)")
+    }
+
+    func copyHuggingFaceDownloadURL(from entry: HuggingFaceDownloadQueueEntry) {
+        copyToPasteboard("https://huggingface.co/\(entry.repositoryID)")
+        appendLog("[hf] copied queue entry URL for \(entry.repositoryID).")
+    }
+
     func retryHuggingFaceDownloadRequested() {
         guard canRetryHuggingFaceDownload else {
             appendLog("[hf] retry skipped: no failed or cancelled download is ready to retry.")

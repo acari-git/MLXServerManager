@@ -2832,6 +2832,14 @@
 - Preserve Direct Mode and avoid model-file deletion or unrelated runtime automation.
 - No GitHub Release is produced for v10.3.0; release output is deferred until v11.0.0.
 
+## v10.4.0 Completed: Download Recovery Improvements
+
+- Add queue-entry actions to restore a download form from a prior download.
+- Add queue-entry actions to copy the Hugging Face repository URL.
+- Keep retry and restore actions explicit and user-initiated.
+- Preserve Direct Mode and avoid credential storage or unrelated runtime automation.
+- No GitHub Release is produced for v10.4.0; release output is deferred until v11.0.0.
+
 ## Later
 
 - More advanced resource graphs.
