@@ -2495,9 +2495,15 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no Swift source changes, tests, fixture files, app bundle, zip asset, signing, notarization, DMG, installer, release automation, telemetry, runtime behavior change, model download, model deletion, model scanning, or cache cleanup.
 
+## v6.28.0 Completed: LAN Web UI Design
+
+- Add `docs/lan_web_ui_design.md` as docs-only design for a possible future LAN Web UI.
+- Define disabled-by-default behavior, binding policy, access-control candidates, initial read-only scope, adapter boundary, privacy and redaction rules, UI wording, verification expectations, and implementation entry criteria.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no Swift source changes, tests, fixture files, web server, network listener, route, browser UI, authentication implementation, inference proxying, chat UI, remote actions, telemetry, runtime behavior change, or release automation.
+
 ## Later
 
-- LAN Web UI.
 - Automatic unload policies.
 - More advanced resource graphs.
 - App Intents for start, stop, restart, and status.
