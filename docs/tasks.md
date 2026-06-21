@@ -2386,11 +2386,17 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no automatic path checking, model download, model deletion, model scanning, cache cleanup, background availability polling, token persistence, telemetry, runtime behavior change, or release automation.
 
+## v6.19.0 Completed: Deeper Diagnostics Design
+
+- Add `docs/deeper_diagnostics_design.md` as docs-only design for future deeper diagnostics surfaces.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, runtime behavior change, or release automation.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Deeper diagnostics design.
-- Model availability documentation.
+- Deeper Diagnostics Design Polish.
+- Model availability surface design.
 - Packaging polish.
 - LAN Web UI.
 - Automatic unload policies.
