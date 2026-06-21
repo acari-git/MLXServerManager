@@ -2628,6 +2628,14 @@
 - Preserve Direct Mode; no proxying, chat UI, search, credential storage, model deletion, scanning, cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
 - No GitHub Release is produced for v7.7.0; release output is deferred until v8.0.0.
 
+## v7.8.0 Completed: Search Foundation Surface
+
+- Add a Dashboard search-foundation panel separate from the active ID / URL download flow.
+- Capture a future search query without running network search in this release.
+- Make the future oMLX-style search path visible while keeping exact ID / URL download as the active model acquisition path.
+- Preserve Direct Mode; no proxying, chat UI, network search, ranking, credential storage, model deletion, scanning, cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
+- No GitHub Release is produced for v7.8.0; release output is deferred until v8.0.0.
+
 ## Later
 
 - More advanced resource graphs.

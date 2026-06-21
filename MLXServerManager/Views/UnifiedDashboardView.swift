@@ -66,6 +66,7 @@ struct UnifiedDashboardView: View {
                     )
                 } else {
                     modelAddFlowGuidePanel
+                    huggingFaceSearchFoundationPanel
                     localModelRegistrationPanel
                     huggingFaceDownloadPanel
                     selectedModelSettingsPanel
@@ -416,6 +417,36 @@ struct UnifiedDashboardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(nsColor: .textBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var huggingFaceSearchFoundationPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Hugging Face 検索準備")
+                .font(.headline)
+
+            Text("oMLX のような検索は後続実装です。ここでは検索導線だけを独立させ、ID / URL ダウンロードと混同しないようにします。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            TextField("例: qwen mlx 4bit", text: $viewModel.huggingFaceSearchQuery)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityIdentifier("hf-search-query")
+
+            Text(viewModel.huggingFaceSearchMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Button {
+                viewModel.prepareHuggingFaceSearchRequested()
+            } label: {
+                Label("検索条件を準備", systemImage: "magnifyingglass")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("hf-search-prepare")
+        }
+        .panelStyle()
+        .accessibilityIdentifier("unified-dashboard-hf-search-foundation")
     }
 
     private var localModelRegistrationPanel: some View {

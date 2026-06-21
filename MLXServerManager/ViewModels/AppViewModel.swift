@@ -80,6 +80,8 @@ final class AppViewModel: ObservableObject {
     @Published var localModelPortText = String(AppSettings.defaults.defaultPort)
     @Published var localModelEnableThinking = false
     @Published private(set) var localModelMessage = "Paste an existing local model folder path, then add it to the model list."
+    @Published var huggingFaceSearchQuery = ""
+    @Published private(set) var huggingFaceSearchMessage = "Search is staged as a future explicit action. Use ID / URL download for now."
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
@@ -673,6 +675,17 @@ final class AppViewModel: ObservableObject {
             if logResult {
                 appendLog("[hf] CLI not found. Checked: \(checked)")
             }
+        }
+    }
+
+    func prepareHuggingFaceSearchRequested() {
+        let query = huggingFaceSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        if query.isEmpty {
+            huggingFaceSearchMessage = "Enter a search term to prepare a future Hugging Face search."
+            appendLog("[hf] search preparation skipped: empty query.")
+        } else {
+            huggingFaceSearchMessage = "Search foundation ready for: \(query). Exact ID / URL download remains the active path."
+            appendLog("[hf] search foundation captured query: \(query). No network search is run in this release.")
         }
     }
 
