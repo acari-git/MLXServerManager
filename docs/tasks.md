@@ -2433,10 +2433,17 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no Swift source changes, tests, diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, diagnostics history persistence, runtime behavior change, or release automation.
 
+## v6.22.0 Completed: Diagnostics Result Fixture File Layout Design
+
+- Add `docs/diagnostics_result_fixture_file_layout_design.md` as docs-only design for future diagnostics fixture file layout.
+- Compare JSON fixtures, Swift static fixtures, and Markdown examples; define candidate fixture directories, naming rules, schema expectations, snapshot safety, negative fixture layout, redaction fixture layout, test target boundaries, documentation boundaries, and review checklist.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no Swift source changes, tests, fixture files, diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, diagnostics history persistence, runtime behavior change, or release automation.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Diagnostics result fixture file layout design.
+- Diagnostics Result Fixture File Layout Polish.
 - Model availability surface design.
 - Packaging polish.
 - LAN Web UI.
