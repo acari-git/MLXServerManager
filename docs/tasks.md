@@ -2590,6 +2590,15 @@
 - Preserve Direct Mode; no proxying, chat UI, search, token storage, model deletion, scanning, cache cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
 - No GitHub Release is produced for v7.3.0; release output is deferred until v8.0.0.
 
+## v7.4.0 Completed: Model Add Flow Redesign
+
+- Add a Dashboard model-add flow guide above the download panel.
+- Separate the beginner path, local-model path, and advanced raw profile path in the UI.
+- Keep the existing advanced profile editor reachable for direct `mlx_lm.server` users.
+- Clarify that local model registration is the next staged implementation path.
+- Preserve Direct Mode; no proxying, chat UI, search, credential storage, model deletion, scanning, cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
+- No GitHub Release is produced for v7.4.0; release output is deferred until v8.0.0.
+
 ## Later
 
 - More advanced resource graphs.

@@ -63,6 +63,7 @@ struct UnifiedDashboardView: View {
                         onCopyPreview: viewModel.copyLaunchCommandPreview
                     )
                 } else {
+                    modelAddFlowGuidePanel
                     huggingFaceDownloadPanel
                     selectedModelSettingsPanel
                     availabilityPanel
@@ -329,6 +330,56 @@ struct UnifiedDashboardView: View {
         .padding(.vertical, 10)
         .background(Color(nsColor: .controlBackgroundColor))
         .accessibilityIdentifier("unified-dashboard-status-footer")
+    }
+
+    private var modelAddFlowGuidePanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("モデル追加フロー")
+                .font(.headline)
+
+            Text("CLIに不慣れなユーザー向けに、モデル取得とプロファイル追加を明確に分けています。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 8) {
+                acquisitionRow(
+                    title: "1. Hugging Face からダウンロード",
+                    detail: "ID / URL を貼り、保存後にモデル一覧へ自動追加します。"
+                )
+                acquisitionRow(
+                    title: "2. ダウンロード済みローカルモデルを追加",
+                    detail: "既に保存済みのローカルフォルダをプロファイル化します。v7.5.0 で追加します。"
+                )
+                acquisitionRow(
+                    title: "3. 上級者向けプロファイル追加",
+                    detail: "Hugging Face ID や任意の起動引数を直接設定します。"
+                )
+            }
+
+            Button {
+                viewModel.addProfileRequested()
+            } label: {
+                Label("上級者向けプロファイルを追加", systemImage: "slider.horizontal.3")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+        }
+        .panelStyle()
+        .accessibilityIdentifier("unified-dashboard-model-add-flow")
+    }
+
+    private func acquisitionRow(title: String, detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+            Text(detail)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .textBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private var huggingFaceDownloadPanel: some View {
