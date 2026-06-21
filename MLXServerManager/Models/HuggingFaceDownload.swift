@@ -134,6 +134,7 @@ struct HuggingFaceDownloadPreview: Equatable {
     let reference: HuggingFaceModelReference?
     let destinationPath: String?
     let compactDestinationPath: String
+    let destinationNote: String
     let displayName: String
     let message: String
     let canDownload: Bool
@@ -146,6 +147,7 @@ struct HuggingFaceDownloadPreview: Equatable {
                 repositoryName: reference.name
             )
             let compactPath = destinationPath.map { ModelAvailabilityPathFormatter.compact(path: $0) } ?? "Invalid save directory"
+            let destinationState = HuggingFaceDownloadPlanner.destinationState(path: destinationPath)
             let displayName = draft.displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? reference.name
                 : draft.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -154,15 +156,17 @@ struct HuggingFaceDownloadPreview: Equatable {
                 reference: reference,
                 destinationPath: destinationPath,
                 compactDestinationPath: compactPath,
+                destinationNote: destinationState.note,
                 displayName: displayName,
-                message: destinationPath == nil ? "Save directory is not a local path." : "Ready to download.",
-                canDownload: destinationPath != nil
+                message: destinationPath == nil ? "Save directory is not a local path." : destinationState.message,
+                canDownload: destinationPath != nil && destinationState.canUse
             )
         case let .failure(error):
             return HuggingFaceDownloadPreview(
                 reference: nil,
                 destinationPath: nil,
                 compactDestinationPath: "Not available",
+                destinationNote: "No destination until a valid model ID or URL is entered.",
                 displayName: "Not available",
                 message: error.localizedDescription,
                 canDownload: false
@@ -228,6 +232,31 @@ struct HuggingFaceDownloadStatus: Equatable {
 }
 
 struct HuggingFaceDownloadPlanner {
+    static func destinationState(path: String?) -> (note: String, message: String, canUse: Bool) {
+        guard let path else {
+            return ("No local destination.", "Save directory is not a local path.", false)
+        }
+
+        var isDirectory = ObjCBool(false)
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) else {
+            return ("Destination will be created.", "Ready to download.", true)
+        }
+
+        if isDirectory.boolValue {
+            return (
+                "Destination already exists. Download will update or reuse this folder.",
+                "Ready to resume or update existing destination.",
+                true
+            )
+        }
+
+        return (
+            "Destination is an existing file. Choose another save folder.",
+            "Cannot download because the destination path is a file.",
+            false
+        )
+    }
+
     static func destinationPath(baseDirectory: String, repositoryName: String) -> String? {
         guard let basePath = expandedLocalPath(from: baseDirectory) else {
             return nil

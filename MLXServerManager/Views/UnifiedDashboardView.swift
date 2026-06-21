@@ -414,6 +414,7 @@ struct UnifiedDashboardView: View {
                 ("hf Path", viewModel.huggingFaceCLIPath),
                 ("Repository", preview.reference?.repositoryID ?? "未確定"),
                 ("Save to", preview.compactDestinationPath),
+                ("Destination", preview.destinationNote),
                 ("Display", preview.displayName),
                 ("Status", status.message)
             ])

@@ -2580,6 +2580,16 @@
 - Preserve Direct Mode; no proxying, chat UI, search, token storage, model deletion, scanning, cache cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
 - No GitHub Release is produced for v7.2.2; release output is deferred until v8.0.0.
 
+## v7.3.0 Completed: Download Destination Reliability
+
+- Add destination-state checks before starting a model download.
+- Show whether the destination will be created, reused as an existing folder, or blocked because it is a file.
+- Keep existing folders usable so interrupted downloads can resume/update in place.
+- Block downloads when the computed destination points at an existing file.
+- Add focused tests for new destination, existing directory, and existing file states.
+- Preserve Direct Mode; no proxying, chat UI, search, token storage, model deletion, scanning, cache cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
+- No GitHub Release is produced for v7.3.0; release output is deferred until v8.0.0.
+
 ## Later
 
 - More advanced resource graphs.

@@ -51,6 +51,23 @@ final class HuggingFaceDownloadTests: XCTestCase {
         XCTAssertNil(HuggingFaceDownloadPlanner.progressFraction(from: "working"))
     }
 
+    func testDestinationStateDistinguishesNewFolderDirectoryAndFile() throws {
+        let baseURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let newPath = baseURL.appendingPathComponent("new-model", isDirectory: true).path
+        let directoryURL = baseURL.appendingPathComponent("existing-model", isDirectory: true)
+        let fileURL = baseURL.appendingPathComponent("existing-file", isDirectory: false)
+        try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        try "not a directory".write(to: fileURL, atomically: true, encoding: .utf8)
+        defer {
+            try? FileManager.default.removeItem(at: baseURL)
+        }
+
+        XCTAssertTrue(HuggingFaceDownloadPlanner.destinationState(path: newPath).canUse)
+        XCTAssertTrue(HuggingFaceDownloadPlanner.destinationState(path: directoryURL.path).canUse)
+        XCTAssertFalse(HuggingFaceDownloadPlanner.destinationState(path: fileURL.path).canUse)
+    }
+
     func testCandidateExecutablePathsIncludeUserLocalAndHomebrewPaths() {
         let candidates = HuggingFaceDownloadManager.candidateExecutablePaths(
             environment: [
