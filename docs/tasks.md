@@ -2478,9 +2478,17 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no Swift source changes, tests, fixture files, model availability checks, endpoint calls, inference requests, downloads, model deletion, model scanning, cache cleanup, background monitoring, telemetry, diagnostics execution, runtime behavior change, or release automation.
 
+## v6.26.0 Completed: README Screenshot Refresh Readiness
+
+- Add a v6.26.0 README screenshot refresh readiness section to `docs/screenshot_refresh.md`.
+- Define future v6 layout screenshot candidates for App Shell / Dashboard, Profiles / Model List, Detail Inspector, Logs, Client Setup, and Metrics / System Context.
+- Define preflight criteria for clean demo state, public-safe visible values, committed README image links, and screenshot boundary review.
+- Keep current README screenshot links unchanged and add no screenshot image files.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no Swift source changes, tests, fixture files, image assets, README image link changes, app bundle, zip asset, debug symbols, model files, settings files, logs, telemetry, runtime behavior change, or release automation.
+
 ## Later
 
-- Refresh README screenshots after Dashboard UI Refresh v1.
 - Packaging polish.
 - LAN Web UI.
 - Automatic unload policies.

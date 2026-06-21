@@ -6,6 +6,8 @@ Screenshot Refresh is a v2.1.0 docs-only planning step for updating public READM
 
 This step does not add image files and does not change the app. Existing README screenshot links should remain unchanged until refreshed image files are actually committed.
 
+v6.26.0 adds a docs-only readiness pass for a later README screenshot refresh after the v6 app layout has stabilized. It keeps existing README screenshot links unchanged and adds no image assets.
+
 ## Goals
 
 - Plan a small screenshot set that explains the current public feature set.
@@ -53,6 +55,17 @@ Recommended future screenshots:
 - First-run Onboarding Guidance.
 - Advanced Launch Options.
 - Logs / diagnostics panel, if useful and safe.
+
+For the post-v6 app layout, prefer these future README screenshot candidates once real images are captured and reviewed:
+
+- App Shell / Dashboard overview with Direct Mode status visible.
+- Profiles / Model List surface with demo profile names only.
+- Detail Inspector surface with selected-profile and target context only.
+- Logs surface with generic app-side events only.
+- Client Setup surface with copy-safe local OpenAI-compatible values only.
+- Metrics / System Context surface without private local context.
+
+Do not replace existing README screenshot links until matching files are committed under `screenshots/`.
 
 ## Capture Scenarios
 
@@ -161,6 +174,32 @@ Suggested workflow for the later screenshot update:
 6. Commit screenshots and README/docs updates together.
 
 No app binary, zip asset, or release asset is required unless a later release specifically chooses to include the screenshot docs update.
+
+## v6.26.0 README Screenshot Refresh Readiness
+
+v6.26.0 records preflight criteria for a later README screenshot replacement after the v6 app layout has stabilized.
+
+A future screenshot refresh can proceed only when:
+
+- the app is opened in a clean demo state;
+- all visible profile names, model IDs, base URLs, placeholder values, and log entries are intentional for public display;
+- no private paths, personal home paths, secrets, private repository URLs, or local-only artifacts are visible;
+- the screenshot set covers only existing app behavior;
+- screenshots do not imply Chat UI, inference proxying, multi-backend routing, request rewriting, telemetry, background monitoring, request inspection, model deletion, model scanning, cache cleanup, or automatic client detection;
+- every README image link points to a committed file;
+- every newly committed image is reviewed before README links are changed;
+- no app bundle, zip asset, debug symbols, DerivedData, model files, settings files, log files, or release assets are committed with the screenshot update.
+
+Suggested future filenames for the v6 layout:
+
+- `screenshots/app-shell-dashboard-v6.png`;
+- `screenshots/profiles-model-list-v6.png`;
+- `screenshots/detail-inspector-v6.png`;
+- `screenshots/logs-surface-v6.png`;
+- `screenshots/client-setup-v6.png`;
+- `screenshots/metrics-system-context-v6.png`.
+
+v6.26.0 does not add those files and does not update README screenshot links.
 
 ## Testing / Review Checklist
 
