@@ -72,6 +72,7 @@ final class AppViewModel: ObservableObject {
         defaultPort: AppSettings.defaults.defaultPort
     )
     @Published private(set) var huggingFaceDownloadStatus: HuggingFaceDownloadStatus = .waiting
+    @Published private(set) var huggingFaceDownloadQueue: [HuggingFaceDownloadQueueEntry] = []
     @Published private(set) var isHuggingFaceCLIAvailable = false
     @Published private(set) var huggingFaceCLIPath = "Not checked"
     @Published private(set) var huggingFaceCLIMessage = "Check Hugging Face CLI before downloading."
@@ -613,6 +614,17 @@ final class AppViewModel: ObservableObject {
 
         let displayName = preview.displayName
         let draft = huggingFaceDownloadDraft
+        let queueEntryID = UUID()
+        huggingFaceDownloadQueue.insert(
+            HuggingFaceDownloadQueueEntry(
+                id: queueEntryID,
+                repositoryID: reference.repositoryID,
+                destinationPath: destinationPath,
+                phase: .preparing,
+                message: "Preparing"
+            ),
+            at: 0
+        )
         huggingFaceDownloadCancellationRequested = false
         huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
             phase: .preparing,
@@ -630,7 +642,8 @@ final class AppViewModel: ObservableObject {
                 reference: reference,
                 destinationPath: destinationPath,
                 displayName: displayName,
-                draft: draft
+                draft: draft,
+                queueEntryID: queueEntryID
             )
         }
     }
@@ -1324,11 +1337,13 @@ final class AppViewModel: ObservableObject {
         reference: HuggingFaceModelReference,
         destinationPath: String,
         displayName: String,
-        draft: HuggingFaceDownloadDraft
+        draft: HuggingFaceDownloadDraft,
+        queueEntryID: UUID
     ) async {
         do {
             huggingFaceDownloadStatus.phase = .downloading
             huggingFaceDownloadStatus.message = "Downloading \(reference.repositoryID)..."
+            updateHuggingFaceQueueEntry(queueEntryID, phase: .downloading, message: "Downloading")
 
             let result = try await huggingFaceDownloadManager.download(
                 request: HuggingFaceDownloadRequest(
@@ -1345,6 +1360,7 @@ final class AppViewModel: ObservableObject {
             guard !huggingFaceDownloadCancellationRequested else {
                 huggingFaceDownloadStatus.phase = .cancelled
                 huggingFaceDownloadStatus.message = "Download cancelled. The model was not added."
+                updateHuggingFaceQueueEntry(queueEntryID, phase: .cancelled, message: "Cancelled")
                 appendLog("[hf] download cancelled for \(reference.repositoryID).")
                 huggingFaceDownloadTask = nil
                 return
@@ -1373,6 +1389,7 @@ final class AppViewModel: ObservableObject {
                 ? "Download completed. Added to model list and selected. Ready to start."
                 : "Download completed. Auto-add was disabled."
             huggingFaceDownloadStatus.progress = 1
+            updateHuggingFaceQueueEntry(queueEntryID, phase: .completed, message: "Completed")
             appendLog("[hf] download completed for \(reference.repositoryID).")
             appendLog("[hf] saved to \(ModelAvailabilityPathFormatter.compact(path: result.destinationPath)).")
             huggingFaceDownloadTask = nil
@@ -1380,14 +1397,24 @@ final class AppViewModel: ObservableObject {
             if huggingFaceDownloadCancellationRequested {
                 huggingFaceDownloadStatus.phase = .cancelled
                 huggingFaceDownloadStatus.message = "Download cancelled. The model was not added."
+                updateHuggingFaceQueueEntry(queueEntryID, phase: .cancelled, message: "Cancelled")
                 appendLog("[hf] download cancelled.")
             } else {
                 huggingFaceDownloadStatus.phase = .failed
                 huggingFaceDownloadStatus.message = error.localizedDescription
+                updateHuggingFaceQueueEntry(queueEntryID, phase: .failed, message: error.localizedDescription)
                 appendLog("[hf] download failed: \(error.localizedDescription)")
             }
             huggingFaceDownloadTask = nil
         }
+    }
+
+    private func updateHuggingFaceQueueEntry(_ id: UUID, phase: HuggingFaceDownloadPhase, message: String) {
+        guard let index = huggingFaceDownloadQueue.firstIndex(where: { $0.id == id }) else {
+            return
+        }
+        huggingFaceDownloadQueue[index].phase = phase
+        huggingFaceDownloadQueue[index].message = message
     }
 
     private func appendHuggingFaceOutputLine(_ line: String) {

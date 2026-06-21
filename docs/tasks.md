@@ -2671,6 +2671,14 @@
 - Preserve Direct Mode and avoid proxying, chat UI, credential storage, model deletion, cache cleanup, telemetry, or background automation.
 - No GitHub Release is produced for v8.2.0; release output is deferred until v9.0.0.
 
+## v8.3.0 Completed: Download Queue Foundation
+
+- Add a session-scoped download queue/history list in Dashboard.
+- Track preparing, downloading, completed, failed, and cancelled states for explicit downloads.
+- Keep the current single active download behavior while exposing recent download outcomes.
+- Preserve Direct Mode and avoid proxying, chat UI, credential storage, model deletion, cache cleanup, telemetry, or background automation.
+- No GitHub Release is produced for v8.3.0; release output is deferred until v9.0.0.
+
 ## Later
 
 - More advanced resource graphs.

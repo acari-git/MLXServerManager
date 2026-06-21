@@ -654,6 +654,34 @@ struct UnifiedDashboardView: View {
                     .accessibilityIdentifier("hf-download-progress-completed")
             }
 
+            if !viewModel.huggingFaceDownloadQueue.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Download queue")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    ForEach(viewModel.huggingFaceDownloadQueue.prefix(5)) { entry in
+                        HStack {
+                            Text(entry.repositoryID)
+                                .font(.caption2.weight(.semibold))
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Spacer()
+                            Text(entry.phase.title)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(entry.compactDestinationPath)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                }
+                .padding(8)
+                .background(Color(nsColor: .textBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
             if !status.outputLines.isEmpty {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 4) {

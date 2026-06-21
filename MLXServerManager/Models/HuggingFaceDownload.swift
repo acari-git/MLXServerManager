@@ -213,6 +213,18 @@ enum HuggingFaceDownloadPhase: Equatable {
     }
 }
 
+struct HuggingFaceDownloadQueueEntry: Identifiable, Equatable {
+    let id: UUID
+    let repositoryID: String
+    let destinationPath: String
+    var phase: HuggingFaceDownloadPhase
+    var message: String
+
+    var compactDestinationPath: String {
+        ModelAvailabilityPathFormatter.compact(path: destinationPath)
+    }
+}
+
 struct HuggingFaceDownloadStatus: Equatable {
     var phase: HuggingFaceDownloadPhase
     var message: String
