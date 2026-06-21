@@ -1,0 +1,14 @@
+{
+  "id": "redaction.homePathCompaction",
+  "title": "Home path compaction fixture",
+  "category": "Privacy / Redaction",
+  "scope": "modelAvailability",
+  "status": "pass",
+  "severity": "info",
+  "inputExample": "/Users/example/Models/mlx/example-model",
+  "expectedSummary": "~/Models/mlx/example-model",
+  "mustNotContain": [
+    "/Users/example"
+  ],
+  "redactionLevel": "copySafe"
+}

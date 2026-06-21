@@ -1,0 +1,12 @@
+{
+  "id": "selectedProfile.blocking",
+  "title": "Selected profile has a blocking issue",
+  "category": "Profile",
+  "scope": "selectedProfile",
+  "status": "fail",
+  "severity": "blocking",
+  "summary": "The selected profile cannot be used until this scoped issue is resolved.",
+  "detail": "Fixture data only. No profile data was changed.",
+  "userAction": "Review the selected profile configuration.",
+  "redactionLevel": "copySafe"
+}

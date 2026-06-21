@@ -1,0 +1,16 @@
+{
+  "id": "negative.noRawCommandOutput",
+  "title": "Raw command output must not appear in compact summaries",
+  "category": "Privacy / Redaction",
+  "scope": "logsSummary",
+  "status": "pass",
+  "severity": "info",
+  "summary": "Compact summaries should include concise diagnostics text only.",
+  "mustNotContain": [
+    "Traceback",
+    "Command failed with exit code",
+    "Authorization:",
+    "Bearer "
+  ],
+  "redactionLevel": "copySafe"
+}

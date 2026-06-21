@@ -5,6 +5,7 @@
 - Added in `v6.22.0`.
 - Polished in `v6.22.1`.
 - Initial fixture data files added in `v6.23.0` under `MLXServerManagerTests/Fixtures/Diagnostics/`.
+- Fixture data files polished in `v6.23.1` with an index README, additional blocking/redaction/negative fixtures, and copied-summary coverage updates.
 - Docs-only design for future diagnostics result fixture file layout.
 - Follows `v6.21.0` / `v6.21.1` Diagnostics Result Fixture Design.
 - No diagnostics fixture files, tests, or Swift source changes are included in this release.
