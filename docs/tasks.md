@@ -2609,6 +2609,16 @@
 - Preserve Direct Mode; no proxying, chat UI, search, credential storage, model deletion, scanning, cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
 - No GitHub Release is produced for v7.5.0; release output is deferred until v8.0.0.
 
+## v7.6.0 Completed: Start Preflight and Error Guidance
+
+- Add Start preflight checks before launching `mlx_lm.server`.
+- Block Start when the executable path is not configured.
+- Block Start when the executable path is not executable.
+- Block Start when a selected local model path is missing or not a directory.
+- Add explicit preflight log messages before port checks and launch.
+- Preserve Direct Mode; no proxying, chat UI, search, credential storage, model deletion, scanning, cleanup, telemetry, background monitoring, LAN Web UI, App Intents, automatic unload, notarization, DMG, or release automation.
+- No GitHub Release is produced for v7.6.0; release output is deferred until v8.0.0.
+
 ## Later
 
 - More advanced resource graphs.

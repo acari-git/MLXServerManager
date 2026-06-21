@@ -1445,6 +1445,32 @@ final class AppViewModel: ObservableObject {
             return false
         }
 
+        let executablePath = settings.mlxServerExecutablePath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !executablePath.isEmpty else {
+            let message = "mlx_lm.server executable path is not configured. Set it in Settings before starting."
+            runtimeState = .error(message: message)
+            appendLog("[\(logPrefix)] preflight failed: \(message)")
+            return false
+        }
+
+        guard FileManager.default.isExecutableFile(atPath: executablePath) else {
+            let message = "mlx_lm.server executable was not found or is not executable: \(ModelAvailabilityPathFormatter.compact(path: executablePath))."
+            runtimeState = .error(message: message)
+            appendLog("[\(logPrefix)] preflight failed: \(message)")
+            return false
+        }
+
+        if let localPath = ModelAvailabilityPathFormatter.localPathCandidate(for: selectedModel) {
+            var isDirectory = ObjCBool(false)
+            guard FileManager.default.fileExists(atPath: localPath, isDirectory: &isDirectory), isDirectory.boolValue else {
+                let message = "Model path is missing: \(ModelAvailabilityPathFormatter.compact(path: localPath))."
+                runtimeState = .error(message: message)
+                appendLog("[\(logPrefix)] preflight failed: \(message)")
+                return false
+            }
+        }
+
+        appendLog("[\(logPrefix)] preflight passed for selected profile.")
         appendLog("[\(logPrefix)] starting \(selectedModel.modelID) at \(host):\(port)")
         appendLog("[\(logPrefix)] checking port before launch: \(host):\(port)")
         runtimeState = .checkingPort(host: host, port: port)
