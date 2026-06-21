@@ -65,6 +65,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var profileDeletionMessage: String?
     @Published private(set) var modelProfileExportMessage: String?
     @Published private(set) var modelProfileImportMessage: String?
+    @Published var modelListSourceFilter = "All"
     @Published var isImportPreviewPresented = false
     @Published private(set) var importPreviewResult: ImportPreviewResult?
     @Published var huggingFaceDownloadDraft: HuggingFaceDownloadDraft = .defaults(
@@ -156,6 +157,23 @@ final class AppViewModel: ObservableObject {
 
     var selectedModel: ModelConfig? {
         models.first { $0.id == selectedModelID } ?? models.first
+    }
+
+    var modelListSourceFilterOptions: [String] {
+        ["All", "Downloaded", "Local", "HF ID", "Advanced"]
+    }
+
+    var visibleModels: [ModelConfig] {
+        modelListSourceFilter == "All"
+            ? models
+            : models.filter { sourceLabel(for: $0) == modelListSourceFilter }
+    }
+
+    func sourceLabel(for model: ModelConfig) -> String {
+        if ModelAvailabilityPathFormatter.localPathCandidate(for: model) != nil {
+            return model.notes.localizedCaseInsensitiveContains("downloaded") ? "Downloaded" : "Local"
+        }
+        return model.modelID.contains("/") ? "HF ID" : "Advanced"
     }
 
     var huggingFaceDownloadPreview: HuggingFaceDownloadPreview {

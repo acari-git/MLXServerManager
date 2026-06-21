@@ -149,6 +149,23 @@ struct UnifiedDashboardView: View {
                     .lineLimit(2)
             }
 
+            HStack {
+                Text("Source filter")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Picker("Source filter", selection: $viewModel.modelListSourceFilter) {
+                    ForEach(viewModel.modelListSourceFilterOptions, id: \.self) { option in
+                        Text(option).tag(option)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 160)
+                Spacer()
+                Text("\(viewModel.visibleModels.count) / \(viewModel.models.count) profiles")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             VStack(spacing: 0) {
                 modelListHeader
 
@@ -156,7 +173,7 @@ struct UnifiedDashboardView: View {
 
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(viewModel.models) { model in
+                        ForEach(viewModel.visibleModels) { model in
                             UnifiedModelRow(
                                 model: model,
                                 isSelected: model.id == viewModel.selectedModelID,

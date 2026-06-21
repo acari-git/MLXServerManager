@@ -2771,6 +2771,14 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v9.5.0; release output is deferred until v10.0.0.
 
+## v9.6.0 Completed: Model Profile Organization
+
+- Add a model-list source filter for All, Downloaded, Local, HF ID, and Advanced profiles.
+- Show filtered and total profile counts in the Dashboard model list.
+- Keep model-file deletion out of scope.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v9.6.0; release output is deferred until v10.0.0.
+
 ## Later
 
 - More advanced resource graphs.
