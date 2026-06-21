@@ -1,0 +1,14 @@
+{
+  "id": "redaction.bearerToken",
+  "title": "Bearer token redaction fixture",
+  "category": "Privacy / Redaction",
+  "scope": "clientSetup",
+  "status": "pass",
+  "severity": "info",
+  "inputExample": "Authorization: Bearer FAKE_TOKEN_REDACTED",
+  "expectedSummary": "Authorization header redacted.",
+  "mustNotContain": [
+    "FAKE_TOKEN_REDACTED"
+  ],
+  "redactionLevel": "copySafe"
+}

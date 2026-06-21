@@ -1,0 +1,12 @@
+{
+  "id": "selectedProfile.warning",
+  "title": "Selected profile needs review",
+  "category": "Profile",
+  "scope": "selectedProfile",
+  "status": "warning",
+  "severity": "warning",
+  "summary": "The selected profile has a user-actionable configuration warning.",
+  "detail": "Fixture uses placeholder values only.",
+  "userAction": "Open the profile editor and review the configuration.",
+  "redactionLevel": "copySafe"
+}

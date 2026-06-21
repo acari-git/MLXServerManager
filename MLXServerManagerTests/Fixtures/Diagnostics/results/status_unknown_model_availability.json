@@ -1,0 +1,12 @@
+{
+  "id": "modelAvailability.unknown",
+  "title": "Model availability unknown",
+  "category": "Model Availability",
+  "scope": "modelAvailability",
+  "status": "unknown",
+  "severity": "info",
+  "summary": "Model availability has not been checked in this fixture.",
+  "detail": "No path scan or model download was performed.",
+  "userAction": "Use an explicit availability check when that feature exists.",
+  "redactionLevel": "copySafe"
+}

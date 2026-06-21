@@ -1,0 +1,15 @@
+{
+  "id": "negative.externalServerNoOwnershipClaim",
+  "title": "External server ownership must not be implied",
+  "category": "External Target",
+  "scope": "externalServer",
+  "status": "pass",
+  "severity": "info",
+  "summary": "External target context is informational only.",
+  "mustNotContain": [
+    "owned by MLX Server Manager",
+    "can stop this external process",
+    "local model files are managed by the app"
+  ],
+  "redactionLevel": "copySafe"
+}

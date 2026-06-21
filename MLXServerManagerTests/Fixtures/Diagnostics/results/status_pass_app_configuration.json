@@ -1,0 +1,12 @@
+{
+  "id": "appConfiguration.pass",
+  "title": "App configuration check passed",
+  "category": "Configuration",
+  "scope": "appConfiguration",
+  "status": "pass",
+  "severity": "info",
+  "summary": "Configured app values are present for this check.",
+  "detail": "Fixture data only. No live diagnostics were executed.",
+  "userAction": "No action needed.",
+  "redactionLevel": "copySafe"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "redaction.huggingFaceToken",
+  "title": "Hugging Face token redaction fixture",
+  "category": "Privacy / Redaction",
+  "scope": "modelAvailability",
+  "status": "pass",
+  "severity": "info",
+  "inputExample": "HF token: hf_FAKE_TOKEN_REDACTED",
+  "expectedSummary": "Model token redacted.",
+  "mustNotContain": [
+    "hf_FAKE_TOKEN_REDACTED"
+  ],
+  "redactionLevel": "copySafe"
+}

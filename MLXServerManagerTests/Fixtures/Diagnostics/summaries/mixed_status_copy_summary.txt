@@ -1,0 +1,18 @@
+MLX Server Manager Diagnostics Summary
+Target: Example Target
+Profile: Example Profile
+Checks: 7
+Pass: 1
+Warning: 2
+Fail: 1
+Skipped: 1
+Unknown: 1
+Timeout: 1
+Cancelled: 0
+
+- [pass] [Configuration] App configuration check passed: Configured app values are present for this check.
+- [warning] [Profile] Selected profile needs review: The selected profile has a user-actionable configuration warning.
+- [fail] [Configuration] Executable path check failed: The configured executable path did not pass this fixture check.
+- [skipped] [External Target] External server check skipped: The external server check was skipped for this fixture.
+- [unknown] [Model Availability] Model availability unknown: Model availability has not been checked in this fixture.
+- [timeout] [Runtime] Current target check timed out: The selected readiness check timed out.

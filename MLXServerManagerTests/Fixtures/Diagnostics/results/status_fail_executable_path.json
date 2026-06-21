@@ -1,0 +1,12 @@
+{
+  "id": "executablePath.fail",
+  "title": "Executable path check failed",
+  "category": "Configuration",
+  "scope": "executablePath",
+  "status": "fail",
+  "severity": "error",
+  "summary": "The configured executable path did not pass this fixture check.",
+  "detail": "Fixture data only. No file access was performed.",
+  "userAction": "Choose a valid executable path before starting the server.",
+  "redactionLevel": "copySafe"
+}

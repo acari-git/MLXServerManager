@@ -2448,10 +2448,18 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no Swift source changes, tests, fixture files, diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, diagnostics history persistence, runtime behavior change, or release automation.
 
+## v6.23.0 Completed: Diagnostics Result Fixture Files
+
+- Add initial diagnostics fixture data under `MLXServerManagerTests/Fixtures/Diagnostics/`.
+- Add result fixtures for pass, warning, fail, skipped, unknown, cancelled, and timeout states.
+- Add redaction, aggregation, negative, and copied-summary fixtures.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no Swift source changes, tests, diagnostics execution, endpoint testing, inference requests, background monitoring, traffic inspection, telemetry, diagnostics history persistence, runtime behavior change, or release automation.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Diagnostics result fixture file implementation.
+- Diagnostics result fixture loading tests.
 - Model availability surface design.
 - Packaging polish.
 - LAN Web UI.

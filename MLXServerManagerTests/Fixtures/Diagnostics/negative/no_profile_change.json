@@ -1,0 +1,16 @@
+{
+  "id": "negative.selectedProfileNoChange",
+  "title": "Selected profile fields stay unchanged",
+  "category": "Profile",
+  "scope": "selectedProfile",
+  "status": "pass",
+  "severity": "info",
+  "summary": "Diagnostics may report profile state, but profile fields stay unchanged.",
+  "unchangedFields": [
+    "profile.name",
+    "profile.modelPath",
+    "profile.endpoint",
+    "selectedProfileID"
+  ],
+  "redactionLevel": "copySafe"
+}

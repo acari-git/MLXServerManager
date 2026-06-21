@@ -1,0 +1,12 @@
+{
+  "id": "diagnosticsRun.cancelled",
+  "title": "Diagnostics run cancelled",
+  "category": "Runtime",
+  "scope": "currentTarget",
+  "status": "cancelled",
+  "severity": "info",
+  "summary": "The diagnostic run was cancelled before all checks completed.",
+  "detail": "Completed fixture results remain available. Unrun checks should stay skipped.",
+  "userAction": "Run diagnostics again if needed.",
+  "redactionLevel": "copySafe"
+}

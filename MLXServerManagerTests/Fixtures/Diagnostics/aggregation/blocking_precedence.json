@@ -1,0 +1,15 @@
+{
+  "id": "aggregation.blockingPrecedence",
+  "title": "Blocking precedence aggregation fixture",
+  "category": "Runtime",
+  "scope": "currentTarget",
+  "results": [
+    "appConfiguration.pass",
+    "selectedProfile.warning",
+    "executablePath.fail",
+    "currentTarget.timeout"
+  ],
+  "expectedHeadlineSeverity": "error",
+  "expectedSummary": "Diagnostics completed with an error in the explicit check scope.",
+  "redactionLevel": "copySafe"
+}

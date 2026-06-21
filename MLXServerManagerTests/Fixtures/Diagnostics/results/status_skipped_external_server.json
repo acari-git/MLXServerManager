@@ -1,0 +1,12 @@
+{
+  "id": "externalServer.modelsSkipped",
+  "title": "External server check skipped",
+  "category": "External Target",
+  "scope": "externalServer",
+  "status": "skipped",
+  "severity": "info",
+  "summary": "The external server check was skipped for this fixture.",
+  "detail": "No endpoint call was performed.",
+  "userAction": "Run an explicit readiness check if needed.",
+  "redactionLevel": "copySafe"
+}

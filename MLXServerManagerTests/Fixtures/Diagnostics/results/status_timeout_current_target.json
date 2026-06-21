@@ -1,0 +1,12 @@
+{
+  "id": "currentTarget.timeout",
+  "title": "Current target check timed out",
+  "category": "Runtime",
+  "scope": "currentTarget",
+  "status": "timeout",
+  "severity": "warning",
+  "summary": "The selected readiness check timed out.",
+  "detail": "No request was sent by this fixture.",
+  "userAction": "Retry manually if needed.",
+  "redactionLevel": "copySafe"
+}
