@@ -704,6 +704,34 @@ struct UnifiedDashboardView: View {
                 }
             }
 
+            if status.phase == .completed {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Download completed. The model is in the list. Next: Start it or copy connection values after it is running.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    HStack {
+                        Button {
+                            viewModel.startRequested()
+                        } label: {
+                            Label("このモデルを起動", systemImage: "play.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button {
+                            viewModel.copyAllConnectionSettings()
+                        } label: {
+                            Label("接続情報をコピー", systemImage: "doc.on.doc")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+                .padding(8)
+                .background(Color.green.opacity(0.10))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
             HStack {
                 Button {
                     viewModel.startHuggingFaceDownloadRequested()

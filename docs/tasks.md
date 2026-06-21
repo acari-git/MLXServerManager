@@ -2679,6 +2679,14 @@
 - Preserve Direct Mode and avoid proxying, chat UI, credential storage, model deletion, cache cleanup, telemetry, or background automation.
 - No GitHub Release is produced for v8.3.0; release output is deferred until v9.0.0.
 
+## v8.4.0 Completed: Download Completion UX
+
+- Add an explicit completion card after a successful download.
+- Provide direct next-step actions to start the selected model and copy connection settings.
+- Clarify that connection values should be copied after the server is running.
+- Preserve Direct Mode and avoid proxying, chat UI, credential storage, model deletion, cache cleanup, telemetry, or background automation.
+- No GitHub Release is produced for v8.4.0; release output is deferred until v9.0.0.
+
 ## Later
 
 - More advanced resource graphs.
