@@ -2840,6 +2840,14 @@
 - Preserve Direct Mode and avoid credential storage or unrelated runtime automation.
 - No GitHub Release is produced for v10.4.0; release output is deferred until v11.0.0.
 
+## v10.5.0 Completed: Runtime Diagnostics Polish
+
+- Add a runtime diagnostics summary to the Dashboard runtime panel.
+- Surface executable, local model path, endpoint, ready state, selected/running mismatch, and restart-required checks together.
+- Keep diagnostics read-only unless the user explicitly presses existing actions.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v10.5.0; release output is deferred until v11.0.0.
+
 ## Later
 
 - More advanced resource graphs.

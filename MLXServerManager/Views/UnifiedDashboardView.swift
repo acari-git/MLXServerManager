@@ -1079,6 +1079,11 @@ struct UnifiedDashboardView: View {
                 ("再起動必要", viewModel.restartRequired ? "Yes" : "No")
             ])
 
+            Text("Runtime diagnostics")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            DetailGrid(rows: runtimeDiagnosticRows)
+
             if let warning = viewModel.runtimeSelectionWarning {
                 Label(warning, systemImage: "arrow.triangle.2.circlepath")
                     .font(.caption)
@@ -1170,6 +1175,28 @@ struct UnifiedDashboardView: View {
                 Text("コピー")
             }
         }
+    }
+
+    private var runtimeDiagnosticRows: [(String, String)] {
+        [
+            ("Executable", viewModel.settings.mlxServerExecutablePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Missing" : "Configured"),
+            ("Model path", selectedModelPathDiagnostic),
+            ("Port", "\(viewModel.selectedModel?.host ?? viewModel.settings.defaultHost):\(viewModel.selectedModel?.serverPort ?? viewModel.settings.defaultPort)"),
+            ("Ready", viewModel.runtimeState.title),
+            ("Mismatch", viewModel.runtimeSelectionWarning == nil ? "No" : "Yes"),
+            ("Restart required", viewModel.restartRequired ? "Yes" : "No")
+        ]
+    }
+
+    private var selectedModelPathDiagnostic: String {
+        guard let selectedModel = viewModel.selectedModel,
+              let path = ModelAvailabilityPathFormatter.localPathCandidate(for: selectedModel) else {
+            return "Not a local path profile"
+        }
+        var isDirectory = ObjCBool(false)
+        return FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) && isDirectory.boolValue
+            ? "Present"
+            : "Missing"
     }
 
     private var startRecoveryHint: String? {
