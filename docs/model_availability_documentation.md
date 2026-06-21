@@ -3,6 +3,7 @@
 ## Release
 
 - Added in `v6.18.0`.
+- Polished in `v6.18.1` with staleness wording, explicit check scope, external identifier caveats, and UI copy rules.
 - Docs-only documentation for future model availability surfaces.
 - Follows `v6.17.0` / `v6.17.1` Model Download Design.
 - No model availability implementation is included in this release.
@@ -66,6 +67,9 @@ Model identifier is reported by or configured for an external server target.
 
 Unknown
 The app has not checked availability or cannot determine it safely.
+
+Stale
+A previous explicit check exists, but the app has not rechecked the path recently or after a relevant profile edit.
 ```
 
 Do not use terms such as `installed`, `validated`, `compatible`, or `ready` unless the relevant verification actually occurred.
@@ -83,6 +87,12 @@ For local profiles, a future availability surface may show:
 
 Initial implementation should prefer `Unknown` until the user explicitly requests a check.
 
+Explicit check scope:
+
+- check only the selected profile path;
+- do not update any profile field from the check result;
+- mark results as stale after the profile path changes.
+
 ## External Server Availability
 
 For external server targets, availability wording should be separate from local file availability.
@@ -95,6 +105,13 @@ External availability may mean:
 - the app has not verified local files.
 
 Do not imply that external model identifiers correspond to local model files managed by the app.
+
+External identifier caveats:
+
+- a server-reported model ID is not proof of local file availability;
+- an external target may change its model list outside the app;
+- availability wording should say `External` or `Unknown`, not `Present`;
+- local profile path checks should not be run for external targets.
 
 ## Compatibility Boundary
 
@@ -170,6 +187,16 @@ A future UI should consider:
 - avoiding paths in exported diagnostics unless explicitly requested;
 - never including tokens or credentials.
 
+## UI Copy Rules
+
+Future UI copy should:
+
+- use `Configured`, `Unknown`, `Present`, `Missing`, `External`, or `Stale` consistently;
+- explain whether a check was user-triggered;
+- avoid implying model ownership;
+- avoid implying launch compatibility;
+- keep full paths out of compact summary cards unless the user expands details.
+
 ## Documentation Examples
 
 Safe wording examples:
@@ -238,7 +265,7 @@ Safe follow-up releases may include:
 
 ## Release Acceptance
 
-`v6.18.0` is acceptable if:
+`v6.18.0` and `v6.18.1` are acceptable if:
 
 - it remains docs-only;
 - no Swift source files are changed;

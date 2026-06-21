@@ -2377,10 +2377,18 @@
 - Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
 - Keep Direct Mode unchanged; no model download, model deletion, model scanning, cache cleanup, background availability polling, token persistence, telemetry, runtime behavior change, or release automation.
 
+## v6.18.1 Completed: Model Availability Documentation Polish
+
+- Add stale-state wording to `docs/model_availability_documentation.md`.
+- Add explicit selected-profile check scope guidance.
+- Add external model identifier caveats.
+- Add UI copy rules for conservative availability wording and compact path display.
+- Keep the current downloadable app binary at `v6.5.1`; no new app zip is produced.
+- Keep Direct Mode unchanged; no automatic path checking, model download, model deletion, model scanning, cache cleanup, background availability polling, token persistence, telemetry, runtime behavior change, or release automation.
+
 ## Later
 
 - Refresh README screenshots after Dashboard UI Refresh v1.
-- Model Availability Documentation Polish.
 - Deeper diagnostics design.
 - Model availability documentation.
 - Packaging polish.
