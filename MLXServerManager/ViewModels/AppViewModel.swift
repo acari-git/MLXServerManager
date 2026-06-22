@@ -242,6 +242,94 @@ final class AppViewModel: ObservableObject {
         ].joined(separator: "  ")
     }
 
+    var selectedModelSafetyRows: [(String, String)] {
+        guard let selectedModel else {
+            return [("Selected model", "Missing")]
+        }
+        return [
+            ("Executable", executableSafetyText),
+            ("Model", modelIdentitySafetyText(for: selectedModel)),
+            ("Server port", portSafetyText(host: selectedModel.host, port: selectedModel.serverPort)),
+            ("Proxy port", portSafetyText(host: selectedModel.host, port: integratedProxyPort(for: selectedModel))),
+            ("Duplicate", duplicateProfileWarning(for: selectedModel) ?? "OK"),
+            ("Runtime edit", runtimeEditingSafetyText(for: selectedModel))
+        ]
+    }
+
+    var selectedModelSafetySummary: String {
+        let warningCount = selectedModelSafetyRows.filter { !$0.1.localizedCaseInsensitiveContains("OK") && !$0.1.localizedCaseInsensitiveContains("Available") && !$0.1.localizedCaseInsensitiveContains("Ready") }.count
+        return warningCount == 0 ? "Safety: OK" : "Safety: \(warningCount) warning(s)"
+    }
+
+    var failedStartRecoverySummary: String {
+        switch runtimeState {
+        case let .error(message):
+            return recoveryGuidance(for: message)
+        case let .portBusy(host, port):
+            return "Port busy at \(host):\(port). Stop the conflicting process or choose another port."
+        case let .portCheckFailed(_, _, message):
+            return recoveryGuidance(for: message)
+        case let .readyCheckFailed(_, _, message):
+            return recoveryGuidance(for: message)
+        default:
+            return "No failed start recovery needed."
+        }
+    }
+
+    private var executableSafetyText: String {
+        let executablePath = settings.mlxServerExecutablePath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !executablePath.isEmpty else { return "Missing executable path" }
+        return FileManager.default.isExecutableFile(atPath: executablePath) ? "OK" : "Missing or not executable"
+    }
+
+    private func modelIdentitySafetyText(for model: ModelConfig) -> String {
+        if let localPath = ModelAvailabilityPathFormatter.localPathCandidate(for: model) {
+            var isDirectory = ObjCBool(false)
+            return FileManager.default.fileExists(atPath: localPath, isDirectory: &isDirectory) && isDirectory.boolValue
+                ? "OK local path"
+                : "Missing local path"
+        }
+        return model.modelID.contains("/") ? "Needs review: HF ID" : "Needs review"
+    }
+
+    private func portSafetyText(host: String, port: Int) -> String {
+        switch portChecker.check(host: host, port: port) {
+        case .available:
+            return "Available"
+        case .busy:
+            return "Busy"
+        case let .invalidInput(message):
+            return "Invalid: \(message)"
+        case let .failed(_, _, message):
+            return "Check failed: \(message)"
+        }
+    }
+
+    func duplicateProfileWarning(for model: ModelConfig) -> String? {
+        let duplicateName = models.contains { $0.id != model.id && $0.displayName == model.displayName }
+        let duplicateModelID = models.contains { $0.id != model.id && $0.modelID == model.modelID }
+        let duplicateEndpoint = models.contains { $0.id != model.id && $0.host == model.host && $0.serverPort == model.serverPort }
+        if duplicateName { return "Duplicate display name" }
+        if duplicateModelID { return "Duplicate model ID" }
+        if duplicateEndpoint { return "Duplicate endpoint" }
+        return nil
+    }
+
+    func runtimeEditingSafetyText(for model: ModelConfig) -> String {
+        guard isManagedProcessRunning, model.id == runningModelID else { return "Ready" }
+        return "Stop before runtime-critical edits"
+    }
+
+    private func recoveryGuidance(for message: String) -> String {
+        let lower = message.lowercased()
+        if lower.contains("executable") { return "Executable problem. Check Settings and run Diagnostics." }
+        if lower.contains("model path") || lower.contains("missing") { return "Model problem. Check the selected model path or Hugging Face ID." }
+        if lower.contains("port") { return "Port problem. Check port safety or choose another port." }
+        if lower.contains("permission") { return "Permission problem. Check executable and model folder permissions." }
+        if lower.contains("timed out") || lower.contains("ready") { return "Readiness problem. Wait longer, run Ready Check, or inspect logs." }
+        return "Inspect logs and copy troubleshooting context."
+    }
+
     var latestSpeedTestSummary: String {
         latestBenchmarkResult?.summary ?? latestSpeedTestMessage
     }

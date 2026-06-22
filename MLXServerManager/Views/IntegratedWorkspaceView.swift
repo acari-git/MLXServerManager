@@ -255,6 +255,9 @@ struct IntegratedWorkspaceView: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         statusPill(viewModel.integratedStatusText(for: model))
+                        if let warning = viewModel.duplicateProfileWarning(for: model) {
+                            statusPill(warning)
+                        }
                         Text(viewModel.integratedStatusDetail(for: model))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -472,6 +475,14 @@ struct IntegratedWorkspaceView: View {
                         Text("削除")
                     }
                     .disabled(selectedModel == nil || viewModel.models.count <= 1 || viewModel.isManagedProcessRunning)
+                }
+
+                groupedSection("Safety") {
+                    formRow("Summary", viewModel.selectedModelSafetySummary, valueColor: viewModel.selectedModelSafetySummary == "Safety: OK" ? .green : .orange)
+                    ForEach(viewModel.selectedModelSafetyRows, id: \.0) { row in
+                        formRow(row.0, row.1, valueColor: row.1 == "OK" || row.1 == "Available" || row.1 == "Ready" || row.1 == "OK local path" ? .green : .orange)
+                    }
+                    formRow("Recovery", viewModel.failedStartRecoverySummary, valueColor: viewModel.failedStartRecoverySummary == "No failed start recovery needed." ? .secondary : .orange)
                 }
 
                 groupedSection("基本情報") {

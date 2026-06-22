@@ -3314,6 +3314,15 @@
 - Produce the requested final release asset: `MLXServerManager-v17.0.0-unsigned.zip`.
 - Preserve Direct Mode.
 
+## v17.1.0 Completed: Integrated Preflight Panel
+
+- Add selected model safety rows for executable, model identity, server port, proxy port, duplicates, and runtime editing.
+- Add failed start recovery summary derived from current runtime state.
+- Surface safety and recovery rows in the right-side integrated model settings panel.
+- Add duplicate profile warning pills in the integrated model table.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v17.1.0; release output is deferred until v18.0.0.
+
 ## Later
 
 - More advanced resource graphs.
