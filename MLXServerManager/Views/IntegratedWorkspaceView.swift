@@ -342,6 +342,17 @@ struct IntegratedWorkspaceView: View {
                 Text("ログ (\(selectedModel?.displayName ?? "全体"))")
                     .font(.headline)
                 Spacer()
+                Picker("Category", selection: $viewModel.logCategoryFilter) {
+                    ForEach(viewModel.logCategoryFilterOptions, id: \.self) { category in
+                        Text(category).tag(category)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 130)
+                Button("コピー") {
+                    viewModel.copyLogsRequested()
+                }
+                .disabled(viewModel.visibleLogEntries.isEmpty)
                 Button("クリア") {
                     viewModel.clearLogsRequested()
                 }
@@ -349,6 +360,15 @@ struct IntegratedWorkspaceView: View {
             .padding(14)
 
             Divider()
+
+            if let latestImportant = viewModel.latestImportantLogEntry {
+                Label(latestImportant.line, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .lineLimit(1)
+                    .padding(.horizontal, 14)
+                    .padding(.top, 8)
+            }
 
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 5) {

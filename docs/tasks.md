@@ -3285,6 +3285,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v16.6.0; release output is deferred until v17.0.0.
 
+## v16.7.0 Completed: Integrated Logs Wiring
+
+- Add log category filter to the integrated log panel.
+- Add copy and clear actions directly in the integrated log header.
+- Surface the latest important log above the scrollable log list.
+- Preserve raw logs and Direct Mode boundaries.
+- No GitHub Release is produced for v16.7.0; release output is deferred until v17.0.0.
+
 ## Later
 
 - More advanced resource graphs.
