@@ -2997,6 +2997,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v12.4.0; release output is deferred until v13.0.0.
 
+## v12.5.0 Completed: Advanced Launch Options Preview
+
+- Add an advanced launch options summary for the selected profile.
+- Show raw extra args and supported advanced fields next to the launch command preview.
+- Keep this read-only and aligned with the command preview.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v12.5.0; release output is deferred until v13.0.0.
+
 ## Later
 
 - More advanced resource graphs.

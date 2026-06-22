@@ -231,6 +231,34 @@ final class AppViewModel: ObservableObject {
         )
     }
 
+    var selectedAdvancedLaunchOptionsSummary: String {
+        guard let options = selectedModel?.advancedLaunchOptions, !options.isEmpty else {
+            return "No advanced launch options configured."
+        }
+        let fields: [(String, String?)] = [
+            ("Raw extra args", options.rawExtraArgs),
+            ("Chat template args", options.chatTemplateArgs),
+            ("Temperature", options.defaultTemperature),
+            ("Top P", options.defaultTopP),
+            ("Top K", options.defaultTopK),
+            ("Min P", options.defaultMinP),
+            ("Max tokens", options.defaultMaxTokens),
+            ("Allowed origins", options.allowedOrigins),
+            ("Log level", options.logLevel),
+            ("Decode concurrency", options.decodeConcurrency),
+            ("Prompt concurrency", options.promptConcurrency),
+            ("Prefill step size", options.prefillStepSize),
+            ("Prompt cache size", options.promptCacheSize),
+            ("Prompt cache bytes", options.promptCacheBytes)
+        ]
+        return fields.compactMap { label, value in
+            guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
+                return nil
+            }
+            return "\(label): \(value)"
+        }.joined(separator: "\n")
+    }
+
     var benchmarkFailureGuidance: String? {
         guard let latestBenchmarkResult, latestBenchmarkResult.phase == .failed else {
             return nil
