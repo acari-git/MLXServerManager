@@ -3229,6 +3229,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v15.3.0; release output is deferred until v16.0.0.
 
+## v15.4.0 Completed: Screenshot Comparison Pass
+
+- Add dark appearance to the integrated workspace.
+- Add `docs/v16_screenshot_comparison.md`.
+- Document structural match and remaining data-wiring polish items.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v15.4.0; release output is deferred until v16.0.0.
+
 ## Later
 
 - More advanced resource graphs.

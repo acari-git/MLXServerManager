@@ -20,6 +20,7 @@ struct IntegratedWorkspaceView: View {
                 .frame(minWidth: 360, idealWidth: 430, maxWidth: 520)
         }
         .background(Color(nsColor: .windowBackgroundColor))
+        .preferredColorScheme(.dark)
         .accessibilityIdentifier("integrated-workspace")
     }
 
