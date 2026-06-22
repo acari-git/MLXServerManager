@@ -1168,11 +1168,24 @@ struct UnifiedDashboardView: View {
                         .foregroundStyle(.secondary)
                     Spacer()
                     Button {
+                        viewModel.copyLatestBenchmark()
+                    } label: {
+                        Text("Copy latest")
+                    }
+                    .disabled(viewModel.latestBenchmarkResult == nil)
+
+                    Button {
                         viewModel.copyBenchmarkSummary()
                     } label: {
-                        Text("Copy summary")
+                        Text("Copy history")
                     }
                     .disabled(viewModel.benchmarkHistory.isEmpty)
+
+                    Button {
+                        viewModel.copyBenchmarkTroubleshooting()
+                    } label: {
+                        Text("Copy debug")
+                    }
                 }
                 Text(viewModel.benchmarkSummaryText)
                     .font(.caption2)

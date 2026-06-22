@@ -272,6 +272,27 @@ final class AppViewModel: ObservableObject {
         }).joined(separator: "\n")
     }
 
+    var latestBenchmarkCopyText: String {
+        guard let latestBenchmarkResult else {
+            return "No benchmark result in this session."
+        }
+        return "Latest Benchmark\nModel: \(latestBenchmarkResult.modelID)\nEndpoint: \(latestBenchmarkResult.baseURL)\nSelected: \(latestBenchmarkResult.selectedProfileName)\nRunning: \(latestBenchmarkResult.runningProfileText)\nStatus: \(latestBenchmarkResult.phase.rawValue)\nLatency: \(latestBenchmarkResult.latencyText)\nHTTP: \(latestBenchmarkResult.httpStatusText)\nMessage: \(latestBenchmarkResult.message)"
+    }
+
+    var benchmarkTroubleshootingCopyText: String {
+        [
+            "Benchmark Troubleshooting",
+            "Runtime: \(runtimeState.title)",
+            "Target: \(connectionTargetSummary.targetType)",
+            "Base URL: \(baseURL)",
+            "Selected model: \(selectedModelIdentifier)",
+            "Running model: \(runningModelID ?? "Not running")",
+            "Restart required: \(restartRequired ? "Yes" : "No")",
+            "Latest benchmark: \(latestBenchmarkResult?.summary ?? "Not run")",
+            "Guidance: \(benchmarkFailureGuidance ?? "No failure guidance")"
+        ].joined(separator: "\n")
+    }
+
     var logCategoryFilterOptions: [String] {
         ["All"] + Array(Set(logEntries.map(\.category))).sorted()
     }
@@ -1557,7 +1578,17 @@ final class AppViewModel: ObservableObject {
 
     func copyBenchmarkSummary() {
         copyToPasteboard(benchmarkCopyText)
-        appendLog("[benchmark] copied benchmark summary.")
+        appendLog("[benchmark] copied benchmark history summary.")
+    }
+
+    func copyLatestBenchmark() {
+        copyToPasteboard(latestBenchmarkCopyText)
+        appendLog("[benchmark] copied latest benchmark.")
+    }
+
+    func copyBenchmarkTroubleshooting() {
+        copyToPasteboard(benchmarkTroubleshootingCopyText)
+        appendLog("[benchmark] copied troubleshooting context.")
     }
 
     func copyChatCompletionsCurl() {

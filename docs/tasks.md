@@ -2973,6 +2973,14 @@
 - Keep benchmark execution explicit and Direct Mode only.
 - No GitHub Release is produced for v12.1.0; release output is deferred until v13.0.0.
 
+## v12.2.0 Completed: Benchmark Copy Format
+
+- Add separate copy formats for latest benchmark, history summary, and troubleshooting context.
+- Include runtime, target, selected/running model, restart state, and guidance in troubleshooting copy.
+- Keep benchmark copies local and user-initiated.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v12.2.0; release output is deferred until v13.0.0.
+
 ## Later
 
 - More advanced resource graphs.
