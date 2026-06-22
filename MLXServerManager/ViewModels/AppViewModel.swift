@@ -259,6 +259,13 @@ final class AppViewModel: ObservableObject {
         }.joined(separator: "\n")
     }
 
+    var diagnosticsBenchmarkCorrelationSummary: String {
+        let latest = latestBenchmarkResult?.summary ?? "No benchmark result"
+        let mismatch = runtimeSelectionWarning == nil ? "No selected/running mismatch" : "Selected/running mismatch"
+        let restart = restartRequired ? "Restart required" : "No restart required"
+        return "\(runtimeState.title) · \(mismatch) · \(restart) · \(latest)"
+    }
+
     var benchmarkFailureGuidance: String? {
         guard let latestBenchmarkResult, latestBenchmarkResult.phase == .failed else {
             return nil

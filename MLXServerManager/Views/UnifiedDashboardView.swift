@@ -1152,6 +1152,14 @@ struct UnifiedDashboardView: View {
                 .foregroundStyle(.secondary)
             DetailGrid(rows: runtimeDiagnosticRows)
 
+            Label(viewModel.diagnosticsBenchmarkCorrelationSummary, systemImage: "chart.line.uptrend.xyaxis")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(nsColor: .textBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+
             Text("Speed Test")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)

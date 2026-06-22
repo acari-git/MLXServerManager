@@ -3005,6 +3005,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v12.5.0; release output is deferred until v13.0.0.
 
+## v12.6.0 Completed: Diagnostics + Benchmark Correlation
+
+- Add a compact diagnostics/benchmark correlation summary.
+- Combine runtime state, selected/running mismatch, restart requirement, and latest benchmark result.
+- Surface the correlation in the Dashboard runtime panel.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v12.6.0; release output is deferred until v13.0.0.
+
 ## Later
 
 - More advanced resource graphs.
