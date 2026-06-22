@@ -25,6 +25,8 @@ struct ProfilesSurfaceView: View {
                         }
                     }
                     .accessibilityIdentifier("profiles-surface-profile-list")
+
+                    selectedModelInspector
                 }
             }
             .padding(20)
@@ -57,11 +59,11 @@ struct ProfilesSurfaceView: View {
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.accentColor)
 
-                Text("Profiles")
+                Text("Models")
                     .font(.title2.weight(.semibold))
             }
 
-            Text("Model profile list surface for staged navigation. Runtime controls remain on Dashboard.")
+            Text("Model management surface with profile list, selected/running badges, and selected model inspector.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -81,6 +83,46 @@ struct ProfilesSurfaceView: View {
             summaryCard("Restart required", value: restartRequiredText)
         }
         .accessibilityIdentifier("profiles-surface-summary")
+    }
+
+    private var selectedModelInspector: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Selected model inspector")
+                .font(.headline)
+            if let selectedModel {
+                DetailGrid(rows: [
+                    ("Model ID", selectedModel.modelID),
+                    ("Display Name", selectedModel.displayName),
+                    ("Source", sourceLabel(for: selectedModel)),
+                    ("Endpoint", "\(selectedModel.host):\(selectedModel.serverPort)"),
+                    ("Thinking", selectedModel.enableThinking ? "Enabled" : "Disabled"),
+                    ("Notes", selectedModel.notes.isEmpty ? "None" : selectedModel.notes)
+                ])
+                Label("Deleting a profile removes metadata only. Model files and Hugging Face cache are not deleted.", systemImage: "shield")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Select a model profile to inspect its details.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(Color.secondary.opacity(0.12))
+        }
+        .accessibilityIdentifier("models-surface-selected-inspector")
+    }
+
+    private func sourceLabel(for model: ModelConfig) -> String {
+        if ModelAvailabilityPathFormatter.localPathCandidate(for: model) != nil {
+            return model.notes.localizedCaseInsensitiveContains("downloaded") ? "Downloaded" : "Local"
+        }
+        return model.modelID.contains("/") ? "HF ID" : "Advanced"
     }
 
     private func summaryCard(_ title: String, value: String) -> some View {
@@ -106,9 +148,9 @@ struct ProfilesSurfaceView: View {
 
     private var emptyState: some View {
         ContentUnavailableView(
-            "No Profiles",
-            systemImage: "list.bullet.rectangle",
-            description: Text("Add profiles from Dashboard. This surface does not change runtime lifecycle behavior.")
+            "No Models",
+            systemImage: "square.stack.3d.up",
+            description: Text("Add models from Downloads or Dashboard. This surface does not start, stop, or mutate runtime behavior.")
         )
         .frame(maxWidth: .infinity, minHeight: 240)
         .accessibilityIdentifier("profiles-surface-empty-state")

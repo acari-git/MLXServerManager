@@ -3071,6 +3071,15 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v13.3.0; release output is deferred until v14.0.0.
 
+## v13.4.0 Completed: Models Page Redesign
+
+- Convert the Profiles surface into the v14 Models surface.
+- Add a selected model inspector directly under the model list.
+- Surface source type, endpoint, Thinking state, notes, and metadata-only deletion safety.
+- Keep runtime lifecycle controls outside the Models surface.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v13.4.0; release output is deferred until v14.0.0.
+
 ## Later
 
 - More advanced resource graphs.
