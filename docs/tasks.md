@@ -2873,6 +2873,13 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v10.8.0; release output is deferred until v11.0.0.
 
+## v10.9.0 Completed: v11 Readiness Stabilization
+
+- Update README Quick Start for setup fixes, pickers, runtime diagnostics, download recovery, and connection presets.
+- Keep v11.0.0 as the only release for this sequence.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v10.9.0; release output is deferred until v11.0.0.
+
 ## Later
 
 - More advanced resource graphs.
