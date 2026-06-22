@@ -3323,6 +3323,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v17.1.0; release output is deferred until v18.0.0.
 
+## v17.2.0 Completed: Port Conflict Safety
+
+- Add explicit selected server-port and proxy-port safety summaries.
+- Wire the right-side port settings panel to show Available / Busy / Invalid / Check failed states.
+- Keep proxy display informational; proxy mode is not implemented.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v17.2.0; release output is deferred until v18.0.0.
+
 ## Later
 
 - More advanced resource graphs.

@@ -495,8 +495,8 @@ struct IntegratedWorkspaceView: View {
                     formRow("サーバーポート (mlx_lm.server)", selectedModel.map { String($0.serverPort) } ?? "-")
                     formRow("プロキシポート (Hermes接続用)", proxyPortText)
                     HStack {
-                        availabilityPill("\(selectedModel?.serverPort ?? 0): 使用可能")
-                        availabilityPill("\(proxyPortText): 使用可能")
+                        availabilityPill("\(selectedModel?.serverPort ?? 0): \(viewModel.selectedServerPortSafetyText)")
+                        availabilityPill("\(proxyPortText): \(viewModel.selectedProxyPortSafetyText)")
                     }
                 }
 

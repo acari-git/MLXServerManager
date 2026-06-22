@@ -261,6 +261,16 @@ final class AppViewModel: ObservableObject {
         return warningCount == 0 ? "Safety: OK" : "Safety: \(warningCount) warning(s)"
     }
 
+    var selectedServerPortSafetyText: String {
+        guard let selectedModel else { return "No model selected" }
+        return portSafetyText(host: selectedModel.host, port: selectedModel.serverPort)
+    }
+
+    var selectedProxyPortSafetyText: String {
+        guard let selectedModel else { return "No model selected" }
+        return portSafetyText(host: selectedModel.host, port: integratedProxyPort(for: selectedModel))
+    }
+
     var failedStartRecoverySummary: String {
         switch runtimeState {
         case let .error(message):
