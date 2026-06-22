@@ -2880,6 +2880,12 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v10.9.0; release output is deferred until v11.0.0.
 
+## v11.0.0 Completed: Safe Daily Operations Milestone
+
+- Complete the v10.x staged path from setup fix actions, pickers, profile safety, download recovery, runtime diagnostics, log readability, connection presets, layout consolidation, and v11 readiness.
+- Produce the requested final release asset: `MLXServerManager-v11.0.0-unsigned.zip`.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+
 ## Later
 
 - More advanced resource graphs.
