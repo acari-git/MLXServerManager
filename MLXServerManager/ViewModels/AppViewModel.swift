@@ -707,6 +707,8 @@ final class AppViewModel: ObservableObject {
         let host = selectedModel?.host ?? settings.defaultHost
         let port = selectedModel?.serverPort ?? settings.defaultPort
         let profileID = selectedModel?.id ?? selectedModelIdentifier
+        let selectedProfileName = selectedModel?.displayName ?? selectedModelIdentifier
+        let runningProfileID = runningModelID
         let modelID = selectedModelIdentifier
         let targetBaseURL = baseURL
         isSpeedTestRunning = true
@@ -729,6 +731,9 @@ final class AppViewModel: ObservableObject {
                     baseURL: targetBaseURL,
                     phase: .success,
                     readinessLatencyMS: elapsedMS,
+                    statusCode: statusCode,
+                    selectedProfileName: selectedProfileName,
+                    runningProfileID: runningProfileID,
                     message: "HTTP \(statusCode) from /v1/models"
                 )
                 appendLog("[benchmark] speed test succeeded in \(Int(elapsedMS)) ms.")
@@ -740,20 +745,23 @@ final class AppViewModel: ObservableObject {
                     baseURL: targetBaseURL,
                     phase: .failed,
                     readinessLatencyMS: elapsedMS,
+                    statusCode: statusCode,
+                    selectedProfileName: selectedProfileName,
+                    runningProfileID: runningProfileID,
                     message: "HTTP \(statusCode) from /v1/models"
                 )
                 appendLog("[benchmark] speed test failed in \(Int(elapsedMS)) ms: HTTP \(statusCode).")
             case let .invalidInput(message):
                 latestSpeedTestMessage = "Failed: \(message)"
-                benchmarkResult = BenchmarkResult(profileID: profileID, modelID: modelID, baseURL: targetBaseURL, phase: .failed, readinessLatencyMS: nil, message: message)
+                benchmarkResult = BenchmarkResult(profileID: profileID, modelID: modelID, baseURL: targetBaseURL, phase: .failed, readinessLatencyMS: nil, selectedProfileName: selectedProfileName, runningProfileID: runningProfileID, message: message)
                 appendLog("[benchmark] speed test failed: \(message)")
             case let .failed(_, message):
                 latestSpeedTestMessage = "Failed: \(message)"
-                benchmarkResult = BenchmarkResult(profileID: profileID, modelID: modelID, baseURL: targetBaseURL, phase: .failed, readinessLatencyMS: elapsedMS, message: message)
+                benchmarkResult = BenchmarkResult(profileID: profileID, modelID: modelID, baseURL: targetBaseURL, phase: .failed, readinessLatencyMS: elapsedMS, selectedProfileName: selectedProfileName, runningProfileID: runningProfileID, message: message)
                 appendLog("[benchmark] speed test failed in \(Int(elapsedMS)) ms: \(message)")
             case .timedOut:
                 latestSpeedTestMessage = "Failed: request timed out."
-                benchmarkResult = BenchmarkResult(profileID: profileID, modelID: modelID, baseURL: targetBaseURL, phase: .failed, readinessLatencyMS: elapsedMS, message: "Request timed out")
+                benchmarkResult = BenchmarkResult(profileID: profileID, modelID: modelID, baseURL: targetBaseURL, phase: .failed, readinessLatencyMS: elapsedMS, selectedProfileName: selectedProfileName, runningProfileID: runningProfileID, message: "Request timed out")
                 appendLog("[benchmark] speed test timed out after \(Int(elapsedMS)) ms.")
             }
             latestBenchmarkResult = benchmarkResult

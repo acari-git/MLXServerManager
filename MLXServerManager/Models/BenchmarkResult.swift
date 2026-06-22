@@ -14,6 +14,9 @@ struct BenchmarkResult: Identifiable, Equatable {
     let baseURL: String
     let phase: BenchmarkPhase
     let readinessLatencyMS: Double?
+    let httpStatusCode: Int?
+    let selectedProfileName: String
+    let runningProfileID: String?
     let message: String
 
     init(
@@ -24,6 +27,9 @@ struct BenchmarkResult: Identifiable, Equatable {
         baseURL: String,
         phase: BenchmarkPhase,
         readinessLatencyMS: Double?,
+        statusCode: Int? = nil,
+        selectedProfileName: String = "Unknown",
+        runningProfileID: String? = nil,
         message: String
     ) {
         self.id = id
@@ -33,6 +39,9 @@ struct BenchmarkResult: Identifiable, Equatable {
         self.baseURL = baseURL
         self.phase = phase
         self.readinessLatencyMS = readinessLatencyMS
+        self.httpStatusCode = statusCode
+        self.selectedProfileName = selectedProfileName
+        self.runningProfileID = runningProfileID
         self.message = message
     }
 
@@ -43,7 +52,15 @@ struct BenchmarkResult: Identifiable, Equatable {
         return "\(Int(readinessLatencyMS)) ms"
     }
 
+    var httpStatusText: String {
+        httpStatusCode.map(String.init) ?? "-"
+    }
+
+    var runningProfileText: String {
+        runningProfileID ?? "Not running"
+    }
+
     var summary: String {
-        "\(phase.rawValue): \(latencyText) — \(message)"
+        "\(phase.rawValue): \(latencyText) — \(selectedProfileName) @ \(baseURL) — \(message)"
     }
 }

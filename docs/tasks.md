@@ -2965,6 +2965,14 @@
 - Produce the requested final release asset: `MLXServerManager-v12.0.0-unsigned.zip`.
 - Preserve Direct Mode.
 
+## v12.1.0 Completed: Benchmark Detail Polish
+
+- Add profile and endpoint context to benchmark results.
+- Capture selected profile name and running profile identity for each Speed Test.
+- Capture HTTP status when available for readiness latency results.
+- Keep benchmark execution explicit and Direct Mode only.
+- No GitHub Release is produced for v12.1.0; release output is deferred until v13.0.0.
+
 ## Later
 
 - More advanced resource graphs.
