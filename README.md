@@ -144,10 +144,12 @@ Do not download the source archive if you want the app binary. Use the named `ML
    - or use the advanced profile editor.
 5. Confirm the model appears in the model list, has the expected source badge, and is selected. Use the source filter when you have many profiles.
 6. Use runtime diagnostics and Start preflight before launching `mlx_lm.server`.
-7. If a download fails, use the queue restore, URL copy, or Retry actions.
-8. Confirm the Current Target summary in Connection Settings or the Dashboard connection card.
-9. Copy the Hermes Agent, generic OpenAI-compatible, or curl preset.
-10. Paste those values into an OpenAI-compatible client.
+7. After the server is ready, run the explicit Speed Test to measure `/v1/models` latency.
+8. Review benchmark history, best/average latency, and failure guidance in the Dashboard runtime panel.
+9. If a download fails, use the queue restore, URL copy, or Retry actions.
+10. Confirm the Current Target summary in Connection Settings or the Dashboard connection card.
+11. Copy the Hermes Agent, generic OpenAI-compatible, curl preset, or benchmark summary.
+12. Paste connection values into an OpenAI-compatible client.
 
 You must provide your own `mlx-lm` environment and `mlx_lm.server` executable. You can register existing model files, search Hugging Face and choose a result, or use the Dashboard Hugging Face card to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: the client connects directly to `mlx_lm.server`; MLX Server Manager does not proxy inference traffic or run chat completions.
 

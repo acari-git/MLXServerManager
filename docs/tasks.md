@@ -2951,6 +2951,14 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v11.8.0; release output is deferred until v12.0.0.
 
+## v11.9.0 Completed: v12 Readiness Stabilization
+
+- Update README Quick Start for the v12 performance workflow.
+- Document history review and summary copy in the daily flow.
+- Keep v12.0.0 as the only release for this sequence.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v11.9.0; release output is deferred until v12.0.0.
+
 ## Later
 
 - More advanced resource graphs.
