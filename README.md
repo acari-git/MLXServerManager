@@ -102,23 +102,23 @@ See [docs/product_direction.md](docs/product_direction.md) for the full project 
 Download the latest app-code release asset from GitHub Releases:
 
 ```text
-MLXServerManager-v17.0.0-unsigned.zip
+MLXServerManager-v18.0.0-unsigned.zip
 ```
 
 On the GitHub Release page, use the file listed under **Assets** with this exact name. Do not use **Source code (zip)** or **Source code (tar.gz)** when you want the app.
 
-`v17.0.0` is the latest app-code release. Recent v6/v7/v8/v9/v10/v11/v12/v13/v14/v15/v16 staged commits do not replace this app binary.
+`v18.0.0` is the latest app-code release. Recent v6/v7/v8/v9/v10/v11/v12/v13/v14/v15/v16/v17 staged commits do not replace this app binary.
 
 Verify the checksum before opening the app:
 
 ```text
-SHA-256: b9cd32373f7e08ff8cbcf6832bb28c9ec7b01ddaef29afb203a6024ca89f6574
+SHA-256: 2fab6114de262523620a80a4855b0a08ff6674259ec667a0cb20d6c4e26e0da6
 ```
 
 From the folder containing the downloaded zip, you can check it with:
 
 ```sh
-shasum -a 256 MLXServerManager-v17.0.0-unsigned.zip
+shasum -a 256 MLXServerManager-v18.0.0-unsigned.zip
 ```
 
 Extract the zip and confirm it contains `MLXServerManager.app`. Move the app to your preferred local location, such as `/Applications` or a user-owned apps folder.
@@ -130,7 +130,7 @@ xattr -dr com.apple.quarantine /path/to/MLXServerManager.app
 open -n /path/to/MLXServerManager.app
 ```
 
-Do not download the source archive if you want the app binary. Use the named `MLXServerManager-v17.0.0-unsigned.zip` release asset.
+Do not download the source archive if you want the app binary. Use the named `MLXServerManager-v18.0.0-unsigned.zip` release asset.
 
 ## Quick Start
 
@@ -153,7 +153,7 @@ Do not download the source archive if you want the app binary. Use the named `ML
 
 ## v14 GUI Optimization Direction
 
-v17.0.0 focuses on integrated GUI functional stability. The app opens into a single operation workspace with left menu/system metrics, central model list/actions/logs, and right selected-model details/Hermes Agent connection information. The integrated workspace now connects menu navigation, model state summaries, action-state guidance, edit/delete actions, log filtering, and Direct Mode copy values while preserving Direct Mode.
+v18.0.0 focuses on model operations safety. The integrated workspace now surfaces executable readiness, model identity validation, server/proxy port safety, duplicate profile warnings, runtime editing safety, failed-start recovery guidance, and a copyable safety summary while preserving Direct Mode.
 
 You must provide your own `mlx-lm` environment and `mlx_lm.server` executable. You can register existing model files, search Hugging Face and choose a result, or use the Dashboard Hugging Face card to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: the client connects directly to `mlx_lm.server`; MLX Server Manager does not proxy inference traffic or run chat completions.
 
@@ -237,7 +237,7 @@ Model Profile export and import are documented in [docs/model_profile_import_exp
 
 The current downloadable app binary asset is the latest app-code release:
 
-- `MLXServerManager-v17.0.0-unsigned.zip`
+- `MLXServerManager-v18.0.0-unsigned.zip`
 
 v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 through v5.0.0 are app-code dashboard polish releases with unsigned app zip assets. v5.1.0 through v5.9.0 are documentation releases. v6.0.0 is an app-code shell foundation release. v6.0.1 is an app-code sidebar polish release. v6.0.2 is an app-code release hygiene follow-up. v6.0.3 is an app-code App Shell identifier follow-up. v6.0.4 is an app-code AppSection metadata test follow-up with an unsigned app zip asset. v6.0.5 is docs-only and includes no new app zip. v6.1.0 is an app-code Profiles / Model List Surface release. v6.1.1 is an app-code Profiles Surface polish release. v6.2.0 is an app-code Detail Inspector Foundation release. v6.2.1 is an app-code Detail Inspector polish release. v6.3.0 is an app-code Logs Panel Refresh release. v6.3.1 is an app-code Logs Surface polish release. v6.4.0 is an app-code Client Setup Surface release. v6.4.1 is an app-code Client Setup Surface polish release. v6.5.0 is an app-code Metrics / System Context release. v6.5.1 is an app-code Metrics Surface polish release with an unsigned app zip asset. v6.6.0 is docs-only and includes no new app zip. v6.6.1 is docs-only and includes no new app zip. v6.7.0 is docs-only and includes no new app zip. v6.7.1 is docs-only and includes no new app zip. v6.8.0 is docs-only and includes no new app zip. v6.8.1 is docs-only and includes no new app zip. v6.9.0 is docs-only and includes no new app zip. v6.9.1 is docs-only and includes no new app zip. v6.10.0 is docs-only and includes no new app zip. v6.10.1 is docs-only and includes no new app zip. v6.11.0 is docs-only and includes no new app zip. v6.11.1 is docs-only and includes no new app zip. v6.12.0 is docs-only and includes no new app zip. v6.12.1 is docs-only and includes no new app zip. v6.13.0 is docs-only and includes no new app zip. v6.13.1 is docs-only and includes no new app zip. v6.14.0 is docs-only and includes no new app zip. v6.14.1 is docs-only and includes no new app zip. v6.15.0 is docs-only and includes no new app zip. v6.16.0 is docs-only and includes no new app zip. v6.16.1 is docs-only and includes no new app zip. v6.17.0 is docs-only and includes no new app zip. v6.17.1 is docs-only and includes no new app zip. v6.18.0 is docs-only and includes no new app zip. v6.18.1 is docs-only and includes no new app zip. v6.19.0 is docs-only and includes no new app zip. v6.19.1 is docs-only and includes no new app zip. v6.20.0 is docs-only and includes no new app zip. v6.20.1 is docs-only and includes no new app zip. v6.21.0 is docs-only and includes no new app zip. v6.21.1 is docs-only and includes no new app zip. v6.22.0 is docs-only and includes no new app zip. v6.22.1 is docs-only and includes no new app zip. v6.23.0 includes fixture data files only and no new app zip. v6.23.1 includes fixture data polish only and no new app zip. v6.24.0 includes test-only diagnostics fixture loading coverage and no new app zip. v6.25.0 is docs-only and includes no new app zip. v6.26.0 is docs-only and includes no new app zip. v6.27.0 is docs-only and includes no new app zip. v6.28.0 is docs-only and includes no new app zip. v6.29.0 is docs-only and includes no new app zip. v6.30.0 is docs-only and includes no new app zip. v6.30.1 is docs-only and includes no new app zip. v7.0.0 is an app-code Model Availability Surface release with an unsigned app zip asset. v7.1.0 is an app-code Unified Dashboard GUI Foundation release with an unsigned app zip asset. v7.2.0 is an app-code Hugging Face Download by ID / URL release with an unsigned app zip asset.
 

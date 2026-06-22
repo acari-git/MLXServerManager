@@ -3382,6 +3382,12 @@
 - Reconfirm known limitations and Direct Mode boundaries before v18.0.0.
 - No GitHub Release is produced for v17.9.0; release output is deferred until v18.0.0.
 
+## v18.0.0 Completed: Model Operations Safety Stable
+
+- Complete the v17.x staged path from integrated preflight, port safety, model identity validation, duplicate warnings, runtime editing safety, failed start recovery, safety summary, safety tests, and v18 readiness.
+- Produce the requested final release asset: `MLXServerManager-v18.0.0-unsigned.zip`.
+- Preserve Direct Mode.
+
 ## Later
 
 - More advanced resource graphs.
