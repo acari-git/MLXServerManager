@@ -3096,6 +3096,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v13.6.0; release output is deferred until v14.0.0.
 
+## v13.7.0 Completed: Dashboard Overview Redesign
+
+- Add a compact `DashboardHomeView`.
+- Convert Dashboard into overview, next actions, and recent activity.
+- Move dense model acquisition, runtime diagnostics, and benchmark work into Models / Downloads / Runtime surfaces.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v13.7.0; release output is deferred until v14.0.0.
+
 ## Later
 
 - More advanced resource graphs.
