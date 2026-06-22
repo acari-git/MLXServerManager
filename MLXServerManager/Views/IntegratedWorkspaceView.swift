@@ -504,9 +504,13 @@ struct IntegratedWorkspaceView: View {
             Text("Hermes Agent 接続情報")
                 .font(.headline)
 
-            copyRow("Base URL", value: hermesBaseURL, action: { viewModel.copyBaseURL() })
+            copyRow("Base URL", value: viewModel.baseURL, action: { viewModel.copyBaseURL() })
             copyRow("API Key", value: viewModel.apiKeyPlaceholder, action: { viewModel.copyAPIKeyPlaceholder() })
             copyRow("Model", value: viewModel.selectedModelIdentifier, action: { viewModel.copyModelID() })
+
+            Text("Direct Mode: Hermes Agent connects directly to mlx_lm.server. Proxy wiring is not enabled in this release.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
 
             Button {
                 viewModel.copyHermesAgentConfig()
@@ -525,11 +529,6 @@ struct IntegratedWorkspaceView: View {
             .foregroundStyle(.secondary)
         }
         .padding(14)
-    }
-
-    private var hermesBaseURL: String {
-        guard let selectedModel else { return viewModel.baseURL }
-        return "http://127.0.0.1:\(selectedModel.serverPort + 10000)/v1"
     }
 
     private func copyRow(_ title: String, value: String, action: @escaping () -> Void) -> some View {

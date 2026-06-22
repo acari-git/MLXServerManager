@@ -3277,6 +3277,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v16.5.0; release output is deferred until v17.0.0.
 
+## v16.6.0 Completed: Hermes Connection Accuracy
+
+- Align the right-side Hermes Agent Base URL display with the actual copied Direct Mode Base URL.
+- Add an explicit Direct Mode note that proxy wiring is not enabled in this release.
+- Keep API key, model, and full Hermes config copy actions unchanged.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v16.6.0; release output is deferred until v17.0.0.
+
 ## Later
 
 - More advanced resource graphs.
