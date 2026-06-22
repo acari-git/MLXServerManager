@@ -15,7 +15,14 @@ struct ContentView: View {
         AppShellView(selectedSection: $selectedSection, language: viewModel.settings.uiLanguage) { section in
             switch section {
             case .dashboard:
-                DashboardHomeView(viewModel: viewModel)
+                DashboardHomeView(
+                    viewModel: viewModel,
+                    onOpenModels: { selectedSection = .profiles },
+                    onOpenDownloads: { selectedSection = .clientSetup },
+                    onOpenRuntime: { selectedSection = .inspector },
+                    onOpenSettings: { selectedSection = .metrics },
+                    onOpenLogs: { selectedSection = .logs }
+                )
             case .profiles:
                 ProfilesSurfaceView(viewModel: viewModel)
             case .inspector:

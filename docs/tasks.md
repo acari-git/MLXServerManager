@@ -3174,6 +3174,14 @@
 - Preserve app-local language switching and Direct Mode.
 - No GitHub Release is produced for v14.6.0; release output is deferred until v15.0.0.
 
+## v14.7.0 Completed: Dashboard Navigation Actions
+
+- Add Dashboard navigation actions to Models, Downloads, Runtime, Settings, and Logs.
+- Keep Dashboard as an overview and launcher instead of a dense workbench.
+- Preserve primary Start, Speed Test, and connection copy actions.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v14.7.0; release output is deferred until v15.0.0.
+
 ## Later
 
 - More advanced resource graphs.

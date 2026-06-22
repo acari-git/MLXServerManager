@@ -2,6 +2,11 @@ import SwiftUI
 
 struct DashboardHomeView: View {
     @ObservedObject var viewModel: AppViewModel
+    var onOpenModels: () -> Void = {}
+    var onOpenDownloads: () -> Void = {}
+    var onOpenRuntime: () -> Void = {}
+    var onOpenSettings: () -> Void = {}
+    var onOpenLogs: () -> Void = {}
 
     private var strings: AppLocalization {
         AppLocalization(language: viewModel.settings.uiLanguage)
@@ -76,6 +81,15 @@ struct DashboardHomeView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(strings.text(.nextActions))
                 .font(.headline)
+            HStack {
+                Button("Manage Models") { onOpenModels() }
+                    .buttonStyle(.borderedProminent)
+                Button("Find / Download") { onOpenDownloads() }
+                Button("Open Runtime") { onOpenRuntime() }
+                Button("Open Settings") { onOpenSettings() }
+                Button("Open Logs") { onOpenLogs() }
+            }
+
             HStack {
                 Button {
                     viewModel.startRequested()
