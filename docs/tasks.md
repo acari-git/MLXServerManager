@@ -2959,6 +2959,12 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v11.9.0; release output is deferred until v12.0.0.
 
+## v12.0.0 Completed: Performance Visibility Milestone
+
+- Complete the v11.x staged path from explicit Speed Test, structured benchmark results, benchmark history, runtime metrics, profile comparison, launch command preview, failure guidance, performance layout, and v12 readiness.
+- Produce the requested final release asset: `MLXServerManager-v12.0.0-unsigned.zip`.
+- Preserve Direct Mode.
+
 ## Later
 
 - More advanced resource graphs.
