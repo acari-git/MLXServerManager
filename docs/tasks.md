@@ -3367,6 +3367,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v17.7.0; release output is deferred until v18.0.0.
 
+## v17.8.0 Completed: Safety Tests and Fixtures
+
+- Add `ModelOperationsSafetyTests`.
+- Cover duplicate endpoint warnings.
+- Cover selected model safety row and copyable safety summary presence.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v17.8.0; release output is deferred until v18.0.0.
+
 ## Later
 
 - More advanced resource graphs.
