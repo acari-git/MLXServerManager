@@ -29,7 +29,11 @@ struct ContentView: View {
                     onClear: viewModel.clearLogsRequested
                 )
             case .clientSetup:
-                DownloadsSurfaceView(viewModel: viewModel)
+                DownloadsSurfaceView(
+                    viewModel: viewModel,
+                    onOpenModels: { selectedSection = .profiles },
+                    onOpenRuntime: { selectedSection = .inspector }
+                )
             case .metrics:
                 SettingsSurfaceView(viewModel: viewModel)
             }

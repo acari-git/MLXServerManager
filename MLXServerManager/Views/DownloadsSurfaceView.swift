@@ -2,6 +2,8 @@ import SwiftUI
 
 struct DownloadsSurfaceView: View {
     @ObservedObject var viewModel: AppViewModel
+    var onOpenModels: () -> Void = {}
+    var onOpenRuntime: () -> Void = {}
 
     private var strings: AppLocalization {
         AppLocalization(language: viewModel.settings.uiLanguage)
@@ -132,6 +134,20 @@ struct DownloadsSurfaceView: View {
                 ("Status", viewModel.huggingFaceDownloadStatus.phase.title),
                 ("Message", viewModel.huggingFaceDownloadStatus.message)
             ])
+
+            if viewModel.huggingFaceDownloadStatus.phase == .completed {
+                HStack {
+                    Label("Download complete. The profile has been added when possible.", systemImage: "checkmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                    Spacer()
+                    Button("Open Models") { onOpenModels() }
+                    Button("Open Runtime") { onOpenRuntime() }
+                }
+                .padding(8)
+                .background(Color.green.opacity(0.10))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
 
             HStack {
                 Button {

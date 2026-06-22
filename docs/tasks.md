@@ -3143,6 +3143,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v14.2.0; release output is deferred until v15.0.0.
 
+## v14.3.0 Completed: Downloads Completion Workflow
+
+- Add completion guidance to the Downloads surface.
+- Add explicit Open Models and Open Runtime actions after a completed download.
+- Keep Downloads focused on acquisition while linking naturally to model management and runtime operation.
+- Preserve Direct Mode and avoid automatic start.
+- No GitHub Release is produced for v14.3.0; release output is deferred until v15.0.0.
+
 ## Later
 
 - More advanced resource graphs.
