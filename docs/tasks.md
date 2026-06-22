@@ -3044,6 +3044,15 @@
 - Include v14 GUI optimization review and Japanese / English switching plan.
 - Preserve Direct Mode.
 
+## v13.1.0 Completed: UI Inventory
+
+- Add `docs/v14_ui_inventory.md`.
+- Inventory current v13 GUI surfaces and v14 target ownership.
+- Define the target top-level navigation: Dashboard, Models, Downloads, Runtime, Settings, Logs.
+- Document localization priorities and non-translated content boundaries.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v13.1.0; release output is deferred until v14.0.0.
+
 ## Later
 
 - More advanced resource graphs.
