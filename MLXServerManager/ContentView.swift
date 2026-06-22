@@ -139,6 +139,9 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 18) {
                         SettingsPanelView(
                             executablePath: $viewModel.settings.mlxServerExecutablePath,
+                            defaultHost: $viewModel.settings.defaultHost,
+                            defaultPort: $viewModel.settings.defaultPort,
+                            apiKeyPlaceholder: $viewModel.settings.apiKeyPlaceholder,
                             language: $viewModel.settings.uiLanguage,
                             settingsDirectoryPath: viewModel.settingsDirectoryPath,
                             onSave: viewModel.saveSettingsRequested,

@@ -3167,6 +3167,13 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v14.5.0; release output is deferred until v15.0.0.
 
+## v14.6.0 Completed: Settings Surface Completion
+
+- Expand Settings to edit executable path, default host, default port, API key placeholder, and language.
+- Keep Save Settings and Run Diagnostics in the dedicated Settings surface.
+- Preserve app-local language switching and Direct Mode.
+- No GitHub Release is produced for v14.6.0; release output is deferred until v15.0.0.
+
 ## Later
 
 - More advanced resource graphs.

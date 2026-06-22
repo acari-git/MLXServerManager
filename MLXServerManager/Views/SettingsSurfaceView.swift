@@ -13,6 +13,9 @@ struct SettingsSurfaceView: View {
                 header
                 SettingsPanelView(
                     executablePath: $viewModel.settings.mlxServerExecutablePath,
+                    defaultHost: $viewModel.settings.defaultHost,
+                    defaultPort: $viewModel.settings.defaultPort,
+                    apiKeyPlaceholder: $viewModel.settings.apiKeyPlaceholder,
                     language: $viewModel.settings.uiLanguage,
                     settingsDirectoryPath: viewModel.settingsDirectoryPath,
                     onSave: viewModel.saveSettingsRequested,
