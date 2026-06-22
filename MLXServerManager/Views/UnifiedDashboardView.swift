@@ -1142,6 +1142,14 @@ struct UnifiedDashboardView: View {
                 ("再起動必要", viewModel.restartRequired ? "Yes" : "No")
             ])
 
+            Label("Runtime panel is ordered as Metrics → Timeline → Diagnostics → Benchmark → Connection decision.", systemImage: "list.bullet.rectangle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(nsColor: .textBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+
             Text("Runtime metrics")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)

@@ -3013,6 +3013,13 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v12.6.0; release output is deferred until v13.0.0.
 
+## v12.7.0 Completed: Runtime Panel Layout Polish
+
+- Add an explicit Runtime panel reading order: Metrics → Timeline → Diagnostics → Benchmark → Connection decision.
+- Keep existing diagnostics, comparison, speed test, and history cards in a clearer mental model.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v12.7.0; release output is deferred until v13.0.0.
+
 ## Later
 
 - More advanced resource graphs.
