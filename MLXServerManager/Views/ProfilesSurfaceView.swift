@@ -64,6 +64,10 @@ struct ProfilesSurfaceView: View {
             }
             .frame(width: 190)
 
+            TextField("Search models", text: $viewModel.modelListSearchText)
+                .textFieldStyle(.roundedBorder)
+                .frame(minWidth: 180, idealWidth: 240)
+
             Spacer()
 
             Button {
@@ -247,11 +251,26 @@ struct ProfilesSurfaceView: View {
                     ("Model ID", selectedModel.modelID),
                     ("Display Name", selectedModel.displayName),
                     ("Source", viewModel.sourceLabel(for: selectedModel)),
+                    ("Family", selectedModel.family),
+                    ("Quantization", selectedModel.quantization),
+                    ("Context", selectedModel.contextWindow),
                     ("Endpoint", "\(selectedModel.host):\(selectedModel.serverPort)"),
                     ("Thinking", selectedModel.enableThinking ? "Enabled" : "Disabled"),
                     ("Latest benchmark", viewModel.latestBenchmarkResult?.latencyText ?? "Not run"),
                     ("Notes", selectedModel.notes.isEmpty ? "None" : selectedModel.notes)
                 ])
+
+                Text("Advanced launch options")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(viewModel.selectedAdvancedLaunchOptionsSummary)
+                    .font(.system(.caption2, design: .monospaced))
+                    .textSelection(.enabled)
+                    .lineLimit(6)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
 
                 Text("Launch command")
                     .font(.caption.weight(.semibold))

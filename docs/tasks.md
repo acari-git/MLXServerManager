@@ -3135,6 +3135,14 @@
 - Preserve metadata-only deletion safety and Direct Mode.
 - No GitHub Release is produced for v14.1.0; release output is deferred until v15.0.0.
 
+## v14.2.0 Completed: Models Filters and Inspector Polish
+
+- Add model search text filtering across display name, model ID, family, quantization, and notes.
+- Keep source filtering and search filtering combined in `visibleModels`.
+- Expand the selected model inspector with family, quantization, context, and advanced launch options preview.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v14.2.0; release output is deferred until v15.0.0.
+
 ## Later
 
 - More advanced resource graphs.

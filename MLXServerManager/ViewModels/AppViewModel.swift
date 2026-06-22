@@ -67,6 +67,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var modelProfileExportMessage: String?
     @Published private(set) var modelProfileImportMessage: String?
     @Published var modelListSourceFilter = "All"
+    @Published var modelListSearchText = ""
     @Published var isImportPreviewPresented = false
     @Published private(set) var importPreviewResult: ImportPreviewResult?
     @Published var huggingFaceDownloadDraft: HuggingFaceDownloadDraft = .defaults(
@@ -171,9 +172,18 @@ final class AppViewModel: ObservableObject {
     }
 
     var visibleModels: [ModelConfig] {
-        modelListSourceFilter == "All"
+        let sourceFiltered = modelListSourceFilter == "All"
             ? models
             : models.filter { sourceLabel(for: $0) == modelListSourceFilter }
+        let query = modelListSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return sourceFiltered }
+        return sourceFiltered.filter { model in
+            model.displayName.localizedCaseInsensitiveContains(query)
+                || model.modelID.localizedCaseInsensitiveContains(query)
+                || model.family.localizedCaseInsensitiveContains(query)
+                || model.quantization.localizedCaseInsensitiveContains(query)
+                || model.notes.localizedCaseInsensitiveContains(query)
+        }
     }
 
     func sourceLabel(for model: ModelConfig) -> String {
