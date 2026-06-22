@@ -3080,6 +3080,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v13.4.0; release output is deferred until v14.0.0.
 
+## v13.5.0 Completed: Downloads Page Redesign
+
+- Add a dedicated `DownloadsSurfaceView`.
+- Move Hugging Face search, selected result preview, download form, queue, retry, restore form, and copy URL actions into the Downloads surface.
+- Keep download actions explicit and user-triggered.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v13.5.0; release output is deferred until v14.0.0.
+
 ## Later
 
 - More advanced resource graphs.
