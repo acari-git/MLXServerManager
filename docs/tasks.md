@@ -2886,6 +2886,15 @@
 - Produce the requested final release asset: `MLXServerManager-v11.0.0-unsigned.zip`.
 - Preserve Direct Mode and avoid unrelated runtime automation.
 
+## v11.1.0 Completed: Explicit Speed Test Foundation
+
+- Enable the Dashboard Speed Test button for active Direct Mode targets.
+- Measure explicit `/v1/models` readiness latency against the selected endpoint.
+- Show the latest speed test result in the runtime panel and logs.
+- Keep the feature as a user-initiated diagnostic, not chat UI or proxying.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v11.1.0; release output is deferred until v12.0.0.
+
 ## Later
 
 - More advanced resource graphs.

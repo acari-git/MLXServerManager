@@ -281,11 +281,17 @@ struct UnifiedDashboardView: View {
             Spacer()
 
             Button {
+                viewModel.runSpeedTestRequested()
             } label: {
-                Label("スピードテスト", systemImage: "bolt")
+                if viewModel.isSpeedTestRunning {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                } else {
+                    Label("スピードテスト", systemImage: "bolt")
+                }
             }
-            .disabled(true)
-            .help("v7.1.0 は GUI foundation release です。Speed Test は後続リリースで明示操作として実装します。")
+            .disabled(!viewModel.canRunSpeedTest)
+            .help("起動中の Direct Mode target に対して /v1/models latency を明示的に測定します。")
         }
         .padding(14)
         .accessibilityIdentifier("unified-dashboard-action-bar")
@@ -1103,6 +1109,17 @@ struct UnifiedDashboardView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             DetailGrid(rows: runtimeDiagnosticRows)
+
+            Text("Speed Test")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Label(viewModel.latestSpeedTestSummary, systemImage: "bolt")
+                .font(.caption)
+                .foregroundStyle(viewModel.latestSpeedTestDurationMS == nil ? Color.secondary : Color.green)
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(nsColor: .textBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
 
             if let warning = viewModel.runtimeSelectionWarning {
                 Label(warning, systemImage: "arrow.triangle.2.circlepath")

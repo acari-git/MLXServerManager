@@ -89,6 +89,9 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var huggingFaceSearchResults: [HuggingFaceSearchResult] = []
     @Published private(set) var selectedHuggingFaceSearchResult: HuggingFaceSearchResult?
     @Published private(set) var isHuggingFaceSearching = false
+    @Published private(set) var isSpeedTestRunning = false
+    @Published private(set) var latestSpeedTestMessage = "Speed Test has not run yet."
+    @Published private(set) var latestSpeedTestDurationMS: Double?
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
@@ -193,6 +196,17 @@ final class AppViewModel: ObservableObject {
         showOnlyMLXLikelySearchResults
             ? huggingFaceSearchResults.filter(\.isMLXLikely)
             : huggingFaceSearchResults
+    }
+
+    var canRunSpeedTest: Bool {
+        connectionTargetSummary.isActiveTarget && !isSpeedTestRunning
+    }
+
+    var latestSpeedTestSummary: String {
+        guard let latestSpeedTestDurationMS else {
+            return latestSpeedTestMessage
+        }
+        return "\(latestSpeedTestMessage) (\(Int(latestSpeedTestDurationMS)) ms)"
     }
 
     var logCategoryFilterOptions: [String] {
@@ -617,6 +631,46 @@ final class AppViewModel: ObservableObject {
         case let .failed(host, port, message):
             runtimeState = .portCheckFailed(host: host, port: port, message: message)
             appendLog("[port] port check failed for \(host):\(port): \(message)")
+        }
+    }
+
+    func runSpeedTestRequested() {
+        guard canRunSpeedTest else {
+            latestSpeedTestMessage = "Start the server before running Speed Test."
+            appendLog("[benchmark] speed test skipped: no active connection target.")
+            return
+        }
+
+        let host = selectedModel?.host ?? settings.defaultHost
+        let port = selectedModel?.serverPort ?? settings.defaultPort
+        isSpeedTestRunning = true
+        latestSpeedTestMessage = "Running /v1/models readiness latency test..."
+        latestSpeedTestDurationMS = nil
+        appendLog("[benchmark] speed test started: http://\(host):\(port)/v1/models")
+
+        Task {
+            let startedAt = Date()
+            let result = await readyChecker.check(host: host, port: port)
+            let elapsedMS = Date().timeIntervalSince(startedAt) * 1000
+            latestSpeedTestDurationMS = elapsedMS
+            switch result {
+            case let .ready(url, statusCode):
+                latestSpeedTestMessage = "Success: \(url.absoluteString) returned HTTP \(statusCode)."
+                appendLog("[benchmark] speed test succeeded in \(Int(elapsedMS)) ms.")
+            case let .notReady(url, statusCode):
+                latestSpeedTestMessage = "Failed: \(url.absoluteString) returned HTTP \(statusCode)."
+                appendLog("[benchmark] speed test failed in \(Int(elapsedMS)) ms: HTTP \(statusCode).")
+            case let .invalidInput(message):
+                latestSpeedTestMessage = "Failed: \(message)"
+                appendLog("[benchmark] speed test failed: \(message)")
+            case let .failed(_, message):
+                latestSpeedTestMessage = "Failed: \(message)"
+                appendLog("[benchmark] speed test failed in \(Int(elapsedMS)) ms: \(message)")
+            case .timedOut:
+                latestSpeedTestMessage = "Failed: request timed out."
+                appendLog("[benchmark] speed test timed out after \(Int(elapsedMS)) ms.")
+            }
+            isSpeedTestRunning = false
         }
     }
 
