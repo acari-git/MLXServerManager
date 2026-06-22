@@ -2895,6 +2895,14 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v11.1.0; release output is deferred until v12.0.0.
 
+## v11.2.0 Completed: Benchmark Result Model
+
+- Add a structured `BenchmarkResult` model and phase enum.
+- Store the latest Speed Test as a structured result with profile, model, endpoint, phase, latency, and message.
+- Use the structured result summary in the Dashboard runtime panel.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v11.2.0; release output is deferred until v12.0.0.
+
 ## Later
 
 - More advanced resource graphs.

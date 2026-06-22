@@ -92,6 +92,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var isSpeedTestRunning = false
     @Published private(set) var latestSpeedTestMessage = "Speed Test has not run yet."
     @Published private(set) var latestSpeedTestDurationMS: Double?
+    @Published private(set) var latestBenchmarkResult: BenchmarkResult?
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
@@ -203,10 +204,7 @@ final class AppViewModel: ObservableObject {
     }
 
     var latestSpeedTestSummary: String {
-        guard let latestSpeedTestDurationMS else {
-            return latestSpeedTestMessage
-        }
-        return "\(latestSpeedTestMessage) (\(Int(latestSpeedTestDurationMS)) ms)"
+        latestBenchmarkResult?.summary ?? latestSpeedTestMessage
     }
 
     var logCategoryFilterOptions: [String] {
@@ -643,6 +641,9 @@ final class AppViewModel: ObservableObject {
 
         let host = selectedModel?.host ?? settings.defaultHost
         let port = selectedModel?.serverPort ?? settings.defaultPort
+        let profileID = selectedModel?.id ?? selectedModelIdentifier
+        let modelID = selectedModelIdentifier
+        let targetBaseURL = baseURL
         isSpeedTestRunning = true
         latestSpeedTestMessage = "Running /v1/models readiness latency test..."
         latestSpeedTestDurationMS = nil
@@ -653,23 +654,44 @@ final class AppViewModel: ObservableObject {
             let result = await readyChecker.check(host: host, port: port)
             let elapsedMS = Date().timeIntervalSince(startedAt) * 1000
             latestSpeedTestDurationMS = elapsedMS
+            let benchmarkResult: BenchmarkResult
             switch result {
             case let .ready(url, statusCode):
                 latestSpeedTestMessage = "Success: \(url.absoluteString) returned HTTP \(statusCode)."
+                benchmarkResult = BenchmarkResult(
+                    profileID: profileID,
+                    modelID: modelID,
+                    baseURL: targetBaseURL,
+                    phase: .success,
+                    readinessLatencyMS: elapsedMS,
+                    message: "HTTP \(statusCode) from /v1/models"
+                )
                 appendLog("[benchmark] speed test succeeded in \(Int(elapsedMS)) ms.")
-            case let .notReady(url, statusCode):
-                latestSpeedTestMessage = "Failed: \(url.absoluteString) returned HTTP \(statusCode)."
+            case let .notReady(_, statusCode):
+                latestSpeedTestMessage = "Failed: /v1/models returned HTTP \(statusCode)."
+                benchmarkResult = BenchmarkResult(
+                    profileID: profileID,
+                    modelID: modelID,
+                    baseURL: targetBaseURL,
+                    phase: .failed,
+                    readinessLatencyMS: elapsedMS,
+                    message: "HTTP \(statusCode) from /v1/models"
+                )
                 appendLog("[benchmark] speed test failed in \(Int(elapsedMS)) ms: HTTP \(statusCode).")
             case let .invalidInput(message):
                 latestSpeedTestMessage = "Failed: \(message)"
+                benchmarkResult = BenchmarkResult(profileID: profileID, modelID: modelID, baseURL: targetBaseURL, phase: .failed, readinessLatencyMS: nil, message: message)
                 appendLog("[benchmark] speed test failed: \(message)")
             case let .failed(_, message):
                 latestSpeedTestMessage = "Failed: \(message)"
+                benchmarkResult = BenchmarkResult(profileID: profileID, modelID: modelID, baseURL: targetBaseURL, phase: .failed, readinessLatencyMS: elapsedMS, message: message)
                 appendLog("[benchmark] speed test failed in \(Int(elapsedMS)) ms: \(message)")
             case .timedOut:
                 latestSpeedTestMessage = "Failed: request timed out."
+                benchmarkResult = BenchmarkResult(profileID: profileID, modelID: modelID, baseURL: targetBaseURL, phase: .failed, readinessLatencyMS: elapsedMS, message: "Request timed out")
                 appendLog("[benchmark] speed test timed out after \(Int(elapsedMS)) ms.")
             }
+            latestBenchmarkResult = benchmarkResult
             isSpeedTestRunning = false
         }
     }

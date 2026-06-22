@@ -1115,7 +1115,7 @@ struct UnifiedDashboardView: View {
                 .foregroundStyle(.secondary)
             Label(viewModel.latestSpeedTestSummary, systemImage: "bolt")
                 .font(.caption)
-                .foregroundStyle(viewModel.latestSpeedTestDurationMS == nil ? Color.secondary : Color.green)
+                .foregroundStyle(viewModel.latestBenchmarkResult?.phase == .success ? Color.green : Color.secondary)
                 .padding(8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color(nsColor: .textBackgroundColor))
