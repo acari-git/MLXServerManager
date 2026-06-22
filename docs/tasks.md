@@ -2919,6 +2919,14 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v11.4.0; release output is deferred until v12.0.0.
 
+## v11.5.0 Completed: Profile Comparison Foundation
+
+- Add selected vs running profile comparison rows.
+- Compare display name, model ID, endpoint, Thinking state, and latest benchmark visibility.
+- Make selected/running mismatch easier to diagnose before restart.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v11.5.0; release output is deferred until v12.0.0.
+
 ## Later
 
 - More advanced resource graphs.

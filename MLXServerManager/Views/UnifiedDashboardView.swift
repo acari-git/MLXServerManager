@@ -1153,6 +1153,11 @@ struct UnifiedDashboardView: View {
             .background(Color(nsColor: .textBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
+            Text("Profile comparison")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            DetailGrid(rows: profileComparisonRows)
+
             if let warning = viewModel.runtimeSelectionWarning {
                 Label(warning, systemImage: "arrow.triangle.2.circlepath")
                     .font(.caption)
@@ -1258,6 +1263,26 @@ struct UnifiedDashboardView: View {
                 Text("コピー")
             }
         }
+    }
+
+    private var profileComparisonRows: [(String, String)] {
+        let selected = viewModel.selectedModel
+        let running = viewModel.runningModelID.flatMap { runningID in
+            viewModel.models.first { $0.id == runningID }
+        }
+        return [
+            ("Selected", selected?.displayName ?? "None"),
+            ("Running", running?.displayName ?? "Not running"),
+            ("Model ID", selected?.modelID == running?.modelID ? "Same" : "Different"),
+            ("Endpoint", endpointText(for: selected) == endpointText(for: running) ? "Same" : "Different"),
+            ("Thinking", selected?.enableThinking == running?.enableThinking ? "Same" : "Different"),
+            ("Latest benchmark", viewModel.latestBenchmarkResult?.latencyText ?? "Not run")
+        ]
+    }
+
+    private func endpointText(for model: ModelConfig?) -> String {
+        guard let model else { return "Not running" }
+        return "\(model.host):\(model.serverPort)"
     }
 
     private var runtimeMetricRows: [(String, String)] {
