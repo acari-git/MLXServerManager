@@ -3120,6 +3120,12 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v13.9.0; release output is deferred until v14.0.0.
 
+## v14.0.0 Completed: GUI Optimization Milestone
+
+- Complete the v13.x staged GUI optimization path from UI inventory, localization foundation, sidebar redesign, Models / Downloads / Runtime / Settings surface separation, Dashboard overview redesign, and Japanese / English UI coverage.
+- Produce the requested final release asset: `MLXServerManager-v14.0.0-unsigned.zip`.
+- Preserve Direct Mode.
+
 ## Later
 
 - More advanced resource graphs.
