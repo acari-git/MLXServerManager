@@ -2943,6 +2943,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v11.7.0; release output is deferred until v12.0.0.
 
+## v11.8.0 Completed: Dashboard Performance Layout Polish
+
+- Add Benchmark to the primary Dashboard workflow banner.
+- Update the bottom status ribbon to show the v12 operation order including benchmark before copy.
+- Keep performance visibility integrated with runtime diagnostics and connection presets.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v11.8.0; release output is deferred until v12.0.0.
+
 ## Later
 
 - More advanced resource graphs.

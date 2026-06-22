@@ -109,6 +109,7 @@ struct UnifiedDashboardView: View {
             workflowStep("Preview")
             workflowStep("Download")
             workflowStep("Diagnose")
+            workflowStep("Benchmark")
             workflowStep("Copy")
         }
         .padding(.horizontal, 14)
@@ -408,7 +409,7 @@ struct UnifiedDashboardView: View {
             statusPill("hf CLI", value: viewModel.isHuggingFaceCLIAvailable ? viewModel.huggingFaceCLIPath : "Missing")
             statusPill("Mode", value: "Direct")
             Spacer()
-            Text("操作順: setup → search/preview → download/register → diagnose/start → copy")
+            Text("操作順: setup → search/preview → download/register → diagnose/start → benchmark → copy")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
