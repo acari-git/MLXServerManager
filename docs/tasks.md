@@ -2927,6 +2927,14 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v11.5.0; release output is deferred until v12.0.0.
 
+## v11.6.0 Completed: Launch Option Visibility Polish
+
+- Add a Dashboard launch command preview for the selected profile.
+- Explain that MLX Server Manager runs the command and users usually do not need to run it manually.
+- Add a copy action for the selected launch command preview.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v11.6.0; release output is deferred until v12.0.0.
+
 ## Later
 
 - More advanced resource graphs.

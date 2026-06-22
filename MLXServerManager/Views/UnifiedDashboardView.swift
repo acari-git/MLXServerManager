@@ -1047,6 +1047,30 @@ struct UnifiedDashboardView: View {
                     ("Quantization", model.quantization)
                 ])
 
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Launch command preview")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text("このコマンドを MLX Server Manager が起動します。通常は手動で実行する必要はありません。")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(viewModel.selectedLaunchCommandPreview)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                        .lineLimit(4)
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color(nsColor: .textBackgroundColor))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    Button {
+                        viewModel.copySelectedLaunchCommandPreview()
+                    } label: {
+                        Label("起動コマンドをコピー", systemImage: "terminal")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                }
+
                 Button {
                     viewModel.editProfileRequested()
                 } label: {

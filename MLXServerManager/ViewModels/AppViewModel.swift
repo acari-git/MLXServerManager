@@ -220,6 +220,29 @@ final class AppViewModel: ObservableObject {
         return "Runs: \(benchmarkHistory.count), best \(best), average \(average), failed \(failedCount)"
     }
 
+    var selectedLaunchCommandPreview: String {
+        guard let selectedModel else {
+            return "Select a profile to preview the launch command."
+        }
+        let executable = settings.mlxServerExecutablePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "mlx_lm.server"
+            : settings.mlxServerExecutablePath
+        var parts = [
+            shellQuoted(executable),
+            "--model", shellQuoted(selectedModel.modelID),
+            "--host", shellQuoted(selectedModel.host),
+            "--port", String(selectedModel.serverPort)
+        ]
+        if selectedModel.enableThinking {
+            parts.append("--enable-thinking")
+        }
+        if let rawExtraArgs = selectedModel.advancedLaunchOptions?.rawExtraArgs?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !rawExtraArgs.isEmpty {
+            parts.append(rawExtraArgs)
+        }
+        return parts.joined(separator: " ")
+    }
+
     var benchmarkCopyText: String {
         guard !benchmarkHistory.isEmpty else {
             return "No benchmark results in this session."
@@ -1514,6 +1537,10 @@ final class AppViewModel: ObservableObject {
         appendLog("[ui] Copied OpenAI-compatible curl /v1/chat/completions command.")
     }
 
+    func copySelectedLaunchCommandPreview() {
+        copyLaunchCommandPreview(selectedLaunchCommandPreview)
+    }
+
     func copyLaunchCommandPreview(_ preview: String) {
         if copyToPasteboard(preview) {
             appendLog("[profile] copied launch command preview to clipboard.")
@@ -2516,6 +2543,12 @@ final class AppViewModel: ObservableObject {
     }
 
     @discardableResult
+    private func shellQuoted(_ value: String) -> String {
+        guard !value.isEmpty else { return "''" }
+        let escaped = value.replacingOccurrences(of: "'", with: "'\\''")
+        return "'\(escaped)'"
+    }
+
     private func copyToPasteboard(_ value: String) -> Bool {
         NSPasteboard.general.clearContents()
         return NSPasteboard.general.setString(value, forType: .string)
