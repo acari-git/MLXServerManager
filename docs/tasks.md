@@ -2989,6 +2989,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v12.3.0; release output is deferred until v13.0.0.
 
+## v12.4.0 Completed: Launch Command Builder Refactor
+
+- Move launch command preview construction into `LaunchCommandBuilder`.
+- Keep shell quoting and raw extra args handling outside the ViewModel.
+- Add unit coverage for the core launch command arguments.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v12.4.0; release output is deferred until v13.0.0.
+
 ## Later
 
 - More advanced resource graphs.
