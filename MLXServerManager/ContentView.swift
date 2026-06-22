@@ -24,14 +24,7 @@ struct ContentView: View {
                     restartRequired: viewModel.restartRequired
                 )
             case .inspector:
-                DetailInspectorSurfaceView(
-                    selectedModel: viewModel.selectedModel,
-                    runningModelText: viewModel.runningModelText,
-                    restartRequired: viewModel.restartRequired,
-                    targetSummary: viewModel.connectionTargetSummary,
-                    modelAvailability: viewModel.modelAvailabilitySummary,
-                    onCheckModelAvailability: viewModel.checkModelAvailabilityRequested
-                )
+                RuntimeSurfaceView(viewModel: viewModel)
             case .logs:
                 LogsSurfaceView(
                     entries: viewModel.logEntries,

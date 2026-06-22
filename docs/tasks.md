@@ -3088,6 +3088,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v13.5.0; release output is deferred until v14.0.0.
 
+## v13.6.0 Completed: Runtime Page Redesign
+
+- Add a dedicated `RuntimeSurfaceView`.
+- Move Start / Stop / Restart, Ready Check, Speed Test, runtime diagnostics, benchmark, timeline, and connection presets into the Runtime surface.
+- Keep Runtime actions explicit and user-triggered.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v13.6.0; release output is deferred until v14.0.0.
+
 ## Later
 
 - More advanced resource graphs.
