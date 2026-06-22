@@ -468,6 +468,7 @@ struct IntegratedWorkspaceView: View {
                         Text("編集")
                     }
                     .disabled(selectedModel == nil)
+                    .help(selectedModel.map { viewModel.runtimeEditingSafetyText(for: $0) } ?? "No model selected")
 
                     Button(role: .destructive) {
                         viewModel.deleteProfileRequested()
@@ -483,11 +484,18 @@ struct IntegratedWorkspaceView: View {
                         formRow(row.0, row.1, valueColor: row.1 == "OK" || row.1 == "Available" || row.1 == "Ready" || row.1 == "OK local path" ? .green : .orange)
                     }
                     formRow("Recovery", viewModel.failedStartRecoverySummary, valueColor: viewModel.failedStartRecoverySummary == "No failed start recovery needed." ? .secondary : .orange)
+                    Button {
+                        viewModel.copySafetySummary()
+                    } label: {
+                        Text("Safety summary をコピー")
+                            .frame(maxWidth: .infinity)
+                    }
                 }
 
                 groupedSection("基本情報") {
                     formRow("モデル名", selectedModel?.displayName ?? "-")
                     formRow("モデルID (Hugging Face)", selectedModel?.modelID ?? "-")
+                    formRow("モデル検証", viewModel.selectedModelIdentityDetailText, valueColor: viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("Missing") || viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("review") ? .orange : .green)
                     formRow("用途・メモ", selectedModel?.notes.isEmpty == false ? selectedModel?.notes ?? "-" : "-")
                 }
 

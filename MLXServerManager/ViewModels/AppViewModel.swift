@@ -271,6 +271,30 @@ final class AppViewModel: ObservableObject {
         return portSafetyText(host: selectedModel.host, port: integratedProxyPort(for: selectedModel))
     }
 
+    var selectedModelIdentityDetailText: String {
+        guard let selectedModel else { return "No model selected" }
+        if let localPath = ModelAvailabilityPathFormatter.localPathCandidate(for: selectedModel) {
+            var isDirectory = ObjCBool(false)
+            if FileManager.default.fileExists(atPath: localPath, isDirectory: &isDirectory), isDirectory.boolValue {
+                return "Local path exists: \(ModelAvailabilityPathFormatter.compact(path: localPath))"
+            }
+            return "Missing local path: \(ModelAvailabilityPathFormatter.compact(path: localPath))"
+        }
+        if selectedModel.modelID.contains("https://huggingface.co/") {
+            return "Needs review: paste owner/model instead of a full URL when possible."
+        }
+        if selectedModel.modelID.split(separator: "/").count == 2 {
+            return "HF ID format looks valid."
+        }
+        return "Needs review: expected local path or owner/model HF ID."
+    }
+
+    var copyableSafetySummary: String {
+        (["Model Operations Safety", "Runtime: \(runtimeState.title)", "Selected: \(selectedModelIdentifier)"] + selectedModelSafetyRows.map { row in
+            "\(row.0): \(row.1)"
+        } + ["Recovery: \(failedStartRecoverySummary)"]).joined(separator: "\n")
+    }
+
     var failedStartRecoverySummary: String {
         switch runtimeState {
         case let .error(message):
@@ -1804,6 +1828,11 @@ final class AppViewModel: ObservableObject {
     func copyBenchmarkTroubleshooting() {
         copyToPasteboard(benchmarkTroubleshootingCopyText)
         appendLog("[benchmark] copied troubleshooting context.")
+    }
+
+    func copySafetySummary() {
+        copyToPasteboard(copyableSafetySummary)
+        appendLog("[safety] copied model operations safety summary.")
     }
 
     func copyChatCompletionsCurl() {

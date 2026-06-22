@@ -3331,6 +3331,42 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v17.2.0; release output is deferred until v18.0.0.
 
+## v17.3.0 Completed: Model Path / HF ID Validation
+
+- Add selected model identity detail text for local paths, Hugging Face IDs, and full HF URLs.
+- Surface model validation in the right-side basic information section.
+- Keep local path existence checks read-only.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v17.3.0; release output is deferred until v18.0.0.
+
+## v17.4.0 Completed: Duplicate Profile Warnings
+
+- Keep duplicate display name, model ID, and endpoint warnings visible in the integrated safety panel and model row pills.
+- Use duplicate detection for selected model safety state.
+- Preserve metadata-only profile operations.
+- No GitHub Release is produced for v17.4.0; release output is deferred until v18.0.0.
+
+## v17.5.0 Completed: Runtime Editing Safety
+
+- Add runtime editing safety text for the selected model.
+- Attach runtime editing guidance to the right-side Edit action.
+- Keep runtime-critical fields guarded by existing profile editor lock behavior.
+- No GitHub Release is produced for v17.5.0; release output is deferred until v18.0.0.
+
+## v17.6.0 Completed: Failed Start Recovery
+
+- Add copyable model operations safety summary.
+- Add Copy Safety Summary action to the right-side safety section.
+- Expand recovery guidance for executable, model path, port, permission, and readiness failures.
+- No GitHub Release is produced for v17.6.0; release output is deferred until v18.0.0.
+
+## v17.7.0 Completed: Integrated Safety Summary
+
+- Keep Safety Summary visible at the top of the right-side model settings panel.
+- Include executable, model identity, server port, proxy port, duplicate, runtime edit, and recovery rows.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v17.7.0; release output is deferred until v18.0.0.
+
 ## Later
 
 - More advanced resource graphs.
