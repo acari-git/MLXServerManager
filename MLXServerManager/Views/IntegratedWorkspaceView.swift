@@ -400,6 +400,13 @@ struct IntegratedWorkspaceView: View {
                             Text("モデル設定")
                         .font(.title3.weight(.semibold))
                     Spacer()
+                    Button {
+                        viewModel.editProfileRequested()
+                    } label: {
+                        Text("編集")
+                    }
+                    .disabled(selectedModel == nil)
+
                     Button(role: .destructive) {
                         viewModel.deleteProfileRequested()
                     } label: {

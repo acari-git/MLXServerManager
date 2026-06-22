@@ -3269,6 +3269,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v16.4.0; release output is deferred until v17.0.0.
 
+## v16.5.0 Completed: Model Settings Editing Flow
+
+- Add an Edit action to the right-side integrated model settings panel.
+- Reuse the existing profile editor sheet from the integrated workspace.
+- Keep Delete metadata-only and disabled while managed runtime is running.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v16.5.0; release output is deferred until v17.0.0.
+
 ## Later
 
 - More advanced resource graphs.
