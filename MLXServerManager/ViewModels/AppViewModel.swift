@@ -52,6 +52,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var memoryUsageGB: Double?
     @Published private(set) var logText: String
     @Published private(set) var logEntries: [LogEntry]
+    @Published var logCategoryFilter = "All"
     @Published private(set) var diagnosticsResults: [DiagnosticsResult] = []
     @Published private(set) var diagnosticsDidRun = false
     @Published private var selectedModelAvailabilitySummary: ModelAvailabilitySummary = .noSelection
@@ -192,6 +193,24 @@ final class AppViewModel: ObservableObject {
         showOnlyMLXLikelySearchResults
             ? huggingFaceSearchResults.filter(\.isMLXLikely)
             : huggingFaceSearchResults
+    }
+
+    var logCategoryFilterOptions: [String] {
+        ["All"] + Array(Set(logEntries.map(\.category))).sorted()
+    }
+
+    var visibleLogEntries: [LogEntry] {
+        logCategoryFilter == "All"
+            ? logEntries
+            : logEntries.filter { $0.category == logCategoryFilter }
+    }
+
+    var latestImportantLogEntry: LogEntry? {
+        logEntries.reversed().first { entry in
+            entry.message.localizedCaseInsensitiveContains("failed")
+                || entry.message.localizedCaseInsensitiveContains("warning")
+                || entry.category.localizedCaseInsensitiveContains("error")
+        }
     }
 
     var runtimeSelectionWarning: String? {

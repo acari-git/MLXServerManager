@@ -296,9 +296,17 @@ struct UnifiedDashboardView: View {
                 Text("ログ")
                     .font(.headline)
 
-                Text("\(viewModel.logEntries.count) entries")
+                Text("\(viewModel.visibleLogEntries.count) / \(viewModel.logEntries.count) entries")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                Picker("Category", selection: $viewModel.logCategoryFilter) {
+                    ForEach(viewModel.logCategoryFilterOptions, id: \.self) { category in
+                        Text(category).tag(category)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 130)
 
                 Spacer()
 
@@ -315,15 +323,26 @@ struct UnifiedDashboardView: View {
                 }
             }
 
+            if let latestImportant = viewModel.latestImportantLogEntry {
+                Label(latestImportant.line, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .lineLimit(2)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.orange.opacity(0.10))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 5) {
-                    if viewModel.logEntries.isEmpty {
+                    if viewModel.visibleLogEntries.isEmpty {
                         Text("No logs")
                             .font(.system(.caption, design: .monospaced))
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
-                        ForEach(viewModel.logEntries) { entry in
+                        ForEach(viewModel.visibleLogEntries) { entry in
                             compactLogRow(entry)
                         }
                     }

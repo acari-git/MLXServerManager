@@ -2848,6 +2848,15 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v10.5.0; release output is deferred until v11.0.0.
 
+## v10.6.0 Completed: Log Readability Improvements
+
+- Add a log category filter in the Dashboard log panel.
+- Show filtered and total log counts.
+- Highlight the latest important warning or failure log above the full log list.
+- Preserve existing copy and clear log actions.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v10.6.0; release output is deferred until v11.0.0.
+
 ## Later
 
 - More advanced resource graphs.
