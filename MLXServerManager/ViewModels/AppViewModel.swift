@@ -94,6 +94,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var latestSpeedTestDurationMS: Double?
     @Published private(set) var latestBenchmarkResult: BenchmarkResult?
     @Published private(set) var benchmarkHistory: [BenchmarkResult] = []
+    @Published private(set) var runtimeEvents: [RuntimeEvent] = []
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
@@ -735,6 +736,7 @@ final class AppViewModel: ObservableObject {
         isSpeedTestRunning = true
         latestSpeedTestMessage = "Running /v1/models readiness latency test..."
         latestSpeedTestDurationMS = nil
+        appendRuntimeEvent(category: "Benchmark", message: "Speed Test started for \(host):\(port)")
         appendLog("[benchmark] speed test started: http://\(host):\(port)/v1/models")
 
         Task {
@@ -787,6 +789,7 @@ final class AppViewModel: ObservableObject {
             }
             latestBenchmarkResult = benchmarkResult
             benchmarkHistory.insert(benchmarkResult, at: 0)
+            appendRuntimeEvent(category: "Benchmark", message: benchmarkResult.summary)
             isSpeedTestRunning = false
         }
     }
@@ -797,6 +800,7 @@ final class AppViewModel: ObservableObject {
         if !runtimeState.isExternalServerContext {
             runtimeState = .checkingReady(host: host, port: port)
         }
+        appendRuntimeEvent(category: "Ready", message: "Ready Check started for \(host):\(port)")
         appendLog("[ready] checking: http://\(host):\(port)/v1/models")
 
         Task {
@@ -2566,6 +2570,13 @@ final class AppViewModel: ObservableObject {
             apiBasePath: "/v1",
             apiKeyPlaceholder: settings.apiKeyPlaceholder
         )
+    }
+
+    private func appendRuntimeEvent(category: String, message: String) {
+        runtimeEvents.insert(RuntimeEvent(category: category, message: message), at: 0)
+        if runtimeEvents.count > 30 {
+            runtimeEvents.removeLast(runtimeEvents.count - 30)
+        }
     }
 
     private func appendLog(_ line: String) {

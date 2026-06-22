@@ -2981,6 +2981,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v12.2.0; release output is deferred until v13.0.0.
 
+## v12.3.0 Completed: Runtime Timeline Foundation
+
+- Add a session-scoped runtime event model.
+- Track Ready Check and Speed Test events in a compact Dashboard timeline.
+- Keep timeline in-memory and local to the current app session.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v12.3.0; release output is deferred until v13.0.0.
+
 ## Later
 
 - More advanced resource graphs.

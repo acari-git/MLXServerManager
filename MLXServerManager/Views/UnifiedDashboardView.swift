@@ -1201,6 +1201,27 @@ struct UnifiedDashboardView: View {
             .background(Color(nsColor: .textBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Runtime timeline")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                if viewModel.runtimeEvents.isEmpty {
+                    Text("No runtime events in this session.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(viewModel.runtimeEvents.prefix(5)) { event in
+                        Text(event.summary)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+            .padding(8)
+            .background(Color(nsColor: .textBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
             Text("Profile comparison")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
