@@ -136,16 +136,55 @@ struct IntegratedWorkspaceView: View {
         .frame(maxWidth: .infinity)
     }
 
+    @ViewBuilder
     private var centerColumn: some View {
-        VStack(spacing: 0) {
-            modelListPanel
-                .frame(minHeight: 390, idealHeight: 460)
-            Divider()
-            actionBar
-                .frame(height: 74)
-            Divider()
-            logPanel
-                .frame(minHeight: 250)
+        switch selectedDestination {
+        case .models:
+            VStack(spacing: 0) {
+                modelListPanel
+                    .frame(minHeight: 390, idealHeight: 460)
+                Divider()
+                actionBar
+                    .frame(height: 74)
+                Divider()
+                logPanel
+                    .frame(minHeight: 250)
+            }
+            .background(Color(nsColor: .windowBackgroundColor))
+        case .downloads:
+            DownloadsSurfaceView(viewModel: viewModel)
+        case .settings:
+            SettingsSurfaceView(viewModel: viewModel)
+        case .logs:
+            LogsSurfaceView(
+                entries: viewModel.logEntries,
+                targetSummary: viewModel.connectionTargetSummary,
+                runningModelText: viewModel.runningModelText,
+                onCopy: viewModel.copyLogsRequested,
+                onClear: viewModel.clearLogsRequested
+            )
+        case .help:
+            integratedHelpPanel
+        }
+    }
+
+    private var integratedHelpPanel: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Label("ヘルプ", systemImage: "questionmark.circle")
+                    .font(.title2.weight(.semibold))
+                Text("MLX Server Manager は Direct Mode で mlx_lm.server を管理します。")
+                    .font(.headline)
+                DetailGrid(rows: [
+                    ("接続", "client → mlx_lm.server"),
+                    ("モデル操作", "モデル一覧で選択し、中央の起動/停止/再起動を使います"),
+                    ("Hermes Agent", "右下の接続情報をコピーして外部 client に貼り付けます"),
+                    ("ログ", "中央下または左メニューのログで状態を確認します"),
+                    ("除外", "Chat UI / proxy / telemetry / token storage はありません")
+                ])
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(Color(nsColor: .windowBackgroundColor))
     }

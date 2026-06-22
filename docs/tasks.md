@@ -3293,6 +3293,14 @@
 - Preserve raw logs and Direct Mode boundaries.
 - No GitHub Release is produced for v16.7.0; release output is deferred until v17.0.0.
 
+## v16.8.0 Completed: Menu Navigation Reconnection
+
+- Connect the integrated left menu to Downloads, Settings, Logs, and Help content.
+- Keep Models as the screenshot-like primary integrated operations view.
+- Add a Direct Mode Help panel inside the integrated workspace.
+- Preserve the right-side model details and Hermes information while switching central work content.
+- No GitHub Release is produced for v16.8.0; release output is deferred until v17.0.0.
+
 ## Later
 
 - More advanced resource graphs.
