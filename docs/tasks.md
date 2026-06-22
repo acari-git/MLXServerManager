@@ -3213,6 +3213,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v15.1.0; release output is deferred until v16.0.0.
 
+## v15.2.0 Completed: Left System Metrics Visual Polish
+
+- Replace the plain memory text card with a circular memory gauge card.
+- Keep CPU, GPU/Metal, and uptime placeholders in the left system column for the GUI-first milestone.
+- Move closer to the provided reference screenshot's left-side system block.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v15.2.0; release output is deferred until v16.0.0.
+
 ## Later
 
 - More advanced resource graphs.

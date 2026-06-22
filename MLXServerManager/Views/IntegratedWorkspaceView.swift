@@ -73,11 +73,7 @@ struct IntegratedWorkspaceView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            systemMetricCard(
-                title: "メモリ使用状況",
-                value: viewModel.memoryUsageText,
-                detail: "Direct Mode runtime"
-            )
+            memoryGaugeCard
             systemMetricCard(
                 title: "CPU使用率",
                 value: "18%",
@@ -96,6 +92,49 @@ struct IntegratedWorkspaceView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var memoryGaugeCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("メモリ使用状況")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack(spacing: 12) {
+                Gauge(value: 0.48) {
+                    Text("Memory")
+                } currentValueLabel: {
+                    Text("48%")
+                        .font(.caption.weight(.bold))
+                }
+                .gaugeStyle(.accessoryCircularCapacity)
+                .tint(.green)
+                .frame(width: 56, height: 56)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(viewModel.memoryUsageText)
+                        .font(.caption.weight(.semibold))
+                    Text("合計 64.0 GB")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text("空き 33.4 GB")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            HStack {
+                Text("メモリプレッシャー")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("正常")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.green)
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .textBackgroundColor).opacity(0.72))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private func systemMetricCard(title: String, value: String, detail: String) -> some View {
