@@ -1150,6 +1150,16 @@ struct UnifiedDashboardView: View {
                 .background(Color(nsColor: .textBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
+            if let guidance = viewModel.benchmarkFailureGuidance {
+                Label(guidance, systemImage: "wrench.and.screwdriver")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.orange.opacity(0.10))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text("Benchmark history")

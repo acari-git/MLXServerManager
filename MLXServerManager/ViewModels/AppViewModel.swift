@@ -243,6 +243,26 @@ final class AppViewModel: ObservableObject {
         return parts.joined(separator: " ")
     }
 
+    var benchmarkFailureGuidance: String? {
+        guard let latestBenchmarkResult, latestBenchmarkResult.phase == .failed else {
+            return nil
+        }
+        let message = latestBenchmarkResult.message.lowercased()
+        if !connectionTargetSummary.isActiveTarget {
+            return "Server is not running. Press Start before Speed Test."
+        }
+        if runtimeSelectionWarning != nil {
+            return "Selected profile differs from the running profile. Stop → Start or Restart before measuring."
+        }
+        if message.contains("timed out") {
+            return "The server may still be loading the model or the model may be too heavy. Wait, then retry."
+        }
+        if message.contains("http") {
+            return "The endpoint responded but was not ready. Confirm the port and run Ready Check again."
+        }
+        return "Check runtime diagnostics and logs, then retry Speed Test."
+    }
+
     var benchmarkCopyText: String {
         guard !benchmarkHistory.isEmpty else {
             return "No benchmark results in this session."

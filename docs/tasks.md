@@ -2935,6 +2935,14 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v11.6.0; release output is deferred until v12.0.0.
 
+## v11.7.0 Completed: Benchmark Failure Guidance
+
+- Add Speed Test failure guidance in the runtime panel.
+- Cover missing active target, selected/running mismatch, timeout, and not-ready endpoint cases.
+- Keep all benchmark actions explicit and user-initiated.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v11.7.0; release output is deferred until v12.0.0.
+
 ## Later
 
 - More advanced resource graphs.
