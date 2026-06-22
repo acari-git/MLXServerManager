@@ -93,6 +93,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var latestSpeedTestMessage = "Speed Test has not run yet."
     @Published private(set) var latestSpeedTestDurationMS: Double?
     @Published private(set) var latestBenchmarkResult: BenchmarkResult?
+    @Published private(set) var benchmarkHistory: [BenchmarkResult] = []
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
@@ -205,6 +206,27 @@ final class AppViewModel: ObservableObject {
 
     var latestSpeedTestSummary: String {
         latestBenchmarkResult?.summary ?? latestSpeedTestMessage
+    }
+
+    var benchmarkSummaryText: String {
+        let successfulLatencies = benchmarkHistory.compactMap { result in
+            result.phase == .success ? result.readinessLatencyMS : nil
+        }
+        let failedCount = benchmarkHistory.filter { $0.phase == .failed }.count
+        let best = successfulLatencies.min().map { "\(Int($0)) ms" } ?? "-"
+        let average = successfulLatencies.isEmpty
+            ? "-"
+            : "\(Int(successfulLatencies.reduce(0, +) / Double(successfulLatencies.count))) ms"
+        return "Runs: \(benchmarkHistory.count), best \(best), average \(average), failed \(failedCount)"
+    }
+
+    var benchmarkCopyText: String {
+        guard !benchmarkHistory.isEmpty else {
+            return "No benchmark results in this session."
+        }
+        return (["Benchmark Summary", benchmarkSummaryText] + benchmarkHistory.prefix(10).map { result in
+            "- \(result.timestamp): \(result.modelID) @ \(result.baseURL): \(result.summary)"
+        }).joined(separator: "\n")
     }
 
     var logCategoryFilterOptions: [String] {
@@ -692,6 +714,7 @@ final class AppViewModel: ObservableObject {
                 appendLog("[benchmark] speed test timed out after \(Int(elapsedMS)) ms.")
             }
             latestBenchmarkResult = benchmarkResult
+            benchmarkHistory.insert(benchmarkResult, at: 0)
             isSpeedTestRunning = false
         }
     }
@@ -1479,6 +1502,11 @@ final class AppViewModel: ObservableObject {
     func copyModelsCurl() {
         copyToPasteboard(modelsCurlCommand)
         appendLog("[ui] Copied OpenAI-compatible curl /v1/models command.")
+    }
+
+    func copyBenchmarkSummary() {
+        copyToPasteboard(benchmarkCopyText)
+        appendLog("[benchmark] copied benchmark summary.")
     }
 
     func copyChatCompletionsCurl() {

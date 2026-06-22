@@ -2903,6 +2903,15 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v11.2.0; release output is deferred until v12.0.0.
 
+## v11.3.0 Completed: Benchmark History Surface
+
+- Add a session-scoped benchmark history.
+- Add latest, best, average, failed count, and recent-result display in Dashboard.
+- Add benchmark summary copy action.
+- Keep benchmark history in-memory only for this release.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v11.3.0; release output is deferred until v12.0.0.
+
 ## Later
 
 - More advanced resource graphs.

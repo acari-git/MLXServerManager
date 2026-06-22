@@ -1121,6 +1121,33 @@ struct UnifiedDashboardView: View {
                 .background(Color(nsColor: .textBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Benchmark history")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button {
+                        viewModel.copyBenchmarkSummary()
+                    } label: {
+                        Text("Copy summary")
+                    }
+                    .disabled(viewModel.benchmarkHistory.isEmpty)
+                }
+                Text(viewModel.benchmarkSummaryText)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                ForEach(viewModel.benchmarkHistory.prefix(3)) { result in
+                    Text(result.summary)
+                        .font(.caption2)
+                        .foregroundStyle(result.phase == .success ? Color.green : Color.orange)
+                        .lineLimit(1)
+                }
+            }
+            .padding(8)
+            .background(Color(nsColor: .textBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
             if let warning = viewModel.runtimeSelectionWarning {
                 Label(warning, systemImage: "arrow.triangle.2.circlepath")
                     .font(.caption)
