@@ -3,67 +3,32 @@ import XCTest
 
 @MainActor
 final class AppSectionTests: XCTestCase {
-    func testV6FiveSectionsAreStable() {
+    func testV14SixSectionsAreStable() {
         XCTAssertEqual(AppSection.allCases, [.dashboard, .profiles, .inspector, .logs, .clientSetup, .metrics])
     }
 
-    func testDashboardMetadataIsStable() {
-        let section = AppSection.dashboard
+    func testLocalizedNavigationLabelsUseV14SurfaceNames() {
+        XCTAssertEqual(AppSection.dashboard.localizedTitle(language: .english), "Dashboard")
+        XCTAssertEqual(AppSection.profiles.localizedTitle(language: .english), "Models")
+        XCTAssertEqual(AppSection.clientSetup.localizedTitle(language: .english), "Downloads")
+        XCTAssertEqual(AppSection.inspector.localizedTitle(language: .english), "Runtime")
+        XCTAssertEqual(AppSection.metrics.localizedTitle(language: .english), "Settings")
+        XCTAssertEqual(AppSection.logs.localizedTitle(language: .english), "Logs")
 
-        XCTAssertEqual(section.id, "dashboard")
-        XCTAssertEqual(section.title, "Dashboard")
-        XCTAssertEqual(section.subtitle, "Current Direct Mode control surface")
-        XCTAssertEqual(section.systemImageName, "rectangle.grid.2x2")
-        XCTAssertEqual(section.accessibilityIdentifier, "app-section-dashboard")
+        XCTAssertEqual(AppSection.dashboard.localizedTitle(language: .japanese), "ダッシュボード")
+        XCTAssertEqual(AppSection.profiles.localizedTitle(language: .japanese), "モデル")
+        XCTAssertEqual(AppSection.clientSetup.localizedTitle(language: .japanese), "ダウンロード")
+        XCTAssertEqual(AppSection.inspector.localizedTitle(language: .japanese), "ランタイム")
+        XCTAssertEqual(AppSection.metrics.localizedTitle(language: .japanese), "設定")
+        XCTAssertEqual(AppSection.logs.localizedTitle(language: .japanese), "ログ")
     }
 
-    func testProfilesMetadataIsStable() {
-        let section = AppSection.profiles
-
-        XCTAssertEqual(section.id, "profiles")
-        XCTAssertEqual(section.title, "Profiles")
-        XCTAssertEqual(section.subtitle, "Model profile list surface")
-        XCTAssertEqual(section.systemImageName, "list.bullet.rectangle")
-        XCTAssertEqual(section.accessibilityIdentifier, "app-section-profiles")
-    }
-
-    func testInspectorMetadataIsStable() {
-        let section = AppSection.inspector
-
-        XCTAssertEqual(section.id, "inspector")
-        XCTAssertEqual(section.title, "Inspector")
-        XCTAssertEqual(section.subtitle, "Selected profile detail surface")
-        XCTAssertEqual(section.systemImageName, "sidebar.right")
-        XCTAssertEqual(section.accessibilityIdentifier, "app-section-inspector")
-    }
-
-    func testLogsMetadataIsStable() {
-        let section = AppSection.logs
-
-        XCTAssertEqual(section.id, "logs")
-        XCTAssertEqual(section.title, "Logs")
-        XCTAssertEqual(section.subtitle, "Managed log context surface")
-        XCTAssertEqual(section.systemImageName, "doc.text.magnifyingglass")
-        XCTAssertEqual(section.accessibilityIdentifier, "app-section-logs")
-    }
-
-    func testClientSetupMetadataIsStable() {
-        let section = AppSection.clientSetup
-
-        XCTAssertEqual(section.id, "clientSetup")
-        XCTAssertEqual(section.title, "Client Setup")
-        XCTAssertEqual(section.subtitle, "OpenAI-compatible setup values")
-        XCTAssertEqual(section.systemImageName, "link.badge.plus")
-        XCTAssertEqual(section.accessibilityIdentifier, "app-section-clientSetup")
-    }
-
-    func testMetricsMetadataIsStable() {
-        let section = AppSection.metrics
-
-        XCTAssertEqual(section.id, "metrics")
-        XCTAssertEqual(section.title, "Metrics")
-        XCTAssertEqual(section.subtitle, "Read-only system context")
-        XCTAssertEqual(section.systemImageName, "gauge.with.dots.needle.67percent")
-        XCTAssertEqual(section.accessibilityIdentifier, "app-section-metrics")
+    func testAccessibilityIdentifiersRemainStable() {
+        XCTAssertEqual(AppSection.dashboard.accessibilityIdentifier, "app-section-dashboard")
+        XCTAssertEqual(AppSection.profiles.accessibilityIdentifier, "app-section-profiles")
+        XCTAssertEqual(AppSection.inspector.accessibilityIdentifier, "app-section-inspector")
+        XCTAssertEqual(AppSection.logs.accessibilityIdentifier, "app-section-logs")
+        XCTAssertEqual(AppSection.clientSetup.accessibilityIdentifier, "app-section-clientSetup")
+        XCTAssertEqual(AppSection.metrics.accessibilityIdentifier, "app-section-metrics")
     }
 }

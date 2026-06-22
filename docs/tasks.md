@@ -3053,6 +3053,16 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v13.1.0; release output is deferred until v14.0.0.
 
+## v13.2.0 Completed: Localization Foundation
+
+- Add `AppLanguage` with System, Japanese, and English options.
+- Add `AppLocalization` and primary UI string keys.
+- Add Settings language picker and persist language in `AppSettings` with backward-compatible decoding.
+- Add localized sidebar labels for the v14 target surfaces.
+- Add localization tests.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v13.2.0; release output is deferred until v14.0.0.
+
 ## Later
 
 - More advanced resource graphs.

@@ -8,12 +8,13 @@ import SwiftUI
 /// preserving room for later staged destinations.
 struct AppShellView<Content: View>: View {
     @Binding var selectedSection: AppSection
+    var language: AppLanguage = .english
     @ViewBuilder var content: (AppSection) -> Content
 
     var body: some View {
         NavigationSplitView {
             List(AppSection.allCases, selection: $selectedSection) { section in
-                AppSectionSidebarRow(section: section)
+                AppSectionSidebarRow(section: section, language: language)
                     .tag(section)
             }
             .listStyle(.sidebar)
@@ -22,7 +23,7 @@ struct AppShellView<Content: View>: View {
             .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 280)
         } detail: {
             content(selectedSection)
-                .navigationTitle(selectedSection.title)
+                .navigationTitle(selectedSection.localizedTitle(language: language))
                 .accessibilityIdentifier("app-shell-detail-\(selectedSection.rawValue)")
         }
     }
@@ -30,13 +31,14 @@ struct AppShellView<Content: View>: View {
 
 private struct AppSectionSidebarRow: View {
     let section: AppSection
+    let language: AppLanguage
 
     var body: some View {
         Label {
             VStack(alignment: .leading, spacing: 2) {
-                Text(section.title)
+                Text(section.localizedTitle(language: language))
                     .font(.body.weight(.medium))
-                Text(section.subtitle)
+                Text(section.localizedSubtitle(language: language))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
@@ -46,8 +48,8 @@ private struct AppSectionSidebarRow: View {
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(section.title)
-        .accessibilityHint(section.subtitle)
+        .accessibilityLabel(section.localizedTitle(language: language))
+        .accessibilityHint(section.localizedSubtitle(language: language))
         .accessibilityIdentifier(section.accessibilityIdentifier)
     }
 }

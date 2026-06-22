@@ -15,36 +15,46 @@ enum AppSection: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     var title: String {
-        switch self {
-        case .dashboard:
-            "Dashboard"
-        case .profiles:
-            "Profiles"
-        case .inspector:
-            "Inspector"
-        case .logs:
-            "Logs"
-        case .clientSetup:
-            "Client Setup"
-        case .metrics:
-            "Metrics"
-        }
+        localizedTitle(language: .english)
     }
 
     var subtitle: String {
+        localizedSubtitle(language: .english)
+    }
+
+    func localizedTitle(language: AppLanguage) -> String {
+        let strings = AppLocalization(language: language)
         switch self {
         case .dashboard:
-            "Current Direct Mode control surface"
+            return strings.text(.dashboard)
         case .profiles:
-            "Model profile list surface"
+            return strings.text(.models)
         case .inspector:
-            "Selected profile detail surface"
+            return strings.text(.runtime)
         case .logs:
-            "Managed log context surface"
+            return strings.text(.logs)
         case .clientSetup:
-            "OpenAI-compatible setup values"
+            return strings.text(.downloads)
         case .metrics:
-            "Read-only system context"
+            return strings.text(.settings)
+        }
+    }
+
+    func localizedSubtitle(language: AppLanguage) -> String {
+        let strings = AppLocalization(language: language)
+        switch self {
+        case .dashboard:
+            return strings.text(.dashboardSubtitle)
+        case .profiles:
+            return strings.text(.modelsSubtitle)
+        case .inspector:
+            return strings.text(.runtimeSubtitle)
+        case .logs:
+            return strings.text(.logsSubtitle)
+        case .clientSetup:
+            return strings.text(.downloadsSubtitle)
+        case .metrics:
+            return strings.text(.settingsSubtitle)
         }
     }
 

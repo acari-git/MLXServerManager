@@ -12,7 +12,7 @@ struct ContentView: View {
     @State private var selectedSection = AppSection.dashboard
 
     var body: some View {
-        AppShellView(selectedSection: $selectedSection) { section in
+        AppShellView(selectedSection: $selectedSection, language: viewModel.settings.uiLanguage) { section in
             switch section {
             case .dashboard:
                 UnifiedDashboardView(viewModel: viewModel)
@@ -128,6 +128,7 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 18) {
                         SettingsPanelView(
                             executablePath: $viewModel.settings.mlxServerExecutablePath,
+                            language: $viewModel.settings.uiLanguage,
                             settingsDirectoryPath: viewModel.settingsDirectoryPath,
                             onSave: viewModel.saveSettingsRequested,
                             onRunDiagnostics: viewModel.runDiagnosticsRequested
