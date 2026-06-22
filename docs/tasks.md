@@ -3375,6 +3375,13 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v17.8.0; release output is deferred until v18.0.0.
 
+## v17.9.0 Completed: v18 Readiness Stabilization
+
+- Add `docs/v18_model_operations_safety_readiness.md`.
+- Document integrated safety panel, port safety, model identity validation, duplicate warnings, runtime editing safety, failed start recovery, and safety tests.
+- Reconfirm known limitations and Direct Mode boundaries before v18.0.0.
+- No GitHub Release is produced for v17.9.0; release output is deferred until v18.0.0.
+
 ## Later
 
 - More advanced resource graphs.
