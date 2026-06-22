@@ -3028,6 +3028,15 @@
 - Carry the same safety boundaries into the v14 GUI optimization phase.
 - No GitHub Release is produced for v12.8.0; release output is deferred until v13.0.0.
 
+## v12.9.0 Completed: v13 Release Readiness
+
+- Add v14 GUI optimization review and language switching plan.
+- Update README with the v14 GUI direction.
+- Define the v14 path around Dashboard simplification, Models / Downloads / Runtime ownership, and Japanese / English switching.
+- Keep v13.0.0 as the only release for this sequence.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v12.9.0; release output is deferred until v13.0.0.
+
 ## Later
 
 - More advanced resource graphs.
