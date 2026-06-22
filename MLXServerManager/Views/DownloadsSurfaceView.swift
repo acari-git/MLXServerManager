@@ -3,6 +3,10 @@ import SwiftUI
 struct DownloadsSurfaceView: View {
     @ObservedObject var viewModel: AppViewModel
 
+    private var strings: AppLocalization {
+        AppLocalization(language: viewModel.settings.uiLanguage)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -24,7 +28,7 @@ struct DownloadsSurfaceView: View {
                 Image(systemName: "arrow.down.circle")
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.accentColor)
-                Text("Downloads")
+                Text(strings.text(.downloads))
                     .font(.title2.weight(.semibold))
             }
             Text("Search Hugging Face, review the selected result, download explicitly, and recover failed queue entries.")
@@ -47,7 +51,7 @@ struct DownloadsSurfaceView: View {
                     if viewModel.isHuggingFaceSearching {
                         ProgressView().scaleEffect(0.7)
                     } else {
-                        Label("Search", systemImage: "magnifyingglass")
+                        Label(strings.text(.search), systemImage: "magnifyingglass")
                     }
                 }
                 .disabled(viewModel.isHuggingFaceSearching)
@@ -107,7 +111,7 @@ struct DownloadsSurfaceView: View {
 
     private var downloadFormCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Download form")
+            Text(strings.text(.download))
                 .font(.headline)
 
             TextField("Repository ID or URL", text: $viewModel.huggingFaceDownloadDraft.source)
@@ -133,17 +137,17 @@ struct DownloadsSurfaceView: View {
                 Button {
                     viewModel.startHuggingFaceDownloadRequested()
                 } label: {
-                    Label("Download", systemImage: "arrow.down.circle")
+                    Label(strings.text(.download), systemImage: "arrow.down.circle")
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!viewModel.canStartHuggingFaceDownload)
 
-                Button("Retry") {
+                Button(strings.text(.retry)) {
                     viewModel.retryHuggingFaceDownloadRequested()
                 }
                 .disabled(!viewModel.canRetryHuggingFaceDownload)
 
-                Button("Cancel") {
+                Button(strings.text(.cancel)) {
                     viewModel.cancelHuggingFaceDownloadRequested()
                 }
                 .disabled(!viewModel.isHuggingFaceDownloadRunning)
@@ -154,7 +158,7 @@ struct DownloadsSurfaceView: View {
 
     private var queueCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Download queue")
+            Text(strings.text(.downloadQueue))
                 .font(.headline)
             Text(viewModel.huggingFaceDownloadQueueSummary)
                 .font(.caption)

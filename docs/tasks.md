@@ -3104,6 +3104,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v13.7.0; release output is deferred until v14.0.0.
 
+## v13.8.0 Completed: Japanese / English String Coverage
+
+- Extend localization keys for primary actions and major surface labels.
+- Apply language switching to Dashboard, Downloads, Runtime, Settings, and Sidebar primary labels.
+- Keep model IDs, paths, commands, and raw logs untranslated.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v13.8.0; release output is deferred until v14.0.0.
+
 ## Later
 
 - More advanced resource graphs.

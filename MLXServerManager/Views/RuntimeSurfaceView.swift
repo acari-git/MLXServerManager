@@ -3,6 +3,10 @@ import SwiftUI
 struct RuntimeSurfaceView: View {
     @ObservedObject var viewModel: AppViewModel
 
+    private var strings: AppLocalization {
+        AppLocalization(language: viewModel.settings.uiLanguage)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -26,7 +30,7 @@ struct RuntimeSurfaceView: View {
                 Image(systemName: "server.rack")
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.accentColor)
-                Text("Runtime")
+                Text(strings.text(.runtime))
                     .font(.title2.weight(.semibold))
             }
             Text("Start, stop, diagnose, benchmark, and copy Direct Mode connection values.")
@@ -37,7 +41,7 @@ struct RuntimeSurfaceView: View {
 
     private var runtimeControlsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Runtime controls")
+            Text(strings.text(.runtimeControls))
                 .font(.headline)
 
             DetailGrid(rows: [
@@ -52,21 +56,21 @@ struct RuntimeSurfaceView: View {
                 Button {
                     viewModel.startRequested()
                 } label: {
-                    Label("Start", systemImage: "play.fill")
+                    Label(strings.text(.start), systemImage: "play.fill")
                 }
                 .buttonStyle(.borderedProminent)
 
                 Button {
                     viewModel.stopRequested()
                 } label: {
-                    Label("Stop", systemImage: "stop.fill")
+                    Label(strings.text(.stop), systemImage: "stop.fill")
                 }
                 .disabled(!viewModel.canStopManagedServer)
 
                 Button {
                     viewModel.restartRequested()
                 } label: {
-                    Label("Restart", systemImage: "arrow.clockwise")
+                    Label(strings.text(.restart), systemImage: "arrow.clockwise")
                 }
                 .disabled(!viewModel.canRestartManagedServer)
 
@@ -82,7 +86,7 @@ struct RuntimeSurfaceView: View {
                     if viewModel.isSpeedTestRunning {
                         ProgressView().scaleEffect(0.7)
                     } else {
-                        Label("Speed Test", systemImage: "bolt")
+                        Label(strings.text(.speedTest), systemImage: "bolt")
                     }
                 }
                 .disabled(!viewModel.canRunSpeedTest)
@@ -115,7 +119,7 @@ struct RuntimeSurfaceView: View {
     private var benchmarkCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Benchmark")
+                Text(strings.text(.benchmark))
                     .font(.headline)
                 Spacer()
                 Button("Copy latest") {
@@ -163,7 +167,7 @@ struct RuntimeSurfaceView: View {
             Text("Runtime timeline")
                 .font(.headline)
             if viewModel.runtimeEvents.isEmpty {
-                Text("No runtime events in this session.")
+                Text(strings.text(.noRuntimeEvents))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -180,7 +184,7 @@ struct RuntimeSurfaceView: View {
 
     private var connectionCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Connection presets")
+            Text(strings.text(.connectionPresets))
                 .font(.headline)
             DetailGrid(rows: [
                 ("Base URL", viewModel.baseURL),

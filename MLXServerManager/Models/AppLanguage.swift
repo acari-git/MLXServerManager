@@ -62,6 +62,23 @@ enum AppTextKey {
     case language
     case saveSettings
     case runDiagnostics
+    case nextActions
+    case recentActivity
+    case start
+    case stop
+    case restart
+    case speedTest
+    case copyHermes
+    case copyOpenAICompatible
+    case search
+    case download
+    case retry
+    case cancel
+    case downloadQueue
+    case noRuntimeEvents
+    case runtimeControls
+    case benchmark
+    case connectionPresets
 
     var english: String {
         switch self {
@@ -80,6 +97,23 @@ enum AppTextKey {
         case .language: "Language"
         case .saveSettings: "Save Settings"
         case .runDiagnostics: "Run Diagnostics"
+        case .nextActions: "Next actions"
+        case .recentActivity: "Recent activity"
+        case .start: "Start"
+        case .stop: "Stop"
+        case .restart: "Restart"
+        case .speedTest: "Speed Test"
+        case .copyHermes: "Copy Hermes"
+        case .copyOpenAICompatible: "Copy OpenAI-compatible"
+        case .search: "Search"
+        case .download: "Download"
+        case .retry: "Retry"
+        case .cancel: "Cancel"
+        case .downloadQueue: "Download queue"
+        case .noRuntimeEvents: "No runtime events in this session."
+        case .runtimeControls: "Runtime controls"
+        case .benchmark: "Benchmark"
+        case .connectionPresets: "Connection presets"
         }
     }
 
@@ -100,6 +134,23 @@ enum AppTextKey {
         case .language: "言語"
         case .saveSettings: "設定を保存"
         case .runDiagnostics: "診断を実行"
+        case .nextActions: "次の操作"
+        case .recentActivity: "最近のアクティビティ"
+        case .start: "起動"
+        case .stop: "停止"
+        case .restart: "再起動"
+        case .speedTest: "スピードテスト"
+        case .copyHermes: "Hermes 設定をコピー"
+        case .copyOpenAICompatible: "OpenAI互換設定をコピー"
+        case .search: "検索"
+        case .download: "ダウンロード"
+        case .retry: "再試行"
+        case .cancel: "キャンセル"
+        case .downloadQueue: "ダウンロード queue"
+        case .noRuntimeEvents: "この session の runtime event はありません。"
+        case .runtimeControls: "ランタイム操作"
+        case .benchmark: "Benchmark"
+        case .connectionPresets: "接続 preset"
         }
     }
 }

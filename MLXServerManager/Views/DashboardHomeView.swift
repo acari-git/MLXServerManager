@@ -3,6 +3,10 @@ import SwiftUI
 struct DashboardHomeView: View {
     @ObservedObject var viewModel: AppViewModel
 
+    private var strings: AppLocalization {
+        AppLocalization(language: viewModel.settings.uiLanguage)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -24,7 +28,7 @@ struct DashboardHomeView: View {
                 Image(systemName: "rectangle.grid.2x2")
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.accentColor)
-                Text("Dashboard")
+                Text(strings.text(.dashboard))
                     .font(.title2.weight(.semibold))
             }
             Text("Overview for Direct Mode operations. Use Models, Downloads, Runtime, Settings, and Logs for detailed work.")
@@ -70,33 +74,33 @@ struct DashboardHomeView: View {
 
     private var nextActions: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Next actions")
+            Text(strings.text(.nextActions))
                 .font(.headline)
             HStack {
                 Button {
                     viewModel.startRequested()
                 } label: {
-                    Label("Start", systemImage: "play.fill")
+                    Label(strings.text(.start), systemImage: "play.fill")
                 }
                 .buttonStyle(.borderedProminent)
 
                 Button {
                     viewModel.runSpeedTestRequested()
                 } label: {
-                    Label("Speed Test", systemImage: "bolt")
+                    Label(strings.text(.speedTest), systemImage: "bolt")
                 }
                 .disabled(!viewModel.canRunSpeedTest)
 
                 Button {
                     viewModel.copyHermesAgentConfig()
                 } label: {
-                    Label("Copy Hermes", systemImage: "doc.on.doc")
+                    Label(strings.text(.copyHermes), systemImage: "doc.on.doc")
                 }
 
                 Button {
                     viewModel.copyAllConnectionSettings()
                 } label: {
-                    Label("Copy OpenAI-compatible", systemImage: "link")
+                    Label(strings.text(.copyOpenAICompatible), systemImage: "link")
                 }
             }
 
@@ -109,7 +113,7 @@ struct DashboardHomeView: View {
 
     private var recentActivity: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Recent activity")
+            Text(strings.text(.recentActivity))
                 .font(.headline)
 
             if let latestImportant = viewModel.latestImportantLogEntry {
@@ -119,7 +123,7 @@ struct DashboardHomeView: View {
             }
 
             if viewModel.runtimeEvents.isEmpty {
-                Text("No runtime events in this session.")
+                Text(strings.text(.noRuntimeEvents))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
