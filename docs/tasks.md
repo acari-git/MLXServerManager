@@ -3253,6 +3253,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v16.2.0; release output is deferred until v17.0.0.
 
+## v16.3.0 Completed: Model Table Runtime State Wiring
+
+- Add integrated model table summary helpers to the ViewModel.
+- Wire status, detail, proxy port, memory, latest-use, and auto-unload columns through ViewModel functions.
+- Keep the integrated model list visually aligned with the reference layout while making state derivation testable.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v16.3.0; release output is deferred until v17.0.0.
+
 ## Later
 
 - More advanced resource graphs.

@@ -606,6 +606,34 @@ final class AppViewModel: ObservableObject {
         runtimeEvents.isEmpty ? "-" : "session active"
     }
 
+    func integratedStatusText(for model: ModelConfig) -> String {
+        model.id == runningModelID ? runtimeState.title : "Stopped"
+    }
+
+    func integratedStatusDetail(for model: ModelConfig) -> String {
+        model.id == runningModelID ? "稼働中" : "停止中"
+    }
+
+    func integratedProxyPort(for model: ModelConfig) -> Int {
+        model.serverPort + 10000
+    }
+
+    func integratedMemoryText(for model: ModelConfig) -> String {
+        model.id == runningModelID ? memoryUsageText : "-"
+    }
+
+    func integratedLatestUseText(for model: ModelConfig) -> String {
+        guard model.id == runningModelID else { return "-" }
+        if let latestBenchmarkResult {
+            return latestBenchmarkResult.latencyText
+        }
+        return runtimeEvents.first?.category ?? "active"
+    }
+
+    func integratedAutoUnloadText(for model: ModelConfig) -> String {
+        model.id == runningModelID ? "手動停止" : "未稼働"
+    }
+
     private var managedReadinessSummary: String {
         switch runtimeState {
         case .ready:

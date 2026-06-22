@@ -215,20 +215,20 @@ struct IntegratedWorkspaceView: View {
                     .gridCellColumns(2)
 
                     VStack(alignment: .leading, spacing: 3) {
-                        statusPill(model.id == viewModel.runningModelID ? "Ready" : "Stopped")
-                        Text(model.id == viewModel.runningModelID ? "稼働中" : "停止中")
+                        statusPill(viewModel.integratedStatusText(for: model))
+                        Text(viewModel.integratedStatusDetail(for: model))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
 
                     portValue(String(model.serverPort))
-                    portValue(String(model.serverPort + 10000))
-                    memoryCell(model.id == viewModel.runningModelID ? viewModel.memoryUsageText : "-")
-                    Text(model.id == viewModel.runningModelID ? "2分前" : "-")
+                    portValue(String(viewModel.integratedProxyPort(for: model)))
+                    memoryCell(viewModel.integratedMemoryText(for: model))
+                    Text(viewModel.integratedLatestUseText(for: model))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     HStack(spacing: 6) {
-                        Text("10分")
+                        Text(viewModel.integratedAutoUnloadText(for: model))
                             .font(.caption)
                         Toggle("", isOn: .constant(true))
                             .toggleStyle(.switch)
