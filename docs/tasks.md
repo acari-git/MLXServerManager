@@ -3198,6 +3198,12 @@
 - Reconfirm language and Direct Mode boundaries.
 - No GitHub Release is produced for v14.9.0; release output is deferred until v15.0.0.
 
+## v15.0.0 Completed: GUI Workflow Integration Stable
+
+- Complete the v14.x staged workflow integration path from Models interactions, filters, Downloads completion and recovery, Runtime action states, Settings completion, Dashboard navigation, Logs troubleshooting, and v15 readiness.
+- Produce the requested final release asset: `MLXServerManager-v15.0.0-unsigned.zip`.
+- Preserve Direct Mode.
+
 ## Later
 
 - More advanced resource graphs.
