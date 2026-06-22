@@ -3151,6 +3151,14 @@
 - Preserve Direct Mode and avoid automatic start.
 - No GitHub Release is produced for v14.3.0; release output is deferred until v15.0.0.
 
+## v14.4.0 Completed: Downloads Recovery UX
+
+- Add a visible recovery card for the latest failed Hugging Face download.
+- Surface restore form, copy URL, and retry actions near the failure summary.
+- Keep all recovery actions explicit and user-triggered.
+- Preserve Direct Mode and avoid credential storage.
+- No GitHub Release is produced for v14.4.0; release output is deferred until v15.0.0.
+
 ## Later
 
 - More advanced resource graphs.

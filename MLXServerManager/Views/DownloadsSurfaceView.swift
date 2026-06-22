@@ -13,6 +13,7 @@ struct DownloadsSurfaceView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
+                recoveryCard
                 searchCard
                 downloadFormCard
                 queueCard
@@ -36,6 +37,35 @@ struct DownloadsSurfaceView: View {
             Text("Search Hugging Face, review the selected result, download explicitly, and recover failed queue entries.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var recoveryCard: some View {
+        if let failed = viewModel.latestFailedHuggingFaceDownloadQueueEntry {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Latest failed download", systemImage: "exclamationmark.triangle")
+                    .font(.headline)
+                    .foregroundStyle(.orange)
+                DetailGrid(rows: [
+                    ("Repository", failed.repositoryID),
+                    ("Destination", failed.compactDestinationPath),
+                    ("Message", failed.message)
+                ])
+                HStack {
+                    Button("Restore form") {
+                        viewModel.restoreHuggingFaceDownloadForm(from: failed)
+                    }
+                    Button("Copy URL") {
+                        viewModel.copyHuggingFaceDownloadURL(from: failed)
+                    }
+                    Button(strings.text(.retry)) {
+                        viewModel.retryHuggingFaceDownloadRequested()
+                    }
+                    .disabled(!viewModel.canRetryHuggingFaceDownload)
+                }
+            }
+            .panelStyle()
         }
     }
 

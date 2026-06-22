@@ -296,6 +296,10 @@ final class AppViewModel: ObservableObject {
         return "Check runtime diagnostics and logs, then retry Speed Test."
     }
 
+    var latestFailedHuggingFaceDownloadQueueEntry: HuggingFaceDownloadQueueEntry? {
+        huggingFaceDownloadQueue.first { $0.phase == .failed }
+    }
+
     var benchmarkCopyText: String {
         guard !benchmarkHistory.isEmpty else {
             return "No benchmark results in this session."
