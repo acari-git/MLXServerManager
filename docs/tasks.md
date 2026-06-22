@@ -3308,6 +3308,12 @@
 - Reconfirm known limitations and Direct Mode safety boundaries before v17.0.0.
 - No GitHub Release is produced for v16.9.0; release output is deferred until v17.0.0.
 
+## v17.0.0 Completed: Integrated GUI Functional Stable
+
+- Complete the v16.x staged path from sidebar component split, system metrics wiring, model table state wiring, action-state polish, model settings editing, Hermes Direct Mode copy accuracy, log wiring, menu navigation, and v17 readiness.
+- Produce the requested final release asset: `MLXServerManager-v17.0.0-unsigned.zip`.
+- Preserve Direct Mode.
+
 ## Later
 
 - More advanced resource graphs.
