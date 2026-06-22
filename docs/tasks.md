@@ -3112,6 +3112,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v13.8.0; release output is deferred until v14.0.0.
 
+## v13.9.0 Completed: v14 Readiness Stabilization
+
+- Add a dedicated `SettingsSurfaceView` so the v14 Settings sidebar item owns settings and language selection.
+- Update README to describe the v14 GUI-optimized surface split.
+- Keep Dashboard, Models, Downloads, Runtime, Settings, and Logs as the v14 primary navigation model.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v13.9.0; release output is deferred until v14.0.0.
+
 ## Later
 
 - More advanced resource graphs.

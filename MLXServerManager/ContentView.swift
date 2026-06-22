@@ -36,15 +36,7 @@ struct ContentView: View {
             case .clientSetup:
                 DownloadsSurfaceView(viewModel: viewModel)
             case .metrics:
-                MetricsSystemContextSurfaceView(
-                    targetSummary: viewModel.connectionTargetSummary,
-                    runtimeState: viewModel.runtimeState,
-                    memoryUsageText: viewModel.memoryUsageText,
-                    selectedModelText: viewModel.selectedModelText,
-                    runningModelText: viewModel.runningModelText,
-                    restartRequired: viewModel.restartRequired,
-                    logEntryCount: viewModel.logEntries.count
-                )
+                SettingsSurfaceView(viewModel: viewModel)
             }
         }
         .frame(minWidth: 900, minHeight: 620)

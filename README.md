@@ -153,7 +153,7 @@ Do not download the source archive if you want the app binary. Use the named `ML
 
 ## v14 GUI Optimization Direction
 
-After v13.0.0, the next focus is GUI optimization. The v14 direction is documented in `docs/v14_gui_optimization_review.md` and covers Dashboard simplification, clearer Models / Downloads / Runtime surfaces, and Japanese / English language switching while preserving Direct Mode.
+v14.0.0 focuses on GUI optimization. Dashboard is now a compact overview; Models, Downloads, Runtime, Settings, and Logs are separated as primary surfaces. Japanese / English language switching is available from Settings while preserving Direct Mode.
 
 You must provide your own `mlx-lm` environment and `mlx_lm.server` executable. You can register existing model files, search Hugging Face and choose a result, or use the Dashboard Hugging Face card to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: the client connects directly to `mlx_lm.server`; MLX Server Manager does not proxy inference traffic or run chat completions.
 
