@@ -17,12 +17,7 @@ struct ContentView: View {
             case .dashboard:
                 DashboardHomeView(viewModel: viewModel)
             case .profiles:
-                ProfilesSurfaceView(
-                    models: viewModel.models,
-                    selectedModelID: viewModel.selectedModelID,
-                    runningModelID: viewModel.runningModelID,
-                    restartRequired: viewModel.restartRequired
-                )
+                ProfilesSurfaceView(viewModel: viewModel)
             case .inspector:
                 RuntimeSurfaceView(viewModel: viewModel)
             case .logs:
@@ -54,6 +49,46 @@ struct ContentView: View {
             }
         } message: {
             Text("This removes only the saved profile. Model files and Hugging Face cache are not deleted.")
+        }
+        .sheet(isPresented: Binding(
+            get: { viewModel.isProfileEditorPresented },
+            set: { if !$0 { viewModel.cancelProfileEditing() } }
+        )) {
+            ModelProfileEditorView(
+                draft: $viewModel.profileEditorDraft,
+                title: "Edit Model Profile",
+                saveButtonTitle: "Save Profile",
+                noticeMessage: viewModel.isManagedProcessRunning
+                    ? "Runtime fields are locked while the managed server is running."
+                    : nil,
+                message: viewModel.profileEditorMessage,
+                runtimeFieldsLocked: viewModel.isManagedProcessRunning,
+                onSave: viewModel.saveProfileEditing,
+                onCancel: viewModel.cancelProfileEditing,
+                onCopyPreview: viewModel.copyLaunchCommandPreview
+            )
+            .padding(20)
+            .frame(minWidth: 620, minHeight: 520)
+        }
+        .sheet(isPresented: Binding(
+            get: { viewModel.isAddProfilePresented },
+            set: { if !$0 { viewModel.cancelAddProfile() } }
+        )) {
+            ModelProfileEditorView(
+                draft: $viewModel.addProfileDraft,
+                title: "Add Model Profile",
+                saveButtonTitle: "Save New Profile",
+                noticeMessage: viewModel.isManagedProcessRunning
+                    ? "Saving a new profile will not change the running managed server."
+                    : nil,
+                message: viewModel.addProfileMessage,
+                runtimeFieldsLocked: false,
+                onSave: viewModel.saveNewProfile,
+                onCancel: viewModel.cancelAddProfile,
+                onCopyPreview: viewModel.copyLaunchCommandPreview
+            )
+            .padding(20)
+            .frame(minWidth: 620, minHeight: 520)
         }
         .sheet(isPresented: $viewModel.isImportPreviewPresented) {
             if let result = viewModel.importPreviewResult {

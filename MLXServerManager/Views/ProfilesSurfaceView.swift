@@ -1,32 +1,32 @@
 import SwiftUI
 
 struct ProfilesSurfaceView: View {
-    let models: [ModelConfig]
-    let selectedModelID: ModelConfig.ID?
-    let runningModelID: ModelConfig.ID?
-    let restartRequired: Bool
+    @ObservedObject var viewModel: AppViewModel
+
+    private var models: [ModelConfig] { viewModel.visibleModels }
+    private var selectedModel: ModelConfig? { viewModel.selectedModel }
+    private var runningModel: ModelConfig? {
+        guard let runningModelID = viewModel.runningModelID else { return nil }
+        return viewModel.models.first { $0.id == runningModelID }
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
+                toolbar
                 summaryCards
 
-                if models.isEmpty {
+                if viewModel.models.isEmpty {
                     emptyState
                 } else {
-                    Text("Model Profiles")
-                        .font(.headline)
-                        .accessibilityIdentifier("profiles-surface-list-heading")
-
-                    LazyVStack(alignment: .leading, spacing: 12) {
-                        ForEach(models) { model in
-                            profileCard(model)
-                        }
+                    HSplitView {
+                        modelList
+                            .frame(minWidth: 320, idealWidth: 420)
+                        selectedModelInspector
+                            .frame(minWidth: 360)
                     }
-                    .accessibilityIdentifier("profiles-surface-profile-list")
-
-                    selectedModelInspector
+                    .frame(minHeight: 480)
                 }
             }
             .padding(20)
@@ -36,26 +36,10 @@ struct ProfilesSurfaceView: View {
         .accessibilityIdentifier("profiles-surface")
     }
 
-    private var selectedModel: ModelConfig? {
-        models.first { model in
-            model.id == selectedModelID
-        }
-    }
-
-    private var runningModel: ModelConfig? {
-        models.first { model in
-            model.id == runningModelID
-        }
-    }
-
-    private var restartRequiredText: String {
-        restartRequired ? "Yes" : "No"
-    }
-
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                Image(systemName: "list.bullet.rectangle")
+                Image(systemName: "square.stack.3d.up")
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.accentColor)
 
@@ -63,12 +47,64 @@ struct ProfilesSurfaceView: View {
                     .font(.title2.weight(.semibold))
             }
 
-            Text("Model management surface with profile list, selected/running badges, and selected model inspector.")
+            Text("Manage model profiles from one surface. Runtime lifecycle controls remain on Runtime.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("profiles-surface-header")
+    }
+
+    private var toolbar: some View {
+        HStack(spacing: 10) {
+            Picker("Source", selection: $viewModel.modelListSourceFilter) {
+                ForEach(viewModel.modelListSourceFilterOptions, id: \.self) { source in
+                    Text(source).tag(source)
+                }
+            }
+            .frame(width: 190)
+
+            Spacer()
+
+            Button {
+                viewModel.addProfileRequested()
+            } label: {
+                Label("Add", systemImage: "plus")
+            }
+
+            Button {
+                viewModel.editProfileRequested()
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            .disabled(selectedModel == nil)
+
+            Button(role: .destructive) {
+                viewModel.deleteProfileRequested()
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            .disabled(selectedModel == nil || viewModel.models.count <= 1 || viewModel.isManagedProcessRunning)
+
+            Divider()
+                .frame(height: 24)
+
+            Button {
+                viewModel.importProfilesPreviewRequested()
+            } label: {
+                Label("Import", systemImage: "square.and.arrow.down")
+            }
+
+            Button {
+                viewModel.exportProfilesRequested()
+            } label: {
+                Label("Export", systemImage: "square.and.arrow.up")
+            }
+            .disabled(viewModel.models.isEmpty)
+        }
+        .padding(12)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     private var summaryCards: some View {
@@ -77,52 +113,42 @@ struct ProfilesSurfaceView: View {
             alignment: .leading,
             spacing: 12
         ) {
-            summaryCard("Profiles", value: String(models.count))
+            summaryCard("Profiles", value: String(viewModel.models.count))
+            summaryCard("Visible", value: String(models.count))
             summaryCard("Selected", value: selectedModel?.displayName ?? "None")
             summaryCard("Running", value: runningModel?.displayName ?? "None")
-            summaryCard("Restart required", value: restartRequiredText)
+            summaryCard("Restart required", value: viewModel.restartRequired ? "Yes" : "No")
         }
         .accessibilityIdentifier("profiles-surface-summary")
     }
 
-    private var selectedModelInspector: some View {
+    private var modelList: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Selected model inspector")
+            Text("Model Profiles")
                 .font(.headline)
-            if let selectedModel {
-                DetailGrid(rows: [
-                    ("Model ID", selectedModel.modelID),
-                    ("Display Name", selectedModel.displayName),
-                    ("Source", sourceLabel(for: selectedModel)),
-                    ("Endpoint", "\(selectedModel.host):\(selectedModel.serverPort)"),
-                    ("Thinking", selectedModel.enableThinking ? "Enabled" : "Disabled"),
-                    ("Notes", selectedModel.notes.isEmpty ? "None" : selectedModel.notes)
-                ])
-                Label("Deleting a profile removes metadata only. Model files and Hugging Face cache are not deleted.", systemImage: "shield")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                .accessibilityIdentifier("profiles-surface-list-heading")
+
+            if models.isEmpty {
+                ContentUnavailableView(
+                    "No models for this filter",
+                    systemImage: "line.3.horizontal.decrease.circle",
+                    description: Text("Change the source filter to show other profiles.")
+                )
+                .frame(maxWidth: .infinity, minHeight: 260)
             } else {
-                Text("Select a model profile to inspect its details.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    ForEach(models) { model in
+                        Button {
+                            viewModel.selectedModelID = model.id
+                        } label: {
+                            profileCard(model)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .accessibilityIdentifier("profiles-surface-profile-list")
             }
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay {
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(Color.secondary.opacity(0.12))
-        }
-        .accessibilityIdentifier("models-surface-selected-inspector")
-    }
-
-    private func sourceLabel(for model: ModelConfig) -> String {
-        if ModelAvailabilityPathFormatter.localPathCandidate(for: model) != nil {
-            return model.notes.localizedCaseInsensitiveContains("downloaded") ? "Downloaded" : "Local"
-        }
-        return model.modelID.contains("/") ? "HF ID" : "Advanced"
     }
 
     private func summaryCard(_ title: String, value: String) -> some View {
@@ -150,7 +176,7 @@ struct ProfilesSurfaceView: View {
         ContentUnavailableView(
             "No Models",
             systemImage: "square.stack.3d.up",
-            description: Text("Add models from Downloads or Dashboard. This surface does not start, stop, or mutate runtime behavior.")
+            description: Text("Add models from Downloads or use Add to create a profile manually.")
         )
         .frame(maxWidth: .infinity, minHeight: 240)
         .accessibilityIdentifier("profiles-surface-empty-state")
@@ -171,15 +197,14 @@ struct ProfilesSurfaceView: View {
                 Spacer()
 
                 HStack(spacing: 6) {
-                    if model.id == selectedModelID {
+                    statusPill(viewModel.sourceLabel(for: model))
+                    if model.id == viewModel.selectedModelID {
                         statusPill("Selected")
                     }
-
-                    if model.id == runningModelID {
+                    if model.id == viewModel.runningModelID {
                         statusPill("Running")
                     }
-
-                    if restartRequired, model.id == selectedModelID {
+                    if viewModel.restartRequired, model.id == viewModel.selectedModelID {
                         statusPill("Restart required")
                     }
                 }
@@ -190,39 +215,74 @@ struct ProfilesSurfaceView: View {
                     metadataLabel("Family")
                     metadataValue(model.family)
                 }
-
-                GridRow {
-                    metadataLabel("Quantization")
-                    metadataValue(model.quantization)
-                }
-
                 GridRow {
                     metadataLabel("Endpoint")
                     metadataValue("\(model.host):\(model.serverPort)")
                 }
-
                 GridRow {
                     metadataLabel("Thinking")
                     metadataValue(model.enableThinking ? "Enabled" : "Disabled")
                 }
             }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(model.id == viewModel.selectedModelID ? Color.accentColor.opacity(0.12) : Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(model.id == viewModel.selectedModelID ? Color.accentColor.opacity(0.55) : Color.secondary.opacity(0.12))
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("profiles-surface-profile-\(sanitizedIdentifier(model.id))")
+    }
 
-            if !model.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Text(model.notes)
+    private var selectedModelInspector: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Selected model inspector")
+                .font(.headline)
+
+            if let selectedModel {
+                DetailGrid(rows: [
+                    ("Model ID", selectedModel.modelID),
+                    ("Display Name", selectedModel.displayName),
+                    ("Source", viewModel.sourceLabel(for: selectedModel)),
+                    ("Endpoint", "\(selectedModel.host):\(selectedModel.serverPort)"),
+                    ("Thinking", selectedModel.enableThinking ? "Enabled" : "Disabled"),
+                    ("Latest benchmark", viewModel.latestBenchmarkResult?.latencyText ?? "Not run"),
+                    ("Notes", selectedModel.notes.isEmpty ? "None" : selectedModel.notes)
+                ])
+
+                Text("Launch command")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(viewModel.selectedLaunchCommandPreview)
+                    .font(.system(.caption, design: .monospaced))
+                    .textSelection(.enabled)
+                    .lineLimit(4)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                Label("Profile actions are metadata-only. Model files and Hugging Face cache are not deleted.", systemImage: "shield")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Select a model profile to inspect its details.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
         .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(nsColor: .controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay {
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(Color.secondary.opacity(0.12))
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("profiles-surface-profile-\(sanitizedIdentifier(model.id))")
+        .accessibilityIdentifier("models-surface-selected-inspector")
     }
 
     private func metadataLabel(_ text: String) -> some View {
@@ -259,10 +319,5 @@ struct ProfilesSurfaceView: View {
 }
 
 #Preview {
-    ProfilesSurfaceView(
-        models: ModelConfig.defaults,
-        selectedModelID: ModelConfig.defaults.first?.id,
-        runningModelID: nil,
-        restartRequired: false
-    )
+    ProfilesSurfaceView(viewModel: AppViewModel())
 }

@@ -3126,6 +3126,15 @@
 - Produce the requested final release asset: `MLXServerManager-v14.0.0-unsigned.zip`.
 - Preserve Direct Mode.
 
+## v14.1.0 Completed: Models Surface Interactions
+
+- Make Models the primary profile management surface.
+- Add row selection, source filter, and selected model inspector directly to Models.
+- Add Add / Edit / Delete / Import / Export actions to Models.
+- Present Add/Edit profile sheets from the v14 app shell.
+- Preserve metadata-only deletion safety and Direct Mode.
+- No GitHub Release is produced for v14.1.0; release output is deferred until v15.0.0.
+
 ## Later
 
 - More advanced resource graphs.
