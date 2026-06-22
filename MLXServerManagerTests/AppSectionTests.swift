@@ -5,6 +5,7 @@ import XCTest
 final class AppSectionTests: XCTestCase {
     func testV14SixSectionsAreStable() {
         XCTAssertEqual(AppSection.allCases, [.dashboard, .profiles, .inspector, .logs, .clientSetup, .metrics])
+        XCTAssertEqual(AppSection.v14NavigationOrder, [.dashboard, .profiles, .clientSetup, .inspector, .metrics, .logs])
     }
 
     func testLocalizedNavigationLabelsUseV14SurfaceNames() {

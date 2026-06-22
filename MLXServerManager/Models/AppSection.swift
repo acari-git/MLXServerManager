@@ -14,6 +14,15 @@ enum AppSection: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    static let v14NavigationOrder: [AppSection] = [
+        .dashboard,
+        .profiles,
+        .clientSetup,
+        .inspector,
+        .metrics,
+        .logs
+    ]
+
     var title: String {
         localizedTitle(language: .english)
     }
@@ -63,15 +72,15 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .dashboard:
             "rectangle.grid.2x2"
         case .profiles:
-            "list.bullet.rectangle"
+            "square.stack.3d.up"
         case .inspector:
-            "sidebar.right"
+            "server.rack"
         case .logs:
             "doc.text.magnifyingglass"
         case .clientSetup:
-            "link.badge.plus"
+            "arrow.down.circle"
         case .metrics:
-            "gauge.with.dots.needle.67percent"
+            "gearshape"
         }
     }
 

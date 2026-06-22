@@ -3063,6 +3063,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v13.2.0; release output is deferred until v14.0.0.
 
+## v13.3.0 Completed: App Shell / Sidebar Redesign Foundation
+
+- Add v14 navigation order: Dashboard, Models, Downloads, Runtime, Settings, Logs.
+- Update sidebar icons to match the v14 ownership model.
+- Keep legacy enum raw values stable while changing displayed navigation semantics.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v13.3.0; release output is deferred until v14.0.0.
+
 ## Later
 
 - More advanced resource graphs.

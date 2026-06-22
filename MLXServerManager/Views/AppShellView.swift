@@ -13,7 +13,7 @@ struct AppShellView<Content: View>: View {
 
     var body: some View {
         NavigationSplitView {
-            List(AppSection.allCases, selection: $selectedSection) { section in
+            List(AppSection.v14NavigationOrder, selection: $selectedSection) { section in
                 AppSectionSidebarRow(section: section, language: language)
                     .tag(section)
             }
@@ -58,7 +58,7 @@ private struct AppSectionSidebarRow: View {
     @Previewable @State var selectedSection = AppSection.dashboard
 
     AppShellView(selectedSection: $selectedSection) { section in
-        Text(section.title)
+        Text(section.localizedTitle(language: .english))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
