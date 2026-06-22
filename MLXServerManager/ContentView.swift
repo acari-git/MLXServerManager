@@ -12,40 +12,8 @@ struct ContentView: View {
     @State private var selectedSection = AppSection.dashboard
 
     var body: some View {
-        AppShellView(selectedSection: $selectedSection, language: viewModel.settings.uiLanguage) { section in
-            switch section {
-            case .dashboard:
-                DashboardHomeView(
-                    viewModel: viewModel,
-                    onOpenModels: { selectedSection = .profiles },
-                    onOpenDownloads: { selectedSection = .clientSetup },
-                    onOpenRuntime: { selectedSection = .inspector },
-                    onOpenSettings: { selectedSection = .metrics },
-                    onOpenLogs: { selectedSection = .logs }
-                )
-            case .profiles:
-                ProfilesSurfaceView(viewModel: viewModel)
-            case .inspector:
-                RuntimeSurfaceView(viewModel: viewModel)
-            case .logs:
-                LogsSurfaceView(
-                    entries: viewModel.logEntries,
-                    targetSummary: viewModel.connectionTargetSummary,
-                    runningModelText: viewModel.runningModelText,
-                    onCopy: viewModel.copyLogsRequested,
-                    onClear: viewModel.clearLogsRequested
-                )
-            case .clientSetup:
-                DownloadsSurfaceView(
-                    viewModel: viewModel,
-                    onOpenModels: { selectedSection = .profiles },
-                    onOpenRuntime: { selectedSection = .inspector }
-                )
-            case .metrics:
-                SettingsSurfaceView(viewModel: viewModel)
-            }
-        }
-        .frame(minWidth: 900, minHeight: 620)
+        IntegratedWorkspaceView(viewModel: viewModel)
+            .frame(minWidth: 1280, minHeight: 760)
         .confirmationDialog(
             "Delete Model Profile?",
             isPresented: $viewModel.isDeleteProfileConfirmationPresented,

@@ -3204,6 +3204,15 @@
 - Produce the requested final release asset: `MLXServerManager-v15.0.0-unsigned.zip`.
 - Preserve Direct Mode.
 
+## v15.1.0 Completed: Integrated Main Workspace Shell
+
+- Add `IntegratedWorkspaceView` as the new primary GUI shell.
+- Rebuild the visible app layout into left menu/system metrics, central model list/actions/logs, and right model details/Hermes connection panels.
+- Switch `ContentView` to open the integrated workspace by default.
+- Keep existing split surfaces available in source for later reuse while prioritizing the screenshot-like integrated GUI.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v15.1.0; release output is deferred until v16.0.0.
+
 ## Later
 
 - More advanced resource graphs.
