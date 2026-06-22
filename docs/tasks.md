@@ -3190,6 +3190,14 @@
 - Preserve raw logs and Direct Mode boundaries.
 - No GitHub Release is produced for v14.8.0; release output is deferred until v15.0.0.
 
+## v14.9.0 Completed: v15 Readiness Stabilization
+
+- Add `docs/v15_workflow_integration_readiness.md`.
+- Document Dashboard / Models / Downloads / Runtime / Settings / Logs ownership for v15.0.0.
+- Update README with the v15 workflow integration direction.
+- Reconfirm language and Direct Mode boundaries.
+- No GitHub Release is produced for v14.9.0; release output is deferred until v15.0.0.
+
 ## Later
 
 - More advanced resource graphs.
