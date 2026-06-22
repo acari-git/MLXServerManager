@@ -3237,6 +3237,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v15.4.0; release output is deferred until v16.0.0.
 
+## v16.1.0 Completed: Integrated GUI Component Split
+
+- Add `IntegratedWorkspaceDestination` for left-menu state.
+- Add `IntegratedSidebarMenuView` and move the sidebar menu out of the monolithic integrated workspace.
+- Keep the screenshot-like integrated layout while preparing functional navigation wiring.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v16.1.0; release output is deferred until v17.0.0.
+
 ## Later
 
 - More advanced resource graphs.

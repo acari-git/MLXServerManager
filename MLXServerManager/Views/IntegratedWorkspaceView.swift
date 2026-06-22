@@ -2,6 +2,7 @@ import SwiftUI
 
 struct IntegratedWorkspaceView: View {
     @ObservedObject var viewModel: AppViewModel
+    @State private var selectedDestination: IntegratedWorkspaceDestination = .models
 
     private var selectedModel: ModelConfig? { viewModel.selectedModel }
     private var isSelectedRunning: Bool { selectedModel?.id == viewModel.runningModelID }
@@ -26,46 +27,13 @@ struct IntegratedWorkspaceView: View {
 
     private var leftColumn: some View {
         VStack(spacing: 0) {
-            menuPanel
+            IntegratedSidebarMenuView(selectedDestination: $selectedDestination)
             Divider()
             systemPanel
             Divider()
             footerPanel
         }
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.55))
-    }
-
-    private var menuPanel: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("MENU")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.bottom, 4)
-
-            sidebarButton("モデル一覧", systemImage: "list.bullet.rectangle", isActive: true)
-            sidebarButton("ダウンロード", systemImage: "arrow.down.circle")
-            sidebarButton("設定", systemImage: "gearshape")
-            sidebarButton("ログ", systemImage: "doc.text")
-            sidebarButton("ヘルプ", systemImage: "questionmark.circle")
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func sidebarButton(_ title: String, systemImage: String, isActive: Bool = false) -> some View {
-        Button {
-            // GUI-first shell: navigation actions can be wired to split surfaces later.
-        } label: {
-            Label(title, systemImage: systemImage)
-                .font(.callout.weight(.medium))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 7)
-                .padding(.horizontal, 10)
-                .background(isActive ? Color.accentColor.opacity(0.85) : Color.clear)
-                .foregroundStyle(isActive ? Color.white : Color.primary)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-        }
-        .buttonStyle(.plain)
     }
 
     private var systemPanel: some View {
