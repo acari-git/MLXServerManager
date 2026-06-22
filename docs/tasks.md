@@ -3037,6 +3037,13 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v12.9.0; release output is deferred until v13.0.0.
 
+## v13.0.0 Completed: Runtime Diagnostics Stable
+
+- Complete the v12.x staged path from benchmark detail polish, copy formats, runtime timeline, launch command builder refactor, advanced launch options preview, diagnostics/benchmark correlation, runtime panel layout polish, safety review, and v13 readiness.
+- Produce the requested final release asset: `MLXServerManager-v13.0.0-unsigned.zip`.
+- Include v14 GUI optimization review and Japanese / English switching plan.
+- Preserve Direct Mode.
+
 ## Later
 
 - More advanced resource graphs.
