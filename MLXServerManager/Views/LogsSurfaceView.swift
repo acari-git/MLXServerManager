@@ -12,6 +12,7 @@ struct LogsSurfaceView: View {
             VStack(alignment: .leading, spacing: 18) {
                 header
                 summaryCards
+                troubleshootingCard
                 boundaryCard
 
                 LogView(
@@ -80,6 +81,46 @@ struct LogsSurfaceView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(identifier)
+    }
+
+    private var latestImportantLogEntry: LogEntry? {
+        entries.reversed().first { entry in
+            entry.line.localizedCaseInsensitiveContains("failed")
+                || entry.line.localizedCaseInsensitiveContains("warning")
+                || entry.line.localizedCaseInsensitiveContains("error")
+        }
+    }
+
+    private var troubleshootingCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Troubleshooting", systemImage: "wrench.and.screwdriver")
+                .font(.headline)
+
+            DetailGrid(rows: [
+                ("Latest important log", latestImportantLogEntry?.line ?? "None"),
+                ("Target", targetSummary.targetType),
+                ("Base URL", targetSummary.baseURL),
+                ("Running", runningModelText),
+                ("Entries", String(entries.count))
+            ])
+
+            HStack {
+                Button("Copy logs") { onCopy() }
+                    .disabled(entries.isEmpty)
+                Button("Clear logs") { onClear() }
+                    .disabled(entries.isEmpty)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(Color.secondary.opacity(0.12))
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("logs-surface-troubleshooting")
     }
 
     private var boundaryCard: some View {

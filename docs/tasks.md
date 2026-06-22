@@ -3182,6 +3182,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v14.7.0; release output is deferred until v15.0.0.
 
+## v14.8.0 Completed: Logs Troubleshooting Polish
+
+- Add a troubleshooting card to the Logs surface.
+- Surface latest important log, target, base URL, running model, and entry count.
+- Add copy and clear log actions near the troubleshooting context.
+- Preserve raw logs and Direct Mode boundaries.
+- No GitHub Release is produced for v14.8.0; release output is deferred until v15.0.0.
+
 ## Later
 
 - More advanced resource graphs.
