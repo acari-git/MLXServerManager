@@ -584,6 +584,28 @@ final class AppViewModel: ObservableObject {
         return String(format: "Memory: %.2f GB", memoryUsageGB)
     }
 
+    var integratedMemoryUsageFraction: Double {
+        guard let memoryUsageGB else { return 0 }
+        return min(max(memoryUsageGB / 64.0, 0), 1)
+    }
+
+    var integratedMemoryUsagePercentText: String {
+        guard memoryUsageGB != nil else { return "0%" }
+        return "\(Int(integratedMemoryUsageFraction * 100))%"
+    }
+
+    var integratedCPUUsageText: String {
+        isManagedProcessRunning ? "測定未接続" : "待機中"
+    }
+
+    var integratedGPUUsageText: String {
+        isManagedProcessRunning ? "Metal稼働想定" : "待機中"
+    }
+
+    var integratedUptimeText: String {
+        runtimeEvents.isEmpty ? "-" : "session active"
+    }
+
     private var managedReadinessSummary: String {
         switch runtimeState {
         case .ready:

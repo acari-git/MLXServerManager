@@ -45,17 +45,17 @@ struct IntegratedWorkspaceView: View {
             memoryGaugeCard
             systemMetricCard(
                 title: "CPU使用率",
-                value: "18%",
-                detail: "placeholder"
+                value: viewModel.integratedCPUUsageText,
+                detail: "runtime sampling later"
             )
             systemMetricCard(
                 title: "GPU/Metal",
-                value: viewModel.connectionTargetSummary.isActiveTarget ? "稼働中" : "待機中",
-                detail: "actual sampling later"
+                value: viewModel.integratedGPUUsageText,
+                detail: "Metal usage estimate"
             )
             systemMetricCard(
                 title: "起動時間",
-                value: viewModel.runtimeEvents.isEmpty ? "-" : "session active",
+                value: viewModel.integratedUptimeText,
                 detail: "session scoped"
             )
         }
@@ -69,10 +69,10 @@ struct IntegratedWorkspaceView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             HStack(spacing: 12) {
-                Gauge(value: 0.48) {
+                Gauge(value: viewModel.integratedMemoryUsageFraction) {
                     Text("Memory")
                 } currentValueLabel: {
-                    Text("48%")
+                    Text(viewModel.integratedMemoryUsagePercentText)
                         .font(.caption.weight(.bold))
                 }
                 .gaugeStyle(.accessoryCircularCapacity)

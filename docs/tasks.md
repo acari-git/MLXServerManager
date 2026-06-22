@@ -3245,6 +3245,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v16.1.0; release output is deferred until v17.0.0.
 
+## v16.2.0 Completed: Real System Metrics Wiring
+
+- Connect the integrated memory gauge to the existing managed-process memory monitor.
+- Add ViewModel summary values for integrated CPU, GPU/Metal, and uptime display.
+- Replace misleading fixed CPU/GPU numbers with explicit measured/placeholder state labels.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v16.2.0; release output is deferred until v17.0.0.
+
 ## Later
 
 - More advanced resource graphs.
