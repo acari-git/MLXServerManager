@@ -104,10 +104,11 @@ struct UnifiedDashboardView: View {
             Text("MLX Server Manager")
                 .font(.headline)
             Spacer()
+            workflowStep("Setup")
             workflowStep("Search")
+            workflowStep("Preview")
             workflowStep("Download")
-            workflowStep("Register")
-            workflowStep("Start")
+            workflowStep("Diagnose")
             workflowStep("Copy")
         }
         .padding(.horizontal, 14)
@@ -401,7 +402,7 @@ struct UnifiedDashboardView: View {
             statusPill("hf CLI", value: viewModel.isHuggingFaceCLIAvailable ? viewModel.huggingFaceCLIPath : "Missing")
             statusPill("Mode", value: "Direct")
             Spacer()
-            Text("初心者向け導線: download/register → select → start → copy")
+            Text("操作順: setup → search/preview → download/register → diagnose/start → copy")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }

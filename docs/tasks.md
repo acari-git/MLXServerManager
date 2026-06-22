@@ -2865,6 +2865,14 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v10.7.0; release output is deferred until v11.0.0.
 
+## v10.8.0 Completed: Dashboard Layout Consolidation
+
+- Align the Dashboard workflow banner with the safer v11 operation order.
+- Show Setup → Search → Preview → Download → Diagnose → Copy as the primary workflow.
+- Update the bottom status ribbon to match the same operation order.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v10.8.0; release output is deferred until v11.0.0.
+
 ## Later
 
 - More advanced resource graphs.
