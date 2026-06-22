@@ -3020,6 +3020,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v12.7.0; release output is deferred until v13.0.0.
 
+## v12.8.0 Completed: Safety / Regression Pass
+
+- Add `docs/v13_direct_mode_safety_review.md`.
+- Reconfirm Direct Mode and excluded scope before v13.0.0.
+- Document that benchmark, timeline, and diagnostics features remain explicit, local, and non-proxying.
+- Carry the same safety boundaries into the v14 GUI optimization phase.
+- No GitHub Release is produced for v12.8.0; release output is deferred until v13.0.0.
+
 ## Later
 
 - More advanced resource graphs.
