@@ -159,7 +159,7 @@ struct IntegratedWorkspaceView: View {
         VStack(spacing: 6) {
             Text("MLX Server Manager")
                 .font(.callout.weight(.semibold))
-            Text("Version 0.15.0")
+            Text("Version 0.16.0")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -170,13 +170,13 @@ struct IntegratedWorkspaceView: View {
     private var centerColumn: some View {
         VStack(spacing: 0) {
             modelListPanel
-                .frame(minHeight: 360, idealHeight: 420)
+                .frame(minHeight: 390, idealHeight: 460)
             Divider()
             actionBar
                 .frame(height: 74)
             Divider()
             logPanel
-                .frame(minHeight: 230)
+                .frame(minHeight: 250)
         }
         .background(Color(nsColor: .windowBackgroundColor))
     }
@@ -420,7 +420,7 @@ struct IntegratedWorkspaceView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
-                    Text("モデル設定")
+                            Text("モデル設定")
                         .font(.title3.weight(.semibold))
                     Spacer()
                     Button(role: .destructive) {

@@ -3221,6 +3221,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v15.2.0; release output is deferred until v16.0.0.
 
+## v15.3.0 Completed: Integrated Workspace Density Polish
+
+- Tune the integrated workspace vertical proportions so the model list and logs match the reference layout more closely.
+- Update the left footer to Version 0.16.0 for the GUI reconstruction milestone.
+- Keep the central action bar between model list and logs.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v15.3.0; release output is deferred until v16.0.0.
+
 ## Later
 
 - More advanced resource graphs.
