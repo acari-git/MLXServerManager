@@ -289,8 +289,9 @@ struct IntegratedWorkspaceView: View {
     }
 
     private var actionBar: some View {
-        HStack(spacing: 12) {
-            Button {
+        VStack(spacing: 6) {
+            HStack(spacing: 12) {
+                Button {
                 viewModel.startRequested()
             } label: {
                 Label("起動", systemImage: "play.fill")
@@ -322,7 +323,14 @@ struct IntegratedWorkspaceView: View {
             }
             .disabled(!viewModel.canRunSpeedTest)
 
-            Spacer()
+                Spacer()
+            }
+
+            Text(viewModel.integratedActionStateSummary)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 14)
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.36))

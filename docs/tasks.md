@@ -3261,6 +3261,14 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v16.3.0; release output is deferred until v17.0.0.
 
+## v16.4.0 Completed: Action Bar Functional Polish
+
+- Add integrated action-state summary text for Start, Stop, Restart, and Speed Test.
+- Surface disabled/ready reasons directly below the central action bar.
+- Keep all lifecycle and benchmark actions explicit and user-triggered.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v16.4.0; release output is deferred until v17.0.0.
+
 ## Later
 
 - More advanced resource graphs.

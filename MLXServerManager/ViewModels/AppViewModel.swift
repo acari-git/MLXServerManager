@@ -229,6 +229,19 @@ final class AppViewModel: ObservableObject {
         canRestartManagedServer ? "Ready." : "Start a managed server before Restart. External server context cannot be restarted here."
     }
 
+    var startActionReason: String {
+        selectedModel == nil ? "Select a model before Start." : "Ready."
+    }
+
+    var integratedActionStateSummary: String {
+        [
+            "Start: \(startActionReason)",
+            "Stop: \(stopDisabledReason)",
+            "Restart: \(restartDisabledReason)",
+            "Speed Test: \(speedTestDisabledReason)"
+        ].joined(separator: "  ")
+    }
+
     var latestSpeedTestSummary: String {
         latestBenchmarkResult?.summary ?? latestSpeedTestMessage
     }
