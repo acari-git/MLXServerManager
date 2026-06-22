@@ -1150,21 +1150,35 @@ struct UnifiedDashboardView: View {
             copyRow("API Key", value: viewModel.apiKeyPlaceholder, action: viewModel.copyAPIKeyPlaceholder)
             copyRow("Model", value: viewModel.selectedModelIdentifier, action: viewModel.copyModelID)
 
-            Button {
-                viewModel.copyAllConnectionSettings()
-            } label: {
-                Text("Hermes 設定をまとめてコピー")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
+            Text("Connection presets")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
 
-            Button {
-                viewModel.copyModelsCurl()
-            } label: {
-                Text("/v1/models 確認 curl をコピー")
-                    .frame(maxWidth: .infinity)
+            VStack(spacing: 8) {
+                Button {
+                    viewModel.copyHermesAgentConfig()
+                } label: {
+                    Label("Hermes Agent preset", systemImage: "sparkles")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button {
+                    viewModel.copyAllConnectionSettings()
+                } label: {
+                    Label("Generic OpenAI-compatible preset", systemImage: "doc.on.doc")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                    viewModel.copyModelsCurl()
+                } label: {
+                    Label("/v1/models 確認 curl", systemImage: "terminal")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.bordered)
         }
         .panelStyle()
         .accessibilityIdentifier("unified-dashboard-connection")

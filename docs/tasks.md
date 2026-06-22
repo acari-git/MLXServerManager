@@ -2857,6 +2857,14 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v10.6.0; release output is deferred until v11.0.0.
 
+## v10.7.0 Completed: Connection Preset Polish
+
+- Organize the connection panel around Hermes Agent, generic OpenAI-compatible, and curl presets.
+- Keep Base URL, Model ID, and API key placeholder copy actions visible.
+- Clarify that presets are copied for external clients while Direct Mode remains unchanged.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v10.7.0; release output is deferred until v11.0.0.
+
 ## Later
 
 - More advanced resource graphs.
