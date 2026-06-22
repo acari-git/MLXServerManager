@@ -3159,6 +3159,14 @@
 - Preserve Direct Mode and avoid credential storage.
 - No GitHub Release is produced for v14.4.0; release output is deferred until v15.0.0.
 
+## v14.5.0 Completed: Runtime Action State Polish
+
+- Add visible disabled/ready reasons for Stop, Restart, and Speed Test.
+- Surface action-state guidance directly in the Runtime controls card.
+- Keep lifecycle actions explicit and user-triggered.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v14.5.0; release output is deferred until v15.0.0.
+
 ## Later
 
 - More advanced resource graphs.

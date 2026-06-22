@@ -92,6 +92,12 @@ struct RuntimeSurfaceView: View {
                 .disabled(!viewModel.canRunSpeedTest)
             }
 
+            DetailGrid(rows: [
+                ("Stop", viewModel.stopDisabledReason),
+                ("Restart", viewModel.restartDisabledReason),
+                ("Speed Test", viewModel.speedTestDisabledReason)
+            ])
+
             if let warning = viewModel.runtimeSelectionWarning {
                 Label(warning, systemImage: "arrow.triangle.2.circlepath")
                     .font(.caption)

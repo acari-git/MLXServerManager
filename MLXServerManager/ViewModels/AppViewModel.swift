@@ -215,6 +215,20 @@ final class AppViewModel: ObservableObject {
         connectionTargetSummary.isActiveTarget && !isSpeedTestRunning
     }
 
+    var speedTestDisabledReason: String {
+        if isSpeedTestRunning { return "Speed Test is already running." }
+        if !connectionTargetSummary.isActiveTarget { return "Start or adopt a server before running Speed Test." }
+        return "Ready."
+    }
+
+    var stopDisabledReason: String {
+        canStopManagedServer ? "Ready." : "No managed server is running."
+    }
+
+    var restartDisabledReason: String {
+        canRestartManagedServer ? "Ready." : "Start a managed server before Restart. External server context cannot be restarted here."
+    }
+
     var latestSpeedTestSummary: String {
         latestBenchmarkResult?.summary ?? latestSpeedTestMessage
     }
