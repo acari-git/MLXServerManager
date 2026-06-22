@@ -2912,6 +2912,13 @@
 - Preserve Direct Mode and avoid unrelated runtime automation.
 - No GitHub Release is produced for v11.3.0; release output is deferred until v12.0.0.
 
+## v11.4.0 Completed: Runtime Metrics Panel
+
+- Add runtime metrics rows for target, base URL, running model, selected model, latest benchmark, and benchmark summary.
+- Keep diagnostics and speed test output visible in the same runtime panel.
+- Preserve Direct Mode and avoid unrelated runtime automation.
+- No GitHub Release is produced for v11.4.0; release output is deferred until v12.0.0.
+
 ## Later
 
 - More advanced resource graphs.

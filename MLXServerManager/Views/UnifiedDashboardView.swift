@@ -1105,6 +1105,11 @@ struct UnifiedDashboardView: View {
                 ("再起動必要", viewModel.restartRequired ? "Yes" : "No")
             ])
 
+            Text("Runtime metrics")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            DetailGrid(rows: runtimeMetricRows)
+
             Text("Runtime diagnostics")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
@@ -1253,6 +1258,17 @@ struct UnifiedDashboardView: View {
                 Text("コピー")
             }
         }
+    }
+
+    private var runtimeMetricRows: [(String, String)] {
+        [
+            ("Target", viewModel.connectionTargetSummary.targetType),
+            ("Base URL", viewModel.baseURL),
+            ("Running model", viewModel.runningModelID ?? "Not running"),
+            ("Selected model", viewModel.selectedModelIdentifier),
+            ("Latest benchmark", viewModel.latestBenchmarkResult?.latencyText ?? "Not run"),
+            ("Benchmark summary", viewModel.benchmarkSummaryText)
+        ]
     }
 
     private var runtimeDiagnosticRows: [(String, String)] {
