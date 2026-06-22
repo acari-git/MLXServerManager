@@ -3301,6 +3301,13 @@
 - Preserve the right-side model details and Hermes information while switching central work content.
 - No GitHub Release is produced for v16.8.0; release output is deferred until v17.0.0.
 
+## v16.9.0 Completed: v17 Readiness Stabilization
+
+- Add `docs/v17_integrated_gui_functional_readiness.md`.
+- Document integrated GUI functional wiring across sidebar, system metrics, model table, action bar, model settings, Hermes/Direct Mode connection, and logs.
+- Reconfirm known limitations and Direct Mode safety boundaries before v17.0.0.
+- No GitHub Release is produced for v16.9.0; release output is deferred until v17.0.0.
+
 ## Later
 
 - More advanced resource graphs.
