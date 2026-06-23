@@ -3469,6 +3469,12 @@
 - Preserve Direct Mode.
 - No GitHub Release is produced for v19.1.0-v19.8.0; release output is deferred until v20.0.0.
 
+## v19.9.0 Completed: v20 Readiness Stabilization
+
+- Add `docs/v20_daily_operations_stable_readiness.md`.
+- Document GUI alignment, placeholder reduction, Start guardrails, recovery action routing, and remaining limitations.
+- No GitHub Release is produced for v19.9.0; release output is deferred until v20.0.0.
+
 ## Later
 
 - More advanced resource graphs.
