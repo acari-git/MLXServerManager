@@ -3445,6 +3445,12 @@
 - Add tests for default recovery and troubleshooting summary content.
 - No GitHub Release is produced for v18.8.0; release output is deferred until v19.0.0.
 
+## v18.9.0 Completed: v19 Readiness Stabilization
+
+- Add `docs/v19_daily_operations_recovery_readiness.md`.
+- Document failure classification, recovery actions, integrated Recovery panel, runtime recovery, download recovery, troubleshooting summary, refresh, UX polish, tests, limitations, and Direct Mode boundaries.
+- No GitHub Release is produced for v18.9.0; release output is deferred until v19.0.0.
+
 ## Later
 
 - More advanced resource graphs.
