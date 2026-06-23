@@ -229,8 +229,22 @@ final class AppViewModel: ObservableObject {
         canRestartManagedServer ? "Ready." : "Start a managed server before Restart. External server context cannot be restarted here."
     }
 
+    var selectedBlockingStartIssue: String? {
+        guard let selectedModel else { return "Select a model before Start." }
+        if executableSafetyText != "OK" { return executableSafetyText }
+        let modelSafety = modelIdentitySafetyText(for: selectedModel)
+        if modelSafety.localizedCaseInsensitiveContains("Missing") { return modelSafety }
+        let portSafety = portSafetyText(host: selectedModel.host, port: selectedModel.serverPort)
+        if portSafety != "Available" { return "Server port: \(portSafety)" }
+        return nil
+    }
+
+    var canStartSelectedModel: Bool {
+        selectedBlockingStartIssue == nil
+    }
+
     var startActionReason: String {
-        selectedModel == nil ? "Select a model before Start." : "Ready."
+        selectedBlockingStartIssue ?? "Ready."
     }
 
     var integratedActionStateSummary: String {
@@ -250,7 +264,6 @@ final class AppViewModel: ObservableObject {
             ("Executable", executableSafetyText),
             ("Model", modelIdentitySafetyText(for: selectedModel)),
             ("Server port", portSafetyText(host: selectedModel.host, port: selectedModel.serverPort)),
-            ("Proxy port", portSafetyText(host: selectedModel.host, port: integratedProxyPort(for: selectedModel))),
             ("Duplicate", duplicateProfileWarning(for: selectedModel) ?? "OK"),
             ("Runtime edit", runtimeEditingSafetyText(for: selectedModel))
         ]
@@ -266,10 +279,6 @@ final class AppViewModel: ObservableObject {
         return portSafetyText(host: selectedModel.host, port: selectedModel.serverPort)
     }
 
-    var selectedProxyPortSafetyText: String {
-        guard let selectedModel else { return "No model selected" }
-        return portSafetyText(host: selectedModel.host, port: integratedProxyPort(for: selectedModel))
-    }
 
     var selectedModelIdentityDetailText: String {
         guard let selectedModel else { return "No model selected" }
@@ -844,11 +853,11 @@ final class AppViewModel: ObservableObject {
     }
 
     var integratedCPUUsageText: String {
-        isManagedProcessRunning ? "測定未接続" : "待機中"
+        "未測定"
     }
 
     var integratedGPUUsageText: String {
-        isManagedProcessRunning ? "Metal稼働想定" : "待機中"
+        "未測定"
     }
 
     var integratedUptimeText: String {
@@ -863,9 +872,6 @@ final class AppViewModel: ObservableObject {
         model.id == runningModelID ? "稼働中" : "停止中"
     }
 
-    func integratedProxyPort(for model: ModelConfig) -> Int {
-        model.serverPort + 10000
-    }
 
     func integratedMemoryText(for model: ModelConfig) -> String {
         model.id == runningModelID ? memoryUsageText : "-"
@@ -879,8 +885,8 @@ final class AppViewModel: ObservableObject {
         return runtimeEvents.first?.category ?? "active"
     }
 
-    func integratedAutoUnloadText(for model: ModelConfig) -> String {
-        model.id == runningModelID ? "手動停止" : "未稼働"
+    func integratedStopModeText(for model: ModelConfig) -> String {
+        model.id == runningModelID ? "手動停止のみ" : "未稼働"
     }
 
     private var managedReadinessSummary: String {

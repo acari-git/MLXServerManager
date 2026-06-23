@@ -2,14 +2,10 @@ import SwiftUI
 
 struct IntegratedWorkspaceView: View {
     @ObservedObject var viewModel: AppViewModel
-    @State private var selectedDestination: IntegratedWorkspaceDestination = .models
+    @State var selectedDestination: IntegratedWorkspaceDestination = .models
 
     private var selectedModel: ModelConfig? { viewModel.selectedModel }
     private var isSelectedRunning: Bool { selectedModel?.id == viewModel.runningModelID }
-    private var proxyPortText: String {
-        guard let selectedModel else { return "-" }
-        return String(selectedModel.serverPort + 10000)
-    }
 
     var body: some View {
         HSplitView {
@@ -44,14 +40,14 @@ struct IntegratedWorkspaceView: View {
 
             memoryGaugeCard
             systemMetricCard(
-                title: "CPU使用率",
+                title: "CPU",
                 value: viewModel.integratedCPUUsageText,
-                detail: "runtime sampling later"
+                detail: "not sampled"
             )
             systemMetricCard(
                 title: "GPU/Metal",
                 value: viewModel.integratedGPUUsageText,
-                detail: "Metal usage estimate"
+                detail: "not sampled"
             )
             systemMetricCard(
                 title: "起動時間",
@@ -228,10 +224,9 @@ struct IntegratedWorkspaceView: View {
                 headerText("モデル名 / 用途").gridCellColumns(2)
                 headerText("ステータス")
                 headerText("サーバーポート")
-                headerText("プロキシポート")
-                headerText("メモリ使用量")
-                headerText("最終使用")
-                headerText("自動アンロード")
+                headerText("プロセスメモリ")
+                headerText("最終確認")
+                headerText("停止方式")
             }
         }
     }
@@ -264,21 +259,12 @@ struct IntegratedWorkspaceView: View {
                     }
 
                     portValue(String(model.serverPort))
-                    portValue(String(viewModel.integratedProxyPort(for: model)))
                     memoryCell(viewModel.integratedMemoryText(for: model))
                     Text(viewModel.integratedLatestUseText(for: model))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    HStack(spacing: 6) {
-                        Text(viewModel.integratedAutoUnloadText(for: model))
-                            .font(.caption)
-                        Toggle("", isOn: .constant(true))
-                            .toggleStyle(.switch)
-                            .labelsHidden()
-                            .controlSize(.mini)
-                        Image(systemName: "ellipsis")
-                            .foregroundStyle(Color.accentColor)
-                    }
+                    Text(viewModel.integratedStopModeText(for: model))
+                        .font(.caption)
                 }
             }
             .padding(12)
@@ -340,6 +326,7 @@ struct IntegratedWorkspaceView: View {
                     .frame(width: 110)
             }
             .buttonStyle(.borderedProminent)
+            .disabled(!viewModel.canStartSelectedModel)
 
             Button {
                 viewModel.stopRequested()
@@ -494,7 +481,7 @@ struct IntegratedWorkspaceView: View {
 
                 IntegratedRecoveryPanelView(
                     issue: viewModel.currentRecoveryIssue,
-                    onAction: viewModel.performRecoveryAction,
+                    onAction: handleRecoveryAction,
                     onCopyTroubleshooting: viewModel.copyTroubleshootingSummary,
                     onRefreshSafety: viewModel.refreshIntegratedSafetyRequested
                 )
@@ -506,13 +493,9 @@ struct IntegratedWorkspaceView: View {
                     formRow("用途・メモ", selectedModel?.notes.isEmpty == false ? selectedModel?.notes ?? "-" : "-")
                 }
 
-                groupedSection("ポート設定") {
-                    formRow("サーバーポート (mlx_lm.server)", selectedModel.map { String($0.serverPort) } ?? "-")
-                    formRow("プロキシポート (Hermes接続用)", proxyPortText)
-                    HStack {
-                        availabilityPill("\(selectedModel?.serverPort ?? 0): \(viewModel.selectedServerPortSafetyText)")
-                        availabilityPill("\(proxyPortText): \(viewModel.selectedProxyPortSafetyText)")
-                    }
+                groupedSection("Direct Mode ポート") {
+                    formRow("mlx_lm.server", selectedModel.map { String($0.serverPort) } ?? "-")
+                    availabilityPill("\(selectedModel?.serverPort ?? 0): \(viewModel.selectedServerPortSafetyText)")
                 }
 
                 groupedSection("動作設定") {
@@ -527,15 +510,15 @@ struct IntegratedWorkspaceView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    formRow("自動アンロード", "10分")
+                    formRow("停止方式", "手動停止のみ")
                 }
 
                 groupedSection("状態情報") {
                     formRow("ステータス", isSelectedRunning ? "Ready" : "Stopped", valueColor: isSelectedRunning ? .green : .secondary)
-                    formRow("最終使用", isSelectedRunning ? "2分前" : "-")
+                    formRow("最終確認", selectedModel.map { viewModel.integratedLatestUseText(for: $0) } ?? "-")
                     formRow("起動時刻", viewModel.runtimeEvents.first?.timestamp.formatted(date: .numeric, time: .standard) ?? "-")
                     formRow("プロセスID", isSelectedRunning ? "managed" : "-")
-                    formRow("メモリ使用量", isSelectedRunning ? viewModel.memoryUsageText : "-")
+                    formRow("プロセスメモリ", isSelectedRunning ? viewModel.memoryUsageText : "-")
                     formRow("スピードテスト", viewModel.latestBenchmarkResult?.summary ?? "Not run")
                 }
             }
@@ -593,7 +576,7 @@ struct IntegratedWorkspaceView: View {
             copyRow("API Key", value: viewModel.apiKeyPlaceholder, action: { viewModel.copyAPIKeyPlaceholder() })
             copyRow("Model", value: viewModel.selectedModelIdentifier, action: { viewModel.copyModelID() })
 
-            Text("Direct Mode: Hermes Agent connects directly to mlx_lm.server. Proxy wiring is not enabled in this release.")
+            Text("Direct Mode: Hermes Agent connects directly to mlx_lm.server. Direct Mode only.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
@@ -608,7 +591,7 @@ struct IntegratedWorkspaceView: View {
             HStack {
                 Text("Manager: \(viewModel.runtimeState.title)")
                 Spacer()
-                Text("プロキシ: \(viewModel.runningModelID == nil ? "0" : "1") / \(viewModel.models.count) 稼働中")
+                Text("Direct Mode")
             }
             .font(.caption)
             .foregroundStyle(.secondary)

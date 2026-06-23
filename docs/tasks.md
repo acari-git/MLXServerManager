@@ -3457,6 +3457,18 @@
 - Produce the requested final release asset: `MLXServerManager-v19.0.0-unsigned.zip`.
 - Preserve Direct Mode.
 
+## v19.1.0-v19.8.0 Completed: Daily Operations GUI Alignment
+
+- Remove visible proxy-port UI from the integrated workspace because proxy mode is not planned.
+- Replace auto-unload wording with manual-stop wording.
+- Replace CPU/GPU usage wording with explicit unsampled labels.
+- Rename model memory and last-use fields to process-memory and last-check semantics.
+- Add Start guardrail state so blocking start issues disable Start.
+- Wire Recovery actions through the integrated workspace entry point.
+- Update model operations safety tests to match implemented GUI rows.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v19.1.0-v19.8.0; release output is deferred until v20.0.0.
+
 ## Later
 
 - More advanced resource graphs.
