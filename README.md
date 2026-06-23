@@ -102,23 +102,23 @@ See [docs/product_direction.md](docs/product_direction.md) for the full project 
 Download the latest app-code release asset from GitHub Releases:
 
 ```text
-MLXServerManager-v20.0.0-unsigned.zip
+MLXServerManager-v20.2.0-unsigned.zip
 ```
 
 On the GitHub Release page, use the file listed under **Assets** with this exact name. Do not use **Source code (zip)** or **Source code (tar.gz)** when you want the app.
 
-`v20.0.0` is the latest app-code release. `v20.1.0` is a docs-only current-state alignment release and does not replace this app binary.
+`v20.2.0` is the latest app-code release. `v20.1.0` was a docs-only current-state alignment release.
 
 Verify the checksum before opening the app:
 
 ```text
-SHA-256: 6de6880b0d0da070cb52b1a4e99e3dc92897a946ee93e92121c84541dd5ec26e
+SHA-256: 8f36dde1514fb52e702b00e1926e6443ad4a2ee00c8dd24fd78d253906435afc
 ```
 
 From the folder containing the downloaded zip, you can check it with:
 
 ```sh
-shasum -a 256 MLXServerManager-v20.0.0-unsigned.zip
+shasum -a 256 MLXServerManager-v20.2.0-unsigned.zip
 ```
 
 Extract the zip and confirm it contains `MLXServerManager.app`. Move the app to your preferred local location, such as `/Applications` or a user-owned apps folder.
@@ -130,7 +130,7 @@ xattr -dr com.apple.quarantine /path/to/MLXServerManager.app
 open -n /path/to/MLXServerManager.app
 ```
 
-Do not download the source archive if you want the app binary. Use the named `MLXServerManager-v20.0.0-unsigned.zip` release asset.
+Do not download the source archive if you want the app binary. Use the named `MLXServerManager-v20.2.0-unsigned.zip` release asset.
 
 ## Quick Start
 
@@ -153,11 +153,11 @@ Do not download the source archive if you want the app binary. Use the named `ML
 
 ## Current GUI Direction
 
-v20.0.0 focuses on daily operations stability. The integrated workspace now aligns visible GUI labels with implemented behavior, removes unavailable connection-port UI, makes CPU/GPU unsampled state explicit, uses process-memory and last-check wording, adds Start guardrails, and preserves Direct Mode. v20.1.0 aligns current documentation with that implemented state without changing app behavior.
+v20.2.0 focuses on integrated workspace operations polish. The model list now uses status-driven Load / Unload controls, sortable columns, model size display, reasoning toggles, functional auto-unload, Activity Monitor-style memory and CPU graphs, and a SYSTEM hardware summary while preserving Direct Mode.
 
 You must provide your own `mlx-lm` environment and `mlx_lm.server` executable. You can register existing model files, search Hugging Face and choose a result, or use the Dashboard Hugging Face card to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: the client connects directly to `mlx_lm.server`; MLX Server Manager does not proxy inference traffic or run chat completions.
 
-See [docs/distribution.md](docs/distribution.md) for release asset and Gatekeeper details, [docs/known_limitations.md](docs/known_limitations.md) for the full stable-scope boundary, and [docs/v20_1_current_state_alignment.md](docs/v20_1_current_state_alignment.md) for the v20.1.0 documentation alignment note.
+See [docs/distribution.md](docs/distribution.md) for release asset and Gatekeeper details, [docs/known_limitations.md](docs/known_limitations.md) for the full stable-scope boundary, and [docs/v20_2_integrated_workspace_operations_polish.md](docs/v20_2_integrated_workspace_operations_polish.md) for the v20.2.0 integrated workspace operations note.
 
 See [docs/benchmark_findings.md](docs/benchmark_findings.md) for benchmark-informed notes on Direct Mode, long-context workloads, streaming TTFT, and future optional Advanced Launch Options.
 
@@ -237,9 +237,9 @@ Model Profile export and import are documented in [docs/model_profile_import_exp
 
 The current downloadable app binary asset is the latest app-code release:
 
-- `MLXServerManager-v20.0.0-unsigned.zip`
+- `MLXServerManager-v20.2.0-unsigned.zip`
 
-`v20.1.0` is a docs-only current-state alignment release and includes no new app zip.
+`v20.2.0` is the latest app-code release and includes a new unsigned app zip.
 
 v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 through v5.0.0 are app-code dashboard polish releases with unsigned app zip assets. v5.1.0 through v5.9.0 are documentation releases. v6.0.0 is an app-code shell foundation release. v6.0.1 is an app-code sidebar polish release. v6.0.2 is an app-code release hygiene follow-up. v6.0.3 is an app-code App Shell identifier follow-up. v6.0.4 is an app-code AppSection metadata test follow-up with an unsigned app zip asset. v6.0.5 is docs-only and includes no new app zip. v6.1.0 is an app-code Profiles / Model List Surface release. v6.1.1 is an app-code Profiles Surface polish release. v6.2.0 is an app-code Detail Inspector Foundation release. v6.2.1 is an app-code Detail Inspector polish release. v6.3.0 is an app-code Logs Panel Refresh release. v6.3.1 is an app-code Logs Surface polish release. v6.4.0 is an app-code Client Setup Surface release. v6.4.1 is an app-code Client Setup Surface polish release. v6.5.0 is an app-code Metrics / System Context release. v6.5.1 is an app-code Metrics Surface polish release with an unsigned app zip asset. v6.6.0 is docs-only and includes no new app zip. v6.6.1 is docs-only and includes no new app zip. v6.7.0 is docs-only and includes no new app zip. v6.7.1 is docs-only and includes no new app zip. v6.8.0 is docs-only and includes no new app zip. v6.8.1 is docs-only and includes no new app zip. v6.9.0 is docs-only and includes no new app zip. v6.9.1 is docs-only and includes no new app zip. v6.10.0 is docs-only and includes no new app zip. v6.10.1 is docs-only and includes no new app zip. v6.11.0 is docs-only and includes no new app zip. v6.11.1 is docs-only and includes no new app zip. v6.12.0 is docs-only and includes no new app zip. v6.12.1 is docs-only and includes no new app zip. v6.13.0 is docs-only and includes no new app zip. v6.13.1 is docs-only and includes no new app zip. v6.14.0 is docs-only and includes no new app zip. v6.14.1 is docs-only and includes no new app zip. v6.15.0 is docs-only and includes no new app zip. v6.16.0 is docs-only and includes no new app zip. v6.16.1 is docs-only and includes no new app zip. v6.17.0 is docs-only and includes no new app zip. v6.17.1 is docs-only and includes no new app zip. v6.18.0 is docs-only and includes no new app zip. v6.18.1 is docs-only and includes no new app zip. v6.19.0 is docs-only and includes no new app zip. v6.19.1 is docs-only and includes no new app zip. v6.20.0 is docs-only and includes no new app zip. v6.20.1 is docs-only and includes no new app zip. v6.21.0 is docs-only and includes no new app zip. v6.21.1 is docs-only and includes no new app zip. v6.22.0 is docs-only and includes no new app zip. v6.22.1 is docs-only and includes no new app zip. v6.23.0 includes fixture data files only and no new app zip. v6.23.1 includes fixture data polish only and no new app zip. v6.24.0 includes test-only diagnostics fixture loading coverage and no new app zip. v6.25.0 is docs-only and includes no new app zip. v6.26.0 is docs-only and includes no new app zip. v6.27.0 is docs-only and includes no new app zip. v6.28.0 is docs-only and includes no new app zip. v6.29.0 is docs-only and includes no new app zip. v6.30.0 is docs-only and includes no new app zip. v6.30.1 is docs-only and includes no new app zip. v7.0.0 is an app-code Model Availability Surface release with an unsigned app zip asset. v7.1.0 is an app-code Unified Dashboard GUI Foundation release with an unsigned app zip asset. v7.2.0 is an app-code Hugging Face Download by ID / URL release with an unsigned app zip asset.
 
@@ -263,7 +263,7 @@ For Hermes Agent and similar clients, see [docs/hermes_agent_connection.md](docs
 
 ## Current Feature Set
 
-As of v20.1.0, MLX Server Manager includes:
+As of v20.2.0, MLX Server Manager includes:
 
 - Start, Stop, and Restart for the `mlx_lm.server` process started by this app.
 - Managed-process-only Stop and Restart behavior.

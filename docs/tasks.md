@@ -3483,6 +3483,26 @@
 - Update stable scope, product direction, and distribution boundaries to keep Direct Mode, no proxy, no Chat UI, no credential storage, no model deletion, and no cache cleanup clear.
 - No new app-code behavior or app zip is produced; `v20.0.0` remains the latest app-code binary asset.
 
+## v20.2.0 Completed: Integrated Workspace Operations Polish
+
+Status: Completed.
+
+Scope:
+- Removed the integrated Help menu.
+- Expanded sidebar menu hit targets.
+- Reworked the integrated model list into sortable operational columns.
+- Added model size, status-driven load/unload, process memory, auto-unload, and reasoning controls.
+- Added fixed-size rounded status buttons with hover labels for Load and Unload.
+- Added functional auto-unload monitoring for app-managed servers.
+- Added Activity Monitor-style memory and CPU history panels.
+- Removed GPU usage display because a stable Activity Monitor-equivalent public API is not available.
+- Added SYSTEM hardware summary rows for model identifier, chip, core count, memory, and storage used / total.
+- Preserved Direct Mode; no inference proxying, backend routing, request rewriting, Chat UI, model deletion, cache cleanup, or credential storage was added.
+
+Validation:
+- Debug build passed.
+- `git diff --check` passed.
+
 ## Later
 
 - More advanced resource graphs.

@@ -5,7 +5,6 @@ enum IntegratedWorkspaceDestination: String, CaseIterable, Identifiable {
     case downloads
     case settings
     case logs
-    case help
 
     var id: String { rawValue }
 
@@ -19,8 +18,6 @@ enum IntegratedWorkspaceDestination: String, CaseIterable, Identifiable {
             "設定"
         case .logs:
             "ログ"
-        case .help:
-            "ヘルプ"
         }
     }
 
@@ -34,8 +31,6 @@ enum IntegratedWorkspaceDestination: String, CaseIterable, Identifiable {
             "gearshape"
         case .logs:
             "doc.text"
-        case .help:
-            "questionmark.circle"
         }
     }
 }

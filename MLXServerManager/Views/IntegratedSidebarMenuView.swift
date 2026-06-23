@@ -22,8 +22,11 @@ struct IntegratedSidebarMenuView: View {
                         .background(selectedDestination == destination ? Color.accentColor.opacity(0.85) : Color.clear)
                         .foregroundStyle(selectedDestination == destination ? Color.white : Color.primary)
                         .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .contentShape(RoundedRectangle(cornerRadius: 6))
                 }
                 .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
                 .accessibilityIdentifier("integrated-sidebar-\(destination.rawValue)")
             }
         }

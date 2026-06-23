@@ -38,6 +38,18 @@ struct ModelProfileImportSelectionUpdate: Equatable {
     }
 }
 
+struct MemoryHistorySample: Equatable, Sendable {
+    let usedFraction: Double
+    let managedProcessFraction: Double
+    let timestamp: Date
+}
+
+struct SystemUsageHistorySample: Equatable, Sendable {
+    let cpuFraction: Double
+    let gpuFraction: Double?
+    let timestamp: Date
+}
+
 @MainActor
 final class AppViewModel: ObservableObject {
     @Published var settings: AppSettings = .defaults
@@ -48,8 +60,18 @@ final class AppViewModel: ObservableObject {
         }
     }
     @Published private(set) var runningModelID: ModelConfig.ID?
+    @Published private(set) var managedServerStartedAt: Date?
     @Published private(set) var runtimeState: ModelRuntimeState = .stopped
     @Published private(set) var memoryUsageGB: Double?
+    @Published private(set) var memoryBreakdown: MemoryBreakdownSnapshot?
+    @Published private(set) var memoryHistory: [MemoryHistorySample] = []
+    @Published private(set) var cpuUsagePercent: Double?
+    @Published private(set) var gpuUsagePercent: Double?
+    @Published private(set) var systemUsageHistory: [SystemUsageHistorySample] = []
+    @Published var autoUnloadEnabledByModelID: [ModelConfig.ID: Bool] = [:]
+    @Published var autoUnloadMinutesByModelID: [ModelConfig.ID: Int] = [:]
+    @Published private(set) var modelSortKey: String?
+    @Published private(set) var isModelSortAscending = true
     @Published private(set) var logText: String
     @Published private(set) var logEntries: [LogEntry]
     @Published var logCategoryFilter = "All"
@@ -110,6 +132,8 @@ final class AppViewModel: ObservableObject {
     private let huggingFaceSearchService: HuggingFaceModelSearching
     private var logBuffer: LogBuffer
     private var memoryMonitorTask: Task<Void, Never>?
+    private var systemUsageMonitorTask: Task<Void, Never>?
+    private var autoUnloadTask: Task<Void, Never>?
     private var huggingFaceDownloadTask: Task<Void, Never>?
     private var huggingFaceDownloadCancellationRequested = false
     private var pendingDeleteModelID: ModelConfig.ID?
@@ -161,10 +185,30 @@ final class AppViewModel: ObservableObject {
         localModelPortText = String(settings.defaultPort)
         selectedModelID = models.first?.id
         resetModelAvailabilityForCurrentSelection()
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
+            startSystemUsageMonitoring()
+            startAutoUnloadMonitoring()
+        }
     }
 
     var selectedModel: ModelConfig? {
         models.first { $0.id == selectedModelID } ?? models.first
+    }
+
+    var initialModelNameColumnWidth: CGFloat {
+        let longestDisplayNameCount = models.map { $0.displayName.count }.max() ?? 0
+        let estimatedWidth = CGFloat(longestDisplayNameCount * 8 + 28)
+        return min(max(estimatedWidth, 210), 420)
+    }
+
+    var systemInfoRows: [(String, String)] {
+        [
+            ("機種", Self.sysctlString("hw.model") ?? "不明"),
+            ("チップ", Self.sysctlString("machdep.cpu.brand_string") ?? "Apple Silicon"),
+            ("コア", "\(ProcessInfo.processInfo.activeProcessorCount)コア"),
+            ("メモリ", Self.formatMemoryGigabytes(Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824)),
+            ("ストレージ", Self.storageUsageText())
+        ]
     }
 
     var modelListSourceFilterOptions: [String] {
@@ -176,14 +220,17 @@ final class AppViewModel: ObservableObject {
             ? models
             : models.filter { sourceLabel(for: $0) == modelListSourceFilter }
         let query = modelListSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return sourceFiltered }
-        return sourceFiltered.filter { model in
-            model.displayName.localizedCaseInsensitiveContains(query)
-                || model.modelID.localizedCaseInsensitiveContains(query)
-                || model.family.localizedCaseInsensitiveContains(query)
-                || model.quantization.localizedCaseInsensitiveContains(query)
-                || model.notes.localizedCaseInsensitiveContains(query)
-        }
+        let filtered = query.isEmpty
+            ? sourceFiltered
+            : sourceFiltered.filter { model in
+                model.displayName.localizedCaseInsensitiveContains(query)
+                    || model.modelID.localizedCaseInsensitiveContains(query)
+                    || model.family.localizedCaseInsensitiveContains(query)
+                    || model.quantization.localizedCaseInsensitiveContains(query)
+                    || model.notes.localizedCaseInsensitiveContains(query)
+            }
+
+        return sortedModels(filtered)
     }
 
     func sourceLabel(for model: ModelConfig) -> String {
@@ -191,6 +238,105 @@ final class AppViewModel: ObservableObject {
             return model.notes.localizedCaseInsensitiveContains("downloaded") ? "Downloaded" : "Local"
         }
         return model.modelID.contains("/") ? "HF ID" : "Advanced"
+    }
+
+    func sortModelsRequested(by key: String) {
+        if modelSortKey == key {
+            isModelSortAscending.toggle()
+        } else {
+            modelSortKey = key
+            isModelSortAscending = true
+        }
+    }
+
+    func sortIndicator(for key: String) -> String {
+        guard modelSortKey == key else { return "" }
+        return isModelSortAscending ? " ▲" : " ▼"
+    }
+
+    func toggleReasoning(for model: ModelConfig, isEnabled: Bool) {
+        guard let index = models.firstIndex(where: { $0.id == model.id }) else { return }
+        models[index].enableThinking = isEnabled
+        do {
+            try settingsStore.save(models: models)
+            appendLog("[model] reasoning \(isEnabled ? "enabled" : "disabled") for \(model.displayName).")
+        } catch {
+            appendLog("[model] warning: failed to save reasoning setting: \(error.localizedDescription)")
+        }
+    }
+
+    func canStartModel(_ model: ModelConfig) -> Bool {
+        blockingStartIssue(for: model) == nil
+    }
+
+    func startRequested(for model: ModelConfig) {
+        selectedModelID = model.id
+        startRequested()
+    }
+
+    func restartRequested(for model: ModelConfig) {
+        selectedModelID = model.id
+        restartRequested()
+    }
+
+    func moveModelUp(_ model: ModelConfig) {
+        moveModel(model, offset: -1)
+    }
+
+    func moveModelDown(_ model: ModelConfig) {
+        moveModel(model, offset: 1)
+    }
+
+    func canMoveModelUp(_ model: ModelConfig) -> Bool {
+        guard let index = models.firstIndex(where: { $0.id == model.id }) else { return false }
+        return index > 0
+    }
+
+    func canMoveModelDown(_ model: ModelConfig) -> Bool {
+        guard let index = models.firstIndex(where: { $0.id == model.id }) else { return false }
+        return index < models.index(before: models.endIndex)
+    }
+
+    func moveModel(withID draggedModelID: ModelConfig.ID, before targetModelID: ModelConfig.ID) {
+        guard draggedModelID != targetModelID,
+              let sourceIndex = models.firstIndex(where: { $0.id == draggedModelID }),
+              let targetIndex = models.firstIndex(where: { $0.id == targetModelID }) else {
+            return
+        }
+
+        let movedModel = models.remove(at: sourceIndex)
+        let adjustedTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
+        models.insert(movedModel, at: adjustedTargetIndex)
+        do {
+            try settingsStore.save(models: models)
+            appendLog("[model] reordered \(movedModel.displayName).")
+        } catch {
+            appendLog("[model] warning: failed to save model order: \(error.localizedDescription)")
+        }
+    }
+
+    func isAutoUnloadEnabled(for model: ModelConfig) -> Bool {
+        autoUnloadEnabledByModelID[model.id] ?? false
+    }
+
+    func setAutoUnloadEnabled(_ isEnabled: Bool, for model: ModelConfig) {
+        autoUnloadEnabledByModelID[model.id] = isEnabled
+    }
+
+    func autoUnloadMinutes(for model: ModelConfig) -> Int {
+        autoUnloadMinutesByModelID[model.id] ?? 30
+    }
+
+    func setAutoUnloadMinutes(_ minutes: Int, for model: ModelConfig) {
+        autoUnloadMinutesByModelID[model.id] = min(max(minutes, 1), 999)
+    }
+
+    func autoUnloadText(for model: ModelConfig) -> String {
+        isAutoUnloadEnabled(for: model) ? "\(autoUnloadMinutes(for: model))分" : "OFF"
+    }
+
+    func reasoningText(for model: ModelConfig) -> String {
+        model.enableThinking ? "ON" : "OFF"
     }
 
     var huggingFaceDownloadPreview: HuggingFaceDownloadPreview {
@@ -231,10 +377,14 @@ final class AppViewModel: ObservableObject {
 
     var selectedBlockingStartIssue: String? {
         guard let selectedModel else { return "Select a model before Start." }
+        return blockingStartIssue(for: selectedModel)
+    }
+
+    private func blockingStartIssue(for model: ModelConfig) -> String? {
         if executableSafetyText != "OK" { return executableSafetyText }
-        let modelSafety = modelIdentitySafetyText(for: selectedModel)
+        let modelSafety = modelIdentitySafetyText(for: model)
         if modelSafety.localizedCaseInsensitiveContains("Missing") { return modelSafety }
-        let portSafety = portSafetyText(host: selectedModel.host, port: selectedModel.serverPort)
+        let portSafety = portSafetyText(host: model.host, port: model.serverPort)
         if portSafety != "Available" { return "Server port: \(portSafety)" }
         return nil
     }
@@ -832,49 +982,176 @@ final class AppViewModel: ObservableObject {
 
     var memoryUsageText: String {
         if runtimeState.isExternalServerContext {
-            return "Memory: Not available for external server"
+            return "MLX管理RSS: 外部サーバー対象外"
         }
 
         guard let memoryUsageGB else {
-            return "Memory: Not running"
+            return "MLX管理RSS: 未稼働"
         }
 
-        return String(format: "Memory: %.2f GB", memoryUsageGB)
+        return "MLX管理RSS: \(Self.formatMemoryGigabytes(memoryUsageGB))"
     }
 
     var integratedMemoryUsageFraction: Double {
-        guard let memoryUsageGB else { return 0 }
-        return min(max(memoryUsageGB / 64.0, 0), 1)
+        guard let memoryBreakdown,
+              let usedGigabytes = memoryBreakdown.system.usedGigabytes,
+              memoryBreakdown.system.totalGigabytes > 0 else {
+            return 0
+        }
+
+        return min(max(usedGigabytes / memoryBreakdown.system.totalGigabytes, 0), 1)
     }
 
     var integratedMemoryUsagePercentText: String {
-        guard memoryUsageGB != nil else { return "0%" }
+        guard memoryBreakdown != nil else { return "0%" }
         return "\(Int(integratedMemoryUsageFraction * 100))%"
     }
 
+    var memoryTotalText: String {
+        guard let memoryBreakdown else {
+            return "合計: 未取得"
+        }
+
+        return "合計: \(Self.formatMemoryGigabytes(memoryBreakdown.system.totalGigabytes))"
+    }
+
+    var memoryAvailableText: String {
+        guard let availableGigabytes = memoryBreakdown?.system.availableGigabytes else {
+            return "未取得"
+        }
+
+        return Self.formatMemoryGigabytes(availableGigabytes)
+    }
+
+    var memoryMLXProcessText: String {
+        guard let memoryBreakdown else {
+            return runtimeState.isExternalServerContext ? "対象外" : "未稼働"
+        }
+
+        return Self.formatMemoryGigabytes(memoryBreakdown.managedProcessGigabytes)
+    }
+
+    var memoryOtherProcessesText: String {
+        guard let otherProcessesGigabytes = memoryBreakdown?.otherProcessesGigabytes else {
+            return "未取得"
+        }
+
+        return Self.formatMemoryGigabytes(otherProcessesGigabytes)
+    }
+
+    var memoryBreakdownUpdateText: String {
+        memoryBreakdown == nil ? "管理サーバー起動後に更新開始" : "1秒ごとに更新 / 直近60秒"
+    }
+
+    var memoryBreakdownAccuracyText: String {
+        "mlx-lmは管理プロセスRSS、その他/空き容量はvm_statベース"
+    }
+
+    var memoryMLXProcessFraction: Double {
+        memoryFraction(memoryBreakdown?.managedProcessGigabytes)
+    }
+
+    var memoryOtherProcessesFraction: Double {
+        memoryFraction(memoryBreakdown?.otherProcessesGigabytes)
+    }
+
+    var memoryAvailableFraction: Double {
+        memoryFraction(memoryBreakdown?.system.availableGigabytes)
+    }
+
     var integratedCPUUsageText: String {
-        "未測定"
+        guard let cpuUsagePercent else { return "未取得" }
+        return String(format: "%.0f%%", cpuUsagePercent)
     }
 
     var integratedGPUUsageText: String {
-        "未測定"
+        guard let gpuUsagePercent else { return "非対応" }
+        return String(format: "%.0f%%", gpuUsagePercent)
     }
 
     var integratedUptimeText: String {
-        runtimeEvents.isEmpty ? "-" : "session active"
+        guard let managedServerStartedAt,
+              runningModelID != nil else {
+            return "-"
+        }
+
+        let elapsed = max(Int(Date().timeIntervalSince(managedServerStartedAt)), 0)
+        let hours = elapsed / 3600
+        let minutes = (elapsed % 3600) / 60
+        let seconds = elapsed % 60
+        return String(format: "%02d時間%02d分%02d秒", hours, minutes, seconds)
     }
 
     func integratedStatusText(for model: ModelConfig) -> String {
-        model.id == runningModelID ? runtimeState.title : "Stopped"
+        interactiveStatusText(for: model, isHovered: false)
+    }
+
+    func interactiveStatusText(for model: ModelConfig, isHovered: Bool) -> String {
+        if model.id == runningModelID {
+            switch runtimeState {
+            case .starting, .loading, .checkingReady:
+                return "ロード中"
+            case .stopping:
+                return "アンロード中"
+            default:
+                return isHovered ? "アンロード" : "ロード済"
+            }
+        }
+
+        return isHovered ? "ロード" : "準備完了"
+    }
+
+    func isModelLoaded(_ model: ModelConfig) -> Bool {
+        model.id == runningModelID && !isModelTransitioning(model)
+    }
+
+    func isModelTransitioning(_ model: ModelConfig) -> Bool {
+        guard model.id == runningModelID else { return false }
+        switch runtimeState {
+        case .starting, .loading, .checkingReady, .stopping:
+            return true
+        default:
+            return false
+        }
+    }
+
+    func canUseStatusAction(for model: ModelConfig) -> Bool {
+        if model.id == runningModelID {
+            return canStopManagedServer
+        }
+
+        return canStartModel(model)
+    }
+
+    func statusActionRequested(for model: ModelConfig) {
+        if model.id == runningModelID {
+            stopRequested()
+        } else {
+            startRequested(for: model)
+        }
+    }
+
+    func modelSizeText(for model: ModelConfig) -> String {
+        guard let modelDirectoryPath = ModelAvailabilityPathFormatter.localPathCandidate(for: model),
+              let gigabytes = memoryMonitor.estimatedModelStorageGigabytes(modelDirectoryPath: modelDirectoryPath) else {
+            return "-"
+        }
+
+        return Self.formatMemoryGigabytes(gigabytes)
     }
 
     func integratedStatusDetail(for model: ModelConfig) -> String {
-        model.id == runningModelID ? "稼働中" : "停止中"
+        integratedStatusText(for: model)
     }
 
 
     func integratedMemoryText(for model: ModelConfig) -> String {
-        model.id == runningModelID ? memoryUsageText : "-"
+        guard model.id == runningModelID,
+              let memoryUsageGB else {
+            return "-"
+        }
+
+        return Self.formatMemoryGigabytes(memoryUsageGB)
     }
 
     func integratedLatestUseText(for model: ModelConfig) -> String {
@@ -886,7 +1163,107 @@ final class AppViewModel: ObservableObject {
     }
 
     func integratedStopModeText(for model: ModelConfig) -> String {
-        model.id == runningModelID ? "手動停止のみ" : "未稼働"
+        isAutoUnloadEnabled(for: model) ? "ON / \(autoUnloadMinutes(for: model))分" : "OFF"
+    }
+
+    private func sortedModels(_ input: [ModelConfig]) -> [ModelConfig] {
+        guard let modelSortKey else { return input }
+
+        let sorted = input.sorted { lhs, rhs in
+            switch modelSortKey {
+            case "name":
+                return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+            case "size":
+                return (modelSizeGigabytes(for: lhs) ?? -1) < (modelSizeGigabytes(for: rhs) ?? -1)
+            case "status":
+                return integratedStatusText(for: lhs) < integratedStatusText(for: rhs)
+            case "port":
+                return lhs.serverPort < rhs.serverPort
+            case "memory":
+                return memoryValueForSort(lhs) < memoryValueForSort(rhs)
+            case "autoUnload":
+                return autoUnloadSortValue(lhs) < autoUnloadSortValue(rhs)
+            case "reasoning":
+                return reasoningText(for: lhs) < reasoningText(for: rhs)
+            default:
+                return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+            }
+        }
+
+        return isModelSortAscending ? sorted : sorted.reversed()
+    }
+
+    private func modelSizeGigabytes(for model: ModelConfig) -> Double? {
+        guard let modelDirectoryPath = ModelAvailabilityPathFormatter.localPathCandidate(for: model) else {
+            return nil
+        }
+
+        return memoryMonitor.estimatedModelStorageGigabytes(modelDirectoryPath: modelDirectoryPath)
+    }
+
+    private func memoryValueForSort(_ model: ModelConfig) -> Double {
+        model.id == runningModelID ? (memoryUsageGB ?? -1) : -1
+    }
+
+    private func autoUnloadSortValue(_ model: ModelConfig) -> Int {
+        isAutoUnloadEnabled(for: model) ? autoUnloadMinutes(for: model) : Int.max
+    }
+
+    private func memoryFraction(_ value: Double?) -> Double {
+        guard let value,
+              let totalGigabytes = memoryBreakdown?.system.totalGigabytes,
+              totalGigabytes > 0 else {
+            return 0
+        }
+
+        return min(max(value / totalGigabytes, 0), 1)
+    }
+
+    private static func formatMemoryGigabytes(_ value: Double) -> String {
+        if value >= 10 {
+            return String(format: "%.1f GB", value)
+        }
+
+        return String(format: "%.2f GB", value)
+    }
+
+    nonisolated private static func sysctlString(_ key: String) -> String? {
+        var size = 0
+        guard sysctlbyname(key, nil, &size, nil, 0) == 0,
+              size > 0 else {
+            return nil
+        }
+
+        var buffer = [CChar](repeating: 0, count: size)
+        guard sysctlbyname(key, &buffer, &size, nil, 0) == 0 else {
+            return nil
+        }
+
+        return String(cString: buffer).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    nonisolated private static func storageUsageText() -> String {
+        do {
+            let attributes = try FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory())
+            guard let size = attributes[.systemSize] as? NSNumber,
+                  let free = attributes[.systemFreeSize] as? NSNumber else {
+                return "不明"
+            }
+
+            let usedBytes = max(size.doubleValue - free.doubleValue, 0)
+            return "\(formatStorageBytes(usedBytes)) / \(formatStorageBytes(size.doubleValue))"
+        } catch {
+            return "不明"
+        }
+    }
+
+    nonisolated private static func formatStorageBytes(_ bytes: Double) -> String {
+        let gigabytes = bytes / 1_073_741_824
+        if gigabytes >= 1024 {
+            return String(format: "%.1f TB", gigabytes / 1024)
+        }
+
+        return String(format: "%.0f GB", gigabytes)
     }
 
     private var managedReadinessSummary: String {
@@ -903,6 +1280,25 @@ final class AppViewModel: ObservableObject {
             "Stopping"
         default:
             "Managed process active"
+        }
+    }
+
+    private func moveModel(_ model: ModelConfig, offset: Int) {
+        guard let currentIndex = models.firstIndex(where: { $0.id == model.id }) else {
+            return
+        }
+
+        let targetIndex = currentIndex + offset
+        guard models.indices.contains(targetIndex) else {
+            return
+        }
+
+        models.swapAt(currentIndex, targetIndex)
+        do {
+            try settingsStore.save(models: models)
+            appendLog("[model] moved \(model.displayName) to row \(targetIndex + 1).")
+        } catch {
+            appendLog("[model] warning: failed to save model order: \(error.localizedDescription)")
         }
     }
 
@@ -2387,7 +2783,7 @@ final class AppViewModel: ObservableObject {
 
             appendLog("[\(logPrefix)] command: \(launchResult.commandSummary)")
             appendLog("[\(logPrefix)] pid: \(launchResult.processIdentifier)")
-            startMemoryMonitoring(processIdentifier: launchResult.processIdentifier)
+            startMemoryMonitoring(processIdentifier: launchResult.processIdentifier, model: selectedModel)
             setRunningModelID(selectedModel.id, logPrefix: logPrefix)
             runtimeState = .loading(
                 host: host,
@@ -2734,6 +3130,7 @@ final class AppViewModel: ObservableObject {
 
     private func setRunningModelID(_ modelID: ModelConfig.ID, logPrefix: String) {
         runningModelID = modelID
+        managedServerStartedAt = Date()
         appendLog("[\(logPrefix)] running modelID: \(modelID)")
         logRestartRequiredIfNeeded()
     }
@@ -2744,6 +3141,7 @@ final class AppViewModel: ObservableObject {
         }
 
         runningModelID = nil
+        managedServerStartedAt = nil
         appendLog("[\(logPrefix)] running model cleared.")
     }
 
@@ -2757,15 +3155,28 @@ final class AppViewModel: ObservableObject {
         appendLog("[model] selected model differs from running model. Restart required to apply selected model. selected: \(selectedModel.modelID), running: \(runningModelID)")
     }
 
-    private func startMemoryMonitoring(processIdentifier: Int32) {
+    private func startMemoryMonitoring(processIdentifier: Int32, model: ModelConfig) {
         stopMemoryMonitoring(resetUsage: true)
 
-        appendLog("[memory] monitoring managed pid \(processIdentifier).")
+        appendLog("[memory] monitoring managed pid \(processIdentifier) every 1 second.")
         let monitor = memoryMonitor
+        let modelDirectoryPath = ModelAvailabilityPathFormatter.localPathCandidate(for: model)
+        let modelEstimateGigabytes = monitor.estimatedModelStorageGigabytes(modelDirectoryPath: modelDirectoryPath)
+        let modelEstimateSource = modelDirectoryPath.map { ModelAvailabilityPathFormatter.compact(path: $0) }
 
-        memoryMonitorTask = Task { [weak self, monitor] in
+        if let modelEstimateGigabytes, let modelEstimateSource {
+            appendLog("[memory] model estimate: \(Self.formatMemoryGigabytes(modelEstimateGigabytes)) from \(modelEstimateSource).")
+        } else {
+            appendLog("[memory] model estimate unavailable. A local model folder is required for the model segment.")
+        }
+
+        memoryMonitorTask = Task { [weak self, monitor, modelEstimateGigabytes, modelEstimateSource] in
             while !Task.isCancelled {
-                let result = await monitor.currentUsage(processIdentifier: processIdentifier)
+                let result = await monitor.currentBreakdown(
+                    processIdentifier: processIdentifier,
+                    modelEstimateGigabytes: modelEstimateGigabytes,
+                    modelEstimateSource: modelEstimateSource
+                )
                 let shouldContinue = await MainActor.run {
                     self?.handleMemoryMonitorResult(
                         result,
@@ -2778,7 +3189,7 @@ final class AppViewModel: ObservableObject {
                 }
 
                 do {
-                    try await Task.sleep(nanoseconds: 4_000_000_000)
+                    try await Task.sleep(nanoseconds: 1_000_000_000)
                 } catch {
                     return
                 }
@@ -2792,34 +3203,59 @@ final class AppViewModel: ObservableObject {
 
         if resetUsage {
             memoryUsageGB = nil
+            memoryBreakdown = nil
+            memoryHistory = []
         }
     }
 
     private func handleMemoryMonitorResult(
-        _ result: MemoryMonitorResult,
+        _ result: MemoryBreakdownMonitorResult,
         processIdentifier: Int32
     ) -> Bool {
         guard processManager.managedProcessIdentifier == processIdentifier else {
             memoryUsageGB = nil
+            memoryBreakdown = nil
             appendLog("[memory] monitoring stopped because managed pid changed.")
             return false
         }
 
         switch result {
         case let .usage(snapshot):
-            memoryUsageGB = snapshot.gigabytes
+            memoryUsageGB = snapshot.managedProcessGigabytes
+            memoryBreakdown = snapshot
+            appendMemoryHistorySample(from: snapshot)
             return true
         case let .notRunning(processIdentifier):
             memoryUsageGB = nil
+            memoryBreakdown = nil
             appendLog("[memory] warning: managed pid \(processIdentifier) is no longer reporting RSS.")
             return false
         case let .invalidInput(message):
             memoryUsageGB = nil
+            memoryBreakdown = nil
             appendLog("[memory] warning: \(message)")
             return false
         case let .failed(processIdentifier, message):
             appendLog("[memory] warning: failed to read RSS for pid \(processIdentifier): \(message)")
             return true
+        }
+    }
+
+    private func appendMemoryHistorySample(from snapshot: MemoryBreakdownSnapshot) {
+        guard snapshot.system.totalGigabytes > 0,
+              let usedGigabytes = snapshot.system.usedGigabytes else {
+            return
+        }
+
+        let sample = MemoryHistorySample(
+            usedFraction: min(max(usedGigabytes / snapshot.system.totalGigabytes, 0), 1),
+            managedProcessFraction: min(max(snapshot.managedProcessGigabytes / snapshot.system.totalGigabytes, 0), 1),
+            timestamp: snapshot.updatedAt
+        )
+
+        memoryHistory.append(sample)
+        if memoryHistory.count > 60 {
+            memoryHistory.removeFirst(memoryHistory.count - 60)
         }
     }
 
@@ -2985,6 +3421,109 @@ final class AppViewModel: ObservableObject {
             apiBasePath: "/v1",
             apiKeyPlaceholder: settings.apiKeyPlaceholder
         )
+    }
+
+    private func startSystemUsageMonitoring() {
+        systemUsageMonitorTask?.cancel()
+        systemUsageMonitorTask = Task.detached { [weak self] in
+            while !Task.isCancelled {
+                let cpuPercent = Self.sampleCPUUsagePercent()
+                guard let self else {
+                    return
+                }
+                await self.handleSystemUsageMonitorResult(cpuPercent: cpuPercent, gpuPercent: nil)
+
+                do {
+                    try await Task.sleep(nanoseconds: 1_000_000_000)
+                } catch {
+                    return
+                }
+            }
+        }
+    }
+
+    private func handleSystemUsageMonitorResult(cpuPercent: Double?, gpuPercent: Double?) {
+        cpuUsagePercent = cpuPercent
+        gpuUsagePercent = gpuPercent
+        appendSystemUsageHistory(cpuPercent: cpuPercent, gpuPercent: gpuPercent)
+    }
+
+    private func startAutoUnloadMonitoring() {
+        autoUnloadTask?.cancel()
+        autoUnloadTask = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.evaluateAutoUnload()
+                do {
+                    try await Task.sleep(nanoseconds: 1_000_000_000)
+                } catch {
+                    return
+                }
+            }
+        }
+    }
+
+    private func evaluateAutoUnload() async {
+        guard let runningModelID,
+              let runningModel = models.first(where: { $0.id == runningModelID }),
+              isAutoUnloadEnabled(for: runningModel),
+              let managedServerStartedAt,
+              !isModelTransitioning(runningModel) else {
+            return
+        }
+
+        let elapsedSeconds = Date().timeIntervalSince(managedServerStartedAt)
+        let limitSeconds = TimeInterval(autoUnloadMinutes(for: runningModel) * 60)
+        guard elapsedSeconds >= limitSeconds else {
+            return
+        }
+
+        appendLog("[auto-unload] elapsed \(Int(elapsedSeconds))s reached \(autoUnloadMinutes(for: runningModel)) minute limit. Unloading \(runningModel.displayName).")
+        stopRequested()
+    }
+
+    private func appendSystemUsageHistory(cpuPercent: Double?, gpuPercent: Double?) {
+        let sample = SystemUsageHistorySample(
+            cpuFraction: min(max((cpuPercent ?? 0) / 100, 0), 1),
+            gpuFraction: gpuPercent.map { min(max($0 / 100, 0), 1) },
+            timestamp: Date()
+        )
+
+        systemUsageHistory.append(sample)
+        if systemUsageHistory.count > 60 {
+            systemUsageHistory.removeFirst(systemUsageHistory.count - 60)
+        }
+    }
+
+    nonisolated private static func sampleCPUUsagePercent() -> Double? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/ps")
+        process.arguments = ["-A", "-o", "%cpu="]
+
+        let outputPipe = Pipe()
+        process.standardOutput = outputPipe
+
+        do {
+            try process.run()
+        } catch {
+            return nil
+        }
+
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            return nil
+        }
+
+        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        guard let output = String(data: outputData, encoding: .utf8) else {
+            return nil
+        }
+
+        let totalProcessCPU = output
+            .split(whereSeparator: { $0 == "\n" || $0 == " " || $0 == "\t" })
+            .compactMap { Double($0) }
+            .reduce(0, +)
+        let cores = max(ProcessInfo.processInfo.activeProcessorCount, 1)
+        return min(max(totalProcessCPU / Double(cores), 0), 100)
     }
 
     private func appendRuntimeEvent(category: String, message: String) {
