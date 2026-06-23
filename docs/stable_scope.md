@@ -1,6 +1,6 @@
 # Stable Scope
 
-This document defines the v1.0 stable scope for MLX Server Manager.
+This document defines the v1.0 stable scope for MLX Server Manager and records current Direct Mode boundaries. v20.x includes later explicit Hugging Face search/download convenience features, but those features do not change the Direct Mode inference path.
 
 MLX Server Manager is a Direct Mode control surface for local `mlx_lm.server`:
 
@@ -79,16 +79,18 @@ The app may manage, monitor, and document connection settings for the server. It
 - No committed runtime settings, model files, secrets, app bundles, zip files, dSYM files, or build artifacts.
 - No personal fixed paths in docs or Swift code.
 
-## Deferred Beyond v1.0
+## Deferred or Excluded Beyond Current Scope
 
 - Proxy mode.
 - Chat UI.
 - LAN Web UI.
 - App Intents.
 - Auto unload.
-- Hugging Face download manager.
-- Model download.
+- Full Hugging Face model-card browsing.
+- Hugging Face token storage or credential management.
+- Silent or background model downloads.
 - Model deletion.
+- Hugging Face cache deletion.
 - Multiple concurrent server management.
 - Multiple model simultaneous launch.
 - RAG.

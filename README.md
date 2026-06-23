@@ -92,7 +92,7 @@ See [docs/product_direction.md](docs/product_direction.md) for the full project 
 
 - Not a chat UI.
 - Not an inference proxy.
-- Does not include Hugging Face search, model-card browsing, HF token storage, model deletion, or cache cleanup.
+- Does not include full Hugging Face model-card browsing, HF token storage, model deletion, or cache cleanup.
 - Not a model deletion tool.
 - Not a multi-backend wrapper.
 - Not a replacement for `mlx-lm` or model setup.
@@ -107,7 +107,7 @@ MLXServerManager-v20.0.0-unsigned.zip
 
 On the GitHub Release page, use the file listed under **Assets** with this exact name. Do not use **Source code (zip)** or **Source code (tar.gz)** when you want the app.
 
-`v20.0.0` is the latest app-code release. Recent v6/v7/v8/v9/v10/v11/v12/v13/v14/v15/v16/v17/v18/v19 staged commits do not replace this app binary.
+`v20.0.0` is the latest app-code release. `v20.1.0` is a docs-only current-state alignment release and does not replace this app binary.
 
 Verify the checksum before opening the app:
 
@@ -151,13 +151,13 @@ Do not download the source archive if you want the app binary. Use the named `ML
 11. Copy the Hermes Agent, generic OpenAI-compatible, curl preset, or benchmark summary.
 12. Paste connection values into an OpenAI-compatible client.
 
-## v14 GUI Optimization Direction
+## Current GUI Direction
 
-v20.0.0 focuses on daily operations stability. The integrated workspace now aligns visible GUI labels with implemented behavior, removes unavailable connection-port UI, makes CPU/GPU unsampled state explicit, uses process-memory and last-check wording, adds Start guardrails, and preserves Direct Mode.
+v20.0.0 focuses on daily operations stability. The integrated workspace now aligns visible GUI labels with implemented behavior, removes unavailable connection-port UI, makes CPU/GPU unsampled state explicit, uses process-memory and last-check wording, adds Start guardrails, and preserves Direct Mode. v20.1.0 aligns current documentation with that implemented state without changing app behavior.
 
 You must provide your own `mlx-lm` environment and `mlx_lm.server` executable. You can register existing model files, search Hugging Face and choose a result, or use the Dashboard Hugging Face card to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: the client connects directly to `mlx_lm.server`; MLX Server Manager does not proxy inference traffic or run chat completions.
 
-See [docs/distribution.md](docs/distribution.md) for release asset and Gatekeeper details, and [docs/known_limitations.md](docs/known_limitations.md) for the full stable-scope boundary.
+See [docs/distribution.md](docs/distribution.md) for release asset and Gatekeeper details, [docs/known_limitations.md](docs/known_limitations.md) for the full stable-scope boundary, and [docs/v20_1_current_state_alignment.md](docs/v20_1_current_state_alignment.md) for the v20.1.0 documentation alignment note.
 
 See [docs/benchmark_findings.md](docs/benchmark_findings.md) for benchmark-informed notes on Direct Mode, long-context workloads, streaming TTFT, and future optional Advanced Launch Options.
 
@@ -239,6 +239,8 @@ The current downloadable app binary asset is the latest app-code release:
 
 - `MLXServerManager-v20.0.0-unsigned.zip`
 
+`v20.1.0` is a docs-only current-state alignment release and includes no new app zip.
+
 v4.0.0 and v4.1.0 are docs-only preparation releases. v4.2.0 through v5.0.0 are app-code dashboard polish releases with unsigned app zip assets. v5.1.0 through v5.9.0 are documentation releases. v6.0.0 is an app-code shell foundation release. v6.0.1 is an app-code sidebar polish release. v6.0.2 is an app-code release hygiene follow-up. v6.0.3 is an app-code App Shell identifier follow-up. v6.0.4 is an app-code AppSection metadata test follow-up with an unsigned app zip asset. v6.0.5 is docs-only and includes no new app zip. v6.1.0 is an app-code Profiles / Model List Surface release. v6.1.1 is an app-code Profiles Surface polish release. v6.2.0 is an app-code Detail Inspector Foundation release. v6.2.1 is an app-code Detail Inspector polish release. v6.3.0 is an app-code Logs Panel Refresh release. v6.3.1 is an app-code Logs Surface polish release. v6.4.0 is an app-code Client Setup Surface release. v6.4.1 is an app-code Client Setup Surface polish release. v6.5.0 is an app-code Metrics / System Context release. v6.5.1 is an app-code Metrics Surface polish release with an unsigned app zip asset. v6.6.0 is docs-only and includes no new app zip. v6.6.1 is docs-only and includes no new app zip. v6.7.0 is docs-only and includes no new app zip. v6.7.1 is docs-only and includes no new app zip. v6.8.0 is docs-only and includes no new app zip. v6.8.1 is docs-only and includes no new app zip. v6.9.0 is docs-only and includes no new app zip. v6.9.1 is docs-only and includes no new app zip. v6.10.0 is docs-only and includes no new app zip. v6.10.1 is docs-only and includes no new app zip. v6.11.0 is docs-only and includes no new app zip. v6.11.1 is docs-only and includes no new app zip. v6.12.0 is docs-only and includes no new app zip. v6.12.1 is docs-only and includes no new app zip. v6.13.0 is docs-only and includes no new app zip. v6.13.1 is docs-only and includes no new app zip. v6.14.0 is docs-only and includes no new app zip. v6.14.1 is docs-only and includes no new app zip. v6.15.0 is docs-only and includes no new app zip. v6.16.0 is docs-only and includes no new app zip. v6.16.1 is docs-only and includes no new app zip. v6.17.0 is docs-only and includes no new app zip. v6.17.1 is docs-only and includes no new app zip. v6.18.0 is docs-only and includes no new app zip. v6.18.1 is docs-only and includes no new app zip. v6.19.0 is docs-only and includes no new app zip. v6.19.1 is docs-only and includes no new app zip. v6.20.0 is docs-only and includes no new app zip. v6.20.1 is docs-only and includes no new app zip. v6.21.0 is docs-only and includes no new app zip. v6.21.1 is docs-only and includes no new app zip. v6.22.0 is docs-only and includes no new app zip. v6.22.1 is docs-only and includes no new app zip. v6.23.0 includes fixture data files only and no new app zip. v6.23.1 includes fixture data polish only and no new app zip. v6.24.0 includes test-only diagnostics fixture loading coverage and no new app zip. v6.25.0 is docs-only and includes no new app zip. v6.26.0 is docs-only and includes no new app zip. v6.27.0 is docs-only and includes no new app zip. v6.28.0 is docs-only and includes no new app zip. v6.29.0 is docs-only and includes no new app zip. v6.30.0 is docs-only and includes no new app zip. v6.30.1 is docs-only and includes no new app zip. v7.0.0 is an app-code Model Availability Surface release with an unsigned app zip asset. v7.1.0 is an app-code Unified Dashboard GUI Foundation release with an unsigned app zip asset. v7.2.0 is an app-code Hugging Face Download by ID / URL release with an unsigned app zip asset.
 
 ## Target Users
@@ -261,7 +263,7 @@ For Hermes Agent and similar clients, see [docs/hermes_agent_connection.md](docs
 
 ## Current Feature Set
 
-As of v5.9.0, MLX Server Manager includes:
+As of v20.1.0, MLX Server Manager includes:
 
 - Start, Stop, and Restart for the `mlx_lm.server` process started by this app.
 - Managed-process-only Stop and Restart behavior.
@@ -308,6 +310,12 @@ As of v5.9.0, MLX Server Manager includes:
   - Copy all connection settings
   - Copy `curl /v1/models` readiness check
   - Copy OpenAI-compatible chat example text
+- Hugging Face search as a lightweight model discovery surface.
+- Explicit Hugging Face download by model ID or URL through local tooling.
+- Download queue status, progress parsing, retry, cancel, restore form, and URL copy actions.
+- Optional auto-add of downloaded models to the model profile list.
+- Integrated Dashboard / workspace for model list, lifecycle actions, logs, details, recovery, settings, and connection copy actions.
+- Start guardrails and integrated Recovery actions for common runtime and download failures.
 - Unsigned `.app` zip distribution documentation.
 
 The copied `curl /v1/chat/completions` text is only a client-side convenience example. The app itself uses `/v1/models` for readiness and diagnostics and does not send inference requests.
@@ -319,8 +327,9 @@ The copied `curl /v1/chat/completions` text is only a client-side convenience ex
 - LAN Web UI.
 - App Intents.
 - Auto unload.
-- Hugging Face download manager.
-- Model download in the current release.
+- Full Hugging Face model-card browsing.
+- HF token storage or credential management.
+- Silent or background model downloads.
 - Model deletion.
 - Hugging Face cache deletion.
 - Multiple concurrent server management.
@@ -332,20 +341,18 @@ The copied `curl /v1/chat/completions` text is only a client-side convenience ex
 - Persistent file logging.
 - Notarization, Developer ID signing, DMG, App Store distribution, Homebrew cask, auto updater, or CI/CD release automation.
 
-Model download is a future candidate only if it can preserve `mlx-lm` runtime performance, avoid silent downloads or automatic server start, and keep clear safety and privacy boundaries.
+Model download is available only as an explicit, user-initiated workflow. It must not silently download files, start servers automatically, store credentials, delete models, or clean caches.
 
 ## First-Run Workflow
 
 1. Prepare a working local `mlx-lm` environment yourself.
 2. Launch MLX Server Manager.
 3. Open Settings and set the `mlx_lm.server executable path`.
-4. Configure a Model Profile:
-   - Display name
-   - Model ID
-   - Host
-   - Port
-   - Enable thinking option
-   - Notes
+4. Add or configure a Model Profile:
+   - search Hugging Face and choose a result;
+   - download by Hugging Face model ID / URL;
+   - register an existing local model folder;
+   - or open the advanced profile editor for Display name, Model ID, Host, Port, thinking option, and Notes.
 5. Run Setup Diagnostics.
 6. Start the managed server.
 7. Confirm Ready status via `/v1/models`.
@@ -408,8 +415,8 @@ Qwen thinking behavior is controlled by the client request and model template be
 - Browser-downloaded unsigned builds may show "`MLXServerManager` is damaged and can't be opened"; this can be Gatekeeper quarantine, not necessarily a broken zip or app. Verify the Release asset and checksum before removing quarantine.
 - The app does not bundle `mlx-lm`.
 - The app does not bundle models.
-- You must provide model files or Hugging Face cache separately.
-- The app does not download models.
+- You must provide model files, download them explicitly, or use an existing Hugging Face cache.
+- Hugging Face downloads are explicit user actions and depend on local tooling such as the Hugging Face CLI.
 - The app does not optimize inference.
 - The app does not alter the MLX performance path.
 - Ready Check uses `/v1/models` only.
@@ -453,6 +460,7 @@ All changes should be reviewed for:
 - Public release checklist: [docs/public_release_checklist.md](docs/public_release_checklist.md)
 - Stable scope: [docs/stable_scope.md](docs/stable_scope.md)
 - Known limitations: [docs/known_limitations.md](docs/known_limitations.md)
+- v20.1 current state alignment: [docs/v20_1_current_state_alignment.md](docs/v20_1_current_state_alignment.md)
 - Hermes Agent connection guide: [docs/hermes_agent_connection.md](docs/hermes_agent_connection.md)
 - Advanced Launch Options: [docs/advanced_launch_options.md](docs/advanced_launch_options.md)
 - External Server Detection: [docs/external_server_detection.md](docs/external_server_detection.md)

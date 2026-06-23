@@ -343,7 +343,9 @@ Safety:
 - LAN Web UI.
 - App Intents.
 - Auto unload.
-- Hugging Face download manager.
-- Model download.
+- Full Hugging Face model-card browsing.
+- HF token storage or credential management.
+- Silent or background model downloads.
 - Model file deletion.
+- Hugging Face cache deletion.
 - Multiple simultaneous server management.

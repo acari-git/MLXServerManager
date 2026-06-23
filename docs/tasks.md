@@ -3475,6 +3475,14 @@
 - Document GUI alignment, placeholder reduction, Start guardrails, recovery action routing, and remaining limitations.
 - No GitHub Release is produced for v19.9.0; release output is deferred until v20.0.0.
 
+## v20.1.0 Completed: Current State Documentation Alignment
+
+- Add `docs/v20_1_current_state_alignment.md`.
+- Align README current-state wording with v20.x implemented behavior.
+- Refresh Known Limitations so Hugging Face search/download and integrated GUI behavior are described as implemented where applicable.
+- Update stable scope, product direction, and distribution boundaries to keep Direct Mode, no proxy, no Chat UI, no credential storage, no model deletion, and no cache cleanup clear.
+- No new app-code behavior or app zip is produced; `v20.0.0` remains the latest app-code binary asset.
+
 ## Later
 
 - More advanced resource graphs.

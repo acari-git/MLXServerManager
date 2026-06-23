@@ -99,20 +99,21 @@ Current releases do not include:
 - Chat UI,
 - multi-backend router,
 - automatic model deletion,
-- automatic server start after import or future download workflows,
+- automatic server start after import or download workflows,
 - hidden background downloads,
 - external process takeover,
+- model deletion or cache cleanup,
 - replacement for dedicated package managers or Hugging Face tooling.
 
-Model download is a current non-goal, but it is not permanently excluded as a future candidate.
+Explicit Hugging Face search and download are accepted convenience features only when user-triggered, visible, and outside the inference path.
 
 ## Future Candidate Features
 
 Future candidates can be considered if they preserve performance, safety, and Direct Mode boundaries:
 
 - future full app layout refresh planning after v5.0.0 finalized Dashboard UI Refresh v1, v5.1.0 clarified the stable follow-up boundary, v5.2.0 documented a candidate v6.x direction in [Full App Layout Refresh Design](full_app_layout_refresh.md), v5.3.0 detailed the first candidate App Shell / Sidebar Foundation step in [App Shell / Sidebar Foundation Design](app_shell_sidebar_foundation.md), v5.4.0 detailed the candidate Profiles / Model List Surface in [Profiles / Model List Surface Design](profiles_model_list_surface.md), v5.5.0 detailed the candidate Detail Inspector Foundation in [Detail Inspector Foundation Design](detail_inspector_foundation.md), v5.6.0 detailed the candidate Logs Panel Refresh in [Logs Panel Refresh Design](logs_panel_refresh.md), v5.7.0 detailed the candidate Client Setup Surface in [Client Setup Surface Design](client_setup_surface.md), v5.8.0 detailed the candidate Metrics / System Context in [Metrics / System Context Design](metrics_system_context.md), and v5.9.0 consolidated readiness criteria in [v6 Implementation Readiness Review](v6_implementation_readiness.md),
-- model download design,
-- local cache awareness,
+- deeper local cache awareness,
+- full model-card browsing boundaries,
 - profile templates,
 - logs and diagnostics polish,
 - connection settings polish,
@@ -126,20 +127,18 @@ Dashboard refresh work should follow the same principle. v4.1.0 defined the dash
 
 ## Model Download Position
 
-Model download is not implemented in the current release.
+Model download is implemented only as an explicit, user-triggered convenience workflow. It remains separate from the inference path and from server lifecycle automation.
 
-Model download may be considered in the future if it does not reduce `mlx-lm` runtime performance, does not interfere with managed server operation, and keeps clear safety and privacy boundaries.
-
-If model download is ever added:
+Current download boundaries:
 
 - download must not be coupled to automatic server start,
 - download must not happen silently,
 - download must not delete models,
 - target location, progress, and failure state should be clear,
-- Hugging Face token handling must use an explicit safe storage approach,
+- Hugging Face token handling must remain outside app persistence unless a future release defines explicit safe storage,
 - downloaded model metadata must not be confused with profile import/export metadata.
 
-Model deletion remains a separate, higher-risk area and is not part of the current scope.
+Model deletion and Hugging Face cache cleanup remain separate, higher-risk areas and are not part of the current scope.
 
 ## Safety and Privacy Boundaries
 
