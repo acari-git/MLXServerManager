@@ -3388,6 +3388,20 @@
 - Produce the requested final release asset: `MLXServerManager-v18.0.0-unsigned.zip`.
 - Preserve Direct Mode.
 
+## v18.1.0 Completed: Failure Classification Model
+
+- Add `RecoveryIssue`, `RecoveryIssueCategory`, and `RecoverySeverity`.
+- Classify runtime and download failures into executable, model path, port, permission, readiness, HF, network, destination, and unknown categories.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v18.1.0; release output is deferred until v19.0.0.
+
+## v18.2.0 Completed: Recovery Action Model
+
+- Add `RecoveryAction` with primary and secondary action metadata.
+- Map each failure category to recommended recovery actions.
+- Keep actions explicit and user-triggered.
+- No GitHub Release is produced for v18.2.0; release output is deferred until v19.0.0.
+
 ## Later
 
 - More advanced resource graphs.

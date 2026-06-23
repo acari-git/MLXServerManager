@@ -449,6 +449,120 @@ final class AppViewModel: ObservableObject {
         huggingFaceDownloadQueue.first { $0.phase == .failed }
     }
 
+    var currentRecoveryIssue: RecoveryIssue {
+        if let failedDownload = latestFailedHuggingFaceDownloadQueueEntry {
+            return downloadRecoveryIssue(from: failedDownload)
+        }
+        return runtimeRecoveryIssue
+    }
+
+    private var runtimeRecoveryIssue: RecoveryIssue {
+        switch runtimeState {
+        case let .error(message):
+            return recoveryIssue(from: message, relatedLogLine: latestImportantLogEntry?.line)
+        case let .portBusy(host, port):
+            return RecoveryIssue(
+                category: .portBusy,
+                severity: .failed,
+                title: "Port busy",
+                detail: "\(host):\(port) is already in use. Stop the conflicting process manually or choose another port.",
+                relatedLogLine: latestImportantLogEntry?.line,
+                actions: actions(for: .portBusy)
+            )
+        case let .portCheckFailed(_, _, message), let .readyCheckFailed(_, _, message):
+            return recoveryIssue(from: message, relatedLogLine: latestImportantLogEntry?.line)
+        default:
+            return .none
+        }
+    }
+
+    private func downloadRecoveryIssue(from entry: HuggingFaceDownloadQueueEntry) -> RecoveryIssue {
+        let category = classifyFailure(entry.message)
+        return RecoveryIssue(
+            category: category,
+            severity: .failed,
+            title: category.title,
+            detail: "Download failed for \(entry.repositoryID): \(entry.message)",
+            relatedLogLine: latestImportantLogEntry?.line,
+            actions: actions(for: category)
+        )
+    }
+
+    private func recoveryIssue(from message: String, relatedLogLine: String?) -> RecoveryIssue {
+        let category = classifyFailure(message)
+        return RecoveryIssue(
+            category: category,
+            severity: category == .unknown ? .review : .failed,
+            title: category.title,
+            detail: recoveryGuidance(for: message),
+            relatedLogLine: relatedLogLine,
+            actions: actions(for: category)
+        )
+    }
+
+    private func classifyFailure(_ message: String) -> RecoveryIssueCategory {
+        let lower = message.lowercased()
+        if lower.contains("not executable") { return .executableNotExecutable }
+        if lower.contains("executable") || lower.contains("mlx_lm.server") { return .executableMissing }
+        if lower.contains("model path") || lower.contains("missing local path") || lower.contains("model missing") { return .modelPathMissing }
+        if lower.contains("port") || lower.contains("address already") { return .portBusy }
+        if lower.contains("permission") || lower.contains("operation not permitted") { return .permissionDenied }
+        if lower.contains("timed out") || lower.contains("ready") || lower.contains("readiness") { return .readinessTimeout }
+        if lower.contains("exited") || lower.contains("terminated") { return .processExitedEarly }
+        if lower.contains("hf") && lower.contains("not found") { return .huggingFaceCLIMissing }
+        if lower.contains("gated") || lower.contains("unauthorized") || lower.contains("forbidden") { return .huggingFaceAccess }
+        if lower.contains("network") || lower.contains("connection") || lower.contains("dns") { return .network }
+        if lower.contains("destination") || lower.contains("disk") || lower.contains("space") || lower.contains("file exists") { return .destination }
+        return .unknown
+    }
+
+    private func actions(for category: RecoveryIssueCategory) -> [RecoveryAction] {
+        switch category {
+        case .none:
+            return []
+        case .executableMissing, .executableNotExecutable:
+            return [
+                RecoveryAction(kind: .openSettings, title: "Open Settings", detail: "Set mlx_lm.server executable path.", isPrimary: true),
+                RecoveryAction(kind: .runDiagnostics, title: "Run Diagnostics", detail: "Check setup readiness.", isPrimary: false)
+            ]
+        case .modelPathMissing:
+            return [
+                RecoveryAction(kind: .editProfile, title: "Edit Profile", detail: "Fix model path or model ID.", isPrimary: true),
+                RecoveryAction(kind: .openDownloads, title: "Open Downloads", detail: "Download or restore a model.", isPrimary: false)
+            ]
+        case .portBusy:
+            return [
+                RecoveryAction(kind: .checkPort, title: "Check Port", detail: "Refresh port status.", isPrimary: true),
+                RecoveryAction(kind: .editProfile, title: "Change Port", detail: "Edit the selected profile port.", isPrimary: false)
+            ]
+        case .permissionDenied:
+            return [
+                RecoveryAction(kind: .openSettings, title: "Open Settings", detail: "Review executable path.", isPrimary: true),
+                RecoveryAction(kind: .openLogs, title: "Open Logs", detail: "Review permission error logs.", isPrimary: false)
+            ]
+        case .readinessTimeout, .processExitedEarly:
+            return [
+                RecoveryAction(kind: .runReadyCheck, title: "Run Ready Check", detail: "Check /v1/models again.", isPrimary: true),
+                RecoveryAction(kind: .openLogs, title: "Open Logs", detail: "Inspect runtime logs.", isPrimary: false)
+            ]
+        case .huggingFaceCLIMissing:
+            return [
+                RecoveryAction(kind: .openDownloads, title: "Open Downloads", detail: "Check HF CLI status.", isPrimary: true),
+                RecoveryAction(kind: .runDiagnostics, title: "Run Diagnostics", detail: "Review setup issues.", isPrimary: false)
+            ]
+        case .huggingFaceAccess, .network, .destination:
+            return [
+                RecoveryAction(kind: .openDownloads, title: "Open Downloads", detail: "Restore failed download form.", isPrimary: true),
+                RecoveryAction(kind: .retryDownload, title: "Retry Download", detail: "Retry the latest failed download.", isPrimary: false)
+            ]
+        case .unknown:
+            return [
+                RecoveryAction(kind: .copyTroubleshooting, title: "Copy Troubleshooting", detail: "Copy context for manual review.", isPrimary: true),
+                RecoveryAction(kind: .openLogs, title: "Open Logs", detail: "Inspect logs.", isPrimary: false)
+            ]
+        }
+    }
+
     var benchmarkCopyText: String {
         guard !benchmarkHistory.isEmpty else {
             return "No benchmark results in this session."
