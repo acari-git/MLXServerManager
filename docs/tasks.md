@@ -3402,6 +3402,28 @@
 - Keep actions explicit and user-triggered.
 - No GitHub Release is produced for v18.2.0; release output is deferred until v19.0.0.
 
+## v18.3.0 Completed: Integrated Recovery Panel
+
+- Add `IntegratedRecoveryPanelView`.
+- Show current issue, severity, detail, related log, recovery actions, Refresh Safety, and Copy Troubleshooting.
+- Place Recovery directly in the integrated right-side model settings flow.
+- Preserve Direct Mode.
+- No GitHub Release is produced for v18.3.0; release output is deferred until v19.0.0.
+
+## v18.4.0 Completed: Runtime Recovery Wiring
+
+- Wire runtime errors, port busy, port check failure, and readiness failure into the recovery issue model.
+- Add recovery actions for settings, profile editing, port checks, diagnostics, ready checks, logs, and troubleshooting copy.
+- Keep recovery actions explicit and user-triggered.
+- No GitHub Release is produced for v18.4.0; release output is deferred until v19.0.0.
+
+## v18.5.0 Completed: Download Recovery Wiring
+
+- Wire latest failed Hugging Face download into the recovery issue model.
+- Add actions for Downloads, retry, restore form, copy URL, diagnostics, and troubleshooting copy where relevant.
+- Preserve existing Downloads recovery controls while surfacing the active issue in the integrated Recovery panel.
+- No GitHub Release is produced for v18.5.0; release output is deferred until v19.0.0.
+
 ## Later
 
 - More advanced resource graphs.

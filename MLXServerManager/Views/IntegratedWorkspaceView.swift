@@ -492,6 +492,13 @@ struct IntegratedWorkspaceView: View {
                     }
                 }
 
+                IntegratedRecoveryPanelView(
+                    issue: viewModel.currentRecoveryIssue,
+                    onAction: viewModel.performRecoveryAction,
+                    onCopyTroubleshooting: viewModel.copyTroubleshootingSummary,
+                    onRefreshSafety: viewModel.refreshIntegratedSafetyRequested
+                )
+
                 groupedSection("基本情報") {
                     formRow("モデル名", selectedModel?.displayName ?? "-")
                     formRow("モデルID (Hugging Face)", selectedModel?.modelID ?? "-")

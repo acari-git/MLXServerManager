@@ -1949,6 +1949,61 @@ final class AppViewModel: ObservableObject {
         appendLog("[safety] copied model operations safety summary.")
     }
 
+    var copyableTroubleshootingSummary: String {
+        let recentLogs = visibleLogEntries.suffix(20).map { $0.line }.joined(separator: "\n")
+        return [
+            "MLX Server Manager Troubleshooting Summary",
+            "Runtime: \(runtimeState.title)",
+            "Target: \(connectionTargetSummary.baseURL)",
+            "Selected model: \(selectedModelIdentifier)",
+            "Recovery: \(currentRecoveryIssue.title) / \(currentRecoveryIssue.detail)",
+            "Safety:",
+            copyableSafetySummary,
+            "Recent logs:",
+            recentLogs.isEmpty ? "No logs" : recentLogs
+        ].joined(separator: "\n")
+    }
+
+    func copyTroubleshootingSummary() {
+        copyToPasteboard(copyableTroubleshootingSummary)
+        appendLog("[recovery] copied troubleshooting summary.")
+    }
+
+    func refreshIntegratedSafetyRequested() {
+        resetModelAvailabilityForCurrentSelection()
+        checkPortRequested()
+        appendLog("[safety] refreshed selected model safety state.")
+    }
+
+    func performRecoveryAction(_ action: RecoveryAction) {
+        switch action.kind {
+        case .openSettings, .openModels, .openDownloads, .openLogs:
+            appendLog("[recovery] navigation requested: \(action.title)")
+        case .editProfile:
+            editProfileRequested()
+        case .checkPort:
+            checkPortRequested()
+        case .runDiagnostics:
+            runDiagnosticsRequested()
+        case .runReadyCheck:
+            checkReadyRequested()
+        case .retryDownload:
+            retryHuggingFaceDownloadRequested()
+        case .restoreDownloadForm:
+            if let entry = latestFailedHuggingFaceDownloadQueueEntry {
+                restoreHuggingFaceDownloadForm(from: entry)
+            }
+        case .copyURL:
+            if let entry = latestFailedHuggingFaceDownloadQueueEntry {
+                copyHuggingFaceDownloadURL(from: entry)
+            }
+        case .copyTroubleshooting:
+            copyTroubleshootingSummary()
+        case .copySafety:
+            copySafetySummary()
+        }
+    }
+
     func copyChatCompletionsCurl() {
         copyToPasteboard(chatCompletionsCurlCommand)
         appendLog("[ui] Copied OpenAI-compatible curl /v1/chat/completions command.")
