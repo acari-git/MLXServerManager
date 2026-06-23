@@ -45,4 +45,21 @@ final class ModelOperationsSafetyTests: XCTestCase {
         XCTAssertTrue(keys.contains("Proxy port"))
         XCTAssertTrue(viewModel.copyableSafetySummary.contains("Model Operations Safety"))
     }
+
+    func testRecoveryIssueDefaultsToNoRecoveryNeeded() {
+        let viewModel = AppViewModel(settingsStore: SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)"))
+
+        XCTAssertEqual(viewModel.currentRecoveryIssue.category, .none)
+        XCTAssertEqual(viewModel.currentRecoveryIssue.severity, .ok)
+        XCTAssertTrue(viewModel.currentRecoveryIssue.actions.isEmpty)
+    }
+
+    func testTroubleshootingSummaryIncludesRecoveryAndSafety() {
+        let viewModel = AppViewModel(settingsStore: SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)"))
+
+        XCTAssertTrue(viewModel.copyableTroubleshootingSummary.contains("MLX Server Manager Troubleshooting Summary"))
+        XCTAssertTrue(viewModel.copyableTroubleshootingSummary.contains("Recovery:"))
+        XCTAssertTrue(viewModel.copyableTroubleshootingSummary.contains("Safety:"))
+    }
 }
+

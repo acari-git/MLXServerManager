@@ -3424,6 +3424,27 @@
 - Preserve existing Downloads recovery controls while surfacing the active issue in the integrated Recovery panel.
 - No GitHub Release is produced for v18.5.0; release output is deferred until v19.0.0.
 
+## v18.6.0 Completed: Logs to Troubleshooting Summary
+
+- Add copyable troubleshooting summary with runtime state, target, selected model, recovery issue, safety summary, and recent logs.
+- Add Copy Troubleshooting action through the Recovery panel.
+- Preserve raw logs and Direct Mode.
+- No GitHub Release is produced for v18.6.0; release output is deferred until v19.0.0.
+
+## v18.7.0 Completed: Model Availability Refresh
+
+- Add integrated Refresh Safety action.
+- Refresh selected model availability and port safety explicitly by user action.
+- Keep refresh manual rather than automatic background monitoring.
+- No GitHub Release is produced for v18.7.0; release output is deferred until v19.0.0.
+
+## v18.8.0 Completed: Recovery UX Polish
+
+- Add severity badge and primary/secondary recovery action hierarchy.
+- Add no-recovery empty state through `RecoveryIssue.none`.
+- Add tests for default recovery and troubleshooting summary content.
+- No GitHub Release is produced for v18.8.0; release output is deferred until v19.0.0.
+
 ## Later
 
 - More advanced resource graphs.
