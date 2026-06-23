@@ -3451,6 +3451,12 @@
 - Document failure classification, recovery actions, integrated Recovery panel, runtime recovery, download recovery, troubleshooting summary, refresh, UX polish, tests, limitations, and Direct Mode boundaries.
 - No GitHub Release is produced for v18.9.0; release output is deferred until v19.0.0.
 
+## v19.0.0 Completed: Daily Operations Recovery Stable
+
+- Complete the v18.x staged path from failure classification, recovery action model, integrated Recovery panel, runtime recovery, download recovery, troubleshooting summary, model availability refresh, recovery UX polish, and v19 readiness.
+- Produce the requested final release asset: `MLXServerManager-v19.0.0-unsigned.zip`.
+- Preserve Direct Mode.
+
 ## Later
 
 - More advanced resource graphs.
