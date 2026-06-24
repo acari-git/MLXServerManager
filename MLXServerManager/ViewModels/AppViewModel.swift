@@ -1751,6 +1751,24 @@ final class AppViewModel: ObservableObject {
         selectedHuggingFacePreviewFileIDs = Set(filteredHuggingFacePreviewFiles.map(\.id))
     }
 
+    func applyHuggingFaceMLXPreset() {
+        huggingFaceDownloadDraft.includePatterns = "*.safetensors, *.json, tokenizer.*, *.model, *.txt"
+        huggingFaceDownloadDraft.excludePatterns = "*.h5, *.onnx, *.msgpack, *.bin"
+        appendLog("[hf] applied MLX model file filter preset.")
+    }
+
+    func applyHuggingFaceSafeTensorPreset() {
+        huggingFaceDownloadDraft.includePatterns = "*.safetensors, *.json, tokenizer.*"
+        huggingFaceDownloadDraft.excludePatterns = "*.bin, *.h5, *.onnx, *.msgpack"
+        appendLog("[hf] applied safetensors-focused file filter preset.")
+    }
+
+    func clearHuggingFaceFileFilters() {
+        huggingFaceDownloadDraft.includePatterns = ""
+        huggingFaceDownloadDraft.excludePatterns = ""
+        appendLog("[hf] cleared file filters.")
+    }
+
     func clearHuggingFacePreviewSelection() {
         selectedHuggingFacePreviewFileIDs = []
     }

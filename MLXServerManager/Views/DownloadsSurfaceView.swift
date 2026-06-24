@@ -15,6 +15,7 @@ struct DownloadsSurfaceView: View {
                 header
                 recoveryCard
                 downloadEnvironmentCard
+                downloadWorkflowCard
                 searchCard
                 downloadFormCard
                 queueCard
@@ -98,6 +99,20 @@ struct DownloadsSurfaceView: View {
                     .frame(width: 100)
             }
         }
+        .panelStyle()
+    }
+
+    private var downloadWorkflowCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Download workflow")
+                .font(.headline)
+            Label("1. Search or paste a Hugging Face model ID.", systemImage: "magnifyingglass")
+            Label("2. Preview files and select MLX-related weights/config files.", systemImage: "list.bullet.rectangle")
+            Label("3. Download, auto-add to Models, then start the server.", systemImage: "arrow.down.circle")
+            Label("4. Copy client or Hermes connection settings from the right panel.", systemImage: "doc.on.doc")
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
         .panelStyle()
     }
 
@@ -186,10 +201,21 @@ struct DownloadsSurfaceView: View {
                 TextField("Display name", text: $viewModel.huggingFaceDownloadDraft.displayName)
                     .textFieldStyle(.roundedBorder)
             }
-            TextField("Include patterns", text: $viewModel.huggingFaceDownloadDraft.includePatterns)
-                .textFieldStyle(.roundedBorder)
-            TextField("Exclude patterns", text: $viewModel.huggingFaceDownloadDraft.excludePatterns)
-                .textFieldStyle(.roundedBorder)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Button("MLX preset") { viewModel.applyHuggingFaceMLXPreset() }
+                    Button("Safetensors") { viewModel.applyHuggingFaceSafeTensorPreset() }
+                    Button("No filters") { viewModel.clearHuggingFaceFileFilters() }
+                    Spacer()
+                }
+                TextField("Include patterns", text: $viewModel.huggingFaceDownloadDraft.includePatterns)
+                    .textFieldStyle(.roundedBorder)
+                TextField("Exclude patterns", text: $viewModel.huggingFaceDownloadDraft.excludePatterns)
+                    .textFieldStyle(.roundedBorder)
+                Text("Patterns are comma-separated. Preview files first, then download selected or filtered files.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
             HStack {
                 TextField("Save directory", text: $viewModel.huggingFaceDownloadDraft.saveDirectory)
                     .textFieldStyle(.roundedBorder)

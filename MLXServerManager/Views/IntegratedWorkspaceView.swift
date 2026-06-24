@@ -326,20 +326,20 @@ struct IntegratedWorkspaceView: View {
         static let name: CGFloat = 210
         static let size: CGFloat = 86
         static let status: CGFloat = 112
-        static let port: CGFloat = 92
+        static let port: CGFloat = 128
         static let memory: CGFloat = 104
         static let latestCheck: CGFloat = 88
         static let unload: CGFloat = 148
         static let reasoning: CGFloat = 86
-        static let rowActions: CGFloat = 178
+        static let rowActions: CGFloat = 188
         static let minimumName: CGFloat = 150
         static let minimumSize: CGFloat = 70
         static let minimumStatus: CGFloat = 92
-        static let minimumPort: CGFloat = 78
+        static let minimumPort: CGFloat = 108
         static let minimumMemory: CGFloat = 82
         static let minimumUnload: CGFloat = 116
         static let minimumReasoning: CGFloat = 68
-        static let minimumRowActions: CGFloat = 140
+        static let minimumRowActions: CGFloat = 148
         static let minimum: CGFloat = 48
         static let spacing: CGFloat = 10
     }
@@ -599,8 +599,8 @@ struct IntegratedWorkspaceView: View {
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 14)
-        .padding(.top, 10)
-        .padding(.bottom, 4)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
         .accessibilityIdentifier("integrated-sidebar-settings-footer")
     }
 
@@ -608,7 +608,7 @@ struct IntegratedWorkspaceView: View {
         VStack(spacing: 6) {
             Text("MLX Server Manager")
                 .font(.callout.weight(.semibold))
-            Text("Version 21.0.0")
+            Text("Version 22.0.0")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -736,7 +736,7 @@ struct IntegratedWorkspaceView: View {
                 statusButton(for: model)
                     .frame(width: statusColumnWidth, alignment: .leading)
 
-                portValue(String(model.serverPort))
+                portValue("\(model.host):\(model.serverPort)")
                     .frame(width: portColumnWidth, alignment: .leading)
                 memoryCell(viewModel.integratedMemoryText(for: model))
                     .frame(width: memoryColumnWidth, alignment: .leading)
@@ -1049,6 +1049,7 @@ struct IntegratedWorkspaceView: View {
                         onCopyTroubleshooting: viewModel.copyTroubleshootingSummary,
                         onRefreshSafety: viewModel.refreshIntegratedSafetyRequested
                     )
+                    recentRightPanelLogs
                 }
                 collapsibleRightPanel(id: "hermes", title: "Hermes Agent 接続情報", systemImage: "point.3.connected.trianglepath.dotted") {
                     hermesPanelContent
@@ -1076,6 +1077,28 @@ struct IntegratedWorkspaceView: View {
         .padding(12)
         .background(Color(nsColor: .textBackgroundColor).opacity(0.65))
         .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var recentRightPanelLogs: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("最新ログ")
+                .font(.caption.weight(.semibold))
+            ForEach(viewModel.visibleLogEntries.suffix(4)) { entry in
+                Text(entry.line)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(entry.category == "error" ? Color.red : Color.secondary)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if viewModel.visibleLogEntries.isEmpty {
+                Text("ログはまだありません")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(10)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.35))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private func collapsibleRightPanel<Content: View>(
@@ -1117,6 +1140,20 @@ struct IntegratedWorkspaceView: View {
     private var modelSettingsPanelContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             groupedSection("基本情報") {
+                HStack {
+                    Button {
+                        viewModel.editProfileRequested()
+                    } label: {
+                        Label("選択モデルを設定", systemImage: "slider.horizontal.3")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .disabled(viewModel.isManagedProcessRunning)
+                }
+                if viewModel.isManagedProcessRunning {
+                    Text("実行中は Model ID / host / port / advanced options の変更を止めています。停止後に設定してください。")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                }
                 formRow("モデル名", selectedModel?.displayName ?? "-")
                 formRow("モデルID (Hugging Face)", selectedModel?.modelID ?? "-")
                 formRow("モデル検証", viewModel.selectedModelIdentityDetailText, valueColor: viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("Missing") || viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("review") ? .orange : .green)
@@ -1140,6 +1177,7 @@ struct IntegratedWorkspaceView: View {
             }
 
             groupedSection("動作設定") {
+                formRow("変更反映", viewModel.restartRequired ? "再起動が必要" : "現在の設定が有効", valueColor: viewModel.restartRequired ? .orange : .green)
                 HStack {
                     Text("推論モード（Qwen系）")
                         .font(.caption)
@@ -1156,6 +1194,7 @@ struct IntegratedWorkspaceView: View {
             }
 
             groupedSection("状態情報") {
+                formRow("操作安全性", viewModel.integratedActionStateSummary, valueColor: viewModel.canStartSelectedModel ? .green : .orange)
                 formRow("ステータス", isSelectedRunning ? "ロード済" : "未ロード", valueColor: isSelectedRunning ? .green : .secondary)
                 formRow("最終確認", selectedModel.map { viewModel.integratedLatestUseText(for: $0) } ?? "-")
                 formRow("起動時刻", viewModel.runtimeEvents.first?.timestamp.formatted(date: .numeric, time: .standard) ?? "-")
