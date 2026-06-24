@@ -400,6 +400,8 @@ struct IntegratedWorkspaceView: View {
             Divider()
             systemPanel
             Divider()
+            settingsFooterButton
+            Divider()
             footerPanel
         }
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.55))
@@ -581,6 +583,27 @@ struct IntegratedWorkspaceView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
+    private var settingsFooterButton: some View {
+        Button {
+            selectedDestination = .settings
+        } label: {
+            Label("設定", systemImage: "gearshape")
+                .font(.callout.weight(.medium))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 7)
+                .padding(.horizontal, 10)
+                .background(selectedDestination == .settings ? Color.accentColor.opacity(0.85) : Color.clear)
+                .foregroundStyle(selectedDestination == .settings ? Color.white : Color.primary)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .contentShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 4)
+        .accessibilityIdentifier("integrated-sidebar-settings-footer")
+    }
+
     private var footerPanel: some View {
         VStack(spacing: 6) {
             Text("MLX Server Manager")
@@ -611,7 +634,7 @@ struct IntegratedWorkspaceView: View {
         case .downloads:
             DownloadsSurfaceView(viewModel: viewModel)
         case .settings:
-            SettingsSurfaceView(viewModel: viewModel)
+            SettingsSurfaceView(viewModel: viewModel, selectedAppearance: $selectedAppearance)
         case .logs:
             LogsSurfaceView(
                 entries: viewModel.logEntries,
@@ -682,11 +705,11 @@ struct IntegratedWorkspaceView: View {
             columnHeader("モデル名 / 用途\(viewModel.sortIndicator(for: "name"))", width: $modelNameColumnWidth, defaultWidth: ModelListColumn.name, sortKey: "name")
             columnHeader("サイズ\(viewModel.sortIndicator(for: "size"))", width: $sizeColumnWidth, defaultWidth: ModelListColumn.size, sortKey: "size")
             columnHeader("ステータス\(viewModel.sortIndicator(for: "status"))", width: $statusColumnWidth, defaultWidth: ModelListColumn.status, sortKey: "status")
-            columnHeader("サーバーポート\(viewModel.sortIndicator(for: "port"))", width: $portColumnWidth, defaultWidth: ModelListColumn.port, sortKey: "port")
+            columnHeader("ポート/IPアドレス\(viewModel.sortIndicator(for: "port"))", width: $portColumnWidth, defaultWidth: ModelListColumn.port, sortKey: "port")
             columnHeader("メモリ使用量\(viewModel.sortIndicator(for: "memory"))", width: $memoryColumnWidth, defaultWidth: ModelListColumn.memory, sortKey: "memory")
             columnHeader("自動アンロード\(viewModel.sortIndicator(for: "autoUnload"))", width: $unloadColumnWidth, defaultWidth: ModelListColumn.unload, showsHandle: false, sortKey: "autoUnload", alignment: .center)
             columnHeader("推論\(viewModel.sortIndicator(for: "reasoning"))", width: $reasoningColumnWidth, defaultWidth: ModelListColumn.reasoning, showsHandle: false, sortKey: "reasoning", alignment: .center)
-            headerText("操作")
+            headerText("モデル管理")
                 .frame(width: rowActionsColumnWidth, alignment: .center)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -763,7 +786,7 @@ struct IntegratedWorkspaceView: View {
                 .frame(width: reasoningColumnWidth, alignment: .center)
 
                 HStack(spacing: 6) {
-                    modelActionButton("編集", color: .secondary) {
+                    modelActionButton("設定", color: .secondary) {
                         viewModel.editProfileRequested(for: model)
                     }
                     .help(viewModel.runtimeEditingSafetyText(for: model))
@@ -1016,7 +1039,6 @@ struct IntegratedWorkspaceView: View {
     private var rightColumn: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                appearancePanel
                 collapsibleRightPanel(id: "model", title: "モデル設定", systemImage: "slider.horizontal.3") {
                     modelSettingsPanelContent
                 }
@@ -1094,6 +1116,13 @@ struct IntegratedWorkspaceView: View {
 
     private var modelSettingsPanelContent: some View {
         VStack(alignment: .leading, spacing: 16) {
+            groupedSection("基本情報") {
+                formRow("モデル名", selectedModel?.displayName ?? "-")
+                formRow("モデルID (Hugging Face)", selectedModel?.modelID ?? "-")
+                formRow("モデル検証", viewModel.selectedModelIdentityDetailText, valueColor: viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("Missing") || viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("review") ? .orange : .green)
+                formRow("用途・メモ", selectedModel?.notes.isEmpty == false ? selectedModel?.notes ?? "-" : "-")
+            }
+
             groupedSection("安全性") {
                 let safetySummary = localizedStatusText(viewModel.selectedModelSafetySummary)
                 formRow("概要", safetySummary, valueColor: safetySummary == "問題なし" ? .green : .orange)
@@ -1103,23 +1132,10 @@ struct IntegratedWorkspaceView: View {
                 }
                 let recoverySummary = localizedStatusText(viewModel.failedStartRecoverySummary)
                 formRow("復旧ガイド", recoverySummary, valueColor: recoverySummary == "復旧操作は不要です" ? .secondary : .orange)
-                Button {
-                    viewModel.copySafetySummary()
-                } label: {
-                    Text("安全性の概要をコピー")
-                        .frame(maxWidth: .infinity)
-                }
-            }
-
-            groupedSection("基本情報") {
-                formRow("モデル名", selectedModel?.displayName ?? "-")
-                formRow("モデルID (Hugging Face)", selectedModel?.modelID ?? "-")
-                formRow("モデル検証", viewModel.selectedModelIdentityDetailText, valueColor: viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("Missing") || viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("review") ? .orange : .green)
-                formRow("用途・メモ", selectedModel?.notes.isEmpty == false ? selectedModel?.notes ?? "-" : "-")
             }
 
             groupedSection("Direct Mode ポート") {
-                formRow("サーバーポート", selectedModel.map { String($0.serverPort) } ?? "-")
+                formRow("ポート/IPアドレス", selectedModel.map { "\($0.host):\($0.serverPort)" } ?? "-")
                 availabilityPill("\(selectedModel?.serverPort ?? 0): \(localizedStatusText(viewModel.selectedServerPortSafetyText))")
             }
 

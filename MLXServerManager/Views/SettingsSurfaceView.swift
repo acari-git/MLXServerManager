@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsSurfaceView: View {
     @ObservedObject var viewModel: AppViewModel
+    @Binding var selectedAppearance: String
 
     private var strings: AppLocalization {
         AppLocalization(language: viewModel.settings.uiLanguage)
@@ -11,6 +12,7 @@ struct SettingsSurfaceView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
+                appearanceSettings
                 SettingsPanelView(
                     executablePath: $viewModel.settings.mlxServerExecutablePath,
                     defaultHost: $viewModel.settings.defaultHost,
@@ -43,6 +45,21 @@ struct SettingsSurfaceView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private var appearanceSettings: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("外観", systemImage: "circle.lefthalf.filled")
+                .font(.headline)
+            Picker("外観", selection: $selectedAppearance) {
+                Text("システム").tag("system")
+                Text("ライト").tag("light")
+                Text("ダーク").tag("dark")
+            }
+            .pickerStyle(.segmented)
+            .frame(maxWidth: 320)
+        }
+        .panelStyle()
     }
 
     private var appBoundaries: some View {

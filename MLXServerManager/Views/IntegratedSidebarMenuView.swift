@@ -10,7 +10,7 @@ struct IntegratedSidebarMenuView: View {
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 4)
 
-            ForEach(IntegratedWorkspaceDestination.allCases) { destination in
+            ForEach(IntegratedWorkspaceDestination.allCases.filter { $0 != .settings }) { destination in
                 Button {
                     selectedDestination = destination
                 } label: {

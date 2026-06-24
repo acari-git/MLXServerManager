@@ -1282,10 +1282,9 @@ final class AppViewModel: ObservableObject {
     }
 
     private static func processingCapabilityText(from hardwareInfo: [String: String]) -> String {
-        let cpuText = hardwareInfo["Total Number of Cores"].map { "\($0) CPU" }
-            ?? "\(ProcessInfo.processInfo.activeProcessorCount)コアCPU"
-        let gpuText = hardwareInfo["GPU Cores"].map { "\($0) GPU" }
-        return [cpuText, gpuText].compactMap { $0 }.joined(separator: " / ")
+        let rawCoreText = hardwareInfo["Total Number of Cores"] ?? String(ProcessInfo.processInfo.activeProcessorCount)
+        let totalCoreText = rawCoreText.split(separator: " ").first.map(String.init) ?? rawCoreText
+        return "\(totalCoreText) CPU"
     }
 
     nonisolated private static func loadSystemProfilerHardwareInfo() -> [String: String] {
