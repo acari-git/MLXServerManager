@@ -209,24 +209,3 @@ struct MetricsSystemContextSurfaceView: View {
         .accessibilityIdentifier(identifier)
     }
 }
-
-#Preview {
-    MetricsSystemContextSurfaceView(
-        targetSummary: ConnectionTargetSummary(
-            targetType: "Managed server",
-            baseURL: "http://127.0.0.1:8080",
-            modelID: "mlx-community/example",
-            apiKeyPlaceholder: "not required",
-            readinessSummary: "Ready",
-            ownershipNote: "Managed by MLX Server Manager",
-            directModeNote: "Direct Mode remains direct",
-            isActiveTarget: true
-        ),
-        runtimeState: .ready(host: "127.0.0.1", port: 8080, processIdentifier: 1234),
-        memoryUsageText: "Memory context available",
-        selectedModelText: "mlx-community/example",
-        runningModelText: "mlx-community/example",
-        restartRequired: false,
-        logEntryCount: 2
-    )
-}

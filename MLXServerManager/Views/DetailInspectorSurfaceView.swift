@@ -239,26 +239,3 @@ struct DetailInspectorSurfaceView: View {
         .accessibilityIdentifier("detail-inspector-empty-state")
     }
 }
-
-#Preview {
-    DetailInspectorSurfaceView(
-        selectedModel: ModelConfig.defaults.first,
-        runningModelText: "No managed server running",
-        restartRequired: false,
-        targetSummary: ConnectionTargetSummary(
-            targetType: "Managed server",
-            baseURL: "http://127.0.0.1:8080",
-            modelID: ModelConfig.defaults.first?.modelID ?? "",
-            apiKeyPlaceholder: "not required",
-            readinessSummary: "Not checked",
-            ownershipNote: "Managed by MLX Server Manager",
-            directModeNote: "Direct Mode remains direct",
-            isActiveTarget: true
-        ),
-        modelAvailability: ModelAvailabilitySummary.initial(
-            for: ModelConfig.defaults.first,
-            isExternalTarget: false
-        ),
-        onCheckModelAvailability: {}
-    )
-}

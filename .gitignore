@@ -7,6 +7,12 @@ DerivedData/
 *.xcscmblueprint
 xcuserdata/
 
+# Build / release artifacts
+dist/
+*.app
+*.dSYM
+*.zip
+
 # Swift Package Manager
 .build/
 Packages/

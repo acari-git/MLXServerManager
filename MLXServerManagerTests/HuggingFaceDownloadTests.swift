@@ -28,6 +28,10 @@ final class HuggingFaceDownloadTests: XCTestCase {
     func testPreviewBuildsDestinationFromDefaultBaseDirectory() {
         let draft = HuggingFaceDownloadDraft(
             source: "mlx-community/example-mlx",
+            revision: "main",
+            includePatterns: "*.safetensors, *.json, tokenizer.*, *.model, *.txt",
+            excludePatterns: "*.h5, *.onnx, *.msgpack, *.bin",
+            useSelectedPreviewFiles: false,
             saveDirectory: "~/Models/mlx",
             displayName: "",
             host: "127.0.0.1",

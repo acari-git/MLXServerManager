@@ -263,7 +263,3 @@ struct ContentView: View {
         .background(Color(nsColor: .windowBackgroundColor))
     }
 }
-
-#Preview {
-    ContentView(viewModel: AppViewModel())
-}

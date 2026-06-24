@@ -336,7 +336,3 @@ struct ProfilesSurfaceView: View {
             }
     }
 }
-
-#Preview {
-    ProfilesSurfaceView(viewModel: AppViewModel())
-}

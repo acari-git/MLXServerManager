@@ -151,25 +151,3 @@ struct LogsSurfaceView: View {
         .accessibilityIdentifier("logs-surface-boundary")
     }
 }
-
-#Preview {
-    LogsSurfaceView(
-        entries: [
-            LogEntry(line: "[start] Launching managed server"),
-            LogEntry(line: "[ready] /v1/models returned successfully")
-        ],
-        targetSummary: ConnectionTargetSummary(
-            targetType: "Managed server",
-            baseURL: "http://127.0.0.1:8080",
-            modelID: "mlx-community/example",
-            apiKeyPlaceholder: "not required",
-            readinessSummary: "Ready",
-            ownershipNote: "Managed by MLX Server Manager",
-            directModeNote: "Direct Mode remains direct",
-            isActiveTarget: true
-        ),
-        runningModelText: "mlx-community/example",
-        onCopy: {},
-        onClear: {}
-    )
-}

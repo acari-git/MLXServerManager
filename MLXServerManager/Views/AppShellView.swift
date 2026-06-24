@@ -53,12 +53,3 @@ private struct AppSectionSidebarRow: View {
         .accessibilityIdentifier(section.accessibilityIdentifier)
     }
 }
-
-#Preview {
-    @Previewable @State var selectedSection = AppSection.dashboard
-
-    AppShellView(selectedSection: $selectedSection) { section in
-        Text(section.localizedTitle(language: .english))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
