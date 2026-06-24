@@ -14,6 +14,7 @@ struct DownloadsSurfaceView: View {
             VStack(alignment: .leading, spacing: 18) {
                 header
                 recoveryCard
+                downloadEnvironmentCard
                 searchCard
                 downloadFormCard
                 queueCard
@@ -67,6 +68,37 @@ struct DownloadsSurfaceView: View {
             }
             .panelStyle()
         }
+    }
+
+    private var downloadEnvironmentCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Download environment")
+                .font(.headline)
+            DetailGrid(rows: [
+                ("HF access", viewModel.huggingFaceAccessMessage),
+                ("aria2c", viewModel.aria2Availability.displayPath),
+                ("Auto restart", viewModel.enableDownloadAutoRestart ? "Enabled below \(viewModel.lowSpeedRestartThresholdText)" : "Disabled")
+            ])
+            HStack {
+                SecureField("Hugging Face access value", text: $viewModel.huggingFaceAccessInput)
+                    .textFieldStyle(.roundedBorder)
+                Button("Save") { viewModel.saveHuggingFaceAccessRequested() }
+                Button("Delete") { viewModel.deleteHuggingFaceAccessRequested() }
+                    .disabled(!viewModel.isHuggingFaceAccessSaved)
+                Button("Check aria2c") { viewModel.refreshAria2Status() }
+            }
+            Toggle("Enable low-speed auto-restart policy", isOn: $viewModel.enableDownloadAutoRestart)
+                .toggleStyle(.checkbox)
+            HStack {
+                Text("Low-speed threshold")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("50K", text: $viewModel.lowSpeedRestartThresholdText)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 100)
+            }
+        }
+        .panelStyle()
     }
 
     private var searchCard: some View {
@@ -233,13 +265,49 @@ struct DownloadsSurfaceView: View {
             Toggle("Use selected preview files", isOn: $viewModel.huggingFaceDownloadDraft.useSelectedPreviewFiles)
                 .toggleStyle(.checkbox)
                 .disabled(viewModel.huggingFaceFilePreview.files.isEmpty)
-            Text(viewModel.huggingFaceFilePreview.summary)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+            HStack {
+                Text(viewModel.huggingFaceFilePreview.summary)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Select filtered") { viewModel.selectAllHuggingFacePreviewFiles() }
+                    .disabled(viewModel.filteredHuggingFacePreviewFiles.isEmpty)
+                Button("Clear") { viewModel.clearHuggingFacePreviewSelection() }
+                    .disabled(viewModel.selectedHuggingFacePreviewFileIDs.isEmpty)
+            }
+            previewFileList
         }
         .padding(8)
         .background(Color(nsColor: .textBackgroundColor).opacity(0.7))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    @ViewBuilder
+    private var previewFileList: some View {
+        if !viewModel.filteredHuggingFacePreviewFiles.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(viewModel.filteredHuggingFacePreviewFiles.prefix(16)) { file in
+                    HStack(spacing: 8) {
+                        Button {
+                            viewModel.toggleHuggingFacePreviewFile(file)
+                        } label: {
+                            Image(systemName: viewModel.selectedHuggingFacePreviewFileIDs.contains(file.id) ? "checkmark.square" : "square")
+                        }
+                        .buttonStyle(.plain)
+                        Text(file.path)
+                            .font(.caption2.monospaced())
+                            .lineLimit(1)
+                        Spacer()
+                        Text(file.compactSize)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(8)
+            .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
     }
 
     private var queueCard: some View {

@@ -1725,7 +1725,19 @@ final class AppViewModel: ObservableObject {
     }
 
     func previewHuggingFaceFilesRequested() {
-        huggingFaceFilePreview = HuggingFaceDownloadFilePreviewState(isLoading: false, message: "File preview is queued for the next implementation pass.", files: [])
+        let preview = huggingFaceDownloadPreview
+        guard let reference = preview.reference else {
+            huggingFaceFilePreview = HuggingFaceDownloadFilePreviewState(isLoading: false, message: preview.message, files: [])
+            return
+        }
+
+        huggingFaceFilePreview = HuggingFaceDownloadFilePreviewState(isLoading: true, message: "Fetching file list...", files: [])
+        selectedHuggingFacePreviewFileIDs = []
+        let revision = normalizedHuggingFaceRevision
+
+        Task { [weak self] in
+            await self?.fetchHuggingFaceFilePreview(repositoryID: reference.repositoryID, revision: revision)
+        }
     }
 
     func toggleHuggingFacePreviewFile(_ file: HuggingFaceDownloadPreviewFile) {
@@ -1742,6 +1754,26 @@ final class AppViewModel: ObservableObject {
 
     func clearHuggingFacePreviewSelection() {
         selectedHuggingFacePreviewFileIDs = []
+    }
+
+    private func fetchHuggingFaceFilePreview(repositoryID: String, revision: String) async {
+        do {
+            let files = try await huggingFaceRepositoryFileService.fetchFiles(
+                repositoryID: repositoryID,
+                revision: revision,
+                token: huggingFaceCredentialStore.readValue()
+            )
+            huggingFaceFilePreview = HuggingFaceDownloadFilePreviewState(
+                isLoading: false,
+                message: files.isEmpty ? "No downloadable files found." : "Preview ready. Select files or adjust filters before downloading.",
+                files: files
+            )
+            selectedHuggingFacePreviewFileIDs = Set(files.map(\.id))
+            appendLog("[hf] preview fetched \(files.count) files for \(repositoryID).")
+        } catch {
+            huggingFaceFilePreview = HuggingFaceDownloadFilePreviewState(isLoading: false, message: error.localizedDescription, files: [])
+            appendLog("[hf] preview failed: \(error.localizedDescription)")
+        }
     }
 
     func chooseHuggingFaceDownloadDirectoryRequested() {
