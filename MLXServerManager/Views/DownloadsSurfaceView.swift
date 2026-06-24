@@ -148,7 +148,15 @@ struct DownloadsSurfaceView: View {
 
             TextField("Repository ID or URL", text: $viewModel.huggingFaceDownloadDraft.source)
                 .textFieldStyle(.roundedBorder)
-            TextField("Display name", text: $viewModel.huggingFaceDownloadDraft.displayName)
+            HStack {
+                TextField("Revision", text: $viewModel.huggingFaceDownloadDraft.revision)
+                    .textFieldStyle(.roundedBorder)
+                TextField("Display name", text: $viewModel.huggingFaceDownloadDraft.displayName)
+                    .textFieldStyle(.roundedBorder)
+            }
+            TextField("Include patterns", text: $viewModel.huggingFaceDownloadDraft.includePatterns)
+                .textFieldStyle(.roundedBorder)
+            TextField("Exclude patterns", text: $viewModel.huggingFaceDownloadDraft.excludePatterns)
                 .textFieldStyle(.roundedBorder)
             HStack {
                 TextField("Save directory", text: $viewModel.huggingFaceDownloadDraft.saveDirectory)
@@ -161,9 +169,12 @@ struct DownloadsSurfaceView: View {
 
             DetailGrid(rows: [
                 ("Preview", viewModel.huggingFaceDownloadPreview.compactDestinationPath),
+                ("Files", viewModel.huggingFaceSelectedPreviewSummary),
                 ("Status", viewModel.huggingFaceDownloadStatus.phase.title),
                 ("Message", viewModel.huggingFaceDownloadStatus.message)
             ])
+
+            filePreviewPanel
 
             if viewModel.huggingFaceDownloadStatus.phase == .completed {
                 HStack {
@@ -180,6 +191,13 @@ struct DownloadsSurfaceView: View {
             }
 
             HStack {
+                Button {
+                    viewModel.previewHuggingFaceFilesRequested()
+                } label: {
+                    Label("Preview files", systemImage: "list.bullet.rectangle")
+                }
+                .disabled(viewModel.huggingFaceFilePreview.isLoading || viewModel.isHuggingFaceDownloadRunning)
+
                 Button {
                     viewModel.startHuggingFaceDownloadRequested()
                 } label: {
@@ -200,6 +218,28 @@ struct DownloadsSurfaceView: View {
             }
         }
         .panelStyle()
+    }
+
+    private var filePreviewPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("File preview")
+                    .font(.caption.weight(.semibold))
+                Spacer()
+                if viewModel.huggingFaceFilePreview.isLoading {
+                    ProgressView().scaleEffect(0.7)
+                }
+            }
+            Toggle("Use selected preview files", isOn: $viewModel.huggingFaceDownloadDraft.useSelectedPreviewFiles)
+                .toggleStyle(.checkbox)
+                .disabled(viewModel.huggingFaceFilePreview.files.isEmpty)
+            Text(viewModel.huggingFaceFilePreview.summary)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(8)
+        .background(Color(nsColor: .textBackgroundColor).opacity(0.7))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private var queueCard: some View {

@@ -3,6 +3,10 @@ import Foundation
 struct HuggingFaceDownloadRequest: Equatable {
     let repositoryID: String
     let destinationPath: String
+    let revision: String
+    let includePatterns: [String]
+    let excludePatterns: [String]
+    let authorizationValue: String?
 }
 
 struct HuggingFaceDownloadResult: Equatable {
@@ -94,9 +98,19 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: resolution.executablePath)
         let subcommand = "down" + "load"
-        process.arguments = [subcommand, request.repositoryID, "--local-dir", request.destinationPath]
+        var arguments = [subcommand, request.repositoryID, "--revision", request.revision, "--local-dir", request.destinationPath]
+        for pattern in request.includePatterns {
+            arguments.append(contentsOf: ["--include", pattern])
+        }
+        for pattern in request.excludePatterns {
+            arguments.append(contentsOf: ["--exclude", pattern])
+        }
+        process.arguments = arguments
 
         var processEnvironment = searchEnvironment
+        if let authorizationValue = request.authorizationValue, !authorizationValue.isEmpty {
+            processEnvironment["HF_TOKEN"] = authorizationValue
+        }
         let candidateDirectories = Self.candidateExecutablePaths(environment: searchEnvironment)
             .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
         let path = processEnvironment["PATH", default: ""]

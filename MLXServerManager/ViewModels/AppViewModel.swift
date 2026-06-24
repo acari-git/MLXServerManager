@@ -100,9 +100,17 @@ final class AppViewModel: ObservableObject {
     )
     @Published private(set) var huggingFaceDownloadStatus: HuggingFaceDownloadStatus = .waiting
     @Published private(set) var huggingFaceDownloadQueue: [HuggingFaceDownloadQueueEntry] = []
+    @Published private(set) var huggingFaceFilePreview: HuggingFaceDownloadFilePreviewState = .waiting
+    @Published var selectedHuggingFacePreviewFileIDs: Set<String> = []
+    @Published var huggingFaceAccessInput = ""
+    @Published private(set) var isHuggingFaceAccessSaved = false
+    @Published private(set) var huggingFaceAccessMessage = "No saved Hugging Face access value. Public repos can still be previewed."
     @Published private(set) var isHuggingFaceCLIAvailable = false
     @Published private(set) var huggingFaceCLIPath = "Not checked"
     @Published private(set) var huggingFaceCLIMessage = "Check Hugging Face CLI before downloading."
+    @Published private(set) var aria2Availability = Aria2AvailabilityChecker.check()
+    @Published var enableDownloadAutoRestart = false
+    @Published var lowSpeedRestartThresholdText = "50K"
     @Published var localModelPath = ""
     @Published var localModelDisplayName = ""
     @Published var localModelPortText = String(AppSettings.defaults.defaultPort)
@@ -133,6 +141,8 @@ final class AppViewModel: ObservableObject {
     private let modelAvailabilityChecker: LocalModelAvailabilityChecking
     private let huggingFaceDownloadManager: HuggingFaceModelDownloading
     private let huggingFaceSearchService: HuggingFaceModelSearching
+    private let huggingFaceRepositoryFileService: HuggingFaceRepositoryFileListing
+    private let huggingFaceCredentialStore: HuggingFaceCredentialStoring
     private var logBuffer: LogBuffer
     private var memoryMonitorTask: Task<Void, Never>?
     private var systemUsageMonitorTask: Task<Void, Never>?
@@ -159,7 +169,9 @@ final class AppViewModel: ObservableObject {
         modelProfileImportPreviewService: ModelProfileImportPreviewService? = nil,
         modelAvailabilityChecker: LocalModelAvailabilityChecking? = nil,
         huggingFaceDownloadManager: HuggingFaceModelDownloading? = nil,
-        huggingFaceSearchService: HuggingFaceModelSearching? = nil
+        huggingFaceSearchService: HuggingFaceModelSearching? = nil,
+        huggingFaceRepositoryFileService: HuggingFaceRepositoryFileListing? = nil,
+        huggingFaceCredentialStore: HuggingFaceCredentialStoring? = nil
     ) {
         self.settingsStore = settingsStore ?? SettingsStore()
         self.portChecker = portChecker ?? PortChecker()
@@ -176,6 +188,8 @@ final class AppViewModel: ObservableObject {
         self.modelAvailabilityChecker = modelAvailabilityChecker ?? FileSystemLocalModelAvailabilityChecker()
         self.huggingFaceDownloadManager = huggingFaceDownloadManager ?? HuggingFaceDownloadManager()
         self.huggingFaceSearchService = huggingFaceSearchService ?? HuggingFaceSearchService()
+        self.huggingFaceRepositoryFileService = huggingFaceRepositoryFileService ?? HuggingFaceRepositoryFileService()
+        self.huggingFaceCredentialStore = huggingFaceCredentialStore ?? HuggingFaceCredentialStore()
         self.logBuffer = LogBuffer(initialLines: Self.initialLogLines)
         self.logText = logBuffer.text
         self.logEntries = logBuffer.entries
@@ -184,7 +198,9 @@ final class AppViewModel: ObservableObject {
             defaultHost: settings.defaultHost,
             defaultPort: settings.defaultPort
         )
+        refreshHuggingFaceAccessStatus()
         refreshHuggingFaceCLIStatus(logResult: false)
+        refreshAria2Status()
         localModelPortText = String(settings.defaultPort)
         selectedModelID = models.first?.id
         resetModelAvailabilityForCurrentSelection()
@@ -353,6 +369,29 @@ final class AppViewModel: ObservableObject {
 
     var canStartHuggingFaceDownload: Bool {
         huggingFaceDownloadPreview.canDownload && isHuggingFaceCLIAvailable && !isHuggingFaceDownloadRunning
+    }
+
+    var filteredHuggingFacePreviewFiles: [HuggingFaceDownloadPreviewFile] {
+        huggingFaceFilePreview.files.filter { file in
+            Self.shouldIncludePreviewFile(
+                file.path,
+                includePatterns: Self.patternList(from: huggingFaceDownloadDraft.includePatterns),
+                excludePatterns: Self.patternList(from: huggingFaceDownloadDraft.excludePatterns)
+            )
+        }
+    }
+
+    var selectedHuggingFacePreviewFiles: [HuggingFaceDownloadPreviewFile] {
+        filteredHuggingFacePreviewFiles.filter { selectedHuggingFacePreviewFileIDs.contains($0.id) }
+    }
+
+    var huggingFaceSelectedPreviewSummary: String {
+        let files = huggingFaceDownloadDraft.useSelectedPreviewFiles ? selectedHuggingFacePreviewFiles : filteredHuggingFacePreviewFiles
+        if files.isEmpty { return "No preview files selected." }
+        let total = files.compactMap(\.size).reduce(Int64(0), +)
+        let hasUnknown = files.contains { $0.size == nil }
+        let sizeText = hasUnknown ? "unknown size" : ByteCountFormatter.string(fromByteCount: total, countStyle: .file)
+        return "\(files.count) files • \(sizeText)"
     }
 
     var visibleHuggingFaceSearchResults: [HuggingFaceSearchResult] {
@@ -1685,6 +1724,26 @@ final class AppViewModel: ObservableObject {
         appendLog("[profile] local model folder selected: \(ModelAvailabilityPathFormatter.compact(path: url.path)).")
     }
 
+    func previewHuggingFaceFilesRequested() {
+        huggingFaceFilePreview = HuggingFaceDownloadFilePreviewState(isLoading: false, message: "File preview is queued for the next implementation pass.", files: [])
+    }
+
+    func toggleHuggingFacePreviewFile(_ file: HuggingFaceDownloadPreviewFile) {
+        if selectedHuggingFacePreviewFileIDs.contains(file.id) {
+            selectedHuggingFacePreviewFileIDs.remove(file.id)
+        } else {
+            selectedHuggingFacePreviewFileIDs.insert(file.id)
+        }
+    }
+
+    func selectAllHuggingFacePreviewFiles() {
+        selectedHuggingFacePreviewFileIDs = Set(filteredHuggingFacePreviewFiles.map(\.id))
+    }
+
+    func clearHuggingFacePreviewSelection() {
+        selectedHuggingFacePreviewFileIDs = []
+    }
+
     func chooseHuggingFaceDownloadDirectoryRequested() {
         let panel = NSOpenPanel()
         panel.title = "Choose Hugging Face download save directory"
@@ -1743,7 +1802,11 @@ final class AppViewModel: ObservableObject {
                 repositoryID: reference.repositoryID,
                 destinationPath: destinationPath,
                 phase: .preparing,
-                message: "Preparing"
+                message: "Preparing",
+                fileCount: huggingFaceDownloadDraft.useSelectedPreviewFiles ? selectedHuggingFacePreviewFiles.count : nil,
+                downloadedBytes: nil,
+                totalBytes: nil,
+                speedBytesPerSecond: nil
             ),
             at: 0
         )
@@ -1824,6 +1887,33 @@ final class AppViewModel: ObservableObject {
 
     func refreshHuggingFaceCLIRequested() {
         refreshHuggingFaceCLIStatus(logResult: true)
+    }
+
+    func saveHuggingFaceAccessRequested() {
+        let value = huggingFaceAccessInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else {
+            huggingFaceAccessMessage = "Enter a value before saving."
+            return
+        }
+        huggingFaceCredentialStore.saveValue(value)
+        huggingFaceAccessInput = ""
+        refreshHuggingFaceAccessStatus()
+    }
+
+    func deleteHuggingFaceAccessRequested() {
+        huggingFaceCredentialStore.deleteValue()
+        refreshHuggingFaceAccessStatus()
+    }
+
+    func refreshAria2Status() {
+        aria2Availability = Aria2AvailabilityChecker.check()
+    }
+
+    private func refreshHuggingFaceAccessStatus() {
+        isHuggingFaceAccessSaved = huggingFaceCredentialStore.readValue() != nil
+        huggingFaceAccessMessage = isHuggingFaceAccessSaved
+            ? "Saved locally. The value is used for gated/private Hugging Face requests and is not shown again."
+            : "No saved Hugging Face access value. Public repos can still be previewed."
     }
 
     private func refreshHuggingFaceCLIStatus(logResult: Bool) {
@@ -2602,7 +2692,11 @@ final class AppViewModel: ObservableObject {
             let result = try await huggingFaceDownloadManager.download(
                 request: HuggingFaceDownloadRequest(
                     repositoryID: reference.repositoryID,
-                    destinationPath: destinationPath
+                    destinationPath: destinationPath,
+                    revision: normalizedHuggingFaceRevision,
+                    includePatterns: huggingFaceIncludePatternsForDownload(),
+                    excludePatterns: Self.patternList(from: draft.excludePatterns),
+                    authorizationValue: huggingFaceCredentialStore.readValue()
                 ),
                 outputHandler: { [weak self] line in
                     Task { @MainActor in
@@ -2662,6 +2756,42 @@ final class AppViewModel: ObservableObject {
             }
             huggingFaceDownloadTask = nil
         }
+    }
+
+    private var normalizedHuggingFaceRevision: String {
+        let value = huggingFaceDownloadDraft.revision.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? "main" : value
+    }
+
+    private func huggingFaceIncludePatternsForDownload() -> [String] {
+        if huggingFaceDownloadDraft.useSelectedPreviewFiles, !selectedHuggingFacePreviewFiles.isEmpty {
+            return selectedHuggingFacePreviewFiles.map(\.path)
+        }
+        return Self.patternList(from: huggingFaceDownloadDraft.includePatterns)
+    }
+
+    nonisolated private static func patternList(from text: String) -> [String] {
+        text.split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    nonisolated private static func shouldIncludePreviewFile(_ path: String, includePatterns: [String], excludePatterns: [String]) -> Bool {
+        let included = includePatterns.isEmpty || includePatterns.contains { matchesGlob(path: path, pattern: $0) }
+        let excluded = excludePatterns.contains { matchesGlob(path: path, pattern: $0) }
+        return included && !excluded
+    }
+
+    nonisolated private static func matchesGlob(path: String, pattern: String) -> Bool {
+        let escaped = NSRegularExpression.escapedPattern(for: pattern)
+            .replacingOccurrences(of: "\\*\\*", with: ".*")
+            .replacingOccurrences(of: "\\*", with: "[^/]*")
+            .replacingOccurrences(of: "\\?", with: "[^/]")
+        let fullPattern = "^\(escaped)$"
+        let basenamePattern = "^\(escaped)$"
+        let basename = URL(fileURLWithPath: path).lastPathComponent
+        return path.range(of: fullPattern, options: .regularExpression) != nil
+            || basename.range(of: basenamePattern, options: .regularExpression) != nil
     }
 
     private func huggingFaceDownloadFailureGuidance(from error: Error) -> String {

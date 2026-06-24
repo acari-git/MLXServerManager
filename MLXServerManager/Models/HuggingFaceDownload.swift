@@ -108,6 +108,10 @@ enum HuggingFaceModelReferenceError: LocalizedError, Equatable {
 
 struct HuggingFaceDownloadDraft: Equatable {
     var source: String
+    var revision: String
+    var includePatterns: String
+    var excludePatterns: String
+    var useSelectedPreviewFiles: Bool
     var saveDirectory: String
     var displayName: String
     var host: String
@@ -119,6 +123,10 @@ struct HuggingFaceDownloadDraft: Equatable {
     static func defaults(defaultHost: String, defaultPort: Int) -> HuggingFaceDownloadDraft {
         HuggingFaceDownloadDraft(
             source: "",
+            revision: "main",
+            includePatterns: "*.safetensors, *.json, tokenizer.*, *.model, *.txt",
+            excludePatterns: "*.h5, *.onnx, *.msgpack, *.bin",
+            useSelectedPreviewFiles: false,
             saveDirectory: "~/Models/mlx",
             displayName: "",
             host: defaultHost,
@@ -219,9 +227,22 @@ struct HuggingFaceDownloadQueueEntry: Identifiable, Equatable {
     let destinationPath: String
     var phase: HuggingFaceDownloadPhase
     var message: String
+    var fileCount: Int?
+    var downloadedBytes: Int64?
+    var totalBytes: Int64?
+    var speedBytesPerSecond: Int64?
 
     var compactDestinationPath: String {
         ModelAvailabilityPathFormatter.compact(path: destinationPath)
+    }
+
+    var progressText: String {
+        guard let totalBytes, totalBytes > 0 else {
+            return fileCount.map { "\($0) files" } ?? "Progress unavailable"
+        }
+        let downloaded = downloadedBytes ?? 0
+        let fraction = min(max(Double(downloaded) / Double(totalBytes), 0), 1)
+        return "\(Int(fraction * 100))% • \(ByteCountFormatter.string(fromByteCount: downloaded, countStyle: .file)) / \(ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file))"
     }
 }
 
