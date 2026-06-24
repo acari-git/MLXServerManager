@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -12,11 +13,314 @@ struct IntegratedWorkspaceView: View {
     @State private var latestCheckColumnWidth = ModelListColumn.latestCheck
     @State private var unloadColumnWidth = ModelListColumn.unload
     @State private var reasoningColumnWidth = ModelListColumn.reasoning
+    @State private var rowActionsColumnWidth = ModelListColumn.rowActions
     @State private var draggedModelID: ModelConfig.ID?
     @State private var hoveredStatusModelID: ModelConfig.ID?
+    @State private var selectedAppearance = "system"
+    @State private var expandedRightPanelID: String? = "model"
+    @State private var isLeftPanelVisible = true
+    @State private var isBottomPanelVisible = true
+    @State private var isRightPanelVisible = true
+    @State private var isLeftPanelAutoHidden = false
+    @State private var isBottomPanelAutoHidden = false
+    @State private var isRightPanelAutoHidden = false
+    @State private var hostingWindow: NSWindow?
+    @FocusState private var focusedAutoUnloadModelID: ModelConfig.ID?
 
     private var selectedModel: ModelConfig? { viewModel.selectedModel }
     private var isSelectedRunning: Bool { selectedModel?.id == viewModel.runningModelID }
+
+    private var preferredColorScheme: ColorScheme? {
+        switch selectedAppearance {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
+    }
+
+    private var topLeftChromeControls: some View {
+        HStack(spacing: 0) {
+            chromeToggleButton(
+                systemImage: "sidebar.left",
+                isActive: isLeftPanelVisible,
+                help: isLeftPanelVisible ? "左サイドパネルを隠す" : "左サイドパネルを表示"
+            ) {
+                toggleLeftPanelRequested()
+            }
+        }
+        .fixedSize()
+        .background(Color.clear)
+    }
+
+    private var topRightChromeControls: some View {
+        HStack(spacing: 8) {
+            chromeToggleButton(
+                systemImage: "rectangle.bottomthird.inset.filled",
+                isActive: isBottomPanelVisible,
+                help: isBottomPanelVisible ? "下段ログパネルを隠す" : "下段ログパネルを表示"
+            ) {
+                toggleBottomPanelRequested()
+            }
+            chromeToggleButton(
+                systemImage: "sidebar.right",
+                isActive: isRightPanelVisible,
+                help: isRightPanelVisible ? "右サイドパネルを隠す" : "右サイドパネルを表示"
+            ) {
+                toggleRightPanelRequested()
+            }
+        }
+        .fixedSize()
+        .background(Color.clear)
+    }
+
+    private func chromeToggleButton(systemImage: String, isActive: Bool, help: String, action: @escaping () -> Void) -> some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(isActive ? .primary : .secondary)
+            .frame(width: 24, height: 22)
+            .contentShape(RoundedRectangle(cornerRadius: 6))
+            .onTapGesture {
+                withAnimation(.easeInOut(duration: 0.24)) {
+                    action()
+                }
+            }
+            .help(help)
+    }
+
+    private func toggleLeftPanelRequested() {
+        if isLeftPanelVisible {
+            isLeftPanelAutoHidden = false
+            isLeftPanelVisible = false
+            return
+        }
+
+        isLeftPanelAutoHidden = false
+        expandWindowIfNeeded(leftVisible: true, rightVisible: isRightPanelVisible)
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: 0.24)) {
+                isLeftPanelVisible = true
+            }
+        }
+    }
+
+    private func toggleRightPanelRequested() {
+        if isRightPanelVisible {
+            isRightPanelAutoHidden = false
+            isRightPanelVisible = false
+            return
+        }
+
+        isRightPanelAutoHidden = false
+        expandWindowIfNeeded(leftVisible: isLeftPanelVisible, rightVisible: true)
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: 0.24)) {
+                isRightPanelVisible = true
+            }
+        }
+    }
+
+    private func toggleBottomPanelRequested() {
+        if isBottomPanelVisible {
+            isBottomPanelAutoHidden = false
+            isBottomPanelVisible = false
+            return
+        }
+
+        isBottomPanelAutoHidden = false
+        expandWindowHeightIfNeeded()
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: 0.24)) {
+                isBottomPanelVisible = true
+            }
+        }
+    }
+
+    private func applyAutomaticPanelCollapse(for size: CGSize) {
+        withAnimation(.easeInOut(duration: 0.24)) {
+            let canShowLeftOnly = size.width >= comfortableWindowWidth(leftVisible: true, rightVisible: false)
+            let canShowBothSides = size.width >= comfortableWindowWidth(leftVisible: true, rightVisible: true)
+            let canShowBottom = size.height >= Layout.minimumBottomPanelHeight
+
+            if isRightPanelVisible, !canShowBothSides {
+                isRightPanelVisible = false
+                isRightPanelAutoHidden = true
+                return
+            }
+
+            if isLeftPanelVisible, !canShowLeftOnly {
+                isLeftPanelVisible = false
+                isLeftPanelAutoHidden = true
+                return
+            }
+
+            if !isLeftPanelVisible, isLeftPanelAutoHidden, canShowLeftOnly {
+                isLeftPanelVisible = true
+                isLeftPanelAutoHidden = false
+                return
+            }
+
+            if !isRightPanelVisible, isRightPanelAutoHidden, isLeftPanelVisible, canShowBothSides {
+                isRightPanelVisible = true
+                isRightPanelAutoHidden = false
+                return
+            }
+
+            if isBottomPanelVisible, !canShowBottom {
+                isBottomPanelVisible = false
+                isBottomPanelAutoHidden = true
+            } else if !isBottomPanelVisible, isBottomPanelAutoHidden, canShowBottom {
+                isBottomPanelVisible = true
+                isBottomPanelAutoHidden = false
+            }
+        }
+    }
+
+    private func expandWindowIfNeeded(leftVisible: Bool, rightVisible: Bool) {
+        guard let hostingWindow else { return }
+        let requiredWidth = requiredWindowWidth(leftVisible: leftVisible, rightVisible: rightVisible)
+        let widthDelta = requiredWidth - hostingWindow.frame.width
+        guard widthDelta > 0 else { return }
+
+        var frame = hostingWindow.frame
+        frame.size.width += widthDelta
+        frame.origin.x = max(0, frame.origin.x - widthDelta)
+        hostingWindow.setFrame(frame, display: true, animate: true)
+    }
+
+    private func expandWindowHeightIfNeeded() {
+        guard let hostingWindow else { return }
+        let heightDelta = Layout.minimumBottomPanelHeight - hostingWindow.frame.height
+        guard heightDelta > 0 else { return }
+
+        var frame = hostingWindow.frame
+        frame.size.height += heightDelta
+        frame.origin.y = max(0, frame.origin.y - heightDelta)
+        hostingWindow.setFrame(frame, display: true, animate: true)
+    }
+
+    private func requiredWindowWidth(leftVisible: Bool, rightVisible: Bool) -> CGFloat {
+        (leftVisible ? Layout.leftPanelWidthWithDivider : 0)
+            + compactRequiredModelListWidth
+            + (rightVisible ? Layout.rightPanelWidthWithDivider : 0)
+    }
+
+    private func comfortableWindowWidth(leftVisible: Bool, rightVisible: Bool) -> CGFloat {
+        (leftVisible ? Layout.leftPanelWidthWithDivider : 0)
+            + defaultRequiredModelListWidth
+            + (rightVisible ? Layout.rightPanelWidthWithDivider : 0)
+    }
+
+    private var defaultRequiredModelListWidth: CGFloat {
+        ModelListColumn.name
+            + ModelListColumn.size
+            + ModelListColumn.status
+            + ModelListColumn.port
+            + ModelListColumn.memory
+            + ModelListColumn.unload
+            + ModelListColumn.reasoning
+            + ModelListColumn.rowActions
+            + CGFloat(7) * ModelListColumn.spacing
+            + Layout.modelListHorizontalPadding
+    }
+
+    private var compactRequiredModelListWidth: CGFloat {
+        ModelListColumn.minimumName
+            + ModelListColumn.minimumSize
+            + ModelListColumn.minimumStatus
+            + ModelListColumn.minimumPort
+            + ModelListColumn.minimumMemory
+            + ModelListColumn.minimumUnload
+            + ModelListColumn.minimumReasoning
+            + ModelListColumn.minimumRowActions
+            + CGFloat(7) * ModelListColumn.spacing
+            + Layout.modelListHorizontalPadding
+    }
+
+    private var requiredModelListWidth: CGFloat {
+        modelNameColumnWidth
+            + sizeColumnWidth
+            + statusColumnWidth
+            + portColumnWidth
+            + memoryColumnWidth
+            + unloadColumnWidth
+            + reasoningColumnWidth
+            + rowActionsColumnWidth
+            + CGFloat(7) * ModelListColumn.spacing
+            + Layout.modelListHorizontalPadding
+    }
+
+    private func updateResponsiveModelColumns(for containerWidth: CGFloat) {
+        let contentWidth = max(containerWidth - Layout.modelListHorizontalPadding, compactRequiredModelListWidth - Layout.modelListHorizontalPadding)
+        let availableColumnWidth = max(contentWidth - CGFloat(7) * ModelListColumn.spacing, compactMinimumColumnTotalWidth)
+        let expansionRange = max(defaultColumnTotalWidth - compactMinimumColumnTotalWidth, 1)
+        let expansionProgress = min(max((availableColumnWidth - compactMinimumColumnTotalWidth) / expansionRange, 0), 1)
+        let expandedExtraWidth = max(availableColumnWidth - defaultColumnTotalWidth, 0)
+
+        let name = responsiveColumnWidth(minimum: ModelListColumn.minimumName, defaultValue: ModelListColumn.name, progress: expansionProgress, extra: expandedExtraWidth * 0.42)
+        let size = responsiveColumnWidth(minimum: ModelListColumn.minimumSize, defaultValue: ModelListColumn.size, progress: expansionProgress, extra: expandedExtraWidth * 0.07)
+        let status = responsiveColumnWidth(minimum: ModelListColumn.minimumStatus, defaultValue: ModelListColumn.status, progress: expansionProgress, extra: expandedExtraWidth * 0.07)
+        let port = responsiveColumnWidth(minimum: ModelListColumn.minimumPort, defaultValue: ModelListColumn.port, progress: expansionProgress, extra: expandedExtraWidth * 0.06)
+        let memory = responsiveColumnWidth(minimum: ModelListColumn.minimumMemory, defaultValue: ModelListColumn.memory, progress: expansionProgress, extra: expandedExtraWidth * 0.09)
+        let unload = responsiveColumnWidth(minimum: ModelListColumn.minimumUnload, defaultValue: ModelListColumn.unload, progress: expansionProgress, extra: expandedExtraWidth * 0.13)
+        let reasoning = responsiveColumnWidth(minimum: ModelListColumn.minimumReasoning, defaultValue: ModelListColumn.reasoning, progress: expansionProgress, extra: expandedExtraWidth * 0.05)
+        let actions = responsiveColumnWidth(minimum: ModelListColumn.minimumRowActions, defaultValue: ModelListColumn.rowActions, progress: expansionProgress, extra: expandedExtraWidth * 0.11)
+
+        guard abs(modelNameColumnWidth - name) > 0.5
+            || abs(sizeColumnWidth - size) > 0.5
+            || abs(statusColumnWidth - status) > 0.5
+            || abs(portColumnWidth - port) > 0.5
+            || abs(memoryColumnWidth - memory) > 0.5
+            || abs(unloadColumnWidth - unload) > 0.5
+            || abs(reasoningColumnWidth - reasoning) > 0.5
+            || abs(rowActionsColumnWidth - actions) > 0.5 else {
+            return
+        }
+
+        modelNameColumnWidth = name
+        sizeColumnWidth = size
+        statusColumnWidth = status
+        portColumnWidth = port
+        memoryColumnWidth = memory
+        unloadColumnWidth = unload
+        reasoningColumnWidth = reasoning
+        rowActionsColumnWidth = actions
+    }
+
+    private func responsiveColumnWidth(minimum: CGFloat, defaultValue: CGFloat, progress: CGFloat, extra: CGFloat) -> CGFloat {
+        minimum + (defaultValue - minimum) * progress + extra
+    }
+
+    private var compactMinimumColumnTotalWidth: CGFloat {
+        ModelListColumn.minimumName
+            + ModelListColumn.minimumSize
+            + ModelListColumn.minimumStatus
+            + ModelListColumn.minimumPort
+            + ModelListColumn.minimumMemory
+            + ModelListColumn.minimumUnload
+            + ModelListColumn.minimumReasoning
+            + ModelListColumn.minimumRowActions
+    }
+
+    private var defaultColumnTotalWidth: CGFloat {
+        ModelListColumn.name
+            + ModelListColumn.size
+            + ModelListColumn.status
+            + ModelListColumn.port
+            + ModelListColumn.memory
+            + ModelListColumn.unload
+            + ModelListColumn.reasoning
+            + ModelListColumn.rowActions
+    }
+
+    private enum Layout {
+        static let leftPanelWidth: CGFloat = 220
+        static let rightPanelWidth: CGFloat = 430
+        static let dividerWidth: CGFloat = 1
+        static let leftPanelWidthWithDivider = leftPanelWidth + dividerWidth
+        static let rightPanelWidthWithDivider = rightPanelWidth + dividerWidth
+        static let modelListHorizontalPadding: CGFloat = 32
+        static let minimumBottomPanelHeight: CGFloat = 720
+    }
 
     private enum ModelListColumn {
         static let name: CGFloat = 210
@@ -27,25 +331,67 @@ struct IntegratedWorkspaceView: View {
         static let latestCheck: CGFloat = 88
         static let unload: CGFloat = 148
         static let reasoning: CGFloat = 86
-        static let minimum: CGFloat = 64
+        static let rowActions: CGFloat = 178
+        static let minimumName: CGFloat = 150
+        static let minimumSize: CGFloat = 70
+        static let minimumStatus: CGFloat = 92
+        static let minimumPort: CGFloat = 78
+        static let minimumMemory: CGFloat = 82
+        static let minimumUnload: CGFloat = 116
+        static let minimumReasoning: CGFloat = 68
+        static let minimumRowActions: CGFloat = 140
+        static let minimum: CGFloat = 48
         static let spacing: CGFloat = 10
     }
 
     var body: some View {
-        HSplitView {
-            leftColumn
-                .frame(minWidth: 190, idealWidth: 220, maxWidth: 250)
-            centerColumn
-                .frame(minWidth: 620, idealWidth: 760)
-            rightColumn
-                .frame(minWidth: 360, idealWidth: 430, maxWidth: 520)
+        GeometryReader { geometry in
+            HStack(spacing: 0) {
+                if isLeftPanelVisible {
+                    leftColumn
+                        .frame(width: Layout.leftPanelWidth)
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                    Divider()
+                }
+
+                centerColumn
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+
+                if isRightPanelVisible {
+                    Divider()
+                    rightColumn
+                        .frame(width: Layout.rightPanelWidth)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
+            }
+            .animation(.easeInOut(duration: 0.24), value: isLeftPanelVisible)
+            .animation(.easeInOut(duration: 0.24), value: isRightPanelVisible)
+            .animation(.easeInOut(duration: 0.24), value: isBottomPanelVisible)
+            .onAppear {
+                modelNameColumnWidth = viewModel.initialModelNameColumnWidth
+                applyAutomaticPanelCollapse(for: geometry.size)
+            }
+            .onChange(of: geometry.size) { _, size in
+                applyAutomaticPanelCollapse(for: size)
+            }
         }
         .background(Color(nsColor: .windowBackgroundColor))
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(preferredColorScheme)
         .accessibilityIdentifier("integrated-workspace")
-        .onAppear {
-            modelNameColumnWidth = viewModel.initialModelNameColumnWidth
-        }
+        .background(WindowReader { window in
+            hostingWindow = window
+        })
+        .background(
+            TitlebarPanelControlsInstaller(
+                isLeftPanelVisible: $isLeftPanelVisible,
+                isBottomPanelVisible: $isBottomPanelVisible,
+                isRightPanelVisible: $isRightPanelVisible,
+                onLeftToggle: toggleLeftPanelRequested,
+                onBottomToggle: toggleBottomPanelRequested,
+                onRightToggle: toggleRightPanelRequested
+            )
+        )
     }
 
     private var leftColumn: some View {
@@ -111,7 +457,7 @@ struct IntegratedWorkspaceView: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text(viewModel.integratedMemoryUsagePercentText)
-                    .font(.caption.weight(.bold))
+                    .font(.headline)
             }
 
             memoryPressureHistoryGraph
@@ -239,7 +585,7 @@ struct IntegratedWorkspaceView: View {
         VStack(spacing: 6) {
             Text("MLX Server Manager")
                 .font(.callout.weight(.semibold))
-            Text("Version 0.16.0")
+            Text("Version 20.2.0")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -253,10 +599,13 @@ struct IntegratedWorkspaceView: View {
         case .models:
             VStack(spacing: 0) {
                 modelListPanel
-                    .frame(minHeight: 390, idealHeight: 460)
-                Divider()
-                logPanel
-                    .frame(minHeight: 250)
+                    .frame(maxHeight: isBottomPanelVisible ? .infinity : .infinity)
+                if isBottomPanelVisible {
+                    Divider()
+                    logPanel
+                        .frame(height: 250)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
             .background(Color(nsColor: .windowBackgroundColor))
         case .downloads:
@@ -275,7 +624,8 @@ struct IntegratedWorkspaceView: View {
     }
 
     private var modelListPanel: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        GeometryReader { proxy in
+            VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("モデル一覧")
                     .font(.title3.weight(.semibold))
@@ -316,6 +666,14 @@ struct IntegratedWorkspaceView: View {
                 }
                 .padding(14)
             }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .onAppear {
+                updateResponsiveModelColumns(for: proxy.size.width)
+            }
+            .onChange(of: proxy.size.width) { _, width in
+                updateResponsiveModelColumns(for: width)
+            }
         }
     }
 
@@ -325,9 +683,11 @@ struct IntegratedWorkspaceView: View {
             columnHeader("サイズ\(viewModel.sortIndicator(for: "size"))", width: $sizeColumnWidth, defaultWidth: ModelListColumn.size, sortKey: "size")
             columnHeader("ステータス\(viewModel.sortIndicator(for: "status"))", width: $statusColumnWidth, defaultWidth: ModelListColumn.status, sortKey: "status")
             columnHeader("サーバーポート\(viewModel.sortIndicator(for: "port"))", width: $portColumnWidth, defaultWidth: ModelListColumn.port, sortKey: "port")
-            columnHeader("プロセスメモリ\(viewModel.sortIndicator(for: "memory"))", width: $memoryColumnWidth, defaultWidth: ModelListColumn.memory, sortKey: "memory")
+            columnHeader("メモリ使用量\(viewModel.sortIndicator(for: "memory"))", width: $memoryColumnWidth, defaultWidth: ModelListColumn.memory, sortKey: "memory")
             columnHeader("自動アンロード\(viewModel.sortIndicator(for: "autoUnload"))", width: $unloadColumnWidth, defaultWidth: ModelListColumn.unload, showsHandle: false, sortKey: "autoUnload", alignment: .center)
             columnHeader("推論\(viewModel.sortIndicator(for: "reasoning"))", width: $reasoningColumnWidth, defaultWidth: ModelListColumn.reasoning, showsHandle: false, sortKey: "reasoning", alignment: .center)
+            headerText("操作")
+                .frame(width: rowActionsColumnWidth, alignment: .center)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -369,6 +729,10 @@ struct IntegratedWorkspaceView: View {
                     .font(.system(.caption, design: .monospaced))
                     .frame(width: 48)
                     .disabled(!viewModel.isAutoUnloadEnabled(for: model))
+                    .focused($focusedAutoUnloadModelID, equals: model.id)
+                    .onSubmit {
+                        focusedAutoUnloadModelID = nil
+                    }
                     Text("分")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -382,6 +746,7 @@ struct IntegratedWorkspaceView: View {
                     )
                     .labelsHidden()
                     .toggleStyle(.switch)
+                    .scaleEffect(0.82)
                 }
                 .frame(width: unloadColumnWidth, alignment: .leading)
 
@@ -394,7 +759,21 @@ struct IntegratedWorkspaceView: View {
                 )
                 .labelsHidden()
                 .toggleStyle(.switch)
+                .scaleEffect(0.82)
                 .frame(width: reasoningColumnWidth, alignment: .center)
+
+                HStack(spacing: 6) {
+                    modelActionButton("編集", color: .secondary) {
+                        viewModel.editProfileRequested(for: model)
+                    }
+                    .help(viewModel.runtimeEditingSafetyText(for: model))
+
+                    modelActionButton("削除", color: .red) {
+                        viewModel.deleteProfileRequested(for: model)
+                    }
+                    .disabled(viewModel.models.count <= 1 || viewModel.isManagedProcessRunning)
+                }
+                .frame(width: rowActionsColumnWidth, alignment: .center)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -460,16 +839,7 @@ struct IntegratedWorkspaceView: View {
         return Button {
             viewModel.statusActionRequested(for: model)
         } label: {
-            Text(statusText)
-                .font(.callout.weight(.semibold))
-                .foregroundStyle(foregroundColor)
-                .frame(width: 86, height: 28)
-                .background(foregroundColor.opacity(0.12))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 6)
-                        .strokeBorder(foregroundColor.opacity(0.28))
-                }
+            statusButtonLabel(statusText, color: foregroundColor)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(.plain)
@@ -477,6 +847,26 @@ struct IntegratedWorkspaceView: View {
         .onHover { isHovered in
             hoveredStatusModelID = isHovered ? model.id : nil
         }
+    }
+
+    private func modelActionButton(_ text: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            statusButtonLabel(text, color: color)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func statusButtonLabel(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.callout.weight(.semibold))
+            .foregroundStyle(color)
+            .frame(width: 86, height: 28)
+            .background(color.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(color.opacity(0.28))
+            }
     }
 
     private func headerText(_ text: String) -> some View {
@@ -560,7 +950,7 @@ struct IntegratedWorkspaceView: View {
     private var logPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("ログ (\(selectedModel?.displayName ?? "全体"))")
+                Text("ログ")
                     .font(.headline)
                 Spacer()
                 Picker("Category", selection: $viewModel.logCategoryFilter) {
@@ -624,97 +1014,139 @@ struct IntegratedWorkspaceView: View {
     }
 
     private var rightColumn: some View {
-        VStack(spacing: 0) {
-            modelSettingsPanel
-                .frame(minHeight: 510, idealHeight: 590)
-            Divider()
-            hermesPanel
-                .frame(minHeight: 210)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                appearancePanel
+                collapsibleRightPanel(id: "model", title: "モデル設定", systemImage: "slider.horizontal.3") {
+                    modelSettingsPanelContent
+                }
+                collapsibleRightPanel(id: "recovery", title: "Recovery", systemImage: "wrench.and.screwdriver") {
+                    IntegratedRecoveryPanelView(
+                        issue: viewModel.currentRecoveryIssue,
+                        onAction: handleRecoveryAction,
+                        onCopyTroubleshooting: viewModel.copyTroubleshootingSummary,
+                        onRefreshSafety: viewModel.refreshIntegratedSafetyRequested
+                    )
+                }
+                collapsibleRightPanel(id: "hermes", title: "Hermes Agent 接続情報", systemImage: "point.3.connected.trianglepath.dotted") {
+                    hermesPanelContent
+                }
+            }
+            .padding(12)
         }
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.38))
     }
 
-    private var modelSettingsPanel: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                            Text("モデル設定")
-                        .font(.title3.weight(.semibold))
+    private var appearancePanel: some View {
+        HStack {
+            Label("外観", systemImage: "circle.lefthalf.filled")
+                .font(.headline)
+            Spacer()
+            Picker("外観", selection: $selectedAppearance) {
+                Text("システム").tag("system")
+                Text("ライト").tag("light")
+                Text("ダーク").tag("dark")
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            .frame(width: 190)
+        }
+        .padding(12)
+        .background(Color(nsColor: .textBackgroundColor).opacity(0.65))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func collapsibleRightPanel<Content: View>(
+        id: String,
+        title: String,
+        systemImage: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.snappy(duration: 0.18)) {
+                    expandedRightPanelID = expandedRightPanelID == id ? nil : id
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: expandedRightPanelID == id ? "chevron.down" : "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .frame(width: 12)
+                    Label(title, systemImage: systemImage)
+                        .font(.headline)
                     Spacer()
-                    Button {
-                        viewModel.editProfileRequested()
-                    } label: {
-                        Text("編集")
-                    }
-                    .disabled(selectedModel == nil)
-                    .help(selectedModel.map { viewModel.runtimeEditingSafetyText(for: $0) } ?? "No model selected")
-
-                    Button(role: .destructive) {
-                        viewModel.deleteProfileRequested()
-                    } label: {
-                        Text("削除")
-                    }
-                    .disabled(selectedModel == nil || viewModel.models.count <= 1 || viewModel.isManagedProcessRunning)
                 }
+                .padding(12)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
 
-                groupedSection("Safety") {
-                    formRow("Summary", viewModel.selectedModelSafetySummary, valueColor: viewModel.selectedModelSafetySummary == "Safety: OK" ? .green : .orange)
-                    ForEach(viewModel.selectedModelSafetyRows, id: \.0) { row in
-                        formRow(row.0, row.1, valueColor: row.1 == "OK" || row.1 == "Available" || row.1 == "Ready" || row.1 == "OK local path" ? .green : .orange)
-                    }
-                    formRow("Recovery", viewModel.failedStartRecoverySummary, valueColor: viewModel.failedStartRecoverySummary == "No failed start recovery needed." ? .secondary : .orange)
-                    Button {
-                        viewModel.copySafetySummary()
-                    } label: {
-                        Text("Safety summary をコピー")
-                            .frame(maxWidth: .infinity)
-                    }
+            if expandedRightPanelID == id {
+                VStack(alignment: .leading, spacing: 16) {
+                    content()
                 }
+                .padding([.horizontal, .bottom], 12)
+            }
+        }
+        .background(Color(nsColor: .textBackgroundColor).opacity(0.65))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
 
-                IntegratedRecoveryPanelView(
-                    issue: viewModel.currentRecoveryIssue,
-                    onAction: handleRecoveryAction,
-                    onCopyTroubleshooting: viewModel.copyTroubleshootingSummary,
-                    onRefreshSafety: viewModel.refreshIntegratedSafetyRequested
-                )
-
-                groupedSection("基本情報") {
-                    formRow("モデル名", selectedModel?.displayName ?? "-")
-                    formRow("モデルID (Hugging Face)", selectedModel?.modelID ?? "-")
-                    formRow("モデル検証", viewModel.selectedModelIdentityDetailText, valueColor: viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("Missing") || viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("review") ? .orange : .green)
-                    formRow("用途・メモ", selectedModel?.notes.isEmpty == false ? selectedModel?.notes ?? "-" : "-")
+    private var modelSettingsPanelContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            groupedSection("安全性") {
+                let safetySummary = localizedStatusText(viewModel.selectedModelSafetySummary)
+                formRow("概要", safetySummary, valueColor: safetySummary == "問題なし" ? .green : .orange)
+                ForEach(viewModel.selectedModelSafetyRows, id: \.0) { row in
+                    let value = localizedStatusText(row.1)
+                    formRow(localizedSafetyLabel(row.0), value, valueColor: isPositiveLocalizedStatus(value) ? .green : .orange)
                 }
-
-                groupedSection("Direct Mode ポート") {
-                    formRow("mlx_lm.server", selectedModel.map { String($0.serverPort) } ?? "-")
-                    availabilityPill("\(selectedModel?.serverPort ?? 0): \(viewModel.selectedServerPortSafetyText)")
-                }
-
-                groupedSection("動作設定") {
-                    HStack {
-                        Text("Thinking モード（Qwen系）")
-                            .font(.caption)
-                        Spacer()
-                        Toggle("", isOn: .constant(selectedModel?.enableThinking ?? false))
-                            .labelsHidden()
-                            .disabled(true)
-                        Text((selectedModel?.enableThinking ?? false) ? "ON" : "OFF")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    formRow("停止方式", "手動停止のみ")
-                }
-
-                groupedSection("状態情報") {
-                    formRow("ステータス", isSelectedRunning ? "Ready" : "Stopped", valueColor: isSelectedRunning ? .green : .secondary)
-                    formRow("最終確認", selectedModel.map { viewModel.integratedLatestUseText(for: $0) } ?? "-")
-                    formRow("起動時刻", viewModel.runtimeEvents.first?.timestamp.formatted(date: .numeric, time: .standard) ?? "-")
-                    formRow("プロセスID", isSelectedRunning ? "managed" : "-")
-                    formRow("プロセスメモリ", isSelectedRunning ? viewModel.memoryUsageText : "-")
-                    formRow("スピードテスト", viewModel.latestBenchmarkResult?.summary ?? "Not run")
+                let recoverySummary = localizedStatusText(viewModel.failedStartRecoverySummary)
+                formRow("復旧ガイド", recoverySummary, valueColor: recoverySummary == "復旧操作は不要です" ? .secondary : .orange)
+                Button {
+                    viewModel.copySafetySummary()
+                } label: {
+                    Text("安全性の概要をコピー")
+                        .frame(maxWidth: .infinity)
                 }
             }
-            .padding(14)
+
+            groupedSection("基本情報") {
+                formRow("モデル名", selectedModel?.displayName ?? "-")
+                formRow("モデルID (Hugging Face)", selectedModel?.modelID ?? "-")
+                formRow("モデル検証", viewModel.selectedModelIdentityDetailText, valueColor: viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("Missing") || viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("review") ? .orange : .green)
+                formRow("用途・メモ", selectedModel?.notes.isEmpty == false ? selectedModel?.notes ?? "-" : "-")
+            }
+
+            groupedSection("Direct Mode ポート") {
+                formRow("サーバーポート", selectedModel.map { String($0.serverPort) } ?? "-")
+                availabilityPill("\(selectedModel?.serverPort ?? 0): \(localizedStatusText(viewModel.selectedServerPortSafetyText))")
+            }
+
+            groupedSection("動作設定") {
+                HStack {
+                    Text("推論モード（Qwen系）")
+                        .font(.caption)
+                    Spacer()
+                    Toggle("", isOn: .constant(selectedModel?.enableThinking ?? false))
+                        .labelsHidden()
+                        .scaleEffect(0.82)
+                        .disabled(true)
+                    Text((selectedModel?.enableThinking ?? false) ? "ON" : "OFF")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                formRow("停止方式", "手動で停止")
+            }
+
+            groupedSection("状態情報") {
+                formRow("ステータス", isSelectedRunning ? "ロード済" : "未ロード", valueColor: isSelectedRunning ? .green : .secondary)
+                formRow("最終確認", selectedModel.map { viewModel.integratedLatestUseText(for: $0) } ?? "-")
+                formRow("起動時刻", viewModel.runtimeEvents.first?.timestamp.formatted(date: .numeric, time: .standard) ?? "-")
+                formRow("プロセス", isSelectedRunning ? "アプリ管理" : "-")
+                formRow("メモリ使用量", isSelectedRunning ? viewModel.memoryUsageText : "-")
+                formRow("スピードテスト", viewModel.latestBenchmarkResult?.summary ?? "未実行")
+            }
         }
     }
 
@@ -748,6 +1180,40 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
+    private func localizedSafetyLabel(_ label: String) -> String {
+        switch label {
+        case "Selected model": return "選択モデル"
+        case "Executable": return "実行ファイル"
+        case "Model": return "モデル"
+        case "Server port": return "サーバーポート"
+        case "Duplicate": return "重複"
+        case "Runtime edit": return "編集中の安全性"
+        default: return label
+        }
+    }
+
+    private func localizedStatusText(_ value: String) -> String {
+        switch value {
+        case "Safety: OK", "OK": return "問題なし"
+        case "Available": return "利用可能"
+        case "Ready": return "準備完了"
+        case "OK local path": return "ローカルパス確認済み"
+        case "No failed start recovery needed.": return "復旧操作は不要です"
+        case "No model selected": return "モデル未選択"
+        case "Select a model before Start.": return "モデルを選択してください"
+        default:
+            return value
+                .replacingOccurrences(of: "Missing", with: "未検出")
+                .replacingOccurrences(of: "Server port", with: "サーバーポート")
+                .replacingOccurrences(of: "Stop the managed server before editing runtime identity.", with: "実行中のサーバーを停止してから編集してください")
+                .replacingOccurrences(of: "No duplicate endpoint detected.", with: "重複する接続先はありません")
+        }
+    }
+
+    private func isPositiveLocalizedStatus(_ value: String) -> Bool {
+        value == "問題なし" || value == "利用可能" || value == "準備完了" || value == "ローカルパス確認済み" || value == "重複する接続先はありません"
+    }
+
     private func availabilityPill(_ text: String) -> some View {
         Text(text)
             .font(.caption.weight(.semibold))
@@ -759,11 +1225,8 @@ struct IntegratedWorkspaceView: View {
             .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
-    private var hermesPanel: some View {
+    private var hermesPanelContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Hermes Agent 接続情報")
-                .font(.headline)
-
             copyRow("Base URL", value: viewModel.baseURL, action: { viewModel.copyBaseURL() })
             copyRow("API Key", value: viewModel.apiKeyPlaceholder, action: { viewModel.copyAPIKeyPlaceholder() })
             copyRow("Model", value: viewModel.selectedModelIdentifier, action: { viewModel.copyModelID() })
@@ -867,7 +1330,7 @@ private struct MemoryPressureHistoryGraph: View {
                     managedProcessArea(size: geometry.size)
                     usedMemoryLine(size: geometry.size)
                 } else {
-                    Text("メモリプレッシャー")
+                    Text("-")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)

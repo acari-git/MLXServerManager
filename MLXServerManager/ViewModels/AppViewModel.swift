@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 import Combine
 import Foundation
 import UniformTypeIdentifiers
@@ -64,6 +65,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var runtimeState: ModelRuntimeState = .stopped
     @Published private(set) var memoryUsageGB: Double?
     @Published private(set) var memoryBreakdown: MemoryBreakdownSnapshot?
+    @Published private(set) var systemMemorySnapshot: SystemMemorySnapshot?
     @Published private(set) var memoryHistory: [MemoryHistorySample] = []
     @Published private(set) var cpuUsagePercent: Double?
     @Published private(set) var gpuUsagePercent: Double?
@@ -110,6 +112,7 @@ final class AppViewModel: ObservableObject {
     @Published var showOnlyMLXLikelySearchResults = false
     @Published private(set) var huggingFaceSearchMessage = "Search Hugging Face explicitly, then choose a result for the download form."
     @Published private(set) var huggingFaceSearchResults: [HuggingFaceSearchResult] = []
+    private let systemProfilerHardwareInfo = AppViewModel.loadSystemProfilerHardwareInfo()
     @Published private(set) var selectedHuggingFaceSearchResult: HuggingFaceSearchResult?
     @Published private(set) var isHuggingFaceSearching = false
     @Published private(set) var isSpeedTestRunning = false
@@ -203,10 +206,11 @@ final class AppViewModel: ObservableObject {
 
     var systemInfoRows: [(String, String)] {
         [
-            ("機種", Self.sysctlString("hw.model") ?? "不明"),
-            ("チップ", Self.sysctlString("machdep.cpu.brand_string") ?? "Apple Silicon"),
-            ("コア", "\(ProcessInfo.processInfo.activeProcessorCount)コア"),
-            ("メモリ", Self.formatMemoryGigabytes(Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824)),
+            ("機種", systemProfilerHardwareInfo["Model Name"] ?? Self.sysctlString("hw.model") ?? "不明"),
+            ("macOS", Self.macOSVersionNumberText),
+            ("チップ", systemProfilerHardwareInfo["Chip"] ?? Self.sysctlString("machdep.cpu.brand_string") ?? "Apple Silicon"),
+            ("処理能力", Self.processingCapabilityText(from: systemProfilerHardwareInfo)),
+            ("メモリ", systemProfilerHardwareInfo["Memory"] ?? Self.formatMemoryGigabytes(Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824)),
             ("ストレージ", Self.storageUsageText())
         ]
     }
@@ -993,30 +997,30 @@ final class AppViewModel: ObservableObject {
     }
 
     var integratedMemoryUsageFraction: Double {
-        guard let memoryBreakdown,
-              let usedGigabytes = memoryBreakdown.system.usedGigabytes,
-              memoryBreakdown.system.totalGigabytes > 0 else {
+        guard let systemMemorySnapshot = activeSystemMemorySnapshot,
+              let usedGigabytes = systemMemorySnapshot.usedGigabytes,
+              systemMemorySnapshot.totalGigabytes > 0 else {
             return 0
         }
 
-        return min(max(usedGigabytes / memoryBreakdown.system.totalGigabytes, 0), 1)
+        return min(max(usedGigabytes / systemMemorySnapshot.totalGigabytes, 0), 1)
     }
 
     var integratedMemoryUsagePercentText: String {
-        guard memoryBreakdown != nil else { return "0%" }
+        guard activeSystemMemorySnapshot != nil else { return "0%" }
         return "\(Int(integratedMemoryUsageFraction * 100))%"
     }
 
     var memoryTotalText: String {
-        guard let memoryBreakdown else {
+        guard let systemMemorySnapshot = activeSystemMemorySnapshot else {
             return "合計: 未取得"
         }
 
-        return "合計: \(Self.formatMemoryGigabytes(memoryBreakdown.system.totalGigabytes))"
+        return "合計: \(Self.formatMemoryGigabytes(systemMemorySnapshot.totalGigabytes))"
     }
 
     var memoryAvailableText: String {
-        guard let availableGigabytes = memoryBreakdown?.system.availableGigabytes else {
+        guard let availableGigabytes = activeSystemMemorySnapshot?.availableGigabytes else {
             return "未取得"
         }
 
@@ -1024,19 +1028,19 @@ final class AppViewModel: ObservableObject {
     }
 
     var memoryMLXProcessText: String {
-        guard let memoryBreakdown else {
-            return runtimeState.isExternalServerContext ? "対象外" : "未稼働"
-        }
+        guard !runtimeState.isExternalServerContext else { return "対象外" }
+        guard let memoryBreakdown else { return Self.formatMemoryGigabytes(0) }
 
         return Self.formatMemoryGigabytes(memoryBreakdown.managedProcessGigabytes)
     }
 
     var memoryOtherProcessesText: String {
-        guard let otherProcessesGigabytes = memoryBreakdown?.otherProcessesGigabytes else {
+        guard let usedGigabytes = activeSystemMemorySnapshot?.usedGigabytes else {
             return "未取得"
         }
 
-        return Self.formatMemoryGigabytes(otherProcessesGigabytes)
+        let managedProcessGigabytes = memoryBreakdown?.managedProcessGigabytes ?? 0
+        return Self.formatMemoryGigabytes(max(usedGigabytes - managedProcessGigabytes, 0))
     }
 
     var memoryBreakdownUpdateText: String {
@@ -1052,11 +1056,13 @@ final class AppViewModel: ObservableObject {
     }
 
     var memoryOtherProcessesFraction: Double {
-        memoryFraction(memoryBreakdown?.otherProcessesGigabytes)
+        guard let usedGigabytes = activeSystemMemorySnapshot?.usedGigabytes else { return 0 }
+        let managedProcessGigabytes = memoryBreakdown?.managedProcessGigabytes ?? 0
+        return memoryFraction(max(usedGigabytes - managedProcessGigabytes, 0))
     }
 
     var memoryAvailableFraction: Double {
-        memoryFraction(memoryBreakdown?.system.availableGigabytes)
+        memoryFraction(activeSystemMemorySnapshot?.availableGigabytes)
     }
 
     var integratedCPUUsageText: String {
@@ -1209,9 +1215,13 @@ final class AppViewModel: ObservableObject {
         isAutoUnloadEnabled(for: model) ? autoUnloadMinutes(for: model) : Int.max
     }
 
+    private var activeSystemMemorySnapshot: SystemMemorySnapshot? {
+        memoryBreakdown?.system ?? systemMemorySnapshot
+    }
+
     private func memoryFraction(_ value: Double?) -> Double {
         guard let value,
-              let totalGigabytes = memoryBreakdown?.system.totalGigabytes,
+              let totalGigabytes = activeSystemMemorySnapshot?.totalGigabytes,
               totalGigabytes > 0 else {
             return 0
         }
@@ -1225,6 +1235,80 @@ final class AppViewModel: ObservableObject {
         }
 
         return String(format: "%.2f GB", value)
+    }
+
+    private static var macOSVersionNumberText: String {
+        let version = ProcessInfo.processInfo.operatingSystemVersion
+        return "\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
+    }
+
+    private static func processingCapabilityText(from hardwareInfo: [String: String]) -> String {
+        let cpuText = hardwareInfo["Total Number of Cores"].map { "\($0) CPU" }
+            ?? "\(ProcessInfo.processInfo.activeProcessorCount)コアCPU"
+        let gpuText = hardwareInfo["GPU Cores"].map { "\($0) GPU" }
+        return [cpuText, gpuText].compactMap { $0 }.joined(separator: " / ")
+    }
+
+    nonisolated private static func loadSystemProfilerHardwareInfo() -> [String: String] {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
+        process.arguments = ["SPHardwareDataType", "SPDisplaysDataType"]
+
+        let outputPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+        } catch {
+            return [:]
+        }
+
+        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        guard let output = String(data: data, encoding: .utf8) else {
+            return [:]
+        }
+
+        return Self.parseSystemProfilerHardwareInfo(output)
+    }
+
+    nonisolated private static func parseSystemProfilerHardwareInfo(_ output: String) -> [String: String] {
+        var result: [String: String] = [:]
+        var isHardwareSection = false
+        var isDisplaysSection = false
+        var didCaptureCPUCores = false
+        var didCaptureGPUCores = false
+
+        for line in output.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed == "Hardware:" {
+                isHardwareSection = true
+                isDisplaysSection = false
+                continue
+            }
+            if trimmed == "Graphics/Displays:" {
+                isHardwareSection = false
+                isDisplaysSection = true
+                continue
+            }
+            guard let separatorIndex = trimmed.firstIndex(of: ":") else { continue }
+            let key = String(trimmed[..<separatorIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let value = String(trimmed[trimmed.index(after: separatorIndex)...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !key.isEmpty, !value.isEmpty else { continue }
+
+            if isHardwareSection {
+                if ["Model Name", "Model Identifier", "Chip", "Memory"].contains(key) {
+                    result[key] = value
+                } else if key == "Total Number of Cores", !didCaptureCPUCores {
+                    result[key] = value
+                    didCaptureCPUCores = true
+                }
+            } else if isDisplaysSection, key == "Total Number of Cores", !didCaptureGPUCores {
+                result["GPU Cores"] = value
+                didCaptureGPUCores = true
+            }
+        }
+        return result
     }
 
     nonisolated private static func sysctlString(_ key: String) -> String? {
@@ -1935,6 +2019,11 @@ final class AppViewModel: ObservableObject {
         }
     }
 
+    func editProfileRequested(for model: ModelConfig) {
+        selectedModelID = model.id
+        editProfileRequested()
+    }
+
     func editProfileRequested() {
         guard let selectedModel else {
             profileEditorMessage = "No model is selected."
@@ -2146,6 +2235,11 @@ final class AppViewModel: ObservableObject {
             addProfileMessage = message
             appendLog("[profile] add failed: \(message)")
         }
+    }
+
+    func deleteProfileRequested(for model: ModelConfig) {
+        selectedModelID = model.id
+        deleteProfileRequested()
     }
 
     func deleteProfileRequested() {
@@ -3426,12 +3520,14 @@ final class AppViewModel: ObservableObject {
     private func startSystemUsageMonitoring() {
         systemUsageMonitorTask?.cancel()
         systemUsageMonitorTask = Task.detached { [weak self] in
+            var cpuUsageSampler = CPUUsageSampler()
             while !Task.isCancelled {
-                let cpuPercent = Self.sampleCPUUsagePercent()
+                let cpuPercent = cpuUsageSampler.samplePercent()
+                let systemMemorySnapshot = MemoryMonitor().currentSystemSnapshot()
                 guard let self else {
                     return
                 }
-                await self.handleSystemUsageMonitorResult(cpuPercent: cpuPercent, gpuPercent: nil)
+                await self.handleSystemUsageMonitorResult(cpuPercent: cpuPercent, gpuPercent: nil, systemMemorySnapshot: systemMemorySnapshot)
 
                 do {
                     try await Task.sleep(nanoseconds: 1_000_000_000)
@@ -3442,10 +3538,30 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    private func handleSystemUsageMonitorResult(cpuPercent: Double?, gpuPercent: Double?) {
+    private func handleSystemUsageMonitorResult(cpuPercent: Double?, gpuPercent: Double?, systemMemorySnapshot: SystemMemorySnapshot) {
         cpuUsagePercent = cpuPercent
         gpuUsagePercent = gpuPercent
+        self.systemMemorySnapshot = systemMemorySnapshot
+        appendSystemMemoryHistory(systemMemorySnapshot)
         appendSystemUsageHistory(cpuPercent: cpuPercent, gpuPercent: gpuPercent)
+    }
+
+    private func appendSystemMemoryHistory(_ snapshot: SystemMemorySnapshot) {
+        guard let usedGigabytes = snapshot.usedGigabytes,
+              snapshot.totalGigabytes > 0 else {
+            return
+        }
+
+        memoryHistory.append(
+            MemoryHistorySample(
+                usedFraction: min(max(usedGigabytes / snapshot.totalGigabytes, 0), 1),
+                managedProcessFraction: memoryBreakdown.map { memoryFraction($0.managedProcessGigabytes) } ?? 0,
+                timestamp: Date()
+            )
+        )
+        if memoryHistory.count > 60 {
+            memoryHistory.removeFirst(memoryHistory.count - 60)
+        }
     }
 
     private func startAutoUnloadMonitoring() {
@@ -3492,38 +3608,6 @@ final class AppViewModel: ObservableObject {
         if systemUsageHistory.count > 60 {
             systemUsageHistory.removeFirst(systemUsageHistory.count - 60)
         }
-    }
-
-    nonisolated private static func sampleCPUUsagePercent() -> Double? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/ps")
-        process.arguments = ["-A", "-o", "%cpu="]
-
-        let outputPipe = Pipe()
-        process.standardOutput = outputPipe
-
-        do {
-            try process.run()
-        } catch {
-            return nil
-        }
-
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
-            return nil
-        }
-
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        guard let output = String(data: outputData, encoding: .utf8) else {
-            return nil
-        }
-
-        let totalProcessCPU = output
-            .split(whereSeparator: { $0 == "\n" || $0 == " " || $0 == "\t" })
-            .compactMap { Double($0) }
-            .reduce(0, +)
-        let cores = max(ProcessInfo.processInfo.activeProcessorCount, 1)
-        return min(max(totalProcessCPU / Double(cores), 0), 100)
     }
 
     private func appendRuntimeEvent(category: String, message: String) {

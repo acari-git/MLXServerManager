@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 struct MemoryUsageSnapshot: Equatable, Sendable {
@@ -90,60 +91,27 @@ struct MemoryMonitor: Sendable {
             return .invalidInput("Process identifier must be greater than zero.")
         }
 
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/ps")
-        process.arguments = [
-            "-o",
-            "rss=",
-            "-p",
-            String(processIdentifier)
-        ]
-
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-
-        do {
-            try process.run()
-        } catch {
-            return .failed(
-                processIdentifier: processIdentifier,
-                message: "Could not run ps for pid \(processIdentifier): \(error.localizedDescription)"
-            )
+        var taskInfo = proc_taskinfo()
+        let result = withUnsafeMutablePointer(to: &taskInfo) { pointer in
+            pointer.withMemoryRebound(to: CChar.self, capacity: MemoryLayout<proc_taskinfo>.size) { reboundPointer in
+                proc_pidinfo(
+                    processIdentifier,
+                    PROC_PIDTASKINFO,
+                    0,
+                    reboundPointer,
+                    Int32(MemoryLayout<proc_taskinfo>.size)
+                )
+            }
         }
 
-        process.waitUntilExit()
-
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-        let output = String(data: outputData, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let errorOutput = String(data: errorData, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-
-        guard process.terminationStatus == 0 else {
-            let message = errorOutput.isEmpty
-                ? "ps exited with status \(process.terminationStatus)"
-                : errorOutput
-            return .failed(processIdentifier: processIdentifier, message: message)
-        }
-
-        guard !output.isEmpty else {
+        guard result == Int32(MemoryLayout<proc_taskinfo>.size) else {
             return .notRunning(processIdentifier: processIdentifier)
-        }
-
-        guard let rssKilobytes = Int64(output) else {
-            return .failed(
-                processIdentifier: processIdentifier,
-                message: "Could not parse RSS from ps output: \(output)"
-            )
         }
 
         return .usage(
             MemoryUsageSnapshot(
                 processIdentifier: processIdentifier,
-                rssKilobytes: rssKilobytes
+                rssKilobytes: Int64(taskInfo.pti_resident_size / 1024)
             )
         )
     }
@@ -174,6 +142,10 @@ struct MemoryMonitor: Sendable {
         case let .failed(processIdentifier, message):
             return .failed(processIdentifier: processIdentifier, message: message)
         }
+    }
+
+    nonisolated func currentSystemSnapshot() -> SystemMemorySnapshot {
+        currentSystemMemory()
     }
 
     nonisolated func estimatedModelStorageGigabytes(modelDirectoryPath: String?) -> Double? {
@@ -244,40 +216,23 @@ struct MemoryMonitor: Sendable {
     }
 
     nonisolated private func currentAvailableMemoryBytes(totalBytes: UInt64) -> UInt64? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/vm_stat")
-
-        let outputPipe = Pipe()
-        process.standardOutput = outputPipe
-        process.standardError = Pipe()
-
-        do {
-            try process.run()
-        } catch {
-            return nil
+        var stats = vm_statistics64()
+        var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
+        let result = withUnsafeMutablePointer(to: &stats) { pointer in
+            pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { reboundPointer in
+                host_statistics64(mach_host_self(), HOST_VM_INFO64, reboundPointer, &count)
+            }
         }
 
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
-            return nil
-        }
+        guard result == KERN_SUCCESS else { return nil }
 
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        guard let output = String(data: outputData, encoding: .utf8) else {
-            return nil
-        }
-
-        let pageSize = UInt64(Self.pageSize(from: output) ?? 16_384)
-        let pageCounts = Self.pageCounts(from: output)
-        let availablePages = [
-            "Pages free",
-            "Pages inactive",
-            "Pages speculative"
-        ].reduce(UInt64(0)) { partialResult, key in
-            partialResult + UInt64(max(pageCounts[key] ?? 0, 0))
-        }
-
-        let availableBytes = availablePages.saturatingMultiply(by: pageSize)
+        let pageSize = UInt64(vm_kernel_page_size)
+        let availableBytes = [
+            UInt64(stats.free_count),
+            UInt64(stats.inactive_count),
+            UInt64(stats.speculative_count),
+            UInt64(stats.purgeable_count)
+        ].reduce(UInt64(0), +).saturatingMultiply(by: pageSize)
         return min(availableBytes, totalBytes)
     }
 
