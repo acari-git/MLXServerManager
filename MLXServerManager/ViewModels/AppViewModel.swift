@@ -834,6 +834,29 @@ final class AppViewModel: ObservableObject {
         !isHuggingFaceDownloadRunning && (huggingFaceDownloadStatus.phase == .failed || huggingFaceDownloadStatus.phase == .cancelled)
     }
 
+    var huggingFaceDownloadProgressText: String {
+        if let progress = huggingFaceDownloadStatus.progress {
+            return "\(Int(progress * 100))%"
+        }
+
+        switch huggingFaceDownloadStatus.phase {
+        case .waiting:
+            return "待機中"
+        case .preparing:
+            return "準備中"
+        case .downloading:
+            return "進捗取得中"
+        case .finalizing:
+            return "最終処理中"
+        case .completed:
+            return "100%"
+        case .failed:
+            return "失敗"
+        case .cancelled:
+            return "キャンセル"
+        }
+    }
+
     var modelAvailabilitySummary: ModelAvailabilitySummary {
         if runtimeState.isExternalServerContext {
             return ModelAvailabilitySummary.external(for: selectedModel)
@@ -2749,7 +2772,7 @@ final class AppViewModel: ObservableObject {
                 ),
                 outputHandler: { [weak self] line in
                     Task { @MainActor in
-                        self?.appendHuggingFaceOutputLine(line)
+                        self?.appendHuggingFaceOutputLine(line, queueEntryID: queueEntryID)
                     }
                 }
             )
@@ -2786,7 +2809,7 @@ final class AppViewModel: ObservableObject {
                 ? "Download completed. Added to model list and selected. Ready to start."
                 : "Download completed. Auto-add was disabled."
             huggingFaceDownloadStatus.progress = 1
-            updateHuggingFaceQueueEntry(queueEntryID, phase: .completed, message: "Completed")
+            updateHuggingFaceQueueEntry(queueEntryID, phase: .completed, message: "Completed", progress: 1)
             appendLog("[hf] download completed for \(reference.repositoryID).")
             appendLog("[hf] saved to \(ModelAvailabilityPathFormatter.compact(path: result.destinationPath)).")
             huggingFaceDownloadTask = nil
@@ -2867,15 +2890,19 @@ final class AppViewModel: ObservableObject {
         return message
     }
 
-    private func updateHuggingFaceQueueEntry(_ id: UUID, phase: HuggingFaceDownloadPhase, message: String) {
+    private func updateHuggingFaceQueueEntry(_ id: UUID, phase: HuggingFaceDownloadPhase, message: String, progress: Double? = nil) {
         guard let index = huggingFaceDownloadQueue.firstIndex(where: { $0.id == id }) else {
             return
         }
         huggingFaceDownloadQueue[index].phase = phase
         huggingFaceDownloadQueue[index].message = message
+        if let progress {
+            huggingFaceDownloadQueue[index].downloadedBytes = Int64(progress * 10_000)
+            huggingFaceDownloadQueue[index].totalBytes = 10_000
+        }
     }
 
-    private func appendHuggingFaceOutputLine(_ line: String) {
+    private func appendHuggingFaceOutputLine(_ line: String, queueEntryID: UUID? = nil) {
         let sanitizedLine = HuggingFaceDownloadPlanner.sanitizedOutputLine(line)
         guard !sanitizedLine.isEmpty else {
             return
@@ -2891,6 +2918,9 @@ final class AppViewModel: ObservableObject {
         if let progress = HuggingFaceDownloadPlanner.progressFraction(from: sanitizedLine) {
             huggingFaceDownloadStatus.progress = progress
             huggingFaceDownloadStatus.message = "Downloading... \(Int(progress * 100))%"
+            if let queueEntryID {
+                updateHuggingFaceQueueEntry(queueEntryID, phase: .downloading, message: "Downloading... \(Int(progress * 100))%", progress: progress)
+            }
         }
 
         appendLog(sanitizedLine)

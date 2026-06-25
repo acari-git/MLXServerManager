@@ -232,6 +232,8 @@ struct DownloadsSurfaceView: View {
                 ("Message", viewModel.huggingFaceDownloadStatus.message)
             ])
 
+            downloadProgressPanel
+
             filePreviewPanel
 
             if viewModel.huggingFaceDownloadStatus.phase == .completed {
@@ -276,6 +278,39 @@ struct DownloadsSurfaceView: View {
             }
         }
         .panelStyle()
+    }
+
+    private var downloadProgressPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Download progress")
+                    .font(.caption.weight(.semibold))
+                Spacer()
+                Text(viewModel.huggingFaceDownloadProgressText)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+            if let progress = viewModel.huggingFaceDownloadStatus.progress {
+                ProgressView(value: progress)
+                    .progressViewStyle(.linear)
+            } else if viewModel.isHuggingFaceDownloadRunning {
+                ProgressView()
+                    .progressViewStyle(.linear)
+            } else {
+                ProgressView(value: 0)
+                    .progressViewStyle(.linear)
+            }
+            if let repositoryID = viewModel.huggingFaceDownloadStatus.repositoryID {
+                Text(repositoryID)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(8)
+        .background(Color(nsColor: .textBackgroundColor).opacity(0.7))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .accessibilityIdentifier("hf-download-progress-panel")
     }
 
     private var filePreviewPanel: some View {
@@ -336,6 +371,26 @@ struct DownloadsSurfaceView: View {
         }
     }
 
+    @ViewBuilder
+    private func queueProgressView(for entry: HuggingFaceDownloadQueueEntry) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let fraction = entry.progressFraction {
+                ProgressView(value: fraction)
+                    .progressViewStyle(.linear)
+            } else if entry.phase == .downloading || entry.phase == .preparing || entry.phase == .finalizing {
+                ProgressView()
+                    .progressViewStyle(.linear)
+            } else {
+                ProgressView(value: entry.phase == .completed ? 1 : 0)
+                    .progressViewStyle(.linear)
+            }
+            Text(entry.progressText)
+                .font(.caption2.monospaced())
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityIdentifier("hf-download-queue-progress-\(entry.id.uuidString)")
+    }
+
     private var queueCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(strings.text(.downloadQueue))
@@ -364,6 +419,7 @@ struct DownloadsSurfaceView: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
+                        queueProgressView(for: entry)
                         HStack {
                             Button("Restore form") {
                                 viewModel.restoreHuggingFaceDownloadForm(from: entry)

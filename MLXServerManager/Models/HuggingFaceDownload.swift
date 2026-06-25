@@ -236,13 +236,21 @@ struct HuggingFaceDownloadQueueEntry: Identifiable, Equatable {
         ModelAvailabilityPathFormatter.compact(path: destinationPath)
     }
 
-    var progressText: String {
+    var progressFraction: Double? {
         guard let totalBytes, totalBytes > 0 else {
+            return nil
+        }
+        let downloaded = downloadedBytes ?? 0
+        return min(max(Double(downloaded) / Double(totalBytes), 0), 1)
+    }
+
+    var progressText: String {
+        guard let progressFraction else {
             return fileCount.map { "\($0) files" } ?? "Progress unavailable"
         }
         let downloaded = downloadedBytes ?? 0
-        let fraction = min(max(Double(downloaded) / Double(totalBytes), 0), 1)
-        return "\(Int(fraction * 100))% • \(ByteCountFormatter.string(fromByteCount: downloaded, countStyle: .file)) / \(ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file))"
+        let total = totalBytes ?? 0
+        return "\(Int(progressFraction * 100))% • \(ByteCountFormatter.string(fromByteCount: downloaded, countStyle: .file)) / \(ByteCountFormatter.string(fromByteCount: total, countStyle: .file))"
     }
 }
 

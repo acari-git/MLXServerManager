@@ -608,7 +608,7 @@ struct IntegratedWorkspaceView: View {
         VStack(spacing: 6) {
             Text("MLX Server Manager")
                 .font(.callout.weight(.semibold))
-            Text("Version 22.3.0")
+            Text("Version 22.4.0")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
