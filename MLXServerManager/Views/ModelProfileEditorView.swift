@@ -308,6 +308,7 @@ struct ModelProfileEditorView: View {
             modelID: modelID,
             host: host,
             port: port,
+            enableThinking: draft.enableThinking,
             advancedLaunchOptions: draft.advancedLaunchOptions.normalized()
         )
     }

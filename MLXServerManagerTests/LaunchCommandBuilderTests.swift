@@ -25,6 +25,7 @@ final class LaunchCommandBuilderTests: XCTestCase {
         XCTAssertTrue(command.contains("--host 127.0.0.1"))
         XCTAssertTrue(command.contains("--port 8080"))
         XCTAssertFalse(command.contains("--enable-thinking"))
+        XCTAssertTrue(command.contains("--chat-template-args '{\"enable_thinking\":true}'"))
     }
 
     func testCommandMatchesStructuredAdvancedArguments() {
@@ -55,5 +56,28 @@ final class LaunchCommandBuilderTests: XCTestCase {
         XCTAssertTrue(command.contains("--temperature 0.2"))
         XCTAssertTrue(command.contains("--top-p 0.9"))
         XCTAssertTrue(command.contains("--trust-remote-code"))
+    }
+
+    func testExplicitChatTemplateArgsOverrideThinkingToggle() {
+        let model = ModelConfig(
+            modelID: "model-name",
+            displayName: "Local",
+            family: "Local",
+            quantization: "4bit",
+            localName: "model-name",
+            host: "127.0.0.1",
+            serverPort: 8080,
+            enableThinking: true,
+            notes: "",
+            advancedLaunchOptions: AdvancedLaunchOptions(chatTemplateArgs: #"{"enable_thinking":false}"#)
+        )
+
+        let command = LaunchCommandBuilder.command(
+            executablePath: "mlx_lm.server",
+            model: model
+        )
+
+        XCTAssertTrue(command.contains("--chat-template-args '{\"enable_thinking\":false}'"))
+        XCTAssertFalse(command.contains("--chat-template-args '{\"enable_thinking\":true}'"))
     }
 }

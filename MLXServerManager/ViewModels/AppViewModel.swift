@@ -3034,6 +3034,7 @@ final class AppViewModel: ObservableObject {
             modelID: selectedModel.modelID,
             host: host,
             port: port,
+            enableThinking: selectedModel.enableThinking,
             advancedLaunchOptions: advancedLaunchOptions
         )
 

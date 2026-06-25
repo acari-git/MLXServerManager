@@ -5,6 +5,7 @@ struct ModelLaunchRequest: Equatable {
     let modelID: String
     let host: String
     let port: Int
+    let enableThinking: Bool
     let advancedLaunchOptions: AdvancedLaunchOptions?
 }
 
@@ -128,11 +129,13 @@ final class ModelProcessManager {
             String(request.port)
         ]
 
-        guard let advancedOptions = request.advancedLaunchOptions?.normalized() else {
+        let advancedOptions = request.advancedLaunchOptions?.normalized()
+        let chatTemplateArgs = advancedOptions?.chatTemplateArgs ?? thinkingChatTemplateArgs(isEnabled: request.enableThinking)
+        appendValue(chatTemplateArgs, flag: "--chat-template-args", to: &arguments)
+
+        guard let advancedOptions else {
             return arguments
         }
-
-        appendValue(advancedOptions.chatTemplateArgs, flag: "--chat-template-args", to: &arguments)
         appendValue(advancedOptions.defaultTemperature, flag: "--temperature", to: &arguments)
         appendValue(advancedOptions.defaultTopP, flag: "--top-p", to: &arguments)
         appendValue(advancedOptions.defaultTopK, flag: "--top-k", to: &arguments)
@@ -284,6 +287,10 @@ final class ModelProcessManager {
         self.process = nil
         stdoutPipe = nil
         stderrPipe = nil
+    }
+
+    nonisolated private static func thinkingChatTemplateArgs(isEnabled: Bool) -> String {
+        "{\"enable_thinking\":\(isEnabled ? "true" : "false")}"
     }
 
     nonisolated private static func appendValue(_ value: String?, flag: String, to arguments: inout [String]) {

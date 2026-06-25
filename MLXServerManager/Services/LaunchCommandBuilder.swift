@@ -10,6 +10,7 @@ struct LaunchCommandBuilder {
             modelID: model.modelID,
             host: model.host,
             port: model.serverPort,
+            enableThinking: model.enableThinking,
             advancedLaunchOptions: model.advancedLaunchOptions
         )
         return ModelProcessManager.commandPreview(for: request, executablePath: executable)
