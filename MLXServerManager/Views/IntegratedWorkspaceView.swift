@@ -608,7 +608,7 @@ struct IntegratedWorkspaceView: View {
         VStack(spacing: 6) {
             Text("MLX Server Manager")
                 .font(.callout.weight(.semibold))
-            Text("Version 22.2.0")
+            Text("Version 22.3.0")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -1043,6 +1043,9 @@ struct IntegratedWorkspaceView: View {
                 collapsibleRightPanel(id: "model", title: "モデル設定", systemImage: "slider.horizontal.3") {
                     modelSettingsPanelContent
                 }
+                collapsibleRightPanel(id: "external", title: "External Server", systemImage: "network") {
+                    externalServerPanelContent
+                }
                 collapsibleRightPanel(id: "recovery", title: "Recovery", systemImage: "wrench.and.screwdriver") {
                     IntegratedRecoveryPanelView(
                         issue: viewModel.currentRecoveryIssue,
@@ -1078,6 +1081,36 @@ struct IntegratedWorkspaceView: View {
         .padding(12)
         .background(Color(nsColor: .textBackgroundColor).opacity(0.65))
         .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var externalServerPanelContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("vLLM / Rapid-MLX / LM Studio / Ollama などのOpenAI互換サーバーは、外部サーバーとして接続情報だけを採用します。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            DetailGrid(rows: [
+                ("Target", viewModel.connectionTargetSummary.targetType),
+                ("Base URL", viewModel.connectionTargetSummary.baseURL),
+                ("Model", viewModel.connectionTargetSummary.modelID),
+                ("Ownership", viewModel.connectionTargetSummary.ownershipNote),
+                ("Lifecycle", viewModel.runtimeState.isExternalServerContext ? "外部管理。Start / Stop / Restart対象外" : "未採用。Ready Checkで検出後に採用可能")
+            ])
+            copyRow("Base URL", value: viewModel.connectionTargetSummary.baseURL, action: { viewModel.copyBaseURL() })
+            copyRow("Model", value: viewModel.connectionTargetSummary.modelID, action: { viewModel.copyModelID() })
+            copyRow("API Key", value: viewModel.connectionTargetSummary.apiKeyPlaceholder, action: { viewModel.copyAPIKeyPlaceholder() })
+            HStack {
+                Button("Ready Check") { viewModel.checkReadyRequested() }
+                Button("Adopt") { viewModel.adoptExternalServerRequested() }
+                    .disabled(!viewModel.canAdoptExternalServer)
+                Button("Forget") { viewModel.forgetExternalServerRequested() }
+                    .disabled(!viewModel.canForgetExternalServer)
+            }
+            Text("Adoptは接続コンテキストの保存のみです。外部プロセスの停止・再起動・ログ取得・メモリ監視は行いません。")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(14)
+        .accessibilityIdentifier("integrated-external-server-panel")
     }
 
     private var recentRightPanelLogs: some View {
