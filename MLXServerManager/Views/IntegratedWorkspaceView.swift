@@ -608,7 +608,7 @@ struct IntegratedWorkspaceView: View {
         VStack(spacing: 6) {
             Text("MLX Server Manager")
                 .font(.callout.weight(.semibold))
-            Text("Version 22.0.0")
+            Text("Version 22.2.0")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -713,6 +713,7 @@ struct IntegratedWorkspaceView: View {
                 .frame(width: rowActionsColumnWidth, alignment: .center)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityIdentifier("integrated-model-list-header")
     }
 
     private func modelRow(_ model: ModelConfig) -> some View {
@@ -1159,6 +1160,7 @@ struct IntegratedWorkspaceView: View {
                 formRow("モデル検証", viewModel.selectedModelIdentityDetailText, valueColor: viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("Missing") || viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("review") ? .orange : .green)
                 formRow("用途・メモ", selectedModel?.notes.isEmpty == false ? selectedModel?.notes ?? "-" : "-")
             }
+            .accessibilityIdentifier("integrated-model-basic-info-section")
 
             groupedSection("安全性") {
                 let safetySummary = localizedStatusText(viewModel.selectedModelSafetySummary)
@@ -1170,11 +1172,13 @@ struct IntegratedWorkspaceView: View {
                 let recoverySummary = localizedStatusText(viewModel.failedStartRecoverySummary)
                 formRow("復旧ガイド", recoverySummary, valueColor: recoverySummary == "復旧操作は不要です" ? .secondary : .orange)
             }
+            .accessibilityIdentifier("integrated-model-safety-section")
 
             groupedSection("Direct Mode ポート") {
                 formRow("ポート/IPアドレス", selectedModel.map { "\($0.host):\($0.serverPort)" } ?? "-")
-                availabilityPill("\(selectedModel?.serverPort ?? 0): \(localizedStatusText(viewModel.selectedServerPortSafetyText))")
+                availabilityPill("\(selectedModel.map { "\($0.host):\($0.serverPort)" } ?? "-"): \(localizedStatusText(viewModel.selectedServerPortSafetyText))")
             }
+            .accessibilityIdentifier("integrated-model-port-section")
 
             groupedSection("動作設定") {
                 formRow("変更反映", viewModel.restartRequired ? "再起動が必要" : "現在の設定が有効", valueColor: viewModel.restartRequired ? .orange : .green)
@@ -1240,7 +1244,7 @@ struct IntegratedWorkspaceView: View {
         case "Selected model": return "選択モデル"
         case "Executable": return "実行ファイル"
         case "Model": return "モデル"
-        case "Server port": return "サーバーポート"
+        case "Server port": return "ポート/IPアドレス"
         case "Duplicate": return "重複"
         case "Runtime edit": return "編集中の安全性"
         default: return label
@@ -1259,7 +1263,7 @@ struct IntegratedWorkspaceView: View {
         default:
             return value
                 .replacingOccurrences(of: "Missing", with: "未検出")
-                .replacingOccurrences(of: "Server port", with: "サーバーポート")
+                .replacingOccurrences(of: "Server port", with: "ポート/IPアドレス")
                 .replacingOccurrences(of: "Stop the managed server before editing runtime identity.", with: "実行中のサーバーを停止してから編集してください")
                 .replacingOccurrences(of: "No duplicate endpoint detected.", with: "重複する接続先はありません")
         }

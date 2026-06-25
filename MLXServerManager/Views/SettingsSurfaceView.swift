@@ -51,6 +51,9 @@ struct SettingsSurfaceView: View {
         VStack(alignment: .leading, spacing: 10) {
             Label("外観", systemImage: "circle.lefthalf.filled")
                 .font(.headline)
+            Text("アプリ全体の表示テーマをここで切り替えます。右ペインには外観設定を置きません。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             Picker("外観", selection: $selectedAppearance) {
                 Text("システム").tag("system")
                 Text("ライト").tag("light")
@@ -60,6 +63,7 @@ struct SettingsSurfaceView: View {
             .frame(maxWidth: 320)
         }
         .panelStyle()
+        .accessibilityIdentifier("settings-appearance-panel")
     }
 
     private var appBoundaries: some View {
