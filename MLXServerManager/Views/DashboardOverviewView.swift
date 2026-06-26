@@ -46,7 +46,8 @@ struct DashboardOverviewView: View {
                 HStack(alignment: .top, spacing: 12) {
                     DashboardCurrentTargetCard(
                         summary: targetSummary,
-                        runtimeState: runtimeState
+                        runtimeState: runtimeState,
+                        language: language
                     )
                         .frame(maxWidth: .infinity, alignment: .topLeading)
 
@@ -356,10 +357,19 @@ private struct DashboardNextStepsDisplay {
 struct DashboardCurrentTargetCard: View {
     let summary: ConnectionTargetSummary
     let runtimeState: ModelRuntimeState
+    var language: AppLanguage = .system
+
+    private var l10n: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        l10n.text(english: english, japanese: japanese)
+    }
 
     var body: some View {
         DashboardStatusCard(
-            title: "Current Target",
+            title: t("Current Target", "現在の接続先"),
             systemImage: display.iconName,
             accentColor: display.accentColor
         ) {
@@ -376,11 +386,11 @@ struct DashboardCurrentTargetCard: View {
 
                 Divider()
 
-                DashboardKeyValueRow(label: "Target Type", value: display.targetType)
-                DashboardKeyValueRow(label: "Endpoint", value: display.endpoint)
-                DashboardKeyValueRow(label: "Selected Model", value: display.modelID)
-                DashboardKeyValueRow(label: "Readiness", value: display.readiness)
-                DashboardKeyValueRow(label: "Ownership", value: display.ownership)
+                DashboardKeyValueRow(label: t("Target Type", "接続先タイプ"), value: display.targetType)
+                DashboardKeyValueRow(label: t("Endpoint", "エンドポイント"), value: display.endpoint)
+                DashboardKeyValueRow(label: t("Selected Model", "選択モデル"), value: display.modelID)
+                DashboardKeyValueRow(label: t("Readiness", "準備状態"), value: display.readiness)
+                DashboardKeyValueRow(label: t("Ownership", "管理範囲"), value: display.ownership)
 
                 if let lifecycleNote = display.lifecycleNote {
                     Label(lifecycleNote, systemImage: "info.circle")
@@ -398,7 +408,7 @@ struct DashboardCurrentTargetCard: View {
     }
 
     private var display: DashboardCurrentTargetDisplay {
-        DashboardCurrentTargetDisplay(summary: summary, runtimeState: runtimeState)
+        DashboardCurrentTargetDisplay(summary: summary, runtimeState: runtimeState, language: language)
     }
 }
 
@@ -414,152 +424,153 @@ private struct DashboardCurrentTargetDisplay {
     let iconName: String
     let accentColor: Color
 
-    init(summary: ConnectionTargetSummary, runtimeState: ModelRuntimeState) {
+    init(summary: ConnectionTargetSummary, runtimeState: ModelRuntimeState, language: AppLanguage = .system) {
+        let l10n = AppLocalization(language: language)
         self.modelID = summary.modelID
 
         switch runtimeState {
         case let .externalServerDetected(host, port, baseURL, _):
-            title = "External server detected"
-            message = "A compatible endpoint responded on the selected host and port. It is not managed until you explicitly adopt it as connection context."
-            targetType = "External Server Detected"
+            title = l10n.text(english: "External server detected", japanese: "外部サーバーを検出")
+            message = l10n.text(english: "A compatible endpoint responded on the selected host and port. It is not managed until you explicitly adopt it as connection context.", japanese: "選択したホストとポートで互換エンドポイントが応答しました。接続コンテキストとして明示的に採用するまでは管理対象ではありません。")
+            targetType = l10n.text(english: "External Server Detected", japanese: "検出済み外部サーバー")
             endpoint = "\(baseURL) (\(host):\(port))"
-            readiness = "Ready - /v1/models responded successfully"
-            ownership = "External server, not owned by MLX Server Manager"
-            lifecycleNote = "Adopt is connection context only. Stop and Restart remain unavailable for this external process."
+            readiness = l10n.text(english: "Ready - /v1/models responded successfully", japanese: "Ready - /v1/modelsが正常応答")
+            ownership = l10n.text(english: "External server, not owned by MLX Server Manager", japanese: "外部サーバー。MLX Server Managerの所有ではありません。")
+            lifecycleNote = l10n.text(english: "Adopt is connection context only. Stop and Restart remain unavailable for this external process.", japanese: "採用は接続コンテキストのみです。この外部プロセスでは停止と再起動は利用できません。")
             iconName = "network"
             accentColor = .orange
         case let .adoptedExternalServer(host, port, baseURL, _):
-            title = "Adopted external server"
-            message = "This endpoint is being used as connection context only. MLX Server Manager does not own or control the process."
-            targetType = "Adopted External Server"
+            title = l10n.text(english: "Adopted external server", japanese: "採用済み外部サーバー")
+            message = l10n.text(english: "This endpoint is being used as connection context only. MLX Server Manager does not own or control the process.", japanese: "このエンドポイントは接続コンテキストとしてのみ使用中です。MLX Server Managerはプロセスを所有・制御しません。")
+            targetType = l10n.text(english: "Adopted External Server", japanese: "採用済み外部サーバー")
             endpoint = "\(baseURL) (\(host):\(port))"
-            readiness = "Ready - /v1/models responded successfully"
-            ownership = "Connection context only"
-            lifecycleNote = "Forget External Server only clears app-side context. It does not stop the server."
+            readiness = l10n.text(english: "Ready - /v1/models responded successfully", japanese: "Ready - /v1/modelsが正常応答")
+            ownership = l10n.text(english: "Connection context only", japanese: "接続コンテキストのみ")
+            lifecycleNote = l10n.text(english: "Forget External Server only clears app-side context. It does not stop the server.", japanese: "外部サーバー解除はアプリ側コンテキストのみを消去します。サーバーは停止しません。")
             iconName = "link"
             accentColor = .orange
         case let .ready(host, port, processIdentifier):
-            title = "Managed server ready"
-            message = "The selected endpoint is ready for an OpenAI-compatible client. MLX Server Manager owns this managed process when a pid is attached."
-            targetType = "Managed Server"
+            title = l10n.text(english: "Managed server ready", japanese: "管理サーバーはReadyです")
+            message = l10n.text(english: "The selected endpoint is ready for an OpenAI-compatible client. MLX Server Manager owns this managed process when a pid is attached.", japanese: "選択エンドポイントはOpenAI互換クライアントで利用できます。pidが付いている場合、この管理プロセスはMLX Server Managerの所有です。")
+            targetType = l10n.text(english: "Managed Server", japanese: "管理サーバー")
             endpoint = "\(summary.baseURL) (\(host):\(port))"
-            readiness = "Ready - /v1/models responded successfully"
+            readiness = l10n.text(english: "Ready - /v1/models responded successfully", japanese: "Ready - /v1/modelsが正常応答")
             if let processIdentifier {
-                ownership = "Managed by MLX Server Manager, pid \(processIdentifier)"
+                ownership = l10n.text(english: "Managed by MLX Server Manager, pid \(processIdentifier)", japanese: "MLX Server Managerが管理中、pid \(processIdentifier)")
             } else {
-                ownership = "Ready endpoint, no managed pid attached"
+                ownership = l10n.text(english: "Ready endpoint, no managed pid attached", japanese: "Readyエンドポイントですが、管理pidは付いていません")
             }
-            lifecycleNote = "Start, Stop, and Restart controls apply only when an app-managed process is attached."
+            lifecycleNote = l10n.text(english: "Start, Stop, and Restart controls apply only when an app-managed process is attached.", japanese: "起動、停止、再起動はアプリ管理プロセスが付いている場合のみ適用されます。")
             iconName = "server.rack"
             accentColor = .green
         case let .starting(host, port):
-            title = "Managed server starting"
-            message = "A managed launch is in progress. Readiness has not completed yet."
-            targetType = "Managed Server"
+            title = l10n.text(english: "Managed server starting", japanese: "管理サーバーを起動中")
+            message = l10n.text(english: "A managed launch is in progress. Readiness has not completed yet.", japanese: "管理起動を実行中です。Ready確認はまだ完了していません。")
+            targetType = l10n.text(english: "Managed Server", japanese: "管理サーバー")
             endpoint = "\(summary.baseURL) (\(host):\(port))"
-            readiness = "Not checked - waiting for /v1/models"
-            ownership = "Managed launch requested by MLX Server Manager"
-            lifecycleNote = "Lifecycle actions remain explicit; no automatic restart is triggered by this card."
+            readiness = l10n.text(english: "Not checked - waiting for /v1/models", japanese: "未確認 - /v1/modelsを待機中")
+            ownership = l10n.text(english: "Managed launch requested by MLX Server Manager", japanese: "MLX Server Managerが管理起動を要求済み")
+            lifecycleNote = l10n.text(english: "Lifecycle actions remain explicit; no automatic restart is triggered by this card.", japanese: "ライフサイクル操作は明示的な操作のままです。このカードが自動再起動を起動することはありません。")
             iconName = "server.rack"
             accentColor = .orange
         case let .loading(host, port, processIdentifier):
-            title = "Managed server loading"
-            message = "A managed process is attached and the endpoint is still loading."
-            targetType = "Managed Server"
+            title = l10n.text(english: "Managed server loading", japanese: "管理サーバーをロード中")
+            message = l10n.text(english: "A managed process is attached and the endpoint is still loading.", japanese: "管理プロセスが付いており、エンドポイントはまだロード中です。")
+            targetType = l10n.text(english: "Managed Server", japanese: "管理サーバー")
             endpoint = "\(summary.baseURL) (\(host):\(port))"
-            readiness = "Checking - waiting for /v1/models"
-            ownership = "Managed by MLX Server Manager, pid \(processIdentifier)"
-            lifecycleNote = "Stop and Restart apply to the managed process only."
+            readiness = l10n.text(english: "Checking - waiting for /v1/models", japanese: "確認中 - /v1/modelsを待機中")
+            ownership = l10n.text(english: "Managed by MLX Server Manager, pid \(processIdentifier)", japanese: "MLX Server Managerが管理中、pid \(processIdentifier)")
+            lifecycleNote = l10n.text(english: "Stop and Restart apply to the managed process only.", japanese: "停止と再起動は管理プロセスのみに適用されます。")
             iconName = "server.rack"
             accentColor = .orange
         case let .checkingReady(host, port):
-            title = "Checking readiness"
-            message = "The app is checking the selected endpoint with /v1/models."
+            title = l10n.text(english: "Checking readiness", japanese: "Ready確認中")
+            message = l10n.text(english: "The app is checking the selected endpoint with /v1/models.", japanese: "アプリが/v1/modelsで選択エンドポイントを確認しています。")
             targetType = summary.targetType
             endpoint = "\(summary.baseURL) (\(host):\(port))"
-            readiness = "Checking - /v1/models request in progress"
+            readiness = l10n.text(english: "Checking - /v1/models request in progress", japanese: "確認中 - /v1/modelsリクエスト実行中")
             ownership = summary.ownershipNote
-            lifecycleNote = "Readiness check does not send inference requests."
+            lifecycleNote = l10n.text(english: "Readiness check does not send inference requests.", japanese: "Ready確認では推論リクエストを送信しません。")
             iconName = summary.isActiveTarget ? "server.rack" : "power"
             accentColor = .orange
         case let .readyCheckFailed(host, port, message):
-            title = "Target readiness failed"
-            self.message = "The selected endpoint did not pass the /v1/models readiness check: \(message)"
+            title = l10n.text(english: "Target readiness failed", japanese: "接続先のReady確認に失敗")
+            self.message = l10n.text(english: "The selected endpoint did not pass the /v1/models readiness check: \(message)", japanese: "選択エンドポイントは/v1/modelsのReady確認に合格しませんでした: \(message)")
             targetType = summary.targetType
             endpoint = "\(summary.baseURL) (\(host):\(port))"
-            readiness = "Failed - readiness check failed"
+            readiness = l10n.text(english: "Failed - readiness check failed", japanese: "失敗 - Ready確認失敗")
             ownership = summary.ownershipNote
-            lifecycleNote = "No automatic recovery is attempted. Use existing controls after checking setup and logs."
+            lifecycleNote = l10n.text(english: "No automatic recovery is attempted. Use existing controls after checking setup and logs.", japanese: "自動復旧は試行しません。設定とログを確認してから既存の操作を使ってください。")
             iconName = "exclamationmark.triangle"
             accentColor = .red
         case let .portBusy(host, port):
-            title = "Endpoint unavailable"
-            message = "The selected host and port are busy, but no target has been adopted or attached here."
-            targetType = "Unavailable"
+            title = l10n.text(english: "Endpoint unavailable", japanese: "エンドポイントを利用できません")
+            message = l10n.text(english: "The selected host and port are busy, but no target has been adopted or attached here.", japanese: "選択したホストとポートは使用中ですが、ここでは接続先の採用や接続は行われていません。")
+            targetType = l10n.text(english: "Unavailable", japanese: "利用不可")
             endpoint = "\(summary.baseURL) (\(host):\(port))"
-            readiness = "Unavailable - port is busy"
-            ownership = "No app-managed process attached"
-            lifecycleNote = "Start will not launch a second server on this port."
+            readiness = l10n.text(english: "Unavailable - port is busy", japanese: "利用不可 - ポート使用中")
+            ownership = l10n.text(english: "No app-managed process attached", japanese: "アプリ管理プロセスは付いていません")
+            lifecycleNote = l10n.text(english: "Start will not launch a second server on this port.", japanese: "このポートで2つ目のサーバーを起動することはありません。")
             iconName = "exclamationmark.triangle"
             accentColor = .red
         case let .portCheckFailed(host, port, message):
-            title = "Endpoint check failed"
-            self.message = "The selected endpoint could not be checked: \(message)"
-            targetType = "Unavailable"
+            title = l10n.text(english: "Endpoint check failed", japanese: "エンドポイント確認に失敗")
+            self.message = l10n.text(english: "The selected endpoint could not be checked: \(message)", japanese: "選択エンドポイントを確認できませんでした: \(message)")
+            targetType = l10n.text(english: "Unavailable", japanese: "利用不可")
             endpoint = "\(summary.baseURL) (\(host):\(port))"
-            readiness = "Failed - endpoint check failed"
-            ownership = "No app-managed process attached"
-            lifecycleNote = "No automatic recovery is attempted."
+            readiness = l10n.text(english: "Failed - endpoint check failed", japanese: "失敗 - エンドポイント確認失敗")
+            ownership = l10n.text(english: "No app-managed process attached", japanese: "アプリ管理プロセスは付いていません")
+            lifecycleNote = l10n.text(english: "No automatic recovery is attempted.", japanese: "自動復旧は試行しません。")
             iconName = "exclamationmark.triangle"
             accentColor = .red
         case let .checkingPort(host, port):
-            title = "Checking endpoint"
-            message = "The app is checking whether the selected host and port can be used."
-            targetType = "No Current Target"
+            title = l10n.text(english: "Checking endpoint", japanese: "エンドポイント確認中")
+            message = l10n.text(english: "The app is checking whether the selected host and port can be used.", japanese: "選択したホストとポートを利用できるか確認しています。")
+            targetType = l10n.text(english: "No Current Target", japanese: "現在の接続先なし")
             endpoint = "\(summary.baseURL) (\(host):\(port))"
-            readiness = "Not checked - port check in progress"
-            ownership = "No app-managed process attached"
-            lifecycleNote = "Port checks do not start or stop servers."
+            readiness = l10n.text(english: "Not checked - port check in progress", japanese: "未確認 - ポート確認中")
+            ownership = l10n.text(english: "No app-managed process attached", japanese: "アプリ管理プロセスは付いていません")
+            lifecycleNote = l10n.text(english: "Port checks do not start or stop servers.", japanese: "ポート確認はサーバーの起動や停止を行いません。")
             iconName = "power"
             accentColor = .orange
         case let .portAvailable(host, port):
-            title = "No current target"
-            message = "The selected host and port are available. Start a managed server or adopt an external server through the existing controls."
-            targetType = "No Current Target"
+            title = l10n.text(english: "No current target", japanese: "現在の接続先なし")
+            message = l10n.text(english: "The selected host and port are available. Start a managed server or adopt an external server through the existing controls.", japanese: "選択したホストとポートは利用可能です。既存の操作から管理サーバーを起動するか、外部サーバーを採用してください。")
+            targetType = l10n.text(english: "No Current Target", japanese: "現在の接続先なし")
             endpoint = "\(summary.baseURL) (\(host):\(port))"
-            readiness = "Not checked - no active target"
-            ownership = "No app-managed process attached"
-            lifecycleNote = "Start remains an explicit user action."
+            readiness = l10n.text(english: "Not checked - no active target", japanese: "未確認 - 有効な接続先なし")
+            ownership = l10n.text(english: "No app-managed process attached", japanese: "アプリ管理プロセスは付いていません")
+            lifecycleNote = l10n.text(english: "Start remains an explicit user action.", japanese: "起動は明示的なユーザー操作のままです。")
             iconName = "power"
             accentColor = .secondary
         case .stopped:
-            title = "No current target"
-            message = "No managed server is running and no external server is adopted."
-            targetType = "No Current Target"
+            title = l10n.text(english: "No current target", japanese: "現在の接続先なし")
+            message = l10n.text(english: "No managed server is running and no external server is adopted.", japanese: "管理サーバーは実行されておらず、外部サーバーも採用されていません。")
+            targetType = l10n.text(english: "No Current Target", japanese: "現在の接続先なし")
             endpoint = summary.baseURL
-            readiness = "Not checked - no active target"
-            ownership = "No app-managed process attached"
-            lifecycleNote = "Start a managed server, or adopt a detected external server after readiness succeeds."
+            readiness = l10n.text(english: "Not checked - no active target", japanese: "未確認 - 有効な接続先なし")
+            ownership = l10n.text(english: "No app-managed process attached", japanese: "アプリ管理プロセスは付いていません")
+            lifecycleNote = l10n.text(english: "Start a managed server, or adopt a detected external server after readiness succeeds.", japanese: "管理サーバーを起動するか、Ready確認後に検出済み外部サーバーを採用してください。")
             iconName = "power"
             accentColor = .secondary
         case .stopping:
-            title = "Managed server stopping"
-            message = "The app-managed process is stopping. The current target is becoming unavailable."
-            targetType = "Managed Server"
+            title = l10n.text(english: "Managed server stopping", japanese: "管理サーバーを停止中")
+            message = l10n.text(english: "The app-managed process is stopping. The current target is becoming unavailable.", japanese: "アプリ管理プロセスを停止中です。現在の接続先は利用不可になります。")
+            targetType = l10n.text(english: "Managed Server", japanese: "管理サーバー")
             endpoint = summary.baseURL
-            readiness = "Unavailable - process is stopping"
-            ownership = "Managed process is stopping"
-            lifecycleNote = "Stop applies only to the app-managed process."
+            readiness = l10n.text(english: "Unavailable - process is stopping", japanese: "利用不可 - プロセス停止中")
+            ownership = l10n.text(english: "Managed process is stopping", japanese: "管理プロセスを停止中")
+            lifecycleNote = l10n.text(english: "Stop applies only to the app-managed process.", japanese: "停止はアプリ管理プロセスのみに適用されます。")
             iconName = "server.rack"
             accentColor = .orange
         case let .error(message), let .unknown(message):
-            title = "Target state needs attention"
+            title = l10n.text(english: "Target state needs attention", japanese: "接続先状態の確認が必要")
             self.message = message
-            targetType = summary.isActiveTarget ? summary.targetType : "Unavailable"
+            targetType = summary.isActiveTarget ? summary.targetType : l10n.text(english: "Unavailable", japanese: "利用不可")
             endpoint = summary.baseURL
-            readiness = "Unavailable - check status and logs"
+            readiness = l10n.text(english: "Unavailable - check status and logs", japanese: "利用不可 - 状態とログを確認してください")
             ownership = summary.ownershipNote
-            lifecycleNote = "No automatic recovery is attempted."
+            lifecycleNote = l10n.text(english: "No automatic recovery is attempted.", japanese: "自動復旧は試行しません。")
             iconName = "exclamationmark.triangle"
             accentColor = .red
         }
