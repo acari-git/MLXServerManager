@@ -6,6 +6,7 @@ struct DetailInspectorSurfaceView: View {
     let restartRequired: Bool
     let targetSummary: ConnectionTargetSummary
     let modelAvailability: ModelAvailabilitySummary
+    var language: AppLanguage = .system
     let onCheckModelAvailability: () -> Void
 
     var body: some View {
@@ -30,16 +31,20 @@ struct DetailInspectorSurfaceView: View {
         .accessibilityIdentifier("detail-inspector-surface")
     }
 
+    private var l10n: AppLocalization {
+        AppLocalization(language: language)
+    }
+
     private var selectedProfileText: String {
-        selectedModel?.displayName ?? "None"
+        selectedModel?.displayName ?? l10n.text(english: "None", japanese: "なし")
     }
 
     private var targetStatusText: String {
-        targetSummary.isActiveTarget ? "Active" : "Inactive"
+        targetSummary.isActiveTarget ? l10n.text(english: "Active", japanese: "有効") : l10n.text(english: "Inactive", japanese: "無効")
     }
 
     private var restartRequiredText: String {
-        restartRequired ? "Yes" : "No"
+        restartRequired ? l10n.text(english: "Yes", japanese: "はい") : l10n.text(english: "No", japanese: "いいえ")
     }
 
     private var header: some View {
@@ -49,11 +54,11 @@ struct DetailInspectorSurfaceView: View {
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.accentColor)
 
-                Text("Inspector")
+                Text(l10n.text(english: "Inspector", japanese: "インスペクター"))
                     .font(.title2.weight(.semibold))
             }
 
-            Text("Read-only selected profile details. Runtime controls remain on Dashboard.")
+            Text(l10n.text(english: "Read-only selected profile details. Runtime controls remain on Dashboard.", japanese: "選択プロファイルの詳細を読み取り専用で表示します。ランタイム操作はダッシュボードにあります。"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -67,10 +72,10 @@ struct DetailInspectorSurfaceView: View {
             alignment: .leading,
             spacing: 12
         ) {
-            summaryCard("Selected", value: selectedProfileText, identifier: "detail-inspector-summary-selected")
-            summaryCard("Target", value: targetStatusText, identifier: "detail-inspector-summary-target")
-            summaryCard("Running", value: runningModelText, identifier: "detail-inspector-summary-running")
-            summaryCard("Restart required", value: restartRequiredText, identifier: "detail-inspector-summary-restart-required")
+            summaryCard(l10n.text(english: "Selected", japanese: "選択中"), value: selectedProfileText, identifier: "detail-inspector-summary-selected")
+            summaryCard(l10n.text(english: "Target", japanese: "接続先"), value: targetStatusText, identifier: "detail-inspector-summary-target")
+            summaryCard(l10n.text(english: "Running", japanese: "実行中"), value: runningModelText, identifier: "detail-inspector-summary-running")
+            summaryCard(l10n.text(english: "Restart required", japanese: "再起動必要"), value: restartRequiredText, identifier: "detail-inspector-summary-restart-required")
         }
         .accessibilityIdentifier("detail-inspector-summary")
     }
@@ -111,7 +116,7 @@ struct DetailInspectorSurfaceView: View {
                 Spacer()
 
                 if restartRequired {
-                    Label("Restart required", systemImage: "arrow.clockwise.circle")
+                    Label(l10n.text(english: "Restart required", japanese: "再起動必要"), systemImage: "arrow.clockwise.circle")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.orange)
                 }
@@ -119,15 +124,15 @@ struct DetailInspectorSurfaceView: View {
 
             DetailGrid(rows: [
                 ("Model ID", model.modelID),
-                ("Display Name", model.displayName),
-                ("Family", model.family),
-                ("Quantization", model.quantization),
-                ("Context", model.contextWindow),
-                ("Local Name", model.localName),
-                ("Endpoint", "\(model.host):\(model.serverPort)"),
-                ("Thinking", model.enableThinking ? "Enabled" : "Disabled"),
-                ("Running", runningModelText),
-                ("Notes", model.notes)
+                (l10n.text(english: "Display Name", japanese: "表示名"), model.displayName),
+                (l10n.text(english: "Family", japanese: "ファミリー"), model.family),
+                (l10n.text(english: "Quantization", japanese: "量子化"), model.quantization),
+                (l10n.text(english: "Context", japanese: "コンテキスト"), model.contextWindow),
+                (l10n.text(english: "Local Name", japanese: "ローカル名"), model.localName),
+                (l10n.text(english: "Endpoint", japanese: "エンドポイント"), "\(model.host):\(model.serverPort)"),
+                ("Thinking", model.enableThinking ? l10n.text(english: "Enabled", japanese: "有効") : l10n.text(english: "Disabled", japanese: "無効")),
+                (l10n.text(english: "Running", japanese: "実行中"), runningModelText),
+                (l10n.text(english: "Notes", japanese: "メモ"), model.notes)
             ])
         }
         .padding(16)
@@ -145,7 +150,7 @@ struct DetailInspectorSurfaceView: View {
     private var modelAvailabilityCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Model Availability")
+                Text(l10n.text(english: "Model Availability", japanese: "モデルの利用可否"))
                     .font(.headline)
 
                 Spacer()
@@ -156,23 +161,23 @@ struct DetailInspectorSurfaceView: View {
             }
 
             DetailGrid(rows: [
-                ("Status", modelAvailability.state.title),
-                ("Profile", modelAvailability.profileDisplayName),
-                ("Target", modelAvailability.configuredTarget),
-                ("Checked Path", modelAvailability.checkedPathSummary),
-                ("Scope", modelAvailability.scopeText),
-                ("Next Step", modelAvailability.nextStep)
+                (l10n.text(english: "Status", japanese: "ステータス"), modelAvailability.state.title),
+                (l10n.text(english: "Profile", japanese: "プロファイル"), modelAvailability.profileDisplayName),
+                (l10n.text(english: "Target", japanese: "接続先"), modelAvailability.configuredTarget),
+                (l10n.text(english: "Checked Path", japanese: "確認パス"), modelAvailability.checkedPathSummary),
+                (l10n.text(english: "Scope", japanese: "範囲"), modelAvailability.scopeText),
+                (l10n.text(english: "Next Step", japanese: "次の手順"), modelAvailability.nextStep)
             ])
 
             Button {
                 onCheckModelAvailability()
             } label: {
-                Label("Check Model Availability", systemImage: "magnifyingglass")
+                Label(l10n.text(english: "Check Model Availability", japanese: "モデルの利用可否を確認"), systemImage: "magnifyingglass")
             }
             .disabled(!modelAvailability.canCheck)
             .accessibilityIdentifier("detail-inspector-model-availability-check")
 
-            Text("Checks only the selected profile's configured local path. It does not scan, download, delete, or verify launch compatibility.")
+            Text(l10n.text(english: "Checks only the selected profile's configured local path. It does not scan, download, delete, or verify launch compatibility.", japanese: "選択プロファイルに設定されたローカルパスだけを確認します。スキャン、ダウンロード、削除、起動互換性の検証は行いません。"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -191,7 +196,7 @@ struct DetailInspectorSurfaceView: View {
     private var connectionTargetCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Connection Target")
+                Text(l10n.text(english: "Connection Target", japanese: "接続先"))
                     .font(.headline)
 
                 Spacer()
@@ -202,11 +207,11 @@ struct DetailInspectorSurfaceView: View {
             }
 
             DetailGrid(rows: [
-                ("Target Type", targetSummary.targetType),
+                (l10n.text(english: "Target Type", japanese: "接続先タイプ"), targetSummary.targetType),
                 ("Base URL", targetSummary.baseURL),
                 ("Model ID", targetSummary.modelID),
-                ("Readiness", targetSummary.readinessSummary),
-                ("Ownership", targetSummary.ownershipNote),
+                (l10n.text(english: "Readiness", japanese: "準備状態"), targetSummary.readinessSummary),
+                (l10n.text(english: "Ownership", japanese: "管理範囲"), targetSummary.ownershipNote),
                 ("Direct Mode", targetSummary.directModeNote)
             ])
         }
@@ -223,7 +228,7 @@ struct DetailInspectorSurfaceView: View {
     }
 
     private var boundaryNote: some View {
-        Label("Inspector is read-only for profile and runtime changes. Availability checks do not mutate profiles or start servers.", systemImage: "lock")
+        Label(l10n.text(english: "Inspector is read-only for profile and runtime changes. Availability checks do not mutate profiles or start servers.", japanese: "インスペクターはプロファイルとランタイム変更について読み取り専用です。利用可否確認はプロファイルを変更せず、サーバーも起動しません。"), systemImage: "lock")
             .font(.caption)
             .foregroundStyle(.secondary)
             .accessibilityIdentifier("detail-inspector-boundary-note")
@@ -231,9 +236,9 @@ struct DetailInspectorSurfaceView: View {
 
     private var emptyState: some View {
         ContentUnavailableView(
-            "No Selected Profile",
+            l10n.text(english: "No Selected Profile", japanese: "プロファイルが選択されていません"),
             systemImage: "sidebar.right",
-            description: Text("Select a profile from Dashboard or Profiles. The inspector does not change runtime lifecycle behavior.")
+            description: Text(l10n.text(english: "Select a profile from Dashboard or Profiles. The inspector does not change runtime lifecycle behavior.", japanese: "ダッシュボードまたはプロファイル画面でプロファイルを選択してください。インスペクターはランタイムのライフサイクル動作を変更しません。"))
         )
         .frame(maxWidth: .infinity, minHeight: 260)
         .accessibilityIdentifier("detail-inspector-empty-state")

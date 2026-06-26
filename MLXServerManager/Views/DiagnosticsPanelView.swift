@@ -4,7 +4,12 @@ struct DiagnosticsPanelView: View {
     let results: [DiagnosticsResult]
     let didRun: Bool
     let summaryText: String
+    var language: AppLanguage = .system
     let onCopySummary: () -> Void
+
+    private var l10n: AppLocalization {
+        AppLocalization(language: language)
+    }
 
     private var passCount: Int {
         results.filter { $0.status == .pass }.count
@@ -25,7 +30,7 @@ struct DiagnosticsPanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Diagnostics")
+                Text(l10n.text(english: "Diagnostics", japanese: "診断"))
                     .font(.headline)
 
                 Spacer()
@@ -33,7 +38,7 @@ struct DiagnosticsPanelView: View {
                 Button {
                     onCopySummary()
                 } label: {
-                    Label("Copy Diagnostics Summary", systemImage: "doc.on.doc")
+                    Label(l10n.text(english: "Copy Diagnostics Summary", japanese: "診断サマリーをコピー"), systemImage: "doc.on.doc")
                 }
             }
 
@@ -50,7 +55,7 @@ struct DiagnosticsPanelView: View {
                     }
                 }
             } else {
-                Text("No diagnostics run yet.")
+                Text(l10n.text(english: "No diagnostics run yet.", japanese: "診断はまだ実行されていません。"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -60,9 +65,9 @@ struct DiagnosticsPanelView: View {
 
     private var summaryView: some View {
         HStack(spacing: 8) {
-            summaryPill(title: "Pass", count: passCount, color: .green)
-            summaryPill(title: "Warning", count: warningCount, color: .orange)
-            summaryPill(title: "Failure", count: failureCount, color: .red)
+            summaryPill(title: l10n.text(english: "Pass", japanese: "成功"), count: passCount, color: .green)
+            summaryPill(title: l10n.text(english: "Warning", japanese: "警告"), count: warningCount, color: .orange)
+            summaryPill(title: l10n.text(english: "Failure", japanese: "失敗"), count: failureCount, color: .red)
 
             Spacer(minLength: 0)
 
@@ -74,8 +79,8 @@ struct DiagnosticsPanelView: View {
 
     private var issueBanner: some View {
         let message = failureCount > 0
-            ? "\(failureCount) failure(s) need attention."
-            : "\(warningCount) warning(s) need review."
+            ? l10n.text(english: "\(failureCount) failure(s) need attention.", japanese: "\(failureCount)件の失敗に対応が必要です。")
+            : l10n.text(english: "\(warningCount) warning(s) need review.", japanese: "\(warningCount)件の警告を確認してください。")
 
         return Text(message)
             .font(.callout.weight(.semibold))

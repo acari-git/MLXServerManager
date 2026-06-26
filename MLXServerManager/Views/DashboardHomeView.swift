@@ -12,6 +12,10 @@ struct DashboardHomeView: View {
         AppLocalization(language: viewModel.settings.uiLanguage)
     }
 
+    private func t(_ english: String, _ japanese: String) -> String {
+        strings.text(english: english, japanese: japanese)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -36,7 +40,7 @@ struct DashboardHomeView: View {
                 Text(strings.text(.dashboard))
                     .font(.title2.weight(.semibold))
             }
-            Text("Overview for Direct Mode operations. Use Models, Downloads, Runtime, Settings, and Logs for detailed work.")
+            Text(t("Overview for Direct Mode operations. Use Models, Downloads, Runtime, Settings, and Logs for detailed work.", "Direct Mode操作の概要です。詳細な作業はモデル、ダウンロード、ランタイム、設定、ログで行います。"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -48,12 +52,12 @@ struct DashboardHomeView: View {
             alignment: .leading,
             spacing: 12
         ) {
-            summaryCard("Runtime", value: viewModel.runtimeState.title)
-            summaryCard("Selected", value: viewModel.selectedModelIdentifier)
-            summaryCard("Running", value: viewModel.runningModelID ?? "Not running")
-            summaryCard("Latest benchmark", value: viewModel.latestBenchmarkResult?.latencyText ?? "Not run")
-            summaryCard("Downloads", value: viewModel.huggingFaceDownloadQueueSummary)
-            summaryCard("Logs", value: "\(viewModel.logEntries.count) entries")
+            summaryCard(strings.text(.runtime), value: viewModel.runtimeState.title)
+            summaryCard(t("Selected", "選択中"), value: viewModel.selectedModelIdentifier)
+            summaryCard(t("Running", "実行中"), value: viewModel.runningModelID ?? t("Not running", "未実行"))
+            summaryCard(t("Latest benchmark", "最新ベンチマーク"), value: viewModel.latestBenchmarkResult?.latencyText ?? t("Not run", "未実行"))
+            summaryCard(strings.text(.downloads), value: viewModel.huggingFaceDownloadQueueSummary)
+            summaryCard(strings.text(.logs), value: t("\(viewModel.logEntries.count) entries", "\(viewModel.logEntries.count)件"))
         }
     }
 
@@ -82,12 +86,12 @@ struct DashboardHomeView: View {
             Text(strings.text(.nextActions))
                 .font(.headline)
             HStack {
-                Button("Manage Models") { onOpenModels() }
+                Button(t("Manage Models", "モデルを管理")) { onOpenModels() }
                     .buttonStyle(.borderedProminent)
-                Button("Find / Download") { onOpenDownloads() }
-                Button("Open Runtime") { onOpenRuntime() }
-                Button("Open Settings") { onOpenSettings() }
-                Button("Open Logs") { onOpenLogs() }
+                Button(t("Find / Download", "検索 / ダウンロード")) { onOpenDownloads() }
+                Button(t("Open Runtime", "ランタイムを開く")) { onOpenRuntime() }
+                Button(t("Open Settings", "設定を開く")) { onOpenSettings() }
+                Button(t("Open Logs", "ログを開く")) { onOpenLogs() }
             }
 
             HStack {
@@ -118,7 +122,7 @@ struct DashboardHomeView: View {
                 }
             }
 
-            Text("Detailed model management moved to Models. Hugging Face acquisition moved to Downloads. Runtime diagnostics and benchmark history moved to Runtime.")
+            Text(t("Detailed model management moved to Models. Hugging Face acquisition moved to Downloads. Runtime diagnostics and benchmark history moved to Runtime.", "詳細なモデル管理はモデル画面へ、Hugging Faceからの取得はダウンロード画面へ、ランタイム診断とベンチマーク履歴はランタイム画面へ移動しました。"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

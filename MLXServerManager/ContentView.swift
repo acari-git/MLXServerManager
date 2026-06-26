@@ -148,6 +148,7 @@ struct ContentView: View {
                             results: viewModel.diagnosticsResults,
                             didRun: viewModel.diagnosticsDidRun,
                             summaryText: viewModel.diagnosticsSummaryText,
+                            language: viewModel.settings.uiLanguage,
                             onCopySummary: viewModel.copyDiagnosticsSummaryRequested
                         )
 
@@ -178,6 +179,7 @@ struct ContentView: View {
                             runningModelText: viewModel.runningModelText,
                             restartRequired: viewModel.restartRequired,
                             deletionMessage: viewModel.profileDeletionMessage,
+                            language: viewModel.settings.uiLanguage,
                             onEditProfile: viewModel.editProfileRequested,
                             onDeleteProfile: viewModel.deleteProfileRequested
                         )

@@ -5,13 +5,18 @@ struct ModelDetailView: View {
     let runningModelText: String
     let restartRequired: Bool
     let deletionMessage: String?
+    var language: AppLanguage = .system
     let onEditProfile: () -> Void
     let onDeleteProfile: () -> Void
+
+    private var l10n: AppLocalization {
+        AppLocalization(language: language)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Selected Model")
+                Text(l10n.text(english: "Selected Model", japanese: "選択モデル"))
                     .font(.headline)
 
                 Spacer()
@@ -20,13 +25,13 @@ struct ModelDetailView: View {
                     Button {
                         onEditProfile()
                     } label: {
-                        Label("Edit Profile", systemImage: "pencil")
+                        Label(l10n.text(english: "Edit Profile", japanese: "プロファイルを編集"), systemImage: "pencil")
                     }
 
                     Button(role: .destructive) {
                         onDeleteProfile()
                     } label: {
-                        Label("Delete Profile", systemImage: "trash")
+                        Label(l10n.text(english: "Delete Profile", japanese: "プロファイルを削除"), systemImage: "trash")
                     }
                 }
                 .disabled(model == nil)
@@ -40,13 +45,13 @@ struct ModelDetailView: View {
 
             if let model {
                 VStack(alignment: .leading, spacing: 6) {
-                    Label("Selected Model: \(model.modelID)", systemImage: "checkmark.circle")
+                    Label("\(l10n.text(english: "Selected Model", japanese: "選択モデル")): \(model.modelID)", systemImage: "checkmark.circle")
                         .foregroundStyle(.secondary)
                     Label(runningModelText, systemImage: "server.rack")
                         .foregroundStyle(.secondary)
 
                     if restartRequired {
-                        Label("Restart required to apply selected model.", systemImage: "arrow.clockwise.circle")
+                        Label(l10n.text(english: "Restart required to apply selected model.", japanese: "選択モデルを反映するには再起動が必要です。"), systemImage: "arrow.clockwise.circle")
                             .fontWeight(.semibold)
                             .foregroundStyle(.orange)
                     }
@@ -55,17 +60,17 @@ struct ModelDetailView: View {
 
                 DetailGrid(rows: [
                     ("Model ID", model.modelID),
-                    ("Display Name", model.displayName),
-                    ("Family", model.family),
-                    ("Quantization", model.quantization),
-                    ("Context", model.contextWindow),
-                    ("Local Name", model.localName),
-                    ("Endpoint", "\(model.host):\(model.serverPort)"),
-                    ("Thinking", model.enableThinking ? "Enabled" : "Disabled"),
-                    ("Notes", model.notes)
+                    (l10n.text(english: "Display Name", japanese: "表示名"), model.displayName),
+                    (l10n.text(english: "Family", japanese: "ファミリー"), model.family),
+                    (l10n.text(english: "Quantization", japanese: "量子化"), model.quantization),
+                    (l10n.text(english: "Context", japanese: "コンテキスト"), model.contextWindow),
+                    (l10n.text(english: "Local Name", japanese: "ローカル名"), model.localName),
+                    (l10n.text(english: "Endpoint", japanese: "エンドポイント"), "\(model.host):\(model.serverPort)"),
+                    ("Thinking", model.enableThinking ? l10n.text(english: "Enabled", japanese: "有効") : l10n.text(english: "Disabled", japanese: "無効")),
+                    (l10n.text(english: "Notes", japanese: "メモ"), model.notes)
                 ])
             } else {
-                Text("No model selected")
+                Text(l10n.text(english: "No model selected", japanese: "モデルが選択されていません"))
                     .foregroundStyle(.secondary)
             }
         }
