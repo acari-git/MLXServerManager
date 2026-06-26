@@ -70,7 +70,8 @@ struct DashboardOverviewView: View {
                 DashboardClientSetupCard(
                     runtimeState: runtimeState,
                     targetSummary: targetSummary,
-                    selectedModel: selectedModel
+                    selectedModel: selectedModel,
+                    language: language
                 )
                 .frame(maxWidth: .infinity, alignment: .topLeading)
 
@@ -81,7 +82,8 @@ struct DashboardOverviewView: View {
 
                 DashboardDiagnosticsGuidanceCard(
                     runtimeState: runtimeState,
-                    targetSummary: targetSummary
+                    targetSummary: targetSummary,
+                    language: language
                 )
                 .frame(maxWidth: .infinity, alignment: .topLeading)
 
@@ -1040,10 +1042,19 @@ private struct DashboardServerStateDisplay {
 struct DashboardDiagnosticsGuidanceCard: View {
     let runtimeState: ModelRuntimeState
     let targetSummary: ConnectionTargetSummary
+    var language: AppLanguage = .system
+
+    private var l10n: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        l10n.text(english: english, japanese: japanese)
+    }
 
     var body: some View {
         DashboardStatusCard(
-            title: "Diagnostics & Logs Guidance",
+            title: t("Diagnostics & Logs Guidance", "診断とログのガイド"),
             systemImage: "stethoscope",
             accentColor: display.accentColor
         ) {
@@ -1061,18 +1072,18 @@ struct DashboardDiagnosticsGuidanceCard: View {
                 Divider()
 
                 HStack(alignment: .top, spacing: 12) {
-                    DashboardKeyValueRow(label: "Next Step", value: display.nextStep)
+                    DashboardKeyValueRow(label: t("Next Step", "次の手順"), value: display.nextStep)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    DashboardKeyValueRow(label: "Readiness", value: display.readiness)
+                    DashboardKeyValueRow(label: t("Readiness", "準備状態"), value: display.readiness)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 HStack(alignment: .top, spacing: 12) {
-                    DashboardKeyValueRow(label: "Logs", value: display.logs)
+                    DashboardKeyValueRow(label: t("Logs", "ログ"), value: display.logs)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    DashboardKeyValueRow(label: "Automation", value: display.automation)
+                    DashboardKeyValueRow(label: t("Automation", "自動化"), value: display.automation)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
@@ -1087,7 +1098,8 @@ struct DashboardDiagnosticsGuidanceCard: View {
     private var display: DashboardDiagnosticsGuidanceDisplay {
         DashboardDiagnosticsGuidanceDisplay(
             runtimeState: runtimeState,
-            targetSummary: targetSummary
+            targetSummary: targetSummary,
+            language: language
         )
     }
 }
@@ -1102,144 +1114,145 @@ private struct DashboardDiagnosticsGuidanceDisplay {
     let safetyNote: String
     let accentColor: Color
 
-    init(runtimeState: ModelRuntimeState, targetSummary: ConnectionTargetSummary) {
+    init(runtimeState: ModelRuntimeState, targetSummary: ConnectionTargetSummary, language: AppLanguage = .system) {
+        let l10n = AppLocalization(language: language)
         switch runtimeState {
         case .stopped:
-            title = "No active server target"
-            message = "Start a managed server or adopt a detected external server through the existing controls."
-            nextStep = "Run Diagnostics or press Start after setup is complete."
-            readiness = "Not checked until a server target exists."
-            logs = "Only app action logs are available while stopped."
-            automation = "No background diagnostics or automatic Start is running."
-            safetyNote = "The app waits for explicit user actions before changing lifecycle state."
+            title = l10n.text(english: "No active server target", japanese: "有効なサーバー接続先なし")
+            message = l10n.text(english: "Start a managed server or adopt a detected external server through the existing controls.", japanese: "既存の操作から管理サーバーを起動するか、検出済み外部サーバーを採用してください。")
+            nextStep = l10n.text(english: "Run Diagnostics or press Start after setup is complete.", japanese: "設定完了後に診断を実行するか、起動してください。")
+            readiness = l10n.text(english: "Not checked until a server target exists.", japanese: "サーバー接続先が存在するまで確認されません。")
+            logs = l10n.text(english: "Only app action logs are available while stopped.", japanese: "停止中はアプリ操作ログのみ利用できます。")
+            automation = l10n.text(english: "No background diagnostics or automatic Start is running.", japanese: "バックグラウンド診断や自動起動は実行されていません。")
+            safetyNote = l10n.text(english: "The app waits for explicit user actions before changing lifecycle state.", japanese: "アプリはライフサイクル状態を変更する前に、明示的なユーザー操作を待ちます。")
             accentColor = .secondary
         case .starting, .loading:
-            title = "Managed server is starting"
-            message = "The app-managed process is attached or launching, but readiness may still be pending."
-            nextStep = "Watch managed logs and wait for Ready before using clients."
-            readiness = "Ready requires /v1/models to respond successfully."
-            logs = "Managed server logs are available in the Logs section."
-            automation = "The app does not send inference requests while waiting."
-            safetyNote = "Running does not always mean ready; readiness and process state are separate."
+            title = l10n.text(english: "Managed server is starting", japanese: "管理サーバーを起動中")
+            message = l10n.text(english: "The app-managed process is attached or launching, but readiness may still be pending.", japanese: "アプリ管理プロセスが接続済み、または起動中ですが、Ready確認はまだ保留中の可能性があります。")
+            nextStep = l10n.text(english: "Watch managed logs and wait for Ready before using clients.", japanese: "クライアントを使う前に管理ログを確認し、Readyを待ってください。")
+            readiness = l10n.text(english: "Ready requires /v1/models to respond successfully.", japanese: "Readyには/v1/modelsの正常応答が必要です。")
+            logs = l10n.text(english: "Managed server logs are available in the Logs section.", japanese: "管理サーバーログはログ画面で確認できます。")
+            automation = l10n.text(english: "The app does not send inference requests while waiting.", japanese: "待機中にアプリが推論リクエストを送信することはありません。")
+            safetyNote = l10n.text(english: "Running does not always mean ready; readiness and process state are separate.", japanese: "実行中は必ずしもReadyを意味しません。Ready状態とプロセス状態は別です。")
             accentColor = .orange
         case let .ready(_, _, processIdentifier):
             if processIdentifier != nil {
-                title = "Managed server ready"
-                message = "The managed endpoint passed readiness and can be used by OpenAI-compatible clients."
-                nextStep = "Copy connection settings or continue monitoring logs."
-                logs = "Managed server logs remain available in the Logs section."
+                title = l10n.text(english: "Managed server ready", japanese: "管理サーバーはReadyです")
+                message = l10n.text(english: "The managed endpoint passed readiness and can be used by OpenAI-compatible clients.", japanese: "管理エンドポイントはReady確認に合格しており、OpenAI互換クライアントで利用できます。")
+                nextStep = l10n.text(english: "Copy connection settings or continue monitoring logs.", japanese: "接続設定をコピーするか、ログ監視を続けます。")
+                logs = l10n.text(english: "Managed server logs remain available in the Logs section.", japanese: "管理サーバーログは引き続きログ画面で確認できます。")
             } else {
-                title = "Endpoint ready"
-                message = "The endpoint passed readiness, but no app-managed pid is attached."
-                nextStep = "Use connection settings, and check the endpoint owner for process logs."
-                logs = "Only app logs are available unless this app started the server."
+                title = l10n.text(english: "Endpoint ready", japanese: "エンドポイントはReadyです")
+                message = l10n.text(english: "The endpoint passed readiness, but no app-managed pid is attached.", japanese: "エンドポイントはReady確認に合格しましたが、アプリ管理pidは付いていません。")
+                nextStep = l10n.text(english: "Use connection settings, and check the endpoint owner for process logs.", japanese: "接続設定を使い、プロセスログはエンドポイント所有元で確認してください。")
+                logs = l10n.text(english: "Only app logs are available unless this app started the server.", japanese: "このアプリがサーバーを起動していない場合、利用できるのはアプリログのみです。")
             }
-            readiness = "Ready means /v1/models responded successfully."
-            automation = "No automatic restart or request routing is active."
-            safetyNote = "Clients connect directly to the target endpoint in Direct Mode."
+            readiness = l10n.text(english: "Ready means /v1/models responded successfully.", japanese: "Readyは/v1/modelsが正常応答したことを意味します。")
+            automation = l10n.text(english: "No automatic restart or request routing is active.", japanese: "自動再起動やリクエストルーティングは有効ではありません。")
+            safetyNote = l10n.text(english: "Clients connect directly to the target endpoint in Direct Mode.", japanese: "Direct Modeではクライアントが対象エンドポイントへ直接接続します。")
             accentColor = .green
         case .stopping:
-            title = "Managed server is stopping"
-            message = "The app is stopping only the app-managed process."
-            nextStep = "Wait for stopped state, then inspect logs if shutdown fails."
-            readiness = "Unavailable while the managed process is stopping."
-            logs = "Managed server logs may show shutdown details."
-            automation = "External processes are not affected by this stop operation."
-            safetyNote = "Stop remains scoped to the app-managed process only."
+            title = l10n.text(english: "Managed server is stopping", japanese: "管理サーバーを停止中")
+            message = l10n.text(english: "The app is stopping only the app-managed process.", japanese: "アプリ管理プロセスのみを停止しています。")
+            nextStep = l10n.text(english: "Wait for stopped state, then inspect logs if shutdown fails.", japanese: "停止状態を待ち、シャットダウンに失敗した場合はログを確認してください。")
+            readiness = l10n.text(english: "Unavailable while the managed process is stopping.", japanese: "管理プロセス停止中は利用できません。")
+            logs = l10n.text(english: "Managed server logs may show shutdown details.", japanese: "管理サーバーログにシャットダウン詳細が表示される場合があります。")
+            automation = l10n.text(english: "External processes are not affected by this stop operation.", japanese: "この停止操作は外部プロセスに影響しません。")
+            safetyNote = l10n.text(english: "Stop remains scoped to the app-managed process only.", japanese: "停止の範囲はアプリ管理プロセスのみです。")
             accentColor = .orange
         case let .checkingPort(host, port):
-            title = "Checking port availability"
-            message = "The app is checking whether \(host):\(port) is safe for a managed launch."
-            nextStep = "Wait for the port check result."
-            readiness = "Readiness is not checked during a port availability check."
-            logs = "App logs show the port check result."
-            automation = "Port checks do not start, stop, or adopt servers."
-            safetyNote = "This check is informational and does not take ownership of processes."
+            title = l10n.text(english: "Checking port availability", japanese: "ポート利用可否を確認中")
+            message = l10n.text(english: "The app is checking whether \(host):\(port) is safe for a managed launch.", japanese: "アプリが\(host):\(port)を管理起動に安全に使えるか確認しています。")
+            nextStep = l10n.text(english: "Wait for the port check result.", japanese: "ポート確認結果を待ってください。")
+            readiness = l10n.text(english: "Readiness is not checked during a port availability check.", japanese: "ポート利用可否確認中はReady確認を行いません。")
+            logs = l10n.text(english: "App logs show the port check result.", japanese: "アプリログにポート確認結果が表示されます。")
+            automation = l10n.text(english: "Port checks do not start, stop, or adopt servers.", japanese: "ポート確認はサーバーの起動、停止、採用を行いません。")
+            safetyNote = l10n.text(english: "This check is informational and does not take ownership of processes.", japanese: "この確認は情報表示のみで、プロセスの所有権を取得しません。")
             accentColor = .orange
         case .portAvailable:
-            title = "Port is available"
-            message = "The selected port is available for an explicit managed Start."
-            nextStep = "Press Start when you want MLX Server Manager to launch the server."
-            readiness = "Not checked until a server is running or an endpoint is checked."
-            logs = "App logs will show the next lifecycle action."
-            automation = "No server is started automatically."
-            safetyNote = "Availability is not a lifecycle action."
+            title = l10n.text(english: "Port is available", japanese: "ポートは利用可能です")
+            message = l10n.text(english: "The selected port is available for an explicit managed Start.", japanese: "選択ポートは明示的な管理起動に利用できます。")
+            nextStep = l10n.text(english: "Press Start when you want MLX Server Manager to launch the server.", japanese: "MLX Server Managerでサーバーを起動する場合は起動を押してください。")
+            readiness = l10n.text(english: "Not checked until a server is running or an endpoint is checked.", japanese: "サーバー実行またはエンドポイント確認までReady確認は行われません。")
+            logs = l10n.text(english: "App logs will show the next lifecycle action.", japanese: "次のライフサイクル操作はアプリログに表示されます。")
+            automation = l10n.text(english: "No server is started automatically.", japanese: "サーバーは自動起動されません。")
+            safetyNote = l10n.text(english: "Availability is not a lifecycle action.", japanese: "利用可能であること自体はライフサイクル操作ではありません。")
             accentColor = .green
         case let .portBusy(host, port):
-            title = "Port is busy"
-            message = "\(host):\(port) is already in use by another process or service."
-            nextStep = "Change port, check the external owner, or adopt it only if readiness confirms the intended endpoint."
-            readiness = "Busy does not mean ready; use /v1/models readiness to confirm compatibility."
-            logs = "External process logs are not available in this app."
-            automation = "The app does not kill or take ownership of the busy process."
-            safetyNote = "Port busy guidance is informational; remediation stays manual."
+            title = l10n.text(english: "Port is busy", japanese: "ポート使用中")
+            message = l10n.text(english: "\(host):\(port) is already in use by another process or service.", japanese: "\(host):\(port) は別のプロセスまたはサービスで使用中です。")
+            nextStep = l10n.text(english: "Change port, check the external owner, or adopt it only if readiness confirms the intended endpoint.", japanese: "ポートを変更するか、外部所有元を確認し、意図したエンドポイントであることをReady確認できる場合のみ採用してください。")
+            readiness = l10n.text(english: "Busy does not mean ready; use /v1/models readiness to confirm compatibility.", japanese: "使用中はReadyを意味しません。互換性確認には/v1/modelsのReady確認を使ってください。")
+            logs = l10n.text(english: "External process logs are not available in this app.", japanese: "外部プロセスログはこのアプリでは利用できません。")
+            automation = l10n.text(english: "The app does not kill or take ownership of the busy process.", japanese: "アプリは使用中プロセスをkillしたり所有したりしません。")
+            safetyNote = l10n.text(english: "Port busy guidance is informational; remediation stays manual.", japanese: "ポート使用中の案内は情報表示のみで、対処は手動です。")
             accentColor = .red
         case .externalServerDetected:
-            title = "External server detected"
-            message = "A compatible endpoint responded, but MLX Server Manager does not own the process."
-            nextStep = "Adopt only if you want to use this endpoint as connection context."
-            readiness = "Detection is based on /v1/models responding successfully."
-            logs = "Check external logs in the terminal or app that launched the server."
-            automation = "Adopt is not automatic and does not change process ownership."
-            safetyNote = "Stop and Restart remain unavailable for detected external servers."
+            title = l10n.text(english: "External server detected", japanese: "外部サーバーを検出")
+            message = l10n.text(english: "A compatible endpoint responded, but MLX Server Manager does not own the process.", japanese: "互換エンドポイントが応答しましたが、MLX Server Managerはそのプロセスを所有していません。")
+            nextStep = l10n.text(english: "Adopt only if you want to use this endpoint as connection context.", japanese: "このエンドポイントを接続コンテキストとして使う場合のみ採用してください。")
+            readiness = l10n.text(english: "Detection is based on /v1/models responding successfully.", japanese: "検出は/v1/modelsの正常応答に基づきます。")
+            logs = l10n.text(english: "Check external logs in the terminal or app that launched the server.", japanese: "外部ログは、そのサーバーを起動したターミナルまたはアプリで確認してください。")
+            automation = l10n.text(english: "Adopt is not automatic and does not change process ownership.", japanese: "採用は自動ではなく、プロセス所有権も変更しません。")
+            safetyNote = l10n.text(english: "Stop and Restart remain unavailable for detected external servers.", japanese: "検出済み外部サーバーでは停止と再起動は利用できません。")
             accentColor = .orange
         case .adoptedExternalServer:
-            title = "External context adopted"
-            message = "The endpoint is saved as connection context only."
-            nextStep = "Use copied connection settings, or Forget External Server to clear app-side context."
-            readiness = "The app can describe connection status, not external process ownership."
-            logs = "External server logs must be checked outside MLX Server Manager."
-            automation = "Forget removes context only; it does not stop the external server."
-            safetyNote = "Adopted external servers are not monitored for memory or managed logs."
+            title = l10n.text(english: "External context adopted", japanese: "外部コンテキストを採用済み")
+            message = l10n.text(english: "The endpoint is saved as connection context only.", japanese: "エンドポイントは接続コンテキストとしてのみ保存されています。")
+            nextStep = l10n.text(english: "Use copied connection settings, or Forget External Server to clear app-side context.", japanese: "コピーした接続設定を使うか、外部サーバー解除でアプリ側コンテキストを消去します。")
+            readiness = l10n.text(english: "The app can describe connection status, not external process ownership.", japanese: "アプリが示せるのは接続状態であり、外部プロセスの所有権ではありません。")
+            logs = l10n.text(english: "External server logs must be checked outside MLX Server Manager.", japanese: "外部サーバーログはMLX Server Managerの外で確認してください。")
+            automation = l10n.text(english: "Forget removes context only; it does not stop the external server.", japanese: "解除はコンテキストのみを削除し、外部サーバーは停止しません。")
+            safetyNote = l10n.text(english: "Adopted external servers are not monitored for memory or managed logs.", japanese: "採用済み外部サーバーのメモリや管理ログは監視しません。")
             accentColor = .orange
         case let .portCheckFailed(host, port, _):
-            title = "Port check needs attention"
-            message = "The app could not determine the state of \(host):\(port)."
-            nextStep = "Verify host, port, local networking, and app logs."
-            readiness = "Readiness was not confirmed."
-            logs = "Check app logs for the port check failure message."
-            automation = "No automatic recovery is attempted."
-            safetyNote = "The app does not start or stop processes after a failed port check."
+            title = l10n.text(english: "Port check needs attention", japanese: "ポート確認の対応が必要")
+            message = l10n.text(english: "The app could not determine the state of \(host):\(port).", japanese: "アプリは\(host):\(port)の状態を判定できませんでした。")
+            nextStep = l10n.text(english: "Verify host, port, local networking, and app logs.", japanese: "ホスト、ポート、ローカルネットワーク、アプリログを確認してください。")
+            readiness = l10n.text(english: "Readiness was not confirmed.", japanese: "Ready状態は確認されていません。")
+            logs = l10n.text(english: "Check app logs for the port check failure message.", japanese: "ポート確認失敗メッセージはアプリログで確認してください。")
+            automation = l10n.text(english: "No automatic recovery is attempted.", japanese: "自動復旧は試行しません。")
+            safetyNote = l10n.text(english: "The app does not start or stop processes after a failed port check.", japanese: "ポート確認失敗後にアプリがプロセスを起動・停止することはありません。")
             accentColor = .red
         case let .checkingReady(host, port):
-            title = "Checking readiness"
-            message = "The app is checking \(host):\(port) with /v1/models."
-            nextStep = "Wait for the readiness result before troubleshooting further."
-            readiness = "/v1/models request is in progress."
+            title = l10n.text(english: "Checking readiness", japanese: "Ready確認中")
+            message = l10n.text(english: "The app is checking \(host):\(port) with /v1/models.", japanese: "アプリが/v1/modelsで\(host):\(port)を確認しています。")
+            nextStep = l10n.text(english: "Wait for the readiness result before troubleshooting further.", japanese: "追加のトラブルシューティング前にReady確認結果を待ってください。")
+            readiness = l10n.text(english: "/v1/models request is in progress.", japanese: "/v1/modelsリクエストを実行中です。")
             logs = Self.isExternalTarget(targetSummary)
-                ? "External process logs are outside this app."
-                : "Managed logs are available if the app started the process."
-            automation = "Readiness checks do not send chat completions."
-            safetyNote = "Readiness checks do not change lifecycle state."
+                ? l10n.text(english: "External process logs are outside this app.", japanese: "外部プロセスログはこのアプリの外にあります。")
+                : l10n.text(english: "Managed logs are available if the app started the process.", japanese: "アプリがプロセスを起動した場合は管理ログを利用できます。")
+            automation = l10n.text(english: "Readiness checks do not send chat completions.", japanese: "Ready確認はchat completionsを送信しません。")
+            safetyNote = l10n.text(english: "Readiness checks do not change lifecycle state.", japanese: "Ready確認はライフサイクル状態を変更しません。")
             accentColor = .orange
         case let .readyCheckFailed(host, port, _):
-            title = "Readiness failed"
-            message = "/v1/models did not confirm readiness for \(host):\(port)."
-            nextStep = "Verify host, port, server logs, and whether the target is still starting or OpenAI-compatible."
-            readiness = "Failed - /v1/models did not succeed."
+            title = l10n.text(english: "Readiness failed", japanese: "Ready確認に失敗")
+            message = l10n.text(english: "/v1/models did not confirm readiness for \(host):\(port).", japanese: "/v1/modelsは\(host):\(port)のReady状態を確認できませんでした。")
+            nextStep = l10n.text(english: "Verify host, port, server logs, and whether the target is still starting or OpenAI-compatible.", japanese: "ホスト、ポート、サーバーログ、接続先がまだ起動中かOpenAI互換かを確認してください。")
+            readiness = l10n.text(english: "Failed - /v1/models did not succeed.", japanese: "失敗 - /v1/modelsが成功しませんでした。")
             logs = Self.isExternalTarget(targetSummary)
-                ? "Check external logs where that server was launched."
-                : "Check managed server logs and endpoint settings."
-            automation = "The app does not automatically restart or terminate processes."
-            safetyNote = "Readiness failure is diagnostic information, not an ownership change."
+                ? l10n.text(english: "Check external logs where that server was launched.", japanese: "そのサーバーを起動した場所で外部ログを確認してください。")
+                : l10n.text(english: "Check managed server logs and endpoint settings.", japanese: "管理サーバーログとエンドポイント設定を確認してください。")
+            automation = l10n.text(english: "The app does not automatically restart or terminate processes.", japanese: "アプリはプロセスを自動再起動または終了しません。")
+            safetyNote = l10n.text(english: "Readiness failure is diagnostic information, not an ownership change.", japanese: "Ready確認失敗は診断情報であり、所有権変更ではありません。")
             accentColor = .red
         case .error:
-            title = "Error state"
-            message = "The app reported an error for the current server state."
-            nextStep = "Check app logs, managed server logs if available, and current settings."
-            readiness = "Unavailable until the error is resolved and readiness succeeds."
-            logs = "Logs are the first place to inspect the failure detail."
-            automation = "No automatic recovery is attempted."
-            safetyNote = "Use explicit lifecycle controls after reviewing the failure."
+            title = l10n.text(english: "Error state", japanese: "エラー状態")
+            message = l10n.text(english: "The app reported an error for the current server state.", japanese: "アプリが現在のサーバー状態についてエラーを報告しました。")
+            nextStep = l10n.text(english: "Check app logs, managed server logs if available, and current settings.", japanese: "アプリログ、利用可能な場合は管理サーバーログ、現在の設定を確認してください。")
+            readiness = l10n.text(english: "Unavailable until the error is resolved and readiness succeeds.", japanese: "エラーが解消されReady確認が成功するまで利用できません。")
+            logs = l10n.text(english: "Logs are the first place to inspect the failure detail.", japanese: "失敗詳細を確認する最初の場所はログです。")
+            automation = l10n.text(english: "No automatic recovery is attempted.", japanese: "自動復旧は試行しません。")
+            safetyNote = l10n.text(english: "Use explicit lifecycle controls after reviewing the failure.", japanese: "失敗内容を確認した後、明示的なライフサイクル操作を使ってください。")
             accentColor = .red
         case .unknown:
-            title = "Unknown state"
-            message = "The app cannot confidently describe the current server state."
-            nextStep = "Check logs and rerun diagnostics or readiness checks as needed."
-            readiness = "Unknown until a check succeeds or fails clearly."
-            logs = "App logs may explain the unknown state."
-            automation = "The app does not infer ownership of unknown processes."
-            safetyNote = "Unknown state does not trigger automatic Start, Stop, or Restart."
+            title = l10n.text(english: "Unknown state", japanese: "不明な状態")
+            message = l10n.text(english: "The app cannot confidently describe the current server state.", japanese: "アプリは現在のサーバー状態を確実に説明できません。")
+            nextStep = l10n.text(english: "Check logs and rerun diagnostics or readiness checks as needed.", japanese: "ログを確認し、必要に応じて診断またはReady確認を再実行してください。")
+            readiness = l10n.text(english: "Unknown until a check succeeds or fails clearly.", japanese: "確認が明確に成功または失敗するまでは不明です。")
+            logs = l10n.text(english: "App logs may explain the unknown state.", japanese: "アプリログに不明状態の説明が含まれる場合があります。")
+            automation = l10n.text(english: "The app does not infer ownership of unknown processes.", japanese: "アプリは不明なプロセスの所有権を推定しません。")
+            safetyNote = l10n.text(english: "Unknown state does not trigger automatic Start, Stop, or Restart.", japanese: "不明状態によって自動起動、停止、再起動が実行されることはありません。")
             accentColor = .yellow
         }
     }
