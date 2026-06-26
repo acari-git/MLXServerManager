@@ -1061,9 +1061,10 @@ struct IntegratedWorkspaceView: View {
                 collapsibleRightPanel(id: "external", title: t("External server", "外部サーバー"), systemImage: "network") {
                     externalServerPanelContent
                 }
-                collapsibleRightPanel(id: "recovery", title: "Recovery", systemImage: "wrench.and.screwdriver") {
+                collapsibleRightPanel(id: "recovery", title: t("Recovery", "復旧"), systemImage: "wrench.and.screwdriver") {
                     IntegratedRecoveryPanelView(
                         issue: viewModel.currentRecoveryIssue,
+                        language: viewModel.settings.uiLanguage,
                         onAction: handleRecoveryAction,
                         onCopyTroubleshooting: viewModel.copyTroubleshootingSummary,
                         onRefreshSafety: viewModel.refreshIntegratedSafetyRequested

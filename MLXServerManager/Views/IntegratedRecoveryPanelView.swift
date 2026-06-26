@@ -2,14 +2,37 @@ import SwiftUI
 
 struct IntegratedRecoveryPanelView: View {
     let issue: RecoveryIssue
+    let language: AppLanguage
     let onAction: (RecoveryAction) -> Void
     let onCopyTroubleshooting: () -> Void
     let onRefreshSafety: () -> Void
 
+    init(
+        issue: RecoveryIssue,
+        language: AppLanguage = .system,
+        onAction: @escaping (RecoveryAction) -> Void,
+        onCopyTroubleshooting: @escaping () -> Void,
+        onRefreshSafety: @escaping () -> Void
+    ) {
+        self.issue = issue
+        self.language = language
+        self.onAction = onAction
+        self.onCopyTroubleshooting = onCopyTroubleshooting
+        self.onRefreshSafety = onRefreshSafety
+    }
+
+    private var strings: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        strings.text(english: english, japanese: japanese)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label("Recovery", systemImage: iconName)
+                Label(t("Recovery", "復旧"), systemImage: iconName)
                     .font(.headline)
                 Spacer()
                 Text(issue.severity.rawValue)
@@ -54,8 +77,8 @@ struct IntegratedRecoveryPanelView: View {
             }
 
             HStack {
-                Button("Refresh Safety") { onRefreshSafety() }
-                Button("Copy Troubleshooting") { onCopyTroubleshooting() }
+                Button(t("Refresh Safety", "安全性を更新")) { onRefreshSafety() }
+                Button(t("Copy Troubleshooting", "トラブルシューティングをコピー")) { onCopyTroubleshooting() }
             }
             .font(.caption)
         }
