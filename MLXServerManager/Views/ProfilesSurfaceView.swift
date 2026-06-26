@@ -10,6 +10,14 @@ struct ProfilesSurfaceView: View {
         return viewModel.models.first { $0.id == runningModelID }
     }
 
+    private var strings: AppLocalization {
+        AppLocalization(language: viewModel.settings.uiLanguage)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        strings.text(english: english, japanese: japanese)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -43,11 +51,11 @@ struct ProfilesSurfaceView: View {
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.accentColor)
 
-                Text("Models")
+                Text(strings.text(.models))
                     .font(.title2.weight(.semibold))
             }
 
-            Text("Manage model profiles from one surface. Runtime lifecycle controls remain on Runtime.")
+            Text(t("Manage model profiles from one surface. Runtime lifecycle controls remain on Runtime.", "モデルプロファイルをこの画面で管理します。ランタイムのライフサイクル操作はランタイム画面に分けています。"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -57,14 +65,14 @@ struct ProfilesSurfaceView: View {
 
     private var toolbar: some View {
         HStack(spacing: 10) {
-            Picker("Source", selection: $viewModel.modelListSourceFilter) {
+            Picker(t("Source", "ソース"), selection: $viewModel.modelListSourceFilter) {
                 ForEach(viewModel.modelListSourceFilterOptions, id: \.self) { source in
                     Text(source).tag(source)
                 }
             }
             .frame(width: 190)
 
-            TextField("Search models", text: $viewModel.modelListSearchText)
+            TextField(t("Search models", "モデルを検索"), text: $viewModel.modelListSearchText)
                 .textFieldStyle(.roundedBorder)
                 .frame(minWidth: 180, idealWidth: 240)
 
@@ -73,20 +81,20 @@ struct ProfilesSurfaceView: View {
             Button {
                 viewModel.addProfileRequested()
             } label: {
-                Label("Add", systemImage: "plus")
+                Label(t("Add", "追加"), systemImage: "plus")
             }
 
             Button {
                 viewModel.editProfileRequested()
             } label: {
-                Label("Edit", systemImage: "pencil")
+                Label(t("Edit", "編集"), systemImage: "pencil")
             }
             .disabled(selectedModel == nil)
 
             Button(role: .destructive) {
                 viewModel.deleteProfileRequested()
             } label: {
-                Label("Delete", systemImage: "trash")
+                Label(t("Delete", "削除"), systemImage: "trash")
             }
             .disabled(selectedModel == nil || viewModel.models.count <= 1 || viewModel.isManagedProcessRunning)
 
@@ -96,13 +104,13 @@ struct ProfilesSurfaceView: View {
             Button {
                 viewModel.importProfilesPreviewRequested()
             } label: {
-                Label("Import", systemImage: "square.and.arrow.down")
+                Label(t("Import", "インポート"), systemImage: "square.and.arrow.down")
             }
 
             Button {
                 viewModel.exportProfilesRequested()
             } label: {
-                Label("Export", systemImage: "square.and.arrow.up")
+                Label(t("Export", "エクスポート"), systemImage: "square.and.arrow.up")
             }
             .disabled(viewModel.models.isEmpty)
         }
@@ -117,26 +125,26 @@ struct ProfilesSurfaceView: View {
             alignment: .leading,
             spacing: 12
         ) {
-            summaryCard("Profiles", value: String(viewModel.models.count))
-            summaryCard("Visible", value: String(models.count))
-            summaryCard("Selected", value: selectedModel?.displayName ?? "None")
-            summaryCard("Running", value: runningModel?.displayName ?? "None")
-            summaryCard("Restart required", value: viewModel.restartRequired ? "Yes" : "No")
+            summaryCard(t("Profiles", "プロファイル"), value: String(viewModel.models.count))
+            summaryCard(t("Visible", "表示中"), value: String(models.count))
+            summaryCard(t("Selected", "選択中"), value: selectedModel?.displayName ?? t("None", "なし"))
+            summaryCard(t("Running", "実行中"), value: runningModel?.displayName ?? t("None", "なし"))
+            summaryCard(t("Restart required", "再起動必要"), value: viewModel.restartRequired ? t("Yes", "はい") : t("No", "いいえ"))
         }
         .accessibilityIdentifier("profiles-surface-summary")
     }
 
     private var modelList: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Model Profiles")
+            Text(t("Model Profiles", "モデルプロファイル"))
                 .font(.headline)
                 .accessibilityIdentifier("profiles-surface-list-heading")
 
             if models.isEmpty {
                 ContentUnavailableView(
-                    "No models for this filter",
+                    t("No models for this filter", "このフィルターに一致するモデルはありません"),
                     systemImage: "line.3.horizontal.decrease.circle",
-                    description: Text("Change the source filter to show other profiles.")
+                    description: Text(t("Change the source filter to show other profiles.", "ほかのプロファイルを表示するにはソースフィルターを変更してください。"))
                 )
                 .frame(maxWidth: .infinity, minHeight: 260)
             } else {
@@ -178,9 +186,9 @@ struct ProfilesSurfaceView: View {
 
     private var emptyState: some View {
         ContentUnavailableView(
-            "No Models",
+            t("No Models", "モデルがありません"),
             systemImage: "square.stack.3d.up",
-            description: Text("Add models from Downloads or use Add to create a profile manually.")
+            description: Text(t("Add models from Downloads or use Add to create a profile manually.", "ダウンロード画面からモデルを追加するか、追加ボタンで手動プロファイルを作成してください。"))
         )
         .frame(maxWidth: .infinity, minHeight: 240)
         .accessibilityIdentifier("profiles-surface-empty-state")
@@ -203,29 +211,29 @@ struct ProfilesSurfaceView: View {
                 HStack(spacing: 6) {
                     statusPill(viewModel.sourceLabel(for: model))
                     if model.id == viewModel.selectedModelID {
-                        statusPill("Selected")
+                        statusPill(t("Selected", "選択中"))
                     }
                     if model.id == viewModel.runningModelID {
-                        statusPill("Running")
+                        statusPill(t("Running", "実行中"))
                     }
                     if viewModel.restartRequired, model.id == viewModel.selectedModelID {
-                        statusPill("Restart required")
+                        statusPill(t("Restart required", "再起動必要"))
                     }
                 }
             }
 
             Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 6) {
                 GridRow {
-                    metadataLabel("Family")
+                    metadataLabel(t("Family", "ファミリー"))
                     metadataValue(model.family)
                 }
                 GridRow {
-                    metadataLabel("Endpoint")
+                    metadataLabel(t("Endpoint", "エンドポイント"))
                     metadataValue("\(model.host):\(model.serverPort)")
                 }
                 GridRow {
                     metadataLabel("Thinking")
-                    metadataValue(model.enableThinking ? "Enabled" : "Disabled")
+                    metadataValue(model.enableThinking ? t("Enabled", "有効") : t("Disabled", "無効"))
                 }
             }
         }
@@ -243,24 +251,24 @@ struct ProfilesSurfaceView: View {
 
     private var selectedModelInspector: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Selected model inspector")
+            Text(t("Selected model inspector", "選択モデルインスペクター"))
                 .font(.headline)
 
             if let selectedModel {
                 DetailGrid(rows: [
                     ("Model ID", selectedModel.modelID),
-                    ("Display Name", selectedModel.displayName),
-                    ("Source", viewModel.sourceLabel(for: selectedModel)),
-                    ("Family", selectedModel.family),
-                    ("Quantization", selectedModel.quantization),
-                    ("Context", selectedModel.contextWindow),
-                    ("Endpoint", "\(selectedModel.host):\(selectedModel.serverPort)"),
-                    ("Thinking", selectedModel.enableThinking ? "Enabled" : "Disabled"),
-                    ("Latest benchmark", viewModel.latestBenchmarkResult?.latencyText ?? "Not run"),
-                    ("Notes", selectedModel.notes.isEmpty ? "None" : selectedModel.notes)
+                    (t("Display Name", "表示名"), selectedModel.displayName),
+                    (t("Source", "ソース"), viewModel.sourceLabel(for: selectedModel)),
+                    (t("Family", "ファミリー"), selectedModel.family),
+                    (t("Quantization", "量子化"), selectedModel.quantization),
+                    (t("Context", "コンテキスト"), selectedModel.contextWindow),
+                    (t("Endpoint", "エンドポイント"), "\(selectedModel.host):\(selectedModel.serverPort)"),
+                    ("Thinking", selectedModel.enableThinking ? t("Enabled", "有効") : t("Disabled", "無効")),
+                    (t("Latest benchmark", "最新ベンチマーク"), viewModel.latestBenchmarkResult?.latencyText ?? t("Not run", "未実行")),
+                    (t("Notes", "メモ"), selectedModel.notes.isEmpty ? t("None", "なし") : selectedModel.notes)
                 ])
 
-                Text("Advanced launch options")
+                Text(t("Advanced launch options", "詳細起動オプション"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Text(viewModel.selectedAdvancedLaunchOptionsSummary)
@@ -272,7 +280,7 @@ struct ProfilesSurfaceView: View {
                     .background(Color(nsColor: .textBackgroundColor))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
 
-                Text("Launch command")
+                Text(t("Launch command", "起動コマンド"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Text(viewModel.selectedLaunchCommandPreview)
@@ -284,11 +292,11 @@ struct ProfilesSurfaceView: View {
                     .background(Color(nsColor: .textBackgroundColor))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
 
-                Label("Profile actions are metadata-only. Model files and Hugging Face cache are not deleted.", systemImage: "shield")
+                Label(t("Profile actions are metadata-only. Model files and Hugging Face cache are not deleted.", "プロファイル操作はメタデータのみを対象にします。モデルファイルとHugging Faceキャッシュは削除されません。"), systemImage: "shield")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                Text("Select a model profile to inspect its details.")
+                Text(t("Select a model profile to inspect its details.", "詳細を確認するモデルプロファイルを選択してください。"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

@@ -2,17 +2,38 @@ import SwiftUI
 
 struct LogView: View {
     let entries: [LogEntry]
+    let language: AppLanguage
     let onCopy: () -> Void
     let onClear: () -> Void
+
+    init(
+        entries: [LogEntry],
+        language: AppLanguage = .system,
+        onCopy: @escaping () -> Void,
+        onClear: @escaping () -> Void
+    ) {
+        self.entries = entries
+        self.language = language
+        self.onCopy = onCopy
+        self.onClear = onClear
+    }
+
+    private var strings: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        strings.text(english: english, japanese: japanese)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Logs")
+                Text(strings.text(.logs))
                     .font(.headline)
                     .accessibilityIdentifier("log-view-title")
 
-                Text("\(entries.count) entries")
+                Text(t("\(entries.count) entries", "\(entries.count)件"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("log-view-entry-count")
@@ -22,14 +43,14 @@ struct LogView: View {
                 Button {
                     onCopy()
                 } label: {
-                    Label("Copy Logs", systemImage: "doc.on.doc")
+                    Label(t("Copy Logs", "ログをコピー"), systemImage: "doc.on.doc")
                 }
                 .accessibilityIdentifier("log-view-copy-button")
 
                 Button {
                     onClear()
                 } label: {
-                    Label("Clear Logs", systemImage: "trash")
+                    Label(t("Clear Logs", "ログをクリア"), systemImage: "trash")
                 }
                 .accessibilityIdentifier("log-view-clear-button")
             }
@@ -38,7 +59,7 @@ struct LogView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 6) {
                     if entries.isEmpty {
-                        Text("No logs")
+                        Text(t("No logs", "ログはありません"))
                             .font(.system(.caption, design: .monospaced))
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)

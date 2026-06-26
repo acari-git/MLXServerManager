@@ -5,6 +5,7 @@ struct ConnectionSettingsView: View {
     let baseURL: String
     let modelID: String
     let apiKeyPlaceholder: String
+    let language: AppLanguage
     let onCopyBaseURL: () -> Void
     let onCopyModelID: () -> Void
     let onCopyAPIKeyPlaceholder: () -> Void
@@ -14,9 +15,47 @@ struct ConnectionSettingsView: View {
     let onCopyModelsCurl: () -> Void
     let onCopyChatCompletionsCurl: () -> Void
 
+    init(
+        targetSummary: ConnectionTargetSummary,
+        baseURL: String,
+        modelID: String,
+        apiKeyPlaceholder: String,
+        language: AppLanguage = .system,
+        onCopyBaseURL: @escaping () -> Void,
+        onCopyModelID: @escaping () -> Void,
+        onCopyAPIKeyPlaceholder: @escaping () -> Void,
+        onCopyConfig: @escaping () -> Void,
+        onCopyAllConnectionSettings: @escaping () -> Void,
+        onCopyHermesAgentConfig: @escaping () -> Void,
+        onCopyModelsCurl: @escaping () -> Void,
+        onCopyChatCompletionsCurl: @escaping () -> Void
+    ) {
+        self.targetSummary = targetSummary
+        self.baseURL = baseURL
+        self.modelID = modelID
+        self.apiKeyPlaceholder = apiKeyPlaceholder
+        self.language = language
+        self.onCopyBaseURL = onCopyBaseURL
+        self.onCopyModelID = onCopyModelID
+        self.onCopyAPIKeyPlaceholder = onCopyAPIKeyPlaceholder
+        self.onCopyConfig = onCopyConfig
+        self.onCopyAllConnectionSettings = onCopyAllConnectionSettings
+        self.onCopyHermesAgentConfig = onCopyHermesAgentConfig
+        self.onCopyModelsCurl = onCopyModelsCurl
+        self.onCopyChatCompletionsCurl = onCopyChatCompletionsCurl
+    }
+
+    private var strings: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        strings.text(english: english, japanese: japanese)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("OpenAI-Compatible Connection")
+            Text(t("OpenAI-Compatible Connection", "OpenAI互換接続"))
                 .font(.headline)
 
             VStack(alignment: .leading, spacing: 8) {
@@ -25,7 +64,7 @@ struct ConnectionSettingsView: View {
                         .font(.subheadline.weight(.semibold))
 
                     if !targetSummary.isActiveTarget {
-                        Text("Preview")
+                        Text(t("Preview", "プレビュー"))
                             .font(.caption.weight(.medium))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -44,35 +83,35 @@ struct ConnectionSettingsView: View {
             }
 
             DetailGrid(rows: [
-                ("Target Type", targetSummary.targetType),
+                (t("Target Type", "接続先タイプ"), targetSummary.targetType),
                 ("Base URL", baseURL),
                 ("Model ID", modelID),
                 ("API Key", apiKeyPlaceholder),
-                ("Readiness", targetSummary.readinessSummary),
-                ("Ownership", targetSummary.ownershipNote)
+                (t("Readiness", "準備状態"), targetSummary.readinessSummary),
+                (t("Ownership", "管理範囲"), targetSummary.ownershipNote)
             ])
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("Copy")
+                Text(t("Copy", "コピー"))
                     .font(.subheadline.weight(.semibold))
 
                 HStack(spacing: 10) {
                     Button {
                         onCopyBaseURL()
                     } label: {
-                        Label("Copy Base URL", systemImage: "link")
+                        Label(t("Copy Base URL", "Base URLをコピー"), systemImage: "link")
                     }
 
                     Button {
                         onCopyModelID()
                     } label: {
-                        Label("Copy Model ID", systemImage: "doc.on.doc")
+                        Label(t("Copy Model ID", "Model IDをコピー"), systemImage: "doc.on.doc")
                     }
 
                     Button {
                         onCopyAPIKeyPlaceholder()
                     } label: {
-                        Label("Copy API Key Placeholder", systemImage: "key")
+                        Label(t("Copy API Key Placeholder", "API Keyプレースホルダーをコピー"), systemImage: "key")
                     }
                 }
 
@@ -80,19 +119,19 @@ struct ConnectionSettingsView: View {
                     Button {
                         onCopyConfig()
                     } label: {
-                        Label("Copy JSON Config", systemImage: "curlybraces")
+                        Label(t("Copy JSON Config", "JSON設定をコピー"), systemImage: "curlybraces")
                     }
 
                     Button {
                         onCopyHermesAgentConfig()
                     } label: {
-                        Label("Copy Hermes Agent Config", systemImage: "person.crop.circle.badge.checkmark")
+                        Label(t("Copy Hermes Agent Config", "Hermes Agent設定をコピー"), systemImage: "person.crop.circle.badge.checkmark")
                     }
 
                     Button {
                         onCopyAllConnectionSettings()
                     } label: {
-                        Label("Copy All Connection Settings", systemImage: "doc.on.clipboard")
+                        Label(t("Copy All Connection Settings", "接続設定をまとめてコピー"), systemImage: "doc.on.clipboard")
                     }
                 }
 
@@ -100,19 +139,22 @@ struct ConnectionSettingsView: View {
                     Button {
                         onCopyModelsCurl()
                     } label: {
-                        Label("Copy curl Readiness Check", systemImage: "terminal")
+                        Label(t("Copy curl Readiness Check", "Ready確認curlをコピー"), systemImage: "terminal")
                     }
 
                     Button {
                         onCopyChatCompletionsCurl()
                     } label: {
-                        Label("Copy OpenAI Chat Example", systemImage: "terminal")
+                        Label(t("Copy OpenAI Chat Example", "OpenAIチャット例をコピー"), systemImage: "terminal")
                     }
                 }
 
-                Text("Chat examples are client-side helper text. MLX Server Manager does not run inference requests.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(t(
+                    "Chat examples are client-side helper text. MLX Server Manager does not run inference requests.",
+                    "チャット例はクライアント側の補助テキストです。MLX Server Managerは推論リクエストを実行しません。"
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
         }
         .panelStyle()

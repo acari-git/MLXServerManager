@@ -654,6 +654,7 @@ struct IntegratedWorkspaceView: View {
                 entries: viewModel.logEntries,
                 targetSummary: viewModel.connectionTargetSummary,
                 runningModelText: viewModel.runningModelText,
+                language: viewModel.settings.uiLanguage,
                 onCopy: viewModel.copyLogsRequested,
                 onClear: viewModel.clearLogsRequested
             )

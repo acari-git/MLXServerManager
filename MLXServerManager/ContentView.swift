@@ -217,6 +217,7 @@ struct ContentView: View {
                             baseURL: viewModel.baseURL,
                             modelID: viewModel.selectedModelIdentifier,
                             apiKeyPlaceholder: viewModel.apiKeyPlaceholder,
+                            language: viewModel.settings.uiLanguage,
                             onCopyBaseURL: viewModel.copyBaseURL,
                             onCopyModelID: viewModel.copyModelID,
                             onCopyAPIKeyPlaceholder: viewModel.copyAPIKeyPlaceholder,
@@ -229,6 +230,7 @@ struct ContentView: View {
 
                         LogView(
                             entries: viewModel.logEntries,
+                            language: viewModel.settings.uiLanguage,
                             onCopy: viewModel.copyLogsRequested,
                             onClear: viewModel.clearLogsRequested
                         )

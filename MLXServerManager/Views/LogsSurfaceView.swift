@@ -4,8 +4,33 @@ struct LogsSurfaceView: View {
     let entries: [LogEntry]
     let targetSummary: ConnectionTargetSummary
     let runningModelText: String
+    let language: AppLanguage
     let onCopy: () -> Void
     let onClear: () -> Void
+
+    init(
+        entries: [LogEntry],
+        targetSummary: ConnectionTargetSummary,
+        runningModelText: String,
+        language: AppLanguage = .system,
+        onCopy: @escaping () -> Void,
+        onClear: @escaping () -> Void
+    ) {
+        self.entries = entries
+        self.targetSummary = targetSummary
+        self.runningModelText = runningModelText
+        self.language = language
+        self.onCopy = onCopy
+        self.onClear = onClear
+    }
+
+    private var strings: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        strings.text(english: english, japanese: japanese)
+    }
 
     var body: some View {
         ScrollView {
@@ -17,6 +42,7 @@ struct LogsSurfaceView: View {
 
                 LogView(
                     entries: entries,
+                    language: language,
                     onCopy: onCopy,
                     onClear: onClear
                 )
@@ -36,13 +62,16 @@ struct LogsSurfaceView: View {
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.accentColor)
 
-                Text("Logs")
+                Text(strings.text(.logs))
                     .font(.title2.weight(.semibold))
             }
 
-            Text("App-managed lifecycle and log context. External server logs are not captured.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            Text(t(
+                "App-managed lifecycle and log context. External server logs are not captured.",
+                "アプリ管理のライフサイクルとログコンテキストを表示します。外部サーバーのログは取得しません。"
+            ))
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("logs-surface-header")
@@ -54,10 +83,10 @@ struct LogsSurfaceView: View {
             alignment: .leading,
             spacing: 12
         ) {
-            summaryCard("Entries", value: String(entries.count), identifier: "logs-surface-summary-entries")
-            summaryCard("Target", value: targetSummary.targetType, identifier: "logs-surface-summary-target")
-            summaryCard("Readiness", value: targetSummary.readinessSummary, identifier: "logs-surface-summary-readiness")
-            summaryCard("Running", value: runningModelText, identifier: "logs-surface-summary-running")
+            summaryCard(t("Entries", "件数"), value: String(entries.count), identifier: "logs-surface-summary-entries")
+            summaryCard(t("Target", "接続先"), value: targetSummary.targetType, identifier: "logs-surface-summary-target")
+            summaryCard(t("Readiness", "準備状態"), value: targetSummary.readinessSummary, identifier: "logs-surface-summary-readiness")
+            summaryCard(t("Running", "実行中"), value: runningModelText, identifier: "logs-surface-summary-running")
         }
         .accessibilityIdentifier("logs-surface-summary")
     }
@@ -93,21 +122,21 @@ struct LogsSurfaceView: View {
 
     private var troubleshootingCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Troubleshooting", systemImage: "wrench.and.screwdriver")
+            Label(t("Troubleshooting", "トラブルシューティング"), systemImage: "wrench.and.screwdriver")
                 .font(.headline)
 
             DetailGrid(rows: [
-                ("Latest important log", latestImportantLogEntry?.line ?? "None"),
-                ("Target", targetSummary.targetType),
+                (t("Latest important log", "直近の重要ログ"), latestImportantLogEntry?.line ?? t("None", "なし")),
+                (t("Target", "接続先"), targetSummary.targetType),
                 ("Base URL", targetSummary.baseURL),
-                ("Running", runningModelText),
-                ("Entries", String(entries.count))
+                (t("Running", "実行中"), runningModelText),
+                (t("Entries", "件数"), String(entries.count))
             ])
 
             HStack {
-                Button("Copy logs") { onCopy() }
+                Button(t("Copy logs", "ログをコピー")) { onCopy() }
                     .disabled(entries.isEmpty)
-                Button("Clear logs") { onClear() }
+                Button(t("Clear logs", "ログをクリア")) { onClear() }
                     .disabled(entries.isEmpty)
             }
         }
@@ -125,15 +154,18 @@ struct LogsSurfaceView: View {
 
     private var boundaryCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Log Boundary", systemImage: "lock")
+            Label(t("Log Boundary", "ログ境界"), systemImage: "lock")
                 .font(.headline)
 
-            Text("Logs shown here are app-managed lifecycle and captured managed-process context already available to MLX Server Manager. Adopted external server stdout/stderr is not captured, inspected, stopped, restarted, or owned by the app.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Text(t(
+                "Logs shown here are app-managed lifecycle and captured managed-process context already available to MLX Server Manager. Adopted external server stdout/stderr is not captured, inspected, stopped, restarted, or owned by the app.",
+                "ここに表示するログは、MLX Server Managerがすでに保持しているアプリ管理のライフサイクルと管理プロセスのコンテキストです。採用済み外部サーバーのstdout/stderrは取得・検査・停止・再起動・所有しません。"
+            ))
+            .font(.caption)
+            .foregroundStyle(.secondary)
 
             DetailGrid(rows: [
-                ("Ownership", targetSummary.ownershipNote),
+                (t("Ownership", "管理範囲"), targetSummary.ownershipNote),
                 ("Direct Mode", targetSummary.directModeNote),
                 ("Base URL", targetSummary.baseURL),
                 ("Model ID", targetSummary.modelID)

@@ -7,6 +7,10 @@ struct RuntimeSurfaceView: View {
         AppLocalization(language: viewModel.settings.uiLanguage)
     }
 
+    private func t(_ english: String, _ japanese: String) -> String {
+        strings.text(english: english, japanese: japanese)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -33,7 +37,7 @@ struct RuntimeSurfaceView: View {
                 Text(strings.text(.runtime))
                     .font(.title2.weight(.semibold))
             }
-            Text("Start, stop, diagnose, benchmark, and copy Direct Mode connection values.")
+            Text(t("Start, stop, diagnose, benchmark, and copy Direct Mode connection values.", "Direct Modeの接続情報をコピーし、起動・停止・診断・ベンチマークを実行します。"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -45,11 +49,11 @@ struct RuntimeSurfaceView: View {
                 .font(.headline)
 
             DetailGrid(rows: [
-                ("Status", viewModel.runtimeState.title),
-                ("Selected", viewModel.selectedModelIdentifier),
-                ("Running", viewModel.runningModelID ?? "Not running"),
-                ("Restart required", viewModel.restartRequired ? "Yes" : "No"),
-                ("Memory", viewModel.memoryUsageText)
+                (t("Status", "ステータス"), viewModel.runtimeState.title),
+                (t("Selected", "選択中"), viewModel.selectedModelIdentifier),
+                (t("Running", "実行中"), viewModel.runningModelID ?? t("Not running", "未実行")),
+                (t("Restart required", "再起動必要"), viewModel.restartRequired ? t("Yes", "はい") : t("No", "いいえ")),
+                (t("Memory", "メモリ"), viewModel.memoryUsageText)
             ])
 
             HStack {
@@ -77,7 +81,7 @@ struct RuntimeSurfaceView: View {
                 Button {
                     viewModel.checkReadyRequested()
                 } label: {
-                    Label("Ready Check", systemImage: "checkmark.seal")
+                    Label(t("Ready Check", "Ready確認"), systemImage: "checkmark.seal")
                 }
 
                 Button {
@@ -93,9 +97,9 @@ struct RuntimeSurfaceView: View {
             }
 
             DetailGrid(rows: [
-                ("Stop", viewModel.stopDisabledReason),
-                ("Restart", viewModel.restartDisabledReason),
-                ("Speed Test", viewModel.speedTestDisabledReason)
+                (strings.text(.stop), viewModel.stopDisabledReason),
+                (strings.text(.restart), viewModel.restartDisabledReason),
+                (strings.text(.speedTest), viewModel.speedTestDisabledReason)
             ])
 
             if let warning = viewModel.runtimeSelectionWarning {
@@ -109,14 +113,14 @@ struct RuntimeSurfaceView: View {
 
     private var runtimeMetricsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Diagnostics")
+            Text(t("Diagnostics", "診断"))
                 .font(.headline)
             DetailGrid(rows: [
-                ("Target", viewModel.connectionTargetSummary.targetType),
+                (t("Target", "接続先"), viewModel.connectionTargetSummary.targetType),
                 ("Base URL", viewModel.baseURL),
-                ("Readiness", viewModel.connectionTargetSummary.readinessSummary),
-                ("Correlation", viewModel.diagnosticsBenchmarkCorrelationSummary),
-                ("Launch command", viewModel.selectedLaunchCommandPreview)
+                (t("Readiness", "準備状態"), viewModel.connectionTargetSummary.readinessSummary),
+                (t("Correlation", "相関"), viewModel.diagnosticsBenchmarkCorrelationSummary),
+                (t("Launch command", "起動コマンド"), viewModel.selectedLaunchCommandPreview)
             ])
         }
         .panelStyle()
@@ -128,15 +132,15 @@ struct RuntimeSurfaceView: View {
                 Text(strings.text(.benchmark))
                     .font(.headline)
                 Spacer()
-                Button("Copy latest") {
+                Button(t("Copy latest", "最新をコピー")) {
                     viewModel.copyLatestBenchmark()
                 }
                 .disabled(viewModel.latestBenchmarkResult == nil)
-                Button("Copy history") {
+                Button(t("Copy history", "履歴をコピー")) {
                     viewModel.copyBenchmarkSummary()
                 }
                 .disabled(viewModel.benchmarkHistory.isEmpty)
-                Button("Copy debug") {
+                Button(t("Copy debug", "デバッグ情報をコピー")) {
                     viewModel.copyBenchmarkTroubleshooting()
                 }
             }
@@ -147,14 +151,14 @@ struct RuntimeSurfaceView: View {
 
             if let latest = viewModel.latestBenchmarkResult {
                 DetailGrid(rows: [
-                    ("Latest", latest.summary),
+                    (t("Latest", "最新"), latest.summary),
                     ("HTTP", latest.httpStatusText),
-                    ("Latency", latest.latencyText),
-                    ("Selected", latest.selectedProfileName),
-                    ("Running", latest.runningProfileText)
+                    (t("Latency", "レイテンシ"), latest.latencyText),
+                    (t("Selected", "選択中"), latest.selectedProfileName),
+                    (t("Running", "実行中"), latest.runningProfileText)
                 ])
             } else {
-                Text("No benchmark results in this session.")
+                Text(t("No benchmark results in this session.", "このセッションのベンチマーク結果はありません。"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -170,7 +174,7 @@ struct RuntimeSurfaceView: View {
 
     private var timelineCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Runtime timeline")
+            Text(t("Runtime timeline", "ランタイムタイムライン"))
                 .font(.headline)
             if viewModel.runtimeEvents.isEmpty {
                 Text(strings.text(.noRuntimeEvents))
@@ -199,9 +203,9 @@ struct RuntimeSurfaceView: View {
             ])
             HStack {
                 Button("Hermes") { viewModel.copyHermesAgentConfig() }
-                Button("OpenAI-compatible") { viewModel.copyAllConnectionSettings() }
+                Button(t("OpenAI-compatible", "OpenAI互換")) { viewModel.copyAllConnectionSettings() }
                 Button("/v1/models curl") { viewModel.copyModelsCurl() }
-                Button("Chat completions curl") { viewModel.copyChatCompletionsCurl() }
+                Button(t("Chat completions curl", "chat/completions curl")) { viewModel.copyChatCompletionsCurl() }
             }
         }
         .panelStyle()
