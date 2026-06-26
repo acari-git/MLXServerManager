@@ -167,7 +167,7 @@ struct DashboardNextStepsCard: View {
 
     var body: some View {
         DashboardStatusCard(
-            title: "Next Steps",
+            title: t("Next Steps", "次の手順"),
             systemImage: "list.bullet.clipboard",
             accentColor: display.accentColor
         ) {
@@ -185,23 +185,23 @@ struct DashboardNextStepsCard: View {
                 Divider()
 
                 HStack(alignment: .top, spacing: 12) {
-                    DashboardKeyValueRow(label: "Primary Step", value: display.primaryStep)
+                    DashboardKeyValueRow(label: t("Primary Step", "主な手順"), value: display.primaryStep)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    DashboardKeyValueRow(label: "Selected Profile", value: display.selectedProfile)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                HStack(alignment: .top, spacing: 12) {
-                    DashboardKeyValueRow(label: "Managed Path", value: display.managedPath)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    DashboardKeyValueRow(label: "External Path", value: display.externalPath)
+                    DashboardKeyValueRow(label: t("Selected Profile", "選択プロファイル"), value: display.selectedProfile)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 HStack(alignment: .top, spacing: 12) {
-                    DashboardKeyValueRow(label: "Readiness", value: display.readiness)
+                    DashboardKeyValueRow(label: t("Managed Path", "管理サーバー経路"), value: display.managedPath)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    DashboardKeyValueRow(label: t("External Path", "外部サーバー経路"), value: display.externalPath)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack(alignment: .top, spacing: 12) {
+                    DashboardKeyValueRow(label: t("Readiness", "準備状態"), value: display.readiness)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     DashboardKeyValueRow(label: "Direct Mode", value: display.directMode)
@@ -220,7 +220,8 @@ struct DashboardNextStepsCard: View {
         DashboardNextStepsDisplay(
             runtimeState: runtimeState,
             targetSummary: targetSummary,
-            selectedModel: selectedModel
+            selectedModel: selectedModel,
+            language: language
         )
     }
 }
@@ -240,71 +241,73 @@ private struct DashboardNextStepsDisplay {
     init(
         runtimeState: ModelRuntimeState,
         targetSummary: ConnectionTargetSummary,
-        selectedModel: ModelConfig?
+        selectedModel: ModelConfig?,
+        language: AppLanguage = .system
     ) {
-        selectedProfile = Self.selectedProfileText(selectedModel)
-        managedPath = Self.managedPathText(selectedModel)
-        externalPath = "Adopt a detected external endpoint only when you want connection context; lifecycle and logs stay external."
-        directMode = "\(targetSummary.directModeNote). No proxy or chat UI."
+        let l10n = AppLocalization(language: language)
+        selectedProfile = Self.selectedProfileText(selectedModel, l10n: l10n)
+        managedPath = Self.managedPathText(selectedModel, l10n: l10n)
+        externalPath = l10n.text(english: "Adopt a detected external endpoint only when you want connection context; lifecycle and logs stay external.", japanese: "接続コンテキストが必要な場合のみ、検出された外部エンドポイントを採用します。ライフサイクルとログは外部管理のままです。")
+        directMode = l10n.text(english: "\(targetSummary.directModeNote). No proxy or chat UI.", japanese: "\(targetSummary.directModeNote)。プロキシやチャットUIはありません。")
 
         switch runtimeState {
         case .stopped, .portAvailable:
-            title = "Choose how to connect"
-            message = "Start a managed server from the selected profile, or adopt an already-running external server after it is detected."
+            title = l10n.text(english: "Choose how to connect", japanese: "接続方法を選択")
+            message = l10n.text(english: "Start a managed server from the selected profile, or adopt an already-running external server after it is detected.", japanese: "選択プロファイルから管理サーバーを起動するか、検出済みの実行中外部サーバーを採用します。")
             primaryStep = selectedModel == nil
-                ? "Create, select, or import a profile before managed Start."
-                : "Run Diagnostics if needed, then press Start for a managed server."
-            readiness = "Ready appears after /v1/models responds successfully."
-            safetyNote = "Import Profiles restores metadata only; it does not download models or start servers."
+                ? l10n.text(english: "Create, select, or import a profile before managed Start.", japanese: "管理サーバーを起動する前に、プロファイルを作成、選択、またはインポートしてください。")
+                : l10n.text(english: "Run Diagnostics if needed, then press Start for a managed server.", japanese: "必要に応じて診断を実行し、管理サーバーを起動します。")
+            readiness = l10n.text(english: "Ready appears after /v1/models responds successfully.", japanese: "/v1/modelsが正常応答するとReadyになります。")
+            safetyNote = l10n.text(english: "Import Profiles restores metadata only; it does not download models or start servers.", japanese: "プロファイルのインポートはメタデータのみを復元します。モデルのダウンロードやサーバー起動は行いません。")
             accentColor = .blue
         case .externalServerDetected:
-            title = "External endpoint is available"
-            message = "A compatible server responded on the selected endpoint, but it is not managed by MLX Server Manager."
-            primaryStep = "Adopt External Server to use it as connection context, or leave it unmanaged."
-            readiness = "Detection is based on /v1/models responding successfully."
-            safetyNote = "Adopt is never process ownership. Stop and Restart remain unavailable for this external process."
+            title = l10n.text(english: "External endpoint is available", japanese: "外部エンドポイントを利用できます")
+            message = l10n.text(english: "A compatible server responded on the selected endpoint, but it is not managed by MLX Server Manager.", japanese: "選択エンドポイントで互換サーバーが応答しましたが、MLX Server Managerの管理対象ではありません。")
+            primaryStep = l10n.text(english: "Adopt External Server to use it as connection context, or leave it unmanaged.", japanese: "接続コンテキストとして使う場合は外部サーバーを採用します。不要なら外部管理のままにします。")
+            readiness = l10n.text(english: "Detection is based on /v1/models responding successfully.", japanese: "検出は/v1/modelsの正常応答に基づきます。")
+            safetyNote = l10n.text(english: "Adopt is never process ownership. Stop and Restart remain unavailable for this external process.", japanese: "採用はプロセス所有を意味しません。この外部プロセスでは停止と再起動は利用できません。")
             accentColor = .orange
         case .adoptedExternalServer:
-            title = "External endpoint is adopted"
-            message = "Use Connection Settings for clients, or Forget External Server when this app-side context is no longer useful."
-            primaryStep = "Copy Base URL, Model ID, API key placeholder, or client config."
-            readiness = "Readiness describes endpoint response, not external process ownership."
-            safetyNote = "Forget External Server clears context only and does not stop the server."
+            title = l10n.text(english: "External endpoint is adopted", japanese: "外部エンドポイントを採用済み")
+            message = l10n.text(english: "Use Connection Settings for clients, or Forget External Server when this app-side context is no longer useful.", japanese: "クライアントには接続設定を使います。このアプリ側コンテキストが不要になったら外部サーバーを解除します。")
+            primaryStep = l10n.text(english: "Copy Base URL, Model ID, API key placeholder, or client config.", japanese: "Base URL、Model ID、API Keyプレースホルダー、またはクライアント設定をコピーします。")
+            readiness = l10n.text(english: "Readiness describes endpoint response, not external process ownership.", japanese: "準備状態はエンドポイント応答を示すもので、外部プロセスの所有を示しません。")
+            safetyNote = l10n.text(english: "Forget External Server clears context only and does not stop the server.", japanese: "外部サーバー解除はコンテキストだけを消去し、サーバーは停止しません。")
             accentColor = .orange
         case .starting, .loading, .checkingReady:
-            title = "Wait for readiness"
-            message = "The target is not ready until /v1/models responds successfully."
-            primaryStep = "Watch state and logs before pointing clients at the endpoint."
-            readiness = "Running and Ready are separate states."
-            safetyNote = "The app does not send inference requests, auto-restart, or kill processes while waiting."
+            title = l10n.text(english: "Wait for readiness", japanese: "Readyを待機")
+            message = l10n.text(english: "The target is not ready until /v1/models responds successfully.", japanese: "/v1/modelsが正常応答するまでは接続先はReadyではありません。")
+            primaryStep = l10n.text(english: "Watch state and logs before pointing clients at the endpoint.", japanese: "クライアントをエンドポイントへ向ける前に、状態とログを確認してください。")
+            readiness = l10n.text(english: "Running and Ready are separate states.", japanese: "RunningとReadyは別の状態です。")
+            safetyNote = l10n.text(english: "The app does not send inference requests, auto-restart, or kill processes while waiting.", japanese: "待機中に推論リクエスト送信、自動再起動、プロセスkillは行いません。")
             accentColor = .orange
         case let .ready(_, _, processIdentifier):
             if processIdentifier != nil {
-                title = "Managed server is ready"
-                message = "The selected managed endpoint is ready for OpenAI-compatible clients."
-                primaryStep = "Copy connection settings and paste them into your client."
-                safetyNote = "Stop and Restart affect only this app-managed process."
+                title = l10n.text(english: "Managed server is ready", japanese: "管理サーバーはReadyです")
+                message = l10n.text(english: "The selected managed endpoint is ready for OpenAI-compatible clients.", japanese: "選択された管理エンドポイントはOpenAI互換クライアントで利用できます。")
+                primaryStep = l10n.text(english: "Copy connection settings and paste them into your client.", japanese: "接続設定をコピーしてクライアントへ貼り付けます。")
+                safetyNote = l10n.text(english: "Stop and Restart affect only this app-managed process.", japanese: "停止と再起動は、このアプリ管理プロセスのみに影響します。")
             } else {
-                title = "Endpoint is ready"
-                message = "The endpoint responded to readiness, but no app-managed pid is attached."
-                primaryStep = "Use connection settings and verify process ownership outside the app."
-                safetyNote = "The app does not infer ownership from readiness alone."
+                title = l10n.text(english: "Endpoint is ready", japanese: "エンドポイントはReadyです")
+                message = l10n.text(english: "The endpoint responded to readiness, but no app-managed pid is attached.", japanese: "エンドポイントはReady確認に応答しましたが、アプリ管理pidは付いていません。")
+                primaryStep = l10n.text(english: "Use connection settings and verify process ownership outside the app.", japanese: "接続設定を使い、プロセス所有権はアプリ外で確認してください。")
+                safetyNote = l10n.text(english: "The app does not infer ownership from readiness alone.", japanese: "アプリはReadyだけで所有権を推定しません。")
             }
             readiness = "Ready means /v1/models responded successfully."
             accentColor = .green
         case .stopping:
-            title = "Managed server is stopping"
-            message = "The app is stopping only the app-managed process."
-            primaryStep = "Wait for stopped state before starting again or changing runtime expectations."
-            readiness = "Readiness is unavailable while stopping."
-            safetyNote = "External servers are not affected by managed Stop."
+            title = l10n.text(english: "Managed server is stopping", japanese: "管理サーバーを停止中")
+            message = l10n.text(english: "The app is stopping only the app-managed process.", japanese: "アプリ管理プロセスのみを停止しています。")
+            primaryStep = l10n.text(english: "Wait for stopped state before starting again or changing runtime expectations.", japanese: "再起動やランタイム想定の変更前に、停止状態になるまで待機してください。")
+            readiness = l10n.text(english: "Readiness is unavailable while stopping.", japanese: "停止中はReady確認を利用できません。")
+            safetyNote = l10n.text(english: "External servers are not affected by managed Stop.", japanese: "管理サーバー停止は外部サーバーに影響しません。")
             accentColor = .orange
         case .checkingPort:
-            title = "Checking endpoint availability"
-            message = "The app is checking whether the selected host and port can be used safely."
-            primaryStep = "Wait for the port check result before pressing Start."
-            readiness = "Port availability is not readiness."
-            safetyNote = "Port checks do not start, stop, adopt, or inspect external processes."
+            title = l10n.text(english: "Checking endpoint availability", japanese: "エンドポイント利用可否を確認中")
+            message = l10n.text(english: "The app is checking whether the selected host and port can be used safely.", japanese: "選択したホストとポートを安全に利用できるか確認しています。")
+            primaryStep = l10n.text(english: "Wait for the port check result before pressing Start.", japanese: "起動前にポート確認結果を待ってください。")
+            readiness = l10n.text(english: "Port availability is not readiness.", japanese: "ポート利用可否はReady状態ではありません。")
+            safetyNote = l10n.text(english: "Port checks do not start, stop, adopt, or inspect external processes.", japanese: "ポート確認は外部プロセスの起動、停止、採用、検査を行いません。")
             accentColor = .orange
         case .portBusy:
             title = "Endpoint needs attention"
@@ -330,9 +333,9 @@ private struct DashboardNextStepsDisplay {
         }
     }
 
-    private static func selectedProfileText(_ selectedModel: ModelConfig?) -> String {
+    private static func selectedProfileText(_ selectedModel: ModelConfig?, l10n: AppLocalization) -> String {
         guard let selectedModel else {
-            return "No selected profile. Create, select, or import profile metadata first."
+            return l10n.text(english: "No selected profile. Create, select, or import profile metadata first.", japanese: "選択プロファイルがありません。先にプロファイルメタデータを作成、選択、またはインポートしてください。")
         }
 
         let displayName = selectedModel.displayName.isEmpty
@@ -341,12 +344,12 @@ private struct DashboardNextStepsDisplay {
         return "\(displayName) - \(selectedModel.modelID)"
     }
 
-    private static func managedPathText(_ selectedModel: ModelConfig?) -> String {
+    private static func managedPathText(_ selectedModel: ModelConfig?, l10n: AppLocalization) -> String {
         guard let selectedModel else {
-            return "Managed Start needs a selected profile with model ID, host, and port."
+            return l10n.text(english: "Managed Start needs a selected profile with model ID, host, and port.", japanese: "管理サーバーの起動には、Model ID、ホスト、ポートを含む選択プロファイルが必要です。")
         }
 
-        return "Start launches app-managed mlx_lm.server using \(selectedModel.host):\(selectedModel.serverPort)."
+        return l10n.text(english: "Start launches app-managed mlx_lm.server using \(selectedModel.host):\(selectedModel.serverPort).", japanese: "起動すると、\(selectedModel.host):\(selectedModel.serverPort) を使ってアプリ管理のmlx_lm.serverを起動します。")
     }
 }
 
