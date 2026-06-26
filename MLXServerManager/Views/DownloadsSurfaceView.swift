@@ -9,6 +9,33 @@ struct DownloadsSurfaceView: View {
         AppLocalization(language: viewModel.settings.uiLanguage)
     }
 
+    private func t(_ english: String, _ japanese: String) -> String {
+        strings.text(english: english, japanese: japanese)
+    }
+
+    private var downloadProgressText: String {
+        if let progress = viewModel.huggingFaceDownloadStatus.progress {
+            return "\(Int(progress * 100))%"
+        }
+
+        switch viewModel.huggingFaceDownloadStatus.phase {
+        case .waiting:
+            return t("Waiting", "待機中")
+        case .preparing:
+            return t("Preparing", "準備中")
+        case .downloading:
+            return t("Reading progress", "進捗取得中")
+        case .finalizing:
+            return t("Finalizing", "最終処理中")
+        case .completed:
+            return "100%"
+        case .failed:
+            return t("Failed", "失敗")
+        case .cancelled:
+            return t("Cancelled", "キャンセル")
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -36,9 +63,12 @@ struct DownloadsSurfaceView: View {
                 Text(strings.text(.downloads))
                     .font(.title2.weight(.semibold))
             }
-            Text("Search Hugging Face, review the selected result, download explicitly, and recover failed queue entries.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            Text(t(
+                "Search Hugging Face, review the selected result, download explicitly, and recover failed queue entries.",
+                "Hugging Faceを検索し、候補を確認してから明示的にダウンロードします。失敗したキュー項目の復旧もここで行います。"
+            ))
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
         }
     }
 
@@ -46,19 +76,19 @@ struct DownloadsSurfaceView: View {
     private var recoveryCard: some View {
         if let failed = viewModel.latestFailedHuggingFaceDownloadQueueEntry {
             VStack(alignment: .leading, spacing: 10) {
-                Label("Latest failed download", systemImage: "exclamationmark.triangle")
+                Label(t("Latest failed download", "直近の失敗したダウンロード"), systemImage: "exclamationmark.triangle")
                     .font(.headline)
                     .foregroundStyle(.orange)
                 DetailGrid(rows: [
-                    ("Repository", failed.repositoryID),
-                    ("Destination", failed.compactDestinationPath),
-                    ("Message", failed.message)
+                    (t("Repository", "リポジトリ"), failed.repositoryID),
+                    (t("Destination", "保存先"), failed.compactDestinationPath),
+                    (t("Message", "メッセージ"), failed.message)
                 ])
                 HStack {
-                    Button("Restore form") {
+                    Button(t("Restore form", "フォームに復元")) {
                         viewModel.restoreHuggingFaceDownloadForm(from: failed)
                     }
-                    Button("Copy URL") {
+                    Button(t("Copy URL", "URLをコピー")) {
                         viewModel.copyHuggingFaceDownloadURL(from: failed)
                     }
                     Button(strings.text(.retry)) {
@@ -73,25 +103,25 @@ struct DownloadsSurfaceView: View {
 
     private var downloadEnvironmentCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Download environment")
+            Text(t("Download environment", "ダウンロード環境"))
                 .font(.headline)
             DetailGrid(rows: [
-                ("HF access", viewModel.huggingFaceAccessMessage),
+                (t("HF access", "HFアクセス"), viewModel.huggingFaceAccessMessage),
                 ("aria2c", viewModel.aria2Availability.displayPath),
-                ("Auto restart", viewModel.enableDownloadAutoRestart ? "Enabled below \(viewModel.lowSpeedRestartThresholdText)" : "Disabled")
+                (t("Auto restart", "自動再開"), viewModel.enableDownloadAutoRestart ? t("Enabled below \(viewModel.lowSpeedRestartThresholdText)", "\(viewModel.lowSpeedRestartThresholdText)未満で有効") : t("Disabled", "無効"))
             ])
             HStack {
-                SecureField("Hugging Face access value", text: $viewModel.huggingFaceAccessInput)
+                SecureField(t("Hugging Face access value", "Hugging Faceアクセストークン"), text: $viewModel.huggingFaceAccessInput)
                     .textFieldStyle(.roundedBorder)
-                Button("Save") { viewModel.saveHuggingFaceAccessRequested() }
-                Button("Delete") { viewModel.deleteHuggingFaceAccessRequested() }
+                Button(t("Save", "保存")) { viewModel.saveHuggingFaceAccessRequested() }
+                Button(t("Delete", "削除")) { viewModel.deleteHuggingFaceAccessRequested() }
                     .disabled(!viewModel.isHuggingFaceAccessSaved)
-                Button("Check aria2c") { viewModel.refreshAria2Status() }
+                Button(t("Check aria2c", "aria2cを確認")) { viewModel.refreshAria2Status() }
             }
-            Toggle("Enable low-speed auto-restart policy", isOn: $viewModel.enableDownloadAutoRestart)
+            Toggle(t("Enable low-speed auto-restart policy", "低速時の自動再開ポリシーを有効にする"), isOn: $viewModel.enableDownloadAutoRestart)
                 .toggleStyle(.checkbox)
             HStack {
-                Text("Low-speed threshold")
+                Text(t("Low-speed threshold", "低速判定しきい値"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 TextField("50K", text: $viewModel.lowSpeedRestartThresholdText)
@@ -104,12 +134,12 @@ struct DownloadsSurfaceView: View {
 
     private var downloadWorkflowCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Download workflow")
+            Text(t("Download workflow", "ダウンロード手順"))
                 .font(.headline)
-            Label("1. Search or paste a Hugging Face model ID.", systemImage: "magnifyingglass")
-            Label("2. Preview files and select MLX-related weights/config files.", systemImage: "list.bullet.rectangle")
-            Label("3. Download, auto-add to Models, then start the server.", systemImage: "arrow.down.circle")
-            Label("4. Copy client or Hermes connection settings from the right panel.", systemImage: "doc.on.doc")
+            Label(t("1. Search or paste a Hugging Face model ID.", "1. Hugging FaceのモデルIDを検索するか貼り付けます。"), systemImage: "magnifyingglass")
+            Label(t("2. Preview files and select MLX-related weights/config files.", "2. ファイルをプレビューし、MLX関連の重み・設定ファイルを選択します。"), systemImage: "list.bullet.rectangle")
+            Label(t("3. Download, auto-add to Models, then start the server.", "3. ダウンロード後、モデル一覧へ自動追加し、サーバーを起動します。"), systemImage: "arrow.down.circle")
+            Label(t("4. Copy client or Hermes connection settings from the right panel.", "4. 右ペインからクライアントまたはHermesの接続情報をコピーします。"), systemImage: "doc.on.doc")
         }
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -118,7 +148,7 @@ struct DownloadsSurfaceView: View {
 
     private var searchCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Hugging Face search")
+            Text(t("Hugging Face search", "Hugging Face検索"))
                 .font(.headline)
 
             HStack {
@@ -136,7 +166,7 @@ struct DownloadsSurfaceView: View {
                 .disabled(viewModel.isHuggingFaceSearching)
             }
 
-            Toggle("Show MLX-like results only", isOn: $viewModel.showOnlyMLXLikelySearchResults)
+            Toggle(t("Show MLX-like results only", "MLXらしい候補だけ表示"), isOn: $viewModel.showOnlyMLXLikelySearchResults)
                 .toggleStyle(.checkbox)
                 .disabled(viewModel.huggingFaceSearchResults.isEmpty)
 
@@ -155,7 +185,7 @@ struct DownloadsSurfaceView: View {
                                     Text(result.id)
                                         .font(.caption.weight(.semibold))
                                     Spacer()
-                                    Text(result.isMLXLikely ? "MLX-like" : "Review")
+                                    Text(result.isMLXLikely ? t("MLX-like", "MLX系") : t("Review", "要確認"))
                                         .font(.caption2.weight(.semibold))
                                 }
                                 Text(result.qualitySummary)
@@ -177,10 +207,10 @@ struct DownloadsSurfaceView: View {
 
             if let selected = viewModel.selectedHuggingFaceSearchResult {
                 DetailGrid(rows: [
-                    ("Selected", selected.id),
-                    ("Owner", selected.owner),
-                    ("Stats", selected.qualitySummary),
-                    ("Tags", selected.tagsSummary),
+                    (t("Selected", "選択中"), selected.id),
+                    (t("Owner", "所有者"), selected.owner),
+                    (t("Stats", "統計"), selected.qualitySummary),
+                    (t("Tags", "タグ"), selected.tagsSummary),
                     ("URL", selected.webURL)
                 ])
             }
@@ -193,43 +223,43 @@ struct DownloadsSurfaceView: View {
             Text(strings.text(.download))
                 .font(.headline)
 
-            TextField("Repository ID or URL", text: $viewModel.huggingFaceDownloadDraft.source)
+            TextField(t("Repository ID or URL", "リポジトリIDまたはURL"), text: $viewModel.huggingFaceDownloadDraft.source)
                 .textFieldStyle(.roundedBorder)
             HStack {
-                TextField("Revision", text: $viewModel.huggingFaceDownloadDraft.revision)
+                TextField(t("Revision", "リビジョン"), text: $viewModel.huggingFaceDownloadDraft.revision)
                     .textFieldStyle(.roundedBorder)
-                TextField("Display name", text: $viewModel.huggingFaceDownloadDraft.displayName)
+                TextField(t("Display name", "表示名"), text: $viewModel.huggingFaceDownloadDraft.displayName)
                     .textFieldStyle(.roundedBorder)
             }
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Button("MLX preset") { viewModel.applyHuggingFaceMLXPreset() }
+                    Button(t("MLX preset", "MLXプリセット")) { viewModel.applyHuggingFaceMLXPreset() }
                     Button("Safetensors") { viewModel.applyHuggingFaceSafeTensorPreset() }
-                    Button("No filters") { viewModel.clearHuggingFaceFileFilters() }
+                    Button(t("No filters", "フィルターなし")) { viewModel.clearHuggingFaceFileFilters() }
                     Spacer()
                 }
-                TextField("Include patterns", text: $viewModel.huggingFaceDownloadDraft.includePatterns)
+                TextField(t("Include patterns", "含めるパターン"), text: $viewModel.huggingFaceDownloadDraft.includePatterns)
                     .textFieldStyle(.roundedBorder)
-                TextField("Exclude patterns", text: $viewModel.huggingFaceDownloadDraft.excludePatterns)
+                TextField(t("Exclude patterns", "除外するパターン"), text: $viewModel.huggingFaceDownloadDraft.excludePatterns)
                     .textFieldStyle(.roundedBorder)
-                Text("Patterns are comma-separated. Preview files first, then download selected or filtered files.")
+                Text(t("Patterns are comma-separated. Preview files first, then download selected or filtered files.", "パターンはカンマ区切りです。先にファイルをプレビューし、選択済みまたはフィルター済みのファイルをダウンロードします。"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
             HStack {
-                TextField("Save directory", text: $viewModel.huggingFaceDownloadDraft.saveDirectory)
+                TextField(t("Save directory", "保存先フォルダ"), text: $viewModel.huggingFaceDownloadDraft.saveDirectory)
                     .textFieldStyle(.roundedBorder)
-                Button("Choose") {
+                Button(t("Choose", "選択")) {
                     viewModel.chooseHuggingFaceDownloadDirectoryRequested()
                 }
                 .disabled(viewModel.isHuggingFaceDownloadRunning)
             }
 
             DetailGrid(rows: [
-                ("Preview", viewModel.huggingFaceDownloadPreview.compactDestinationPath),
-                ("Files", viewModel.huggingFaceSelectedPreviewSummary),
-                ("Status", viewModel.huggingFaceDownloadStatus.phase.title),
-                ("Message", viewModel.huggingFaceDownloadStatus.message)
+                (t("Preview", "プレビュー"), viewModel.huggingFaceDownloadPreview.compactDestinationPath),
+                (t("Files", "ファイル"), viewModel.huggingFaceSelectedPreviewSummary),
+                (t("Status", "ステータス"), viewModel.huggingFaceDownloadStatus.phase.localizedTitle(language: viewModel.settings.uiLanguage)),
+                (t("Message", "メッセージ"), viewModel.huggingFaceDownloadStatus.message)
             ])
 
             downloadProgressPanel
@@ -238,12 +268,12 @@ struct DownloadsSurfaceView: View {
 
             if viewModel.huggingFaceDownloadStatus.phase == .completed {
                 HStack {
-                    Label("Download complete. The profile has been added when possible.", systemImage: "checkmark.circle")
+                    Label(t("Download complete. The profile has been added when possible.", "ダウンロードが完了しました。可能な場合はプロファイルを追加済みです。"), systemImage: "checkmark.circle")
                         .font(.caption)
                         .foregroundStyle(.green)
                     Spacer()
-                    Button("Open Models") { onOpenModels() }
-                    Button("Open Runtime") { onOpenRuntime() }
+                    Button(t("Open Models", "モデルを開く")) { onOpenModels() }
+                    Button(t("Open Runtime", "ランタイムを開く")) { onOpenRuntime() }
                 }
                 .padding(8)
                 .background(Color.green.opacity(0.10))
@@ -254,7 +284,7 @@ struct DownloadsSurfaceView: View {
                 Button {
                     viewModel.previewHuggingFaceFilesRequested()
                 } label: {
-                    Label("Preview files", systemImage: "list.bullet.rectangle")
+                    Label(t("Preview files", "ファイルをプレビュー"), systemImage: "list.bullet.rectangle")
                 }
                 .disabled(viewModel.huggingFaceFilePreview.isLoading || viewModel.isHuggingFaceDownloadRunning)
 
@@ -283,10 +313,10 @@ struct DownloadsSurfaceView: View {
     private var downloadProgressPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Download progress")
+                Text(t("Download progress", "ダウンロード進捗"))
                     .font(.caption.weight(.semibold))
                 Spacer()
-                Text(viewModel.huggingFaceDownloadProgressText)
+                Text(downloadProgressText)
                     .font(.caption2.monospaced())
                     .foregroundStyle(.secondary)
             }
@@ -316,14 +346,14 @@ struct DownloadsSurfaceView: View {
     private var filePreviewPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("File preview")
+                Text(t("File preview", "ファイルプレビュー"))
                     .font(.caption.weight(.semibold))
                 Spacer()
                 if viewModel.huggingFaceFilePreview.isLoading {
                     ProgressView().scaleEffect(0.7)
                 }
             }
-            Toggle("Use selected preview files", isOn: $viewModel.huggingFaceDownloadDraft.useSelectedPreviewFiles)
+            Toggle(t("Use selected preview files", "選択したプレビューファイルを使用"), isOn: $viewModel.huggingFaceDownloadDraft.useSelectedPreviewFiles)
                 .toggleStyle(.checkbox)
                 .disabled(viewModel.huggingFaceFilePreview.files.isEmpty)
             HStack {
@@ -331,9 +361,9 @@ struct DownloadsSurfaceView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Button("Select filtered") { viewModel.selectAllHuggingFacePreviewFiles() }
+                Button(t("Select filtered", "フィルター結果を選択")) { viewModel.selectAllHuggingFacePreviewFiles() }
                     .disabled(viewModel.filteredHuggingFacePreviewFiles.isEmpty)
-                Button("Clear") { viewModel.clearHuggingFacePreviewSelection() }
+                Button(t("Clear", "クリア")) { viewModel.clearHuggingFacePreviewSelection() }
                     .disabled(viewModel.selectedHuggingFacePreviewFileIDs.isEmpty)
             }
             previewFileList
@@ -400,7 +430,7 @@ struct DownloadsSurfaceView: View {
                 .foregroundStyle(.secondary)
 
             if viewModel.huggingFaceDownloadQueue.isEmpty {
-                Text("No downloads in this session.")
+                Text(t("No downloads in this session.", "このセッションのダウンロードはありません。"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -411,7 +441,7 @@ struct DownloadsSurfaceView: View {
                                 .font(.caption.weight(.semibold))
                                 .lineLimit(1)
                             Spacer()
-                            Text(entry.phase.title)
+                            Text(entry.phase.localizedTitle(language: viewModel.settings.uiLanguage))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -421,10 +451,10 @@ struct DownloadsSurfaceView: View {
                             .lineLimit(1)
                         queueProgressView(for: entry)
                         HStack {
-                            Button("Restore form") {
+                            Button(t("Restore form", "フォームに復元")) {
                                 viewModel.restoreHuggingFaceDownloadForm(from: entry)
                             }
-                            Button("Copy URL") {
+                            Button(t("Copy URL", "URLをコピー")) {
                                 viewModel.copyHuggingFaceDownloadURL(from: entry)
                             }
                             Spacer()

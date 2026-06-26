@@ -9,9 +9,18 @@ struct ModelProfileEditorView: View {
     let noticeMessage: String?
     let message: String?
     let runtimeFieldsLocked: Bool
+    let language: AppLanguage = .system
     let onSave: () -> Void
     let onCancel: () -> Void
     let onCopyPreview: (String) -> Void
+
+    private var strings: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        strings.text(english: english, japanese: japanese)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -25,7 +34,7 @@ struct ModelProfileEditorView: View {
                     Button {
                         onCancel()
                     } label: {
-                        Label("Cancel", systemImage: "xmark")
+                        Label(t("Cancel", "キャンセル"), systemImage: "xmark")
                     }
 
                     Button {
@@ -45,7 +54,7 @@ struct ModelProfileEditorView: View {
 
             if runtimeFieldsLocked {
                 Label(
-                    "Stop the managed server before changing modelID, host, port, or advanced launch options.",
+                    t("Stop the managed server before changing Model ID, host, port, or advanced launch options.", "Model ID、ホスト、ポート、詳細起動オプションを変更する前に、管理中のサーバーを停止してください。"),
                     systemImage: "lock.fill"
                 )
                 .font(.callout)
@@ -59,13 +68,13 @@ struct ModelProfileEditorView: View {
             }
 
             Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 10) {
-                editorRow("Display Name") {
-                    TextField("Uses Model ID if empty", text: $draft.displayName)
+                editorRow(t("Display Name", "表示名")) {
+                    TextField(t("Uses Model ID if empty", "空欄の場合はModel IDを使用"), text: $draft.displayName)
                         .textFieldStyle(.roundedBorder)
                 }
 
                 editorRow("Model ID") {
-                    TextField("Required", text: $draft.modelID)
+                    TextField(t("Required", "必須"), text: $draft.modelID)
                         .textFieldStyle(.roundedBorder)
                         .disabled(runtimeFieldsLocked)
                 }
@@ -82,12 +91,12 @@ struct ModelProfileEditorView: View {
                         .disabled(runtimeFieldsLocked)
                 }
 
-                editorRow("Thinking") {
-                    Toggle("Enable thinking", isOn: $draft.enableThinking)
+                editorRow(t("Thinking", "Thinking")) {
+                    Toggle(t("Enable thinking", "Thinkingを有効にする"), isOn: $draft.enableThinking)
                         .toggleStyle(.checkbox)
                 }
 
-                editorRow("Notes") {
+                editorRow(t("Notes", "メモ")) {
                     TextEditor(text: $draft.notes)
                         .font(.callout)
                         .frame(minHeight: 72)
@@ -99,13 +108,13 @@ struct ModelProfileEditorView: View {
                 }
             }
 
-            DisclosureGroup("Advanced Launch Options") {
+            DisclosureGroup(t("Advanced Launch Options", "詳細起動オプション")) {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Leave empty to use mlx_lm.server defaults.")
+                    Text(t("Leave empty to use mlx_lm.server defaults.", "空欄の場合はmlx_lm.serverの既定値を使用します。"))
                         .font(.callout)
                         .foregroundStyle(.secondary)
 
-                    Text("Advanced options are workload-dependent and may not improve performance.")
+                    Text(t("Advanced options are workload-dependent and may not improve performance.", "詳細オプションの効果はワークロードに依存し、性能改善を保証するものではありません。"))
                         .font(.callout)
                         .foregroundStyle(.secondary)
 
@@ -121,7 +130,7 @@ struct ModelProfileEditorView: View {
                         }
 
                         advancedRow("Top K") {
-                            TextField("Positive integer", text: advancedBinding(\.defaultTopK))
+                            TextField(t("Positive integer", "正の整数"), text: advancedBinding(\.defaultTopK))
                                 .textFieldStyle(.roundedBorder)
                         }
 
@@ -131,42 +140,42 @@ struct ModelProfileEditorView: View {
                         }
 
                         advancedRow("Max Tokens") {
-                            TextField("Positive integer", text: advancedBinding(\.defaultMaxTokens))
+                            TextField(t("Positive integer", "正の整数"), text: advancedBinding(\.defaultMaxTokens))
                                 .textFieldStyle(.roundedBorder)
                         }
 
                         advancedRow("Allowed Origins") {
-                            TextField("Optional origin list", text: advancedBinding(\.allowedOrigins))
+                            TextField(t("Optional origin list", "任意のオリジン一覧"), text: advancedBinding(\.allowedOrigins))
                                 .textFieldStyle(.roundedBorder)
                         }
 
                         advancedRow("Log Level") {
-                            TextField("Optional log level", text: advancedBinding(\.logLevel))
+                            TextField(t("Optional log level", "任意のログレベル"), text: advancedBinding(\.logLevel))
                                 .textFieldStyle(.roundedBorder)
                         }
 
                         advancedRow("Decode Concurrency") {
-                            TextField("Positive integer", text: advancedBinding(\.decodeConcurrency))
+                            TextField(t("Positive integer", "正の整数"), text: advancedBinding(\.decodeConcurrency))
                                 .textFieldStyle(.roundedBorder)
                         }
 
                         advancedRow("Prompt Concurrency") {
-                            TextField("Positive integer", text: advancedBinding(\.promptConcurrency))
+                            TextField(t("Positive integer", "正の整数"), text: advancedBinding(\.promptConcurrency))
                                 .textFieldStyle(.roundedBorder)
                         }
 
                         advancedRow("Prefill Step Size") {
-                            TextField("Positive integer", text: advancedBinding(\.prefillStepSize))
+                            TextField(t("Positive integer", "正の整数"), text: advancedBinding(\.prefillStepSize))
                                 .textFieldStyle(.roundedBorder)
                         }
 
                         advancedRow("Prompt Cache Size") {
-                            TextField("Positive integer", text: advancedBinding(\.promptCacheSize))
+                            TextField(t("Positive integer", "正の整数"), text: advancedBinding(\.promptCacheSize))
                                 .textFieldStyle(.roundedBorder)
                         }
 
                         advancedRow("Prompt Cache Bytes") {
-                            TextField("Positive integer", text: advancedBinding(\.promptCacheBytes))
+                            TextField(t("Positive integer", "正の整数"), text: advancedBinding(\.promptCacheBytes))
                                 .textFieldStyle(.roundedBorder)
                         }
 
@@ -192,7 +201,7 @@ struct ModelProfileEditorView: View {
                                             .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
                                     }
 
-                                Text("Expert only. Raw arguments are appended last and used only when explicitly set.")
+                                Text(t("Expert only. Raw arguments are appended last and used only when explicitly set.", "上級者向けです。Raw引数は最後に追加され、明示した場合のみ使われます。"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -201,24 +210,24 @@ struct ModelProfileEditorView: View {
 
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
-                            Text("Launch Command Preview")
+                            Text(t("Launch Command Preview", "起動コマンドプレビュー"))
                                 .font(.callout.weight(.medium))
 
                             Spacer()
 
                             Button {
                                 onCopyPreview(launchCommandPreview)
-                                advancedOptionsStatus = "Preview copied."
+                                advancedOptionsStatus = t("Preview copied.", "プレビューをコピーしました。")
                             } label: {
-                                Label("Copy Preview", systemImage: "doc.on.doc")
+                                Label(t("Copy Preview", "プレビューをコピー"), systemImage: "doc.on.doc")
                             }
                             .disabled(!canCopyLaunchCommandPreview)
 
                             Button {
                                 draft.advancedLaunchOptions = .empty
-                                advancedOptionsStatus = "Advanced options cleared."
+                                advancedOptionsStatus = t("Advanced options cleared.", "詳細オプションをクリアしました。")
                             } label: {
-                                Label("Clear Advanced Options", systemImage: "clear")
+                                Label(t("Clear Advanced Options", "詳細オプションをクリア"), systemImage: "clear")
                             }
                         }
 
@@ -284,7 +293,7 @@ struct ModelProfileEditorView: View {
 
     private var launchCommandPreview: String {
         guard let request = launchCommandPreviewRequest else {
-            return "Complete Model ID, Host, and Port to preview the launch command."
+            return t("Complete Model ID, Host, and Port to preview the launch command.", "起動コマンドをプレビューするには、Model ID、ホスト、ポートを入力してください。")
         }
 
         return ModelProcessManager.commandPreview(for: request, executablePath: "mlx_lm.server")

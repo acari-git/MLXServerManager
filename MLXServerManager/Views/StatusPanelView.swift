@@ -12,6 +12,7 @@ struct StatusPanelView: View {
     let canRestartManagedServer: Bool
     let canAdoptExternalServer: Bool
     let canForgetExternalServer: Bool
+    let language: AppLanguage
     let onCheckPort: () -> Void
     let onCheckReady: () -> Void
     let onStart: () -> Void
@@ -20,9 +21,17 @@ struct StatusPanelView: View {
     let onAdoptExternalServer: () -> Void
     let onForgetExternalServer: () -> Void
 
+    private var strings: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        strings.text(english: english, japanese: japanese)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Status")
+            Text(t("Status", "ステータス"))
                 .font(.headline)
 
             HStack(spacing: 12) {
@@ -47,33 +56,33 @@ struct StatusPanelView: View {
                 Button {
                     onCheckPort()
                 } label: {
-                    Label("Check Port", systemImage: "network")
+                    Label(t("Check Port", "ポート確認"), systemImage: "network")
                 }
 
                 Button {
                     onCheckReady()
                 } label: {
-                    Label("Check Ready", systemImage: "checkmark.seal")
+                    Label(t("Ready Check", "Ready確認"), systemImage: "checkmark.seal")
                 }
 
                 Button {
                     onStart()
                 } label: {
-                    Label("Start", systemImage: "play.fill")
+                    Label(strings.text(.start), systemImage: "play.fill")
                 }
                 .buttonStyle(.borderedProminent)
 
                 Button {
                     onStop()
                 } label: {
-                    Label("Stop", systemImage: "stop.fill")
+                    Label(strings.text(.stop), systemImage: "stop.fill")
                 }
                 .disabled(!canStopManagedServer)
 
                 Button {
                     onRestart()
                 } label: {
-                    Label("Restart", systemImage: "arrow.clockwise")
+                    Label(strings.text(.restart), systemImage: "arrow.clockwise")
                 }
                 .disabled(!canRestartManagedServer)
 
@@ -81,7 +90,7 @@ struct StatusPanelView: View {
                     Button {
                         onAdoptExternalServer()
                     } label: {
-                        Label("Adopt External Server", systemImage: "link.badge.plus")
+                        Label(t("Adopt External Server", "外部サーバーを採用"), systemImage: "link.badge.plus")
                     }
                     .disabled(!canAdoptExternalServer)
                 }
@@ -90,7 +99,7 @@ struct StatusPanelView: View {
                     Button {
                         onForgetExternalServer()
                     } label: {
-                        Label("Forget External Server", systemImage: "xmark.circle")
+                        Label(t("Forget External Server", "外部サーバーを解除"), systemImage: "xmark.circle")
                     }
                     .disabled(!canForgetExternalServer)
                 }
@@ -135,19 +144,19 @@ struct StatusPanelView: View {
     }
 
     private var restartRequiredBadge: some View {
-        Label("Restart required to apply selected model.", systemImage: "arrow.clockwise.circle")
+        Label(t("Restart required to apply selected model.", "選択モデルを反映するには再起動が必要です。"), systemImage: "arrow.clockwise.circle")
             .font(.caption.weight(.semibold))
             .foregroundStyle(.orange)
     }
 
     private var externalServerBadge: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Label("External server detected", systemImage: "network")
+            Label(t("External server detected", "外部サーバーを検出"), systemImage: "network")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.orange)
-            Text("This server was not started by MLX Server Manager.")
-            Text("Stop and Restart are unavailable for external servers.")
-            Text("Use connection settings to connect a client to this endpoint.")
+            Text(t("This server was not started by MLX Server Manager.", "このサーバーはMLX Server Managerが起動したものではありません。"))
+            Text(t("Stop and Restart are unavailable for external servers.", "外部サーバーでは停止と再起動は利用できません。"))
+            Text(t("Use connection settings to connect a client to this endpoint.", "クライアントは接続設定を使ってこのエンドポイントへ接続します。"))
         }
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -155,12 +164,12 @@ struct StatusPanelView: View {
 
     private var adoptedExternalServerBadge: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Label("Adopted external server", systemImage: "link")
+            Label(t("Adopted external server", "採用済みの外部サーバー"), systemImage: "link")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.orange)
-            Text("Connection context only.")
-            Text("Not managed by MLX Server Manager.")
-            Text("Forget removes the app-side context only.")
+            Text(t("Connection context only.", "接続コンテキストのみです。"))
+            Text(t("Not managed by MLX Server Manager.", "MLX Server Managerの管理対象ではありません。"))
+            Text(t("Forget removes the app-side context only.", "解除してもアプリ側のコンテキストだけを削除します。"))
         }
         .font(.caption)
         .foregroundStyle(.secondary)

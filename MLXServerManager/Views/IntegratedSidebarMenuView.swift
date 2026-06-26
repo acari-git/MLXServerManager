@@ -2,10 +2,15 @@ import SwiftUI
 
 struct IntegratedSidebarMenuView: View {
     @Binding var selectedDestination: IntegratedWorkspaceDestination
+    let language: AppLanguage
+
+    private var strings: AppLocalization {
+        AppLocalization(language: language)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("MENU")
+            Text(strings.text(english: "MENU", japanese: "メニュー"))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 4)
@@ -14,7 +19,7 @@ struct IntegratedSidebarMenuView: View {
                 Button {
                     selectedDestination = destination
                 } label: {
-                    Label(destination.title, systemImage: destination.systemImageName)
+                    Label(destination.title(language: language), systemImage: destination.systemImageName)
                         .font(.callout.weight(.medium))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 7)

@@ -11,23 +11,31 @@ struct ContentView: View {
     @ObservedObject var viewModel: AppViewModel
     @State private var selectedSection = AppSection.dashboard
 
+    private var strings: AppLocalization {
+        AppLocalization(language: viewModel.settings.uiLanguage)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        strings.text(english: english, japanese: japanese)
+    }
+
     var body: some View {
         IntegratedWorkspaceView(viewModel: viewModel)
             .frame(minWidth: 1280, minHeight: 760)
         .confirmationDialog(
-            "Delete Model Profile?",
+            t("Delete Model Profile?", "モデルプロファイルを削除しますか？"),
             isPresented: $viewModel.isDeleteProfileConfirmationPresented,
             titleVisibility: .visible
         ) {
-            Button("Delete Profile", role: .destructive) {
+            Button(t("Delete Profile", "プロファイルを削除"), role: .destructive) {
                 viewModel.confirmDeleteProfile()
             }
 
-            Button("Cancel", role: .cancel) {
+            Button(strings.text(.cancel), role: .cancel) {
                 viewModel.cancelDeleteProfile()
             }
         } message: {
-            Text("This removes only the saved profile. Model files and Hugging Face cache are not deleted.")
+            Text(t("This removes only the saved profile. Model files and Hugging Face cache are not deleted.", "削除するのは保存済みプロファイルのみです。モデルファイルとHugging Faceキャッシュは削除されません。"))
         }
         .sheet(isPresented: Binding(
             get: { viewModel.isProfileEditorPresented },
@@ -35,10 +43,10 @@ struct ContentView: View {
         )) {
             ModelProfileEditorView(
                 draft: $viewModel.profileEditorDraft,
-                title: "Edit Model Profile",
-                saveButtonTitle: "Save Profile",
+                title: t("Edit Model Profile", "モデルプロファイルを編集"),
+                saveButtonTitle: t("Save Profile", "プロファイルを保存"),
                 noticeMessage: viewModel.isManagedProcessRunning
-                    ? "Runtime fields are locked while the managed server is running."
+                    ? t("Runtime fields are locked while the managed server is running.", "管理中サーバーの実行中はランタイム項目を編集できません。")
                     : nil,
                 message: viewModel.profileEditorMessage,
                 runtimeFieldsLocked: viewModel.isManagedProcessRunning,
@@ -55,10 +63,10 @@ struct ContentView: View {
         )) {
             ModelProfileEditorView(
                 draft: $viewModel.addProfileDraft,
-                title: "Add Model Profile",
-                saveButtonTitle: "Save New Profile",
+                title: t("Add Model Profile", "モデルプロファイルを追加"),
+                saveButtonTitle: t("Save New Profile", "新規プロファイルを保存"),
                 noticeMessage: viewModel.isManagedProcessRunning
-                    ? "Saving a new profile will not change the running managed server."
+                    ? t("Saving a new profile will not change the running managed server.", "新規プロファイルを保存しても、実行中の管理サーバーは変更されません。")
                     : nil,
                 message: viewModel.addProfileMessage,
                 runtimeFieldsLocked: false,
@@ -79,8 +87,8 @@ struct ContentView: View {
                 )
             } else {
                 VStack(spacing: 12) {
-                    Text("No import preview is available.")
-                    Button("Close") {
+                    Text(t("No import preview is available.", "インポートプレビューはありません。"))
+                    Button(t("Close", "閉じる")) {
                         viewModel.dismissImportPreview()
                     }
                 }
@@ -155,6 +163,7 @@ struct ContentView: View {
                             canRestartManagedServer: viewModel.canRestartManagedServer,
                             canAdoptExternalServer: viewModel.canAdoptExternalServer,
                             canForgetExternalServer: viewModel.canForgetExternalServer,
+                            language: viewModel.settings.uiLanguage,
                             onCheckPort: viewModel.checkPortRequested,
                             onCheckReady: viewModel.checkReadyRequested,
                             onStart: viewModel.startRequested,
@@ -176,8 +185,8 @@ struct ContentView: View {
                         if viewModel.isProfileEditorPresented {
                             ModelProfileEditorView(
                                 draft: $viewModel.profileEditorDraft,
-                                title: "Edit Model Profile",
-                                saveButtonTitle: "Save Profile",
+                                title: t("Edit Model Profile", "モデルプロファイルを編集"),
+                                saveButtonTitle: t("Save Profile", "プロファイルを保存"),
                                 noticeMessage: nil,
                                 message: viewModel.profileEditorMessage,
                                 runtimeFieldsLocked: viewModel.isManagedProcessRunning,
@@ -190,10 +199,10 @@ struct ContentView: View {
                         if viewModel.isAddProfilePresented {
                             ModelProfileEditorView(
                                 draft: $viewModel.addProfileDraft,
-                                title: "Add Model Profile",
-                                saveButtonTitle: "Save New Profile",
+                                title: t("Add Model Profile", "モデルプロファイルを追加"),
+                                saveButtonTitle: t("Save New Profile", "新規プロファイルを保存"),
                                 noticeMessage: viewModel.isManagedProcessRunning
-                                    ? "Saving a new profile will not change the running managed server. Stop the managed server before switching runtime profile."
+                                    ? t("Saving a new profile will not change the running managed server. Stop the managed server before switching runtime profile.", "新規プロファイルを保存しても実行中の管理サーバーは変更されません。ランタイムプロファイルを切り替える前に管理サーバーを停止してください。")
                                     : nil,
                                 message: viewModel.addProfileMessage,
                                 runtimeFieldsLocked: false,
@@ -240,7 +249,7 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("MLX Server Manager")
                     .font(.title2.weight(.semibold))
-                Text("Direct Mode control surface for mlx_lm.server")
+                Text(t("Direct Mode control surface for mlx_lm.server", "mlx_lm.serverのDirect Mode操作画面"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }

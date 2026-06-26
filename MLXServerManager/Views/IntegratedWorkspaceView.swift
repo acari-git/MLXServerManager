@@ -30,6 +30,14 @@ struct IntegratedWorkspaceView: View {
     private var selectedModel: ModelConfig? { viewModel.selectedModel }
     private var isSelectedRunning: Bool { selectedModel?.id == viewModel.runningModelID }
 
+    private var strings: AppLocalization {
+        AppLocalization(language: viewModel.settings.uiLanguage)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        strings.text(english: english, japanese: japanese)
+    }
+
     private var preferredColorScheme: ColorScheme? {
         switch selectedAppearance {
         case "light": return .light
@@ -43,7 +51,9 @@ struct IntegratedWorkspaceView: View {
             chromeToggleButton(
                 systemImage: "sidebar.left",
                 isActive: isLeftPanelVisible,
-                help: isLeftPanelVisible ? "左サイドパネルを隠す" : "左サイドパネルを表示"
+                help: isLeftPanelVisible
+                    ? strings.text(english: "Hide left sidebar", japanese: "左サイドパネルを隠す")
+                    : strings.text(english: "Show left sidebar", japanese: "左サイドパネルを表示")
             ) {
                 toggleLeftPanelRequested()
             }
@@ -57,14 +67,18 @@ struct IntegratedWorkspaceView: View {
             chromeToggleButton(
                 systemImage: "rectangle.bottomthird.inset.filled",
                 isActive: isBottomPanelVisible,
-                help: isBottomPanelVisible ? "下段ログパネルを隠す" : "下段ログパネルを表示"
+                help: isBottomPanelVisible
+                    ? strings.text(english: "Hide bottom log panel", japanese: "下段ログパネルを隠す")
+                    : strings.text(english: "Show bottom log panel", japanese: "下段ログパネルを表示")
             ) {
                 toggleBottomPanelRequested()
             }
             chromeToggleButton(
                 systemImage: "sidebar.right",
                 isActive: isRightPanelVisible,
-                help: isRightPanelVisible ? "右サイドパネルを隠す" : "右サイドパネルを表示"
+                help: isRightPanelVisible
+                    ? strings.text(english: "Hide right sidebar", japanese: "右サイドパネルを隠す")
+                    : strings.text(english: "Show right sidebar", japanese: "右サイドパネルを表示")
             ) {
                 toggleRightPanelRequested()
             }
@@ -396,7 +410,7 @@ struct IntegratedWorkspaceView: View {
 
     private var leftColumn: some View {
         VStack(spacing: 0) {
-            IntegratedSidebarMenuView(selectedDestination: $selectedDestination)
+            IntegratedSidebarMenuView(selectedDestination: $selectedDestination, language: viewModel.settings.uiLanguage)
             Divider()
             systemPanel
             Divider()
@@ -422,7 +436,7 @@ struct IntegratedWorkspaceView: View {
                 samples: viewModel.systemUsageHistory.map(\.cpuFraction)
             )
             systemMetricCard(
-                title: "起動時間",
+                title: t("Uptime", "起動時間"),
                 value: viewModel.integratedUptimeText,
                 detail: ""            )
         }
@@ -454,7 +468,7 @@ struct IntegratedWorkspaceView: View {
     private var memoryGaugeCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("メモリ内訳")
+                Text(t("Memory breakdown", "メモリ内訳"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -468,8 +482,8 @@ struct IntegratedWorkspaceView: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 memoryLegendRow(color: .blue, label: "mlx-lm", value: viewModel.memoryMLXProcessText)
-                memoryLegendRow(color: .orange, label: "その他", value: viewModel.memoryOtherProcessesText)
-                memoryLegendRow(color: .green, label: "空き容量", value: viewModel.memoryAvailableText)
+                memoryLegendRow(color: .orange, label: t("Other", "その他"), value: viewModel.memoryOtherProcessesText)
+                memoryLegendRow(color: .green, label: t("Available", "空き容量"), value: viewModel.memoryAvailableText)
             }
 
 
@@ -587,7 +601,7 @@ struct IntegratedWorkspaceView: View {
         Button {
             selectedDestination = .settings
         } label: {
-            Label("設定", systemImage: "gearshape")
+            Label(strings.text(.settings), systemImage: "gearshape")
                 .font(.callout.weight(.medium))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 7)
@@ -608,7 +622,7 @@ struct IntegratedWorkspaceView: View {
         VStack(spacing: 6) {
             Text("MLX Server Manager")
                 .font(.callout.weight(.semibold))
-            Text("Version 22.4.0")
+            Text("Version 22.5.0")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -650,13 +664,13 @@ struct IntegratedWorkspaceView: View {
         GeometryReader { proxy in
             VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("モデル一覧")
+                Text(t("Models", "モデル一覧"))
                     .font(.title3.weight(.semibold))
                 Spacer()
                 Button {
                     viewModel.addProfileRequested()
                 } label: {
-                    Label("モデル追加", systemImage: "plus")
+                    Label(t("Add model", "モデル追加"), systemImage: "plus")
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -702,14 +716,14 @@ struct IntegratedWorkspaceView: View {
 
     private var modelHeaderRow: some View {
         HStack(alignment: .top, spacing: ModelListColumn.spacing) {
-            columnHeader("モデル名 / 用途\(viewModel.sortIndicator(for: "name"))", width: $modelNameColumnWidth, defaultWidth: ModelListColumn.name, sortKey: "name")
-            columnHeader("サイズ\(viewModel.sortIndicator(for: "size"))", width: $sizeColumnWidth, defaultWidth: ModelListColumn.size, sortKey: "size")
-            columnHeader("ステータス\(viewModel.sortIndicator(for: "status"))", width: $statusColumnWidth, defaultWidth: ModelListColumn.status, sortKey: "status")
-            columnHeader("ポート/IPアドレス\(viewModel.sortIndicator(for: "port"))", width: $portColumnWidth, defaultWidth: ModelListColumn.port, sortKey: "port")
-            columnHeader("メモリ使用量\(viewModel.sortIndicator(for: "memory"))", width: $memoryColumnWidth, defaultWidth: ModelListColumn.memory, sortKey: "memory")
-            columnHeader("自動アンロード\(viewModel.sortIndicator(for: "autoUnload"))", width: $unloadColumnWidth, defaultWidth: ModelListColumn.unload, showsHandle: false, sortKey: "autoUnload", alignment: .center)
-            columnHeader("推論\(viewModel.sortIndicator(for: "reasoning"))", width: $reasoningColumnWidth, defaultWidth: ModelListColumn.reasoning, showsHandle: false, sortKey: "reasoning", alignment: .center)
-            headerText("モデル管理")
+            columnHeader("\(t("Model / purpose", "モデル名 / 用途"))\(viewModel.sortIndicator(for: "name"))", width: $modelNameColumnWidth, defaultWidth: ModelListColumn.name, sortKey: "name")
+            columnHeader("\(t("Size", "サイズ"))\(viewModel.sortIndicator(for: "size"))", width: $sizeColumnWidth, defaultWidth: ModelListColumn.size, sortKey: "size")
+            columnHeader("\(t("Status", "ステータス"))\(viewModel.sortIndicator(for: "status"))", width: $statusColumnWidth, defaultWidth: ModelListColumn.status, sortKey: "status")
+            columnHeader("\(t("Port / IP address", "ポート/IPアドレス"))\(viewModel.sortIndicator(for: "port"))", width: $portColumnWidth, defaultWidth: ModelListColumn.port, sortKey: "port")
+            columnHeader("\(t("Memory", "メモリ使用量"))\(viewModel.sortIndicator(for: "memory"))", width: $memoryColumnWidth, defaultWidth: ModelListColumn.memory, sortKey: "memory")
+            columnHeader("\(t("Auto unload", "自動アンロード"))\(viewModel.sortIndicator(for: "autoUnload"))", width: $unloadColumnWidth, defaultWidth: ModelListColumn.unload, showsHandle: false, sortKey: "autoUnload", alignment: .center)
+            columnHeader("\(t("Reasoning", "推論"))\(viewModel.sortIndicator(for: "reasoning"))", width: $reasoningColumnWidth, defaultWidth: ModelListColumn.reasoning, showsHandle: false, sortKey: "reasoning", alignment: .center)
+            headerText(t("Model management", "モデル管理"))
                 .frame(width: rowActionsColumnWidth, alignment: .center)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -743,7 +757,7 @@ struct IntegratedWorkspaceView: View {
                     .frame(width: memoryColumnWidth, alignment: .leading)
                 HStack(spacing: 8) {
                     TextField(
-                        "分",
+                        t("min", "分"),
                         value: Binding(
                             get: { viewModel.autoUnloadMinutes(for: model) },
                             set: { viewModel.setAutoUnloadMinutes($0, for: model) }
@@ -757,7 +771,7 @@ struct IntegratedWorkspaceView: View {
                     .onSubmit {
                         focusedAutoUnloadModelID = nil
                     }
-                    Text("分")
+                    Text(t("min", "分"))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
 
@@ -787,12 +801,12 @@ struct IntegratedWorkspaceView: View {
                 .frame(width: reasoningColumnWidth, alignment: .center)
 
                 HStack(spacing: 6) {
-                    modelActionButton("設定", color: .secondary) {
+                    modelActionButton(t("Settings", "設定"), color: .secondary) {
                         viewModel.editProfileRequested(for: model)
                     }
                     .help(viewModel.runtimeEditingSafetyText(for: model))
 
-                    modelActionButton("削除", color: .red) {
+                    modelActionButton(t("Delete", "削除"), color: .red) {
                         viewModel.deleteProfileRequested(for: model)
                     }
                     .disabled(viewModel.models.count <= 1 || viewModel.isManagedProcessRunning)
@@ -936,7 +950,7 @@ struct IntegratedWorkspaceView: View {
                 Button {
                 viewModel.startRequested()
             } label: {
-                Label("起動", systemImage: "play.fill")
+                Label(strings.text(.start), systemImage: "play.fill")
                     .frame(width: 110)
             }
             .buttonStyle(.borderedProminent)
@@ -945,7 +959,7 @@ struct IntegratedWorkspaceView: View {
             Button {
                 viewModel.stopRequested()
             } label: {
-                Label("停止", systemImage: "stop.fill")
+                Label(strings.text(.stop), systemImage: "stop.fill")
                     .frame(width: 110)
             }
             .disabled(!viewModel.canStopManagedServer)
@@ -953,7 +967,7 @@ struct IntegratedWorkspaceView: View {
             Button {
                 viewModel.restartRequested()
             } label: {
-                Label("再起動", systemImage: "arrow.clockwise")
+                Label(strings.text(.restart), systemImage: "arrow.clockwise")
                     .frame(width: 120)
             }
             .disabled(!viewModel.canRestartManagedServer)
@@ -974,21 +988,21 @@ struct IntegratedWorkspaceView: View {
     private var logPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("ログ")
+                Text(strings.text(.logs))
                     .font(.headline)
                 Spacer()
-                Picker("Category", selection: $viewModel.logCategoryFilter) {
+                Picker(t("Category", "カテゴリ"), selection: $viewModel.logCategoryFilter) {
                     ForEach(viewModel.logCategoryFilterOptions, id: \.self) { category in
                         Text(category).tag(category)
                     }
                 }
                 .labelsHidden()
                 .frame(width: 130)
-                Button("コピー") {
+                Button(t("Copy", "コピー")) {
                     viewModel.copyLogsRequested()
                 }
                 .disabled(viewModel.visibleLogEntries.isEmpty)
-                Button("クリア") {
+                Button(t("Clear", "クリア")) {
                     viewModel.clearLogsRequested()
                 }
             }
@@ -1008,7 +1022,7 @@ struct IntegratedWorkspaceView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 5) {
                     if viewModel.visibleLogEntries.isEmpty {
-                        Text("No logs")
+                        Text(t("No logs", "ログはありません"))
                             .font(.system(.caption, design: .monospaced))
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1027,7 +1041,7 @@ struct IntegratedWorkspaceView: View {
             Divider()
 
             HStack {
-                Label("全体ステータス: \(viewModel.runtimeState.title)", systemImage: "checkmark.circle.fill")
+                Label("\(t("Overall status", "全体ステータス")): \(viewModel.runtimeState.title)", systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.green)
                 Spacer()
             }
@@ -1040,10 +1054,10 @@ struct IntegratedWorkspaceView: View {
     private var rightColumn: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                collapsibleRightPanel(id: "model", title: "モデル設定", systemImage: "slider.horizontal.3") {
+                collapsibleRightPanel(id: "model", title: t("Model settings", "モデル設定"), systemImage: "slider.horizontal.3") {
                     modelSettingsPanelContent
                 }
-                collapsibleRightPanel(id: "external", title: "External Server", systemImage: "network") {
+                collapsibleRightPanel(id: "external", title: t("External server", "外部サーバー"), systemImage: "network") {
                     externalServerPanelContent
                 }
                 collapsibleRightPanel(id: "recovery", title: "Recovery", systemImage: "wrench.and.screwdriver") {
@@ -1055,7 +1069,7 @@ struct IntegratedWorkspaceView: View {
                     )
                     recentRightPanelLogs
                 }
-                collapsibleRightPanel(id: "hermes", title: "Hermes Agent 接続情報", systemImage: "point.3.connected.trianglepath.dotted") {
+                collapsibleRightPanel(id: "hermes", title: t("Hermes Agent connection", "Hermes Agent接続情報"), systemImage: "point.3.connected.trianglepath.dotted") {
                     hermesPanelContent
                 }
             }
@@ -1066,13 +1080,13 @@ struct IntegratedWorkspaceView: View {
 
     private var appearancePanel: some View {
         HStack {
-            Label("外観", systemImage: "circle.lefthalf.filled")
+            Label(t("Appearance", "外観"), systemImage: "circle.lefthalf.filled")
                 .font(.headline)
             Spacer()
-            Picker("外観", selection: $selectedAppearance) {
-                Text("システム").tag("system")
-                Text("ライト").tag("light")
-                Text("ダーク").tag("dark")
+            Picker(t("Appearance", "外観"), selection: $selectedAppearance) {
+                Text(t("System", "システム")).tag("system")
+                Text(t("Light", "ライト")).tag("light")
+                Text(t("Dark", "ダーク")).tag("dark")
             }
             .labelsHidden()
             .pickerStyle(.segmented)
@@ -1085,27 +1099,27 @@ struct IntegratedWorkspaceView: View {
 
     private var externalServerPanelContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("vLLM / Rapid-MLX / LM Studio / Ollama などのOpenAI互換サーバーは、外部サーバーとして接続情報だけを採用します。")
+            Text(t("OpenAI-compatible servers such as vLLM, Rapid-MLX, LM Studio, and Ollama are adopted as external servers by storing connection values only.", "vLLM / Rapid-MLX / LM Studio / OllamaなどのOpenAI互換サーバーは、外部サーバーとして接続情報だけを採用します。"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             DetailGrid(rows: [
-                ("Target", viewModel.connectionTargetSummary.targetType),
+                (t("Target", "接続先"), viewModel.connectionTargetSummary.targetType),
                 ("Base URL", viewModel.connectionTargetSummary.baseURL),
                 ("Model", viewModel.connectionTargetSummary.modelID),
-                ("Ownership", viewModel.connectionTargetSummary.ownershipNote),
-                ("Lifecycle", viewModel.runtimeState.isExternalServerContext ? "外部管理。Start / Stop / Restart対象外" : "未採用。Ready Checkで検出後に採用可能")
+                (t("Ownership", "管理範囲"), viewModel.connectionTargetSummary.ownershipNote),
+                (t("Lifecycle", "ライフサイクル"), viewModel.runtimeState.isExternalServerContext ? t("External management. Start / Stop / Restart are unavailable.", "外部管理。起動 / 停止 / 再起動の対象外です。") : t("Not adopted. It can be adopted after Ready Check detection.", "未採用。Ready確認で検出後に採用可能です。"))
             ])
             copyRow("Base URL", value: viewModel.connectionTargetSummary.baseURL, action: { viewModel.copyBaseURL() })
             copyRow("Model", value: viewModel.connectionTargetSummary.modelID, action: { viewModel.copyModelID() })
             copyRow("API Key", value: viewModel.connectionTargetSummary.apiKeyPlaceholder, action: { viewModel.copyAPIKeyPlaceholder() })
             HStack {
-                Button("Ready Check") { viewModel.checkReadyRequested() }
-                Button("Adopt") { viewModel.adoptExternalServerRequested() }
+                Button(t("Ready Check", "Ready確認")) { viewModel.checkReadyRequested() }
+                Button(t("Adopt", "採用")) { viewModel.adoptExternalServerRequested() }
                     .disabled(!viewModel.canAdoptExternalServer)
-                Button("Forget") { viewModel.forgetExternalServerRequested() }
+                Button(t("Forget", "解除")) { viewModel.forgetExternalServerRequested() }
                     .disabled(!viewModel.canForgetExternalServer)
             }
-            Text("Adoptは接続コンテキストの保存のみです。外部プロセスの停止・再起動・ログ取得・メモリ監視は行いません。")
+            Text(t("Adopt stores only the connection context. The app does not stop, restart, capture logs from, or monitor memory for external processes.", "採用は接続コンテキストの保存のみです。外部プロセスの停止・再起動・ログ取得・メモリ監視は行いません。"))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -1115,7 +1129,7 @@ struct IntegratedWorkspaceView: View {
 
     private var recentRightPanelLogs: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("最新ログ")
+            Text(t("Latest logs", "最新ログ"))
                 .font(.caption.weight(.semibold))
             ForEach(viewModel.visibleLogEntries.suffix(4)) { entry in
                 Text(entry.line)
@@ -1125,7 +1139,7 @@ struct IntegratedWorkspaceView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             if viewModel.visibleLogEntries.isEmpty {
-                Text("ログはまだありません")
+                Text(t("No logs yet", "ログはまだありません"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -1173,50 +1187,50 @@ struct IntegratedWorkspaceView: View {
 
     private var modelSettingsPanelContent: some View {
         VStack(alignment: .leading, spacing: 16) {
-            groupedSection("基本情報") {
+            groupedSection(t("Basic information", "基本情報")) {
                 HStack {
                     Button {
                         viewModel.editProfileRequested()
                     } label: {
-                        Label("選択モデルを設定", systemImage: "slider.horizontal.3")
+                        Label(t("Configure selected model", "選択モデルを設定"), systemImage: "slider.horizontal.3")
                             .frame(maxWidth: .infinity)
                     }
                     .disabled(viewModel.isManagedProcessRunning)
                 }
                 if viewModel.isManagedProcessRunning {
-                    Text("実行中は Model ID / host / port / advanced options の変更を止めています。停止後に設定してください。")
+                    Text(t("Model ID, host, port, and advanced options are locked while running. Stop the server before editing them.", "実行中はModel ID、ホスト、ポート、詳細オプションの変更を止めています。停止後に設定してください。"))
                         .font(.caption2)
                         .foregroundStyle(.orange)
                 }
-                formRow("モデル名", selectedModel?.displayName ?? "-")
-                formRow("モデルID (Hugging Face)", selectedModel?.modelID ?? "-")
-                formRow("モデル検証", viewModel.selectedModelIdentityDetailText, valueColor: viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("Missing") || viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("review") ? .orange : .green)
-                formRow("用途・メモ", selectedModel?.notes.isEmpty == false ? selectedModel?.notes ?? "-" : "-")
+                formRow(t("Model name", "モデル名"), selectedModel?.displayName ?? "-")
+                formRow("Model ID (Hugging Face)", selectedModel?.modelID ?? "-")
+                formRow(t("Model validation", "モデル検証"), viewModel.selectedModelIdentityDetailText, valueColor: viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("Missing") || viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("review") ? .orange : .green)
+                formRow(t("Purpose / notes", "用途・メモ"), selectedModel?.notes.isEmpty == false ? selectedModel?.notes ?? "-" : "-")
             }
             .accessibilityIdentifier("integrated-model-basic-info-section")
 
-            groupedSection("安全性") {
+            groupedSection(t("Safety", "安全性")) {
                 let safetySummary = localizedStatusText(viewModel.selectedModelSafetySummary)
-                formRow("概要", safetySummary, valueColor: safetySummary == "問題なし" ? .green : .orange)
+                formRow(t("Summary", "概要"), safetySummary, valueColor: safetySummary == "問題なし" ? .green : .orange)
                 ForEach(viewModel.selectedModelSafetyRows, id: \.0) { row in
                     let value = localizedStatusText(row.1)
                     formRow(localizedSafetyLabel(row.0), value, valueColor: isPositiveLocalizedStatus(value) ? .green : .orange)
                 }
                 let recoverySummary = localizedStatusText(viewModel.failedStartRecoverySummary)
-                formRow("復旧ガイド", recoverySummary, valueColor: recoverySummary == "復旧操作は不要です" ? .secondary : .orange)
+                formRow(t("Recovery guide", "復旧ガイド"), recoverySummary, valueColor: recoverySummary == "復旧操作は不要です" ? .secondary : .orange)
             }
             .accessibilityIdentifier("integrated-model-safety-section")
 
-            groupedSection("Direct Mode ポート") {
-                formRow("ポート/IPアドレス", selectedModel.map { "\($0.host):\($0.serverPort)" } ?? "-")
+            groupedSection(t("Direct Mode port", "Direct Modeポート")) {
+                formRow(t("Port / IP address", "ポート/IPアドレス"), selectedModel.map { "\($0.host):\($0.serverPort)" } ?? "-")
                 availabilityPill("\(selectedModel.map { "\($0.host):\($0.serverPort)" } ?? "-"): \(localizedStatusText(viewModel.selectedServerPortSafetyText))")
             }
             .accessibilityIdentifier("integrated-model-port-section")
 
-            groupedSection("動作設定") {
-                formRow("変更反映", viewModel.restartRequired ? "再起動が必要" : "現在の設定が有効", valueColor: viewModel.restartRequired ? .orange : .green)
+            groupedSection(t("Operation settings", "動作設定")) {
+                formRow(t("Applied changes", "変更反映"), viewModel.restartRequired ? t("Restart required", "再起動が必要") : t("Current settings are active", "現在の設定が有効"), valueColor: viewModel.restartRequired ? .orange : .green)
                 HStack {
-                    Text("推論モード（Qwen系）")
+                    Text(t("Reasoning mode for Qwen models", "推論モード（Qwen系）"))
                         .font(.caption)
                     Spacer()
                     Toggle("", isOn: .constant(selectedModel?.enableThinking ?? false))
@@ -1227,17 +1241,17 @@ struct IntegratedWorkspaceView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                formRow("停止方式", "手動で停止")
+                formRow(t("Stop method", "停止方式"), t("Manual stop", "手動で停止"))
             }
 
-            groupedSection("状態情報") {
-                formRow("操作安全性", viewModel.integratedActionStateSummary, valueColor: viewModel.canStartSelectedModel ? .green : .orange)
-                formRow("ステータス", isSelectedRunning ? "ロード済" : "未ロード", valueColor: isSelectedRunning ? .green : .secondary)
-                formRow("最終確認", selectedModel.map { viewModel.integratedLatestUseText(for: $0) } ?? "-")
-                formRow("起動時刻", viewModel.runtimeEvents.first?.timestamp.formatted(date: .numeric, time: .standard) ?? "-")
-                formRow("プロセス", isSelectedRunning ? "アプリ管理" : "-")
-                formRow("メモリ使用量", isSelectedRunning ? viewModel.memoryUsageText : "-")
-                formRow("スピードテスト", viewModel.latestBenchmarkResult?.summary ?? "未実行")
+            groupedSection(t("State information", "状態情報")) {
+                formRow(t("Operation safety", "操作安全性"), viewModel.integratedActionStateSummary, valueColor: viewModel.canStartSelectedModel ? .green : .orange)
+                formRow(t("Status", "ステータス"), isSelectedRunning ? t("Loaded", "ロード済") : t("Not loaded", "未ロード"), valueColor: isSelectedRunning ? .green : .secondary)
+                formRow(t("Latest check", "最終確認"), selectedModel.map { viewModel.integratedLatestUseText(for: $0) } ?? "-")
+                formRow(t("Start time", "起動時刻"), viewModel.runtimeEvents.first?.timestamp.formatted(date: .numeric, time: .standard) ?? "-")
+                formRow(t("Process", "プロセス"), isSelectedRunning ? t("App managed", "アプリ管理") : "-")
+                formRow(t("Memory usage", "メモリ使用量"), isSelectedRunning ? viewModel.memoryUsageText : "-")
+                formRow(t("Speed Test", "スピードテスト"), viewModel.latestBenchmarkResult?.summary ?? t("Not run", "未実行"))
             }
         }
     }
@@ -1323,20 +1337,20 @@ struct IntegratedWorkspaceView: View {
             copyRow("API Key", value: viewModel.apiKeyPlaceholder, action: { viewModel.copyAPIKeyPlaceholder() })
             copyRow("Model", value: viewModel.selectedModelIdentifier, action: { viewModel.copyModelID() })
 
-            Text("Direct Mode: Hermes Agent connects directly to mlx_lm.server. Direct Mode only.")
+            Text(t("Direct Mode: Hermes Agent connects directly to mlx_lm.server. Direct Mode only.", "Direct Mode: Hermes Agentはmlx_lm.serverへ直接接続します。Direct Modeのみです。"))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
             Button {
                 viewModel.copyHermesAgentConfig()
             } label: {
-                Text("Hermes 設定をまとめてコピー")
+                Text(t("Copy Hermes settings", "Hermes設定をまとめてコピー"))
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
 
             HStack {
-                Text("Manager: \(viewModel.runtimeState.title)")
+                Text("\(t("Manager", "マネージャー")): \(viewModel.runtimeState.title)")
                 Spacer()
                 Text("Direct Mode")
             }
@@ -1361,7 +1375,7 @@ struct IntegratedWorkspaceView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color(nsColor: .textBackgroundColor).opacity(0.70))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
-            Button("コピー", action: action)
+            Button(t("Copy", "コピー"), action: action)
         }
     }
 }

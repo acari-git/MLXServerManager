@@ -44,6 +44,15 @@ struct AppLocalization {
             key.english
         }
     }
+
+    func text(english: String, japanese: String) -> String {
+        switch language {
+        case .japanese:
+            japanese
+        case .english, .system:
+            english
+        }
+    }
 }
 
 enum AppTextKey {
@@ -126,11 +135,11 @@ enum AppTextKey {
         case .settings: "設定"
         case .logs: "ログ"
         case .dashboardSubtitle: "概要と次の操作"
-        case .modelsSubtitle: "モデル profile と詳細"
-        case .downloadsSubtitle: "検索・取得・復旧"
-        case .runtimeSubtitle: "起動・診断・benchmark"
+        case .modelsSubtitle: "モデルプロファイルと詳細"
+        case .downloadsSubtitle: "検索・ダウンロード・復旧"
+        case .runtimeSubtitle: "起動・診断・ベンチマーク"
         case .settingsSubtitle: "アプリ設定と言語"
-        case .logsSubtitle: "ログと troubleshooting"
+        case .logsSubtitle: "ログとトラブルシューティング"
         case .language: "言語"
         case .saveSettings: "設定を保存"
         case .runDiagnostics: "診断を実行"
@@ -146,11 +155,11 @@ enum AppTextKey {
         case .download: "ダウンロード"
         case .retry: "再試行"
         case .cancel: "キャンセル"
-        case .downloadQueue: "ダウンロード queue"
-        case .noRuntimeEvents: "この session の runtime event はありません。"
+        case .downloadQueue: "ダウンロードキュー"
+        case .noRuntimeEvents: "このセッションのランタイムイベントはありません。"
         case .runtimeControls: "ランタイム操作"
-        case .benchmark: "Benchmark"
-        case .connectionPresets: "接続 preset"
+        case .benchmark: "ベンチマーク"
+        case .connectionPresets: "接続プリセット"
         }
     }
 }

@@ -9,15 +9,20 @@ enum IntegratedWorkspaceDestination: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     var title: String {
+        title(language: .japanese)
+    }
+
+    func title(language: AppLanguage) -> String {
+        let strings = AppLocalization(language: language)
         switch self {
         case .models:
-            "モデル一覧"
+            return strings.text(english: "Models", japanese: "モデル一覧")
         case .downloads:
-            "ダウンロード"
+            return strings.text(english: "Downloads", japanese: "ダウンロード")
         case .settings:
-            "設定"
+            return strings.text(english: "Settings", japanese: "設定")
         case .logs:
-            "ログ"
+            return strings.text(english: "Logs", japanese: "ログ")
         }
     }
 

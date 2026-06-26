@@ -14,6 +14,21 @@ struct SettingsPanelView: View {
         AppLocalization(language: language)
     }
 
+    private func t(_ english: String, _ japanese: String) -> String {
+        strings.text(english: english, japanese: japanese)
+    }
+
+    private func languageDisplayName(_ option: AppLanguage) -> String {
+        switch option {
+        case .system:
+            return t("System", "システム")
+        case .japanese:
+            return t("Japanese", "日本語")
+        case .english:
+            return t("English", "英語")
+        }
+    }
+
     private var portTextBinding: Binding<String> {
         Binding(
             get: { String(defaultPort) },
@@ -31,24 +46,24 @@ struct SettingsPanelView: View {
                 .font(.headline)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("mlx_lm.server executable path")
+                Text(t("mlx_lm.server executable path", "mlx_lm.server実行ファイルのパス"))
                     .font(.callout.weight(.medium))
                     .foregroundStyle(.secondary)
 
-                TextField("Unset", text: $executablePath)
+                TextField(t("Unset", "未設定"), text: $executablePath)
                     .textFieldStyle(.roundedBorder)
             }
 
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
                 GridRow {
-                    Text("Default host")
+                    Text(t("Default host", "デフォルトホスト"))
                         .font(.callout.weight(.medium))
                         .foregroundStyle(.secondary)
                     TextField("127.0.0.1", text: $defaultHost)
                         .textFieldStyle(.roundedBorder)
                 }
                 GridRow {
-                    Text("Default port")
+                    Text(t("Default port", "デフォルトポート"))
                         .font(.callout.weight(.medium))
                         .foregroundStyle(.secondary)
                     TextField("8080", text: portTextBinding)
@@ -56,7 +71,7 @@ struct SettingsPanelView: View {
                         .frame(maxWidth: 160)
                 }
                 GridRow {
-                    Text("API key placeholder")
+                    Text(t("API key placeholder", "APIキーのプレースホルダー"))
                         .font(.callout.weight(.medium))
                         .foregroundStyle(.secondary)
                     TextField("not-required-local", text: $apiKeyPlaceholder)
@@ -70,7 +85,7 @@ struct SettingsPanelView: View {
                     .foregroundStyle(.secondary)
                 Picker(strings.text(.language), selection: $language) {
                     ForEach(AppLanguage.allCases) { option in
-                        Text(option.displayName).tag(option)
+                        Text(languageDisplayName(option)).tag(option)
                     }
                 }
                 .pickerStyle(.segmented)

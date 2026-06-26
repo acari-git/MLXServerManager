@@ -193,21 +193,26 @@ enum HuggingFaceDownloadPhase: Equatable {
     case cancelled
 
     var title: String {
+        localizedTitle(language: .english)
+    }
+
+    func localizedTitle(language: AppLanguage) -> String {
+        let strings = AppLocalization(language: language)
         switch self {
         case .waiting:
-            "Waiting"
+            return strings.text(english: "Waiting", japanese: "待機中")
         case .preparing:
-            "Preparing"
+            return strings.text(english: "Preparing", japanese: "準備中")
         case .downloading:
-            "Downloading"
+            return strings.text(english: "Downloading", japanese: "ダウンロード中")
         case .finalizing:
-            "Finalizing"
+            return strings.text(english: "Finalizing", japanese: "最終処理中")
         case .completed:
-            "Completed"
+            return strings.text(english: "Completed", japanese: "完了")
         case .failed:
-            "Failed"
+            return strings.text(english: "Failed", japanese: "失敗")
         case .cancelled:
-            "Cancelled"
+            return strings.text(english: "Cancelled", japanese: "キャンセル")
         }
     }
 
