@@ -142,7 +142,8 @@ struct ContentView: View {
                             memoryUsageText: viewModel.memoryUsageText,
                             selectedModelText: viewModel.selectedModelText,
                             runningModelText: viewModel.runningModelText,
-                            restartRequired: viewModel.restartRequired
+                            restartRequired: viewModel.restartRequired,
+                            language: viewModel.settings.uiLanguage
                         )
 
                         DiagnosticsPanelView(

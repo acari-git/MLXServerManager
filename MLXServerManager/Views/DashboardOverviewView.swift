@@ -9,28 +9,38 @@ struct DashboardOverviewView: View {
     let selectedModelText: String
     let runningModelText: String
     let restartRequired: Bool
+    var language: AppLanguage = .system
+
+    private var l10n: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        l10n.text(english: english, japanese: japanese)
+    }
 
     var body: some View {
         DashboardSectionView(
-            title: "Dashboard v1",
-            subtitle: "Stable scan: next action, target/state, client setup, troubleshooting, then profile context. Lifecycle actions remain explicit below."
+            title: t("Dashboard v1", "ダッシュボード v1"),
+            subtitle: t("Stable scan: next action, target/state, client setup, troubleshooting, then profile context. Lifecycle actions remain explicit below.", "安定運用向けの確認順です。次の操作、接続先と状態、クライアント設定、トラブルシューティング、プロファイル情報の順に確認します。ライフサイクル操作は下段で明示的に行います。")
         ) {
             VStack(alignment: .leading, spacing: 14) {
                 DashboardGroupHeader(
-                    title: "1. Next action",
-                    subtitle: "Start here for the safest next step in the current state."
+                    title: t("1. Next action", "1. 次の操作"),
+                    subtitle: t("Start here for the safest next step in the current state.", "現在の状態で最も安全な次の手順から確認します。")
                 )
 
                 DashboardNextStepsCard(
                     runtimeState: runtimeState,
                     targetSummary: targetSummary,
-                    selectedModel: selectedModel
+                    selectedModel: selectedModel,
+                    language: language
                 )
                 .frame(maxWidth: .infinity, alignment: .topLeading)
 
                 DashboardGroupHeader(
-                    title: "2. Target and state",
-                    subtitle: "Current Target explains connection context. Server State explains process, readiness, and lifecycle."
+                    title: t("2. Target and state", "2. 接続先と状態"),
+                    subtitle: t("Current Target explains connection context. Server State explains process, readiness, and lifecycle.", "現在の接続先は接続コンテキストを示します。サーバー状態はプロセス、準備状態、ライフサイクルを示します。")
                 )
 
                 HStack(alignment: .top, spacing: 12) {
@@ -51,8 +61,8 @@ struct DashboardOverviewView: View {
                 }
 
                 DashboardGroupHeader(
-                    title: "3. Client setup",
-                    subtitle: "Use the active endpoint, model ID, and readiness state before pasting values into an OpenAI-compatible client."
+                    title: t("3. Client setup", "3. クライアント設定"),
+                    subtitle: t("Use the active endpoint, model ID, and readiness state before pasting values into an OpenAI-compatible client.", "OpenAI互換クライアントへ値を貼り付ける前に、有効なエンドポイント、Model ID、準備状態を確認します。")
                 )
 
                 DashboardClientSetupCard(
@@ -63,8 +73,8 @@ struct DashboardOverviewView: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
 
                 DashboardGroupHeader(
-                    title: "4. Troubleshooting",
-                    subtitle: "Use diagnostics and logs when readiness, availability, or ownership is unclear."
+                    title: t("4. Troubleshooting", "4. トラブルシューティング"),
+                    subtitle: t("Use diagnostics and logs when readiness, availability, or ownership is unclear.", "準備状態、利用可否、管理範囲が不明な場合は診断とログを確認します。")
                 )
 
                 DashboardDiagnosticsGuidanceCard(
@@ -74,8 +84,8 @@ struct DashboardOverviewView: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
 
                 DashboardGroupHeader(
-                    title: "5. Profile context",
-                    subtitle: "Profiles and Import / Export are metadata context, not lifecycle or model-file actions."
+                    title: t("5. Profile context", "5. プロファイル情報"),
+                    subtitle: t("Profiles and Import / Export are metadata context, not lifecycle or model-file actions.", "プロファイルとインポート/エクスポートはメタデータのコンテキストであり、ライフサイクル操作やモデルファイル操作ではありません。")
                 )
 
                 DashboardProfileImportExportCard(
@@ -145,6 +155,15 @@ struct DashboardNextStepsCard: View {
     let runtimeState: ModelRuntimeState
     let targetSummary: ConnectionTargetSummary
     let selectedModel: ModelConfig?
+    var language: AppLanguage = .system
+
+    private var l10n: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        l10n.text(english: english, japanese: japanese)
+    }
 
     var body: some View {
         DashboardStatusCard(
