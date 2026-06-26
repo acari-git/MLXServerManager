@@ -56,7 +56,8 @@ struct DashboardOverviewView: View {
                         memoryUsageText: memoryUsageText,
                         selectedModelText: selectedModelText,
                         runningModelText: runningModelText,
-                        restartRequired: restartRequired
+                        restartRequired: restartRequired,
+                        language: language
                     )
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
@@ -805,10 +806,19 @@ struct DashboardServerStateCard: View {
     let selectedModelText: String
     let runningModelText: String
     let restartRequired: Bool
+    var language: AppLanguage = .system
+
+    private var l10n: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        l10n.text(english: english, japanese: japanese)
+    }
 
     var body: some View {
         DashboardStatusCard(
-            title: "Server State",
+            title: t("Server State", "サーバー状態"),
             systemImage: "gauge",
             accentColor: display.accentColor
         ) {
@@ -825,10 +835,10 @@ struct DashboardServerStateCard: View {
 
                 Divider()
 
-                DashboardKeyValueRow(label: "Process State", value: display.processState)
-                DashboardKeyValueRow(label: "Readiness", value: display.readiness)
-                DashboardKeyValueRow(label: "Lifecycle", value: display.lifecycle)
-                DashboardKeyValueRow(label: "Memory", value: display.memory)
+                DashboardKeyValueRow(label: t("Process State", "プロセス状態"), value: display.processState)
+                DashboardKeyValueRow(label: t("Readiness", "準備状態"), value: display.readiness)
+                DashboardKeyValueRow(label: t("Lifecycle", "ライフサイクル"), value: display.lifecycle)
+                DashboardKeyValueRow(label: t("Memory", "メモリ"), value: display.memory)
 
                 Text(selectedModelText)
                     .font(.caption)
@@ -843,7 +853,7 @@ struct DashboardServerStateCard: View {
                     .truncationMode(.middle)
 
                 if restartRequired {
-                    Label("Restart required to apply selected model.", systemImage: "arrow.clockwise.circle")
+                    Label(t("Restart required to apply selected model.", "選択モデルを反映するには再起動が必要です。"), systemImage: "arrow.clockwise.circle")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.orange)
                         .padding(.top, 2)
@@ -860,7 +870,8 @@ struct DashboardServerStateCard: View {
     private var display: DashboardServerStateDisplay {
         DashboardServerStateDisplay(
             runtimeState: runtimeState,
-            memoryUsageText: memoryUsageText
+            memoryUsageText: memoryUsageText,
+            language: language
         )
     }
 }
@@ -875,135 +886,136 @@ private struct DashboardServerStateDisplay {
     let lifecycleNote: String
     let accentColor: Color
 
-    init(runtimeState: ModelRuntimeState, memoryUsageText: String) {
+    init(runtimeState: ModelRuntimeState, memoryUsageText: String, language: AppLanguage = .system) {
+        let l10n = AppLocalization(language: language)
         self.memory = memoryUsageText.replacingOccurrences(of: "Memory: ", with: "")
 
         switch runtimeState {
         case .stopped:
-            title = "No server process attached"
-            message = "No app-managed process is running and no external server context is active."
-            processState = "Stopped"
-            readiness = "Unavailable - no active server target"
-            lifecycle = "Start is available through the existing controls"
-            lifecycleNote = "Starting a managed server is always an explicit user action."
+            title = l10n.text(english: "No server process attached", japanese: "サーバープロセス未接続")
+            message = l10n.text(english: "No app-managed process is running and no external server context is active.", japanese: "アプリ管理プロセスは実行されておらず、外部サーバーコンテキストも有効ではありません。")
+            processState = l10n.text(english: "Stopped", japanese: "停止中")
+            readiness = l10n.text(english: "Unavailable - no active server target", japanese: "利用不可 - 有効なサーバー接続先なし")
+            lifecycle = l10n.text(english: "Start is available through the existing controls", japanese: "既存の操作から起動できます")
+            lifecycleNote = l10n.text(english: "Starting a managed server is always an explicit user action.", japanese: "管理サーバーの起動は常に明示的なユーザー操作です。")
             accentColor = .secondary
         case let .starting(host, port):
-            title = "Managed server starting"
-            message = "MLX Server Manager has started a managed launch for \(host):\(port). Readiness is still separate from process startup."
-            processState = "Starting managed process"
-            readiness = "Not checked - waiting for /v1/models"
-            lifecycle = "Lifecycle controls apply to the managed launch"
-            lifecycleNote = "Running or starting does not necessarily mean ready; ready requires a successful /v1/models check."
+            title = l10n.text(english: "Managed server starting", japanese: "管理サーバーを起動中")
+            message = l10n.text(english: "MLX Server Manager has started a managed launch for \(host):\(port). Readiness is still separate from process startup.", japanese: "MLX Server Managerが\(host):\(port)の管理起動を開始しました。Ready状態はプロセス起動とは別です。")
+            processState = l10n.text(english: "Starting managed process", japanese: "管理プロセスを起動中")
+            readiness = l10n.text(english: "Not checked - waiting for /v1/models", japanese: "未確認 - /v1/modelsを待機中")
+            lifecycle = l10n.text(english: "Lifecycle controls apply to the managed launch", japanese: "ライフサイクル操作は管理起動に適用されます")
+            lifecycleNote = l10n.text(english: "Running or starting does not necessarily mean ready; ready requires a successful /v1/models check.", japanese: "実行中または起動中はReadyを意味しません。Readyには/v1/models確認の成功が必要です。")
             accentColor = .orange
         case let .loading(host, port, processIdentifier):
-            title = "Managed process loading"
-            message = "App-owned process pid \(processIdentifier) is attached at \(host):\(port), but readiness has not completed."
-            processState = "Managed pid \(processIdentifier)"
-            readiness = "Checking - waiting for /v1/models"
-            lifecycle = "Stop and Restart apply to this managed process"
-            lifecycleNote = "Readiness is distinct from process attachment."
+            title = l10n.text(english: "Managed process loading", japanese: "管理プロセスをロード中")
+            message = l10n.text(english: "App-owned process pid \(processIdentifier) is attached at \(host):\(port), but readiness has not completed.", japanese: "アプリ所有プロセス pid \(processIdentifier) が\(host):\(port)に接続されていますが、Ready確認は完了していません。")
+            processState = l10n.text(english: "Managed pid \(processIdentifier)", japanese: "管理pid \(processIdentifier)")
+            readiness = l10n.text(english: "Checking - waiting for /v1/models", japanese: "確認中 - /v1/modelsを待機中")
+            lifecycle = l10n.text(english: "Stop and Restart apply to this managed process", japanese: "停止と再起動はこの管理プロセスに適用されます")
+            lifecycleNote = l10n.text(english: "Readiness is distinct from process attachment.", japanese: "Ready状態はプロセス接続とは別です。")
             accentColor = .orange
         case let .ready(_, _, processIdentifier):
-            title = "Server ready"
-            message = "The readiness check succeeded. OpenAI-compatible clients can use the current connection target."
+            title = l10n.text(english: "Server ready", japanese: "サーバーはReadyです")
+            message = l10n.text(english: "The readiness check succeeded. OpenAI-compatible clients can use the current connection target.", japanese: "Ready確認に成功しました。OpenAI互換クライアントは現在の接続先を使用できます。")
             if let processIdentifier {
-                processState = "Managed pid \(processIdentifier)"
-                lifecycle = "Stop and Restart apply to this managed process"
-                lifecycleNote = "Ready means /v1/models responded successfully for the current endpoint."
+                processState = l10n.text(english: "Managed pid \(processIdentifier)", japanese: "管理pid \(processIdentifier)")
+                lifecycle = l10n.text(english: "Stop and Restart apply to this managed process", japanese: "停止と再起動はこの管理プロセスに適用されます")
+                lifecycleNote = l10n.text(english: "Ready means /v1/models responded successfully for the current endpoint.", japanese: "Readyは現在のエンドポイントで/v1/modelsが正常応答したことを意味します。")
             } else {
-                processState = "Ready endpoint, no managed pid attached"
-                lifecycle = "No app-owned process is attached"
-                lifecycleNote = "Readiness can describe endpoint reachability without implying process ownership."
+                processState = l10n.text(english: "Ready endpoint, no managed pid attached", japanese: "Readyエンドポイントですが、管理pidは付いていません")
+                lifecycle = l10n.text(english: "No app-owned process is attached", japanese: "アプリ所有プロセスは付いていません")
+                lifecycleNote = l10n.text(english: "Readiness can describe endpoint reachability without implying process ownership.", japanese: "Ready状態はプロセス所有を意味せず、エンドポイント到達性だけを示す場合があります。")
             }
-            readiness = "Ready - /v1/models responded successfully"
+            readiness = l10n.text(english: "Ready - /v1/models responded successfully", japanese: "Ready - /v1/modelsが正常応答")
             accentColor = .green
         case let .stopping(processIdentifier):
-            title = "Managed server stopping"
-            message = "MLX Server Manager is stopping app-owned process pid \(processIdentifier)."
-            processState = "Stopping managed pid \(processIdentifier)"
-            readiness = "Unavailable - process is stopping"
-            lifecycle = "Stop applies only to the app-managed process"
-            lifecycleNote = "External servers are not affected by this stop operation."
+            title = l10n.text(english: "Managed server stopping", japanese: "管理サーバーを停止中")
+            message = l10n.text(english: "MLX Server Manager is stopping app-owned process pid \(processIdentifier).", japanese: "MLX Server Managerがアプリ所有プロセス pid \(processIdentifier) を停止しています。")
+            processState = l10n.text(english: "Stopping managed pid \(processIdentifier)", japanese: "管理pid \(processIdentifier) を停止中")
+            readiness = l10n.text(english: "Unavailable - process is stopping", japanese: "利用不可 - プロセス停止中")
+            lifecycle = l10n.text(english: "Stop applies only to the app-managed process", japanese: "停止はアプリ管理プロセスのみに適用されます")
+            lifecycleNote = l10n.text(english: "External servers are not affected by this stop operation.", japanese: "この停止操作は外部サーバーに影響しません。")
             accentColor = .orange
         case let .checkingPort(host, port):
-            title = "Checking selected port"
-            message = "The app is checking whether \(host):\(port) is available. This does not start or stop a server."
-            processState = "No managed process attached"
-            readiness = "Not checked - port check in progress"
-            lifecycle = "No lifecycle action is running"
-            lifecycleNote = "Port checks are informational and do not take ownership of external processes."
+            title = l10n.text(english: "Checking selected port", japanese: "選択ポートを確認中")
+            message = l10n.text(english: "The app is checking whether \(host):\(port) is available. This does not start or stop a server.", japanese: "アプリが\(host):\(port)を利用できるか確認しています。サーバーの起動や停止は行いません。")
+            processState = l10n.text(english: "No managed process attached", japanese: "管理プロセスは付いていません")
+            readiness = l10n.text(english: "Not checked - port check in progress", japanese: "未確認 - ポート確認中")
+            lifecycle = l10n.text(english: "No lifecycle action is running", japanese: "ライフサイクル操作は実行中ではありません")
+            lifecycleNote = l10n.text(english: "Port checks are informational and do not take ownership of external processes.", japanese: "ポート確認は情報表示のみで、外部プロセスの所有権は取得しません。")
             accentColor = .orange
         case let .portAvailable(host, port):
-            title = "Port available"
-            message = "\(host):\(port) is available for an explicit managed Start."
-            processState = "No managed process attached"
-            readiness = "Not checked - no active server target"
-            lifecycle = "Start remains an explicit user action"
-            lifecycleNote = "Availability does not automatically start mlx_lm.server."
+            title = l10n.text(english: "Port available", japanese: "ポート利用可能")
+            message = l10n.text(english: "\(host):\(port) is available for an explicit managed Start.", japanese: "\(host):\(port) は明示的な管理起動に利用できます。")
+            processState = l10n.text(english: "No managed process attached", japanese: "管理プロセスは付いていません")
+            readiness = l10n.text(english: "Not checked - no active server target", japanese: "未確認 - 有効なサーバー接続先なし")
+            lifecycle = l10n.text(english: "Start remains an explicit user action", japanese: "起動は明示的なユーザー操作のままです")
+            lifecycleNote = l10n.text(english: "Availability does not automatically start mlx_lm.server.", japanese: "利用可能であってもmlx_lm.serverを自動起動しません。")
             accentColor = .green
         case let .portBusy(host, port):
-            title = "Port busy"
-            message = "\(host):\(port) is in use. MLX Server Manager will not launch a second server on this port."
-            processState = "No managed process attached"
-            readiness = "Unavailable - port is busy"
-            lifecycle = "Start is blocked until the selected port is safe"
-            lifecycleNote = "The app does not stop unknown external processes."
+            title = l10n.text(english: "Port busy", japanese: "ポート使用中")
+            message = l10n.text(english: "\(host):\(port) is in use. MLX Server Manager will not launch a second server on this port.", japanese: "\(host):\(port) は使用中です。MLX Server Managerはこのポートで2つ目のサーバーを起動しません。")
+            processState = l10n.text(english: "No managed process attached", japanese: "管理プロセスは付いていません")
+            readiness = l10n.text(english: "Unavailable - port is busy", japanese: "利用不可 - ポート使用中")
+            lifecycle = l10n.text(english: "Start is blocked until the selected port is safe", japanese: "選択ポートが安全になるまで起動はブロックされます")
+            lifecycleNote = l10n.text(english: "The app does not stop unknown external processes.", japanese: "アプリは不明な外部プロセスを停止しません。")
             accentColor = .red
         case let .externalServerDetected(host, port, _, _):
-            title = "External server detected"
-            message = "An external OpenAI-compatible endpoint responded at \(host):\(port). It is not app-managed."
-            processState = "External process, not owned"
-            readiness = "Ready - /v1/models responded successfully"
-            lifecycle = "Adopt stores connection context only"
-            lifecycleNote = "Stop and Restart remain unavailable for this external process."
+            title = l10n.text(english: "External server detected", japanese: "外部サーバーを検出")
+            message = l10n.text(english: "An external OpenAI-compatible endpoint responded at \(host):\(port). It is not app-managed.", japanese: "\(host):\(port) で外部OpenAI互換エンドポイントが応答しました。アプリ管理ではありません。")
+            processState = l10n.text(english: "External process, not owned", japanese: "外部プロセス、所有なし")
+            readiness = l10n.text(english: "Ready - /v1/models responded successfully", japanese: "Ready - /v1/modelsが正常応答")
+            lifecycle = l10n.text(english: "Adopt stores connection context only", japanese: "採用は接続コンテキストのみを保存します")
+            lifecycleNote = l10n.text(english: "Stop and Restart remain unavailable for this external process.", japanese: "この外部プロセスでは停止と再起動は利用できません。")
             accentColor = .orange
         case let .adoptedExternalServer(host, port, _, _):
-            title = "Adopted external context"
-            message = "\(host):\(port) is adopted as connection context. MLX Server Manager does not own that process."
-            processState = "External process, connection context only"
-            readiness = "Ready - /v1/models responded successfully"
-            lifecycle = "Forget clears app-side context only"
-            lifecycleNote = "Forget External Server does not stop or restart the external server."
+            title = l10n.text(english: "Adopted external context", japanese: "採用済み外部コンテキスト")
+            message = l10n.text(english: "\(host):\(port) is adopted as connection context. MLX Server Manager does not own that process.", japanese: "\(host):\(port) を接続コンテキストとして採用しています。MLX Server Managerはそのプロセスを所有しません。")
+            processState = l10n.text(english: "External process, connection context only", japanese: "外部プロセス、接続コンテキストのみ")
+            readiness = l10n.text(english: "Ready - /v1/models responded successfully", japanese: "Ready - /v1/modelsが正常応答")
+            lifecycle = l10n.text(english: "Forget clears app-side context only", japanese: "解除はアプリ側コンテキストのみを消去します")
+            lifecycleNote = l10n.text(english: "Forget External Server does not stop or restart the external server.", japanese: "外部サーバー解除は外部サーバーを停止・再起動しません。")
             accentColor = .orange
         case let .portCheckFailed(host, port, message):
-            title = "Port check failed"
-            self.message = "The app could not check \(host):\(port): \(message)"
-            processState = "No managed process attached"
-            readiness = "Failed - endpoint check failed"
-            lifecycle = "No lifecycle action is running"
-            lifecycleNote = "No automatic recovery is attempted."
+            title = l10n.text(english: "Port check failed", japanese: "ポート確認に失敗")
+            self.message = l10n.text(english: "The app could not check \(host):\(port): \(message)", japanese: "アプリは\(host):\(port)を確認できませんでした: \(message)")
+            processState = l10n.text(english: "No managed process attached", japanese: "管理プロセスは付いていません")
+            readiness = l10n.text(english: "Failed - endpoint check failed", japanese: "失敗 - エンドポイント確認失敗")
+            lifecycle = l10n.text(english: "No lifecycle action is running", japanese: "ライフサイクル操作は実行中ではありません")
+            lifecycleNote = l10n.text(english: "No automatic recovery is attempted.", japanese: "自動復旧は試行しません。")
             accentColor = .red
         case let .checkingReady(host, port):
-            title = "Checking readiness"
-            message = "The app is checking \(host):\(port) with /v1/models."
-            processState = "Process ownership unchanged"
-            readiness = "Checking - /v1/models request in progress"
-            lifecycle = "Readiness check only"
-            lifecycleNote = "Readiness checks do not send inference requests or change lifecycle state."
+            title = l10n.text(english: "Checking readiness", japanese: "Ready確認中")
+            message = l10n.text(english: "The app is checking \(host):\(port) with /v1/models.", japanese: "アプリが/v1/modelsで\(host):\(port)を確認しています。")
+            processState = l10n.text(english: "Process ownership unchanged", japanese: "プロセス所有権は未変更")
+            readiness = l10n.text(english: "Checking - /v1/models request in progress", japanese: "確認中 - /v1/modelsリクエスト実行中")
+            lifecycle = l10n.text(english: "Readiness check only", japanese: "Ready確認のみ")
+            lifecycleNote = l10n.text(english: "Readiness checks do not send inference requests or change lifecycle state.", japanese: "Ready確認は推論リクエストを送信せず、ライフサイクル状態も変更しません。")
             accentColor = .orange
         case let .readyCheckFailed(host, port, message):
-            title = "Readiness failed"
-            self.message = "/v1/models did not confirm readiness for \(host):\(port): \(message)"
-            processState = "Process ownership unchanged"
-            readiness = "Failed - readiness check failed"
-            lifecycle = "No automatic restart or recovery"
-            lifecycleNote = "Use existing controls after checking setup, logs, and endpoint state."
+            title = l10n.text(english: "Readiness failed", japanese: "Ready確認に失敗")
+            self.message = l10n.text(english: "/v1/models did not confirm readiness for \(host):\(port): \(message)", japanese: "/v1/modelsは\(host):\(port)のReady状態を確認できませんでした: \(message)")
+            processState = l10n.text(english: "Process ownership unchanged", japanese: "プロセス所有権は未変更")
+            readiness = l10n.text(english: "Failed - readiness check failed", japanese: "失敗 - Ready確認失敗")
+            lifecycle = l10n.text(english: "No automatic restart or recovery", japanese: "自動再起動や自動復旧はありません")
+            lifecycleNote = l10n.text(english: "Use existing controls after checking setup, logs, and endpoint state.", japanese: "設定、ログ、エンドポイント状態を確認してから既存の操作を使ってください。")
             accentColor = .red
         case let .error(message):
-            title = "Server state error"
+            title = l10n.text(english: "Server state error", japanese: "サーバー状態エラー")
             self.message = message
-            processState = "Check logs"
-            readiness = "Unavailable - error state"
-            lifecycle = "No automatic recovery"
-            lifecycleNote = "Existing lifecycle buttons remain the only way to start, stop, or restart."
+            processState = l10n.text(english: "Check logs", japanese: "ログを確認")
+            readiness = l10n.text(english: "Unavailable - error state", japanese: "利用不可 - エラー状態")
+            lifecycle = l10n.text(english: "No automatic recovery", japanese: "自動復旧なし")
+            lifecycleNote = l10n.text(english: "Existing lifecycle buttons remain the only way to start, stop, or restart.", japanese: "起動、停止、再起動には既存のライフサイクルボタンのみを使います。")
             accentColor = .red
         case let .unknown(message):
-            title = "Server state unknown"
+            title = l10n.text(english: "Server state unknown", japanese: "サーバー状態不明")
             self.message = message
-            processState = "Unknown"
-            readiness = "Unavailable - check status and logs"
-            lifecycle = "No automatic recovery"
-            lifecycleNote = "The app does not infer or take ownership of unknown processes."
+            processState = l10n.text(english: "Unknown", japanese: "不明")
+            readiness = l10n.text(english: "Unavailable - check status and logs", japanese: "利用不可 - 状態とログを確認してください")
+            lifecycle = l10n.text(english: "No automatic recovery", japanese: "自動復旧なし")
+            lifecycleNote = l10n.text(english: "The app does not infer or take ownership of unknown processes.", japanese: "アプリは不明なプロセスを推定したり所有したりしません。")
             accentColor = .yellow
         }
     }
