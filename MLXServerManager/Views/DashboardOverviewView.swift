@@ -582,10 +582,19 @@ struct DashboardClientSetupCard: View {
     let runtimeState: ModelRuntimeState
     let targetSummary: ConnectionTargetSummary
     let selectedModel: ModelConfig?
+    var language: AppLanguage = .system
+
+    private var l10n: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        l10n.text(english: english, japanese: japanese)
+    }
 
     var body: some View {
         DashboardStatusCard(
-            title: "Client Setup",
+            title: t("Client Setup", "クライアント設定"),
             systemImage: "doc.on.clipboard",
             accentColor: display.accentColor
         ) {
@@ -603,26 +612,26 @@ struct DashboardClientSetupCard: View {
                 Divider()
 
                 HStack(alignment: .top, spacing: 12) {
-                    DashboardKeyValueRow(label: "Client Base URL", value: display.clientBaseURL)
+                    DashboardKeyValueRow(label: t("Client Base URL", "クライアントBase URL"), value: display.clientBaseURL)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    DashboardKeyValueRow(label: "Model ID Guidance", value: display.modelIDGuidance)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                HStack(alignment: .top, spacing: 12) {
-                    DashboardKeyValueRow(label: "Endpoint Source", value: display.endpointSource)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    DashboardKeyValueRow(label: "Readiness Before Client Use", value: display.readinessGuidance)
+                    DashboardKeyValueRow(label: t("Model ID Guidance", "Model IDガイド"), value: display.modelIDGuidance)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 HStack(alignment: .top, spacing: 12) {
-                    DashboardKeyValueRow(label: "Profile Endpoint", value: display.profileEndpoint)
+                    DashboardKeyValueRow(label: t("Endpoint Source", "エンドポイント元"), value: display.endpointSource)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    DashboardKeyValueRow(label: "Copy From", value: display.copyGuidance)
+                    DashboardKeyValueRow(label: t("Readiness Before Client Use", "利用前のReady確認"), value: display.readinessGuidance)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack(alignment: .top, spacing: 12) {
+                    DashboardKeyValueRow(label: t("Profile Endpoint", "プロファイルエンドポイント"), value: display.profileEndpoint)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    DashboardKeyValueRow(label: t("Copy From", "コピー元"), value: display.copyGuidance)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
@@ -638,7 +647,8 @@ struct DashboardClientSetupCard: View {
         DashboardClientSetupDisplay(
             runtimeState: runtimeState,
             targetSummary: targetSummary,
-            selectedModel: selectedModel
+            selectedModel: selectedModel,
+            language: language
         )
     }
 }
@@ -658,10 +668,12 @@ private struct DashboardClientSetupDisplay {
     init(
         runtimeState: ModelRuntimeState,
         targetSummary: ConnectionTargetSummary,
-        selectedModel: ModelConfig?
+        selectedModel: ModelConfig?,
+        language: AppLanguage = .system
     ) {
+        let l10n = AppLocalization(language: language)
         let selectedProfileEndpoint = selectedModel.map { "http://\($0.host):\($0.serverPort)/v1" }
-        profileEndpoint = selectedProfileEndpoint ?? "No selected profile endpoint"
+        profileEndpoint = selectedProfileEndpoint ?? l10n.text(english: "No selected profile endpoint", japanese: "選択プロファイルのエンドポイントなし")
 
         let activeEndpoint = Self.activeEndpointText(
             runtimeState: runtimeState,
@@ -670,76 +682,78 @@ private struct DashboardClientSetupDisplay {
         let activeRelationship = Self.activeRelationshipText(
             activeEndpoint: activeEndpoint,
             profileEndpoint: selectedProfileEndpoint,
-            targetSummary: targetSummary
+            targetSummary: targetSummary,
+            l10n: l10n
         )
 
         modelIDGuidance = Self.modelIDGuidanceText(
             selectedModel: selectedModel,
-            targetSummary: targetSummary
+            targetSummary: targetSummary,
+            l10n: l10n
         )
-        copyGuidance = "Use Connection Settings to copy Base URL, Model ID, API key placeholder, JSON config, Hermes Agent config, or curl readiness command."
-        safetyNote = "Direct Mode means clients connect directly to the active server endpoint. MLX Server Manager does not proxy inference requests or store API keys or tokens."
+        copyGuidance = l10n.text(english: "Use Connection Settings to copy Base URL, Model ID, API key placeholder, JSON config, Hermes Agent config, or curl readiness command.", japanese: "接続設定からBase URL、Model ID、API Keyプレースホルダー、JSON設定、Hermes Agent設定、またはReady確認curlをコピーします。")
+        safetyNote = l10n.text(english: "Direct Mode means clients connect directly to the active server endpoint. MLX Server Manager does not proxy inference requests or store API keys or tokens.", japanese: "Direct Modeではクライアントが有効なサーバーエンドポイントへ直接接続します。MLX Server Managerは推論リクエストをプロキシせず、APIキーやトークンも保存しません。")
 
         switch runtimeState {
         case let .externalServerDetected(_, _, baseURL, _):
-            title = "Detected external endpoint"
-            message = "Adopt this endpoint only if you want MLX Server Manager to show it as connection context for client setup."
+            title = l10n.text(english: "Detected external endpoint", japanese: "検出済み外部エンドポイント")
+            message = l10n.text(english: "Adopt this endpoint only if you want MLX Server Manager to show it as connection context for client setup.", japanese: "このエンドポイントをクライアント設定用の接続コンテキストとして表示したい場合のみ採用します。")
             clientBaseURL = baseURL
-            endpointSource = "Detected external server. Not managed by MLX Server Manager. \(activeRelationship)"
-            readinessGuidance = "Ready means /v1/models responded successfully. External lifecycle and logs stay outside the app."
+            endpointSource = l10n.text(english: "Detected external server. \(activeRelationship)", japanese: "検出済み外部サーバー。\(activeRelationship)")
+            readinessGuidance = l10n.text(english: "Ready means /v1/models responded successfully. External lifecycle and logs stay outside the app.", japanese: "Readyは/v1/modelsが正常応答したことを意味します。外部サーバーのライフサイクルとログはアプリ外にあります。")
             accentColor = .orange
         case let .adoptedExternalServer(_, _, baseURL, _):
-            title = "Use the adopted endpoint"
-            message = "OpenAI-compatible clients should point directly at the adopted external server."
+            title = l10n.text(english: "Use the adopted endpoint", japanese: "採用済みエンドポイントを使用")
+            message = l10n.text(english: "OpenAI-compatible clients should point directly at the adopted external server.", japanese: "OpenAI互換クライアントは採用済み外部サーバーを直接参照します。")
             clientBaseURL = baseURL
-            endpointSource = "Adopted external connection context only. \(activeRelationship)"
-            readinessGuidance = "Use the external server's exposed model names when they differ from selected profile metadata."
+            endpointSource = l10n.text(english: "Adopted external connection context only. \(activeRelationship)", japanese: "採用済み外部接続コンテキストのみ。\(activeRelationship)")
+            readinessGuidance = l10n.text(english: "Use the external server's exposed model names when they differ from selected profile metadata.", japanese: "外部サーバーが選択プロファイルのメタデータと異なるモデル名を公開している場合は、その公開名を使います。")
             accentColor = .orange
         case let .ready(_, _, processIdentifier):
-            title = "Copy the ready endpoint"
-            message = "The current endpoint passed readiness and can be used by an OpenAI-compatible client."
+            title = l10n.text(english: "Copy the ready endpoint", japanese: "Readyエンドポイントをコピー")
+            message = l10n.text(english: "The current endpoint passed readiness and can be used by an OpenAI-compatible client.", japanese: "現在のエンドポイントはReady確認に合格しており、OpenAI互換クライアントで利用できます。")
             clientBaseURL = activeEndpoint ?? targetSummary.baseURL
             if processIdentifier != nil {
-                endpointSource = "App-managed server. \(activeRelationship)"
+                endpointSource = l10n.text(english: "App-managed server. \(activeRelationship)", japanese: "アプリ管理サーバー。\(activeRelationship)")
             } else {
-                endpointSource = "Ready endpoint without managed pid. \(activeRelationship)"
+                endpointSource = l10n.text(english: "Ready endpoint without managed pid. \(activeRelationship)", japanese: "管理pidなしのReadyエンドポイント。\(activeRelationship)")
             }
-            readinessGuidance = "Ready means /v1/models responded successfully before client setup."
+            readinessGuidance = l10n.text(english: "Ready means /v1/models responded successfully before client setup.", japanese: "クライアント設定前のReadyは、/v1/modelsが正常応答したことを意味します。")
             accentColor = .green
         case .starting, .loading, .checkingReady:
-            title = "Wait before client setup"
-            message = "A target is starting or being checked; wait for Ready before expecting clients to work."
+            title = l10n.text(english: "Wait before client setup", japanese: "クライアント設定前に待機")
+            message = l10n.text(english: "A target is starting or being checked; wait for Ready before expecting clients to work.", japanese: "接続先が起動中または確認中です。クライアント利用前にReadyを待ってください。")
             clientBaseURL = activeEndpoint ?? targetSummary.baseURL
-            endpointSource = "Pending target. \(activeRelationship)"
-            readinessGuidance = "Do not treat process startup as readiness; wait for /v1/models success."
+            endpointSource = l10n.text(english: "Pending target. \(activeRelationship)", japanese: "保留中の接続先。\(activeRelationship)")
+            readinessGuidance = l10n.text(english: "Do not treat process startup as readiness; wait for /v1/models success.", japanese: "プロセス起動をReadyとは扱わず、/v1/modelsの成功を待ってください。")
             accentColor = .orange
         case .stopped, .portAvailable:
-            title = "No active endpoint yet"
-            message = "Start a managed server or adopt a detected external server before using client connection values."
-            clientBaseURL = "No active endpoint"
-            endpointSource = "Selected profile endpoint is saved configuration only. \(activeRelationship)"
-            readinessGuidance = "Readiness is not checked until a server target exists."
+            title = l10n.text(english: "No active endpoint yet", japanese: "有効なエンドポイントはまだありません")
+            message = l10n.text(english: "Start a managed server or adopt a detected external server before using client connection values.", japanese: "クライアント接続値を使う前に、管理サーバーを起動するか、検出済み外部サーバーを採用してください。")
+            clientBaseURL = l10n.text(english: "No active endpoint", japanese: "有効なエンドポイントなし")
+            endpointSource = l10n.text(english: "Selected profile endpoint is saved configuration only. \(activeRelationship)", japanese: "選択プロファイルのエンドポイントは保存済み設定のみです。\(activeRelationship)")
+            readinessGuidance = l10n.text(english: "Readiness is not checked until a server target exists.", japanese: "サーバー接続先が存在するまでReady確認は行われません。")
             accentColor = .secondary
         case .portBusy, .portCheckFailed, .readyCheckFailed, .error, .unknown:
-            title = "Check endpoint before copying"
-            message = "The current endpoint is unavailable, failed, or unclear. Verify state before pasting values into a client."
+            title = l10n.text(english: "Check endpoint before copying", japanese: "コピー前にエンドポイントを確認")
+            message = l10n.text(english: "The current endpoint is unavailable, failed, or unclear. Verify state before pasting values into a client.", japanese: "現在のエンドポイントは利用不可、失敗、または不明です。クライアントへ貼り付ける前に状態を確認してください。")
             clientBaseURL = activeEndpoint ?? targetSummary.baseURL
-            endpointSource = "Endpoint needs review. \(activeRelationship)"
-            readinessGuidance = "Use Diagnostics, logs, and /v1/models readiness before relying on client setup."
+            endpointSource = l10n.text(english: "Endpoint needs review. \(activeRelationship)", japanese: "エンドポイントの確認が必要です。\(activeRelationship)")
+            readinessGuidance = l10n.text(english: "Use Diagnostics, logs, and /v1/models readiness before relying on client setup.", japanese: "クライアント設定に依存する前に、診断、ログ、/v1/modelsのReady確認を使ってください。")
             accentColor = .red
         case .checkingPort:
-            title = "Endpoint check in progress"
-            message = "The selected host and port are being checked; this does not create an active client target."
+            title = l10n.text(english: "Endpoint check in progress", japanese: "エンドポイント確認中")
+            message = l10n.text(english: "The selected host and port are being checked; this does not create an active client target.", japanese: "選択したホストとポートを確認中です。これにより有効なクライアント接続先が作られるわけではありません。")
             clientBaseURL = activeEndpoint ?? targetSummary.baseURL
-            endpointSource = "Port check only. \(activeRelationship)"
-            readinessGuidance = "Port availability is not readiness."
+            endpointSource = l10n.text(english: "Port check only. \(activeRelationship)", japanese: "ポート確認のみ。\(activeRelationship)")
+            readinessGuidance = l10n.text(english: "Port availability is not readiness.", japanese: "ポート利用可否はReady状態ではありません。")
             accentColor = .orange
         case .stopping:
-            title = "Endpoint is stopping"
-            message = "Wait for the managed stop to complete before copying client connection values."
+            title = l10n.text(english: "Endpoint is stopping", japanese: "エンドポイント停止中")
+            message = l10n.text(english: "Wait for the managed stop to complete before copying client connection values.", japanese: "クライアント接続値をコピーする前に、管理停止が完了するまで待ってください。")
             clientBaseURL = activeEndpoint ?? targetSummary.baseURL
-            endpointSource = "Managed process is stopping. \(activeRelationship)"
-            readinessGuidance = "The endpoint should be treated as unavailable while stopping."
+            endpointSource = l10n.text(english: "Managed process is stopping. \(activeRelationship)", japanese: "管理プロセスを停止中です。\(activeRelationship)")
+            readinessGuidance = l10n.text(english: "The endpoint should be treated as unavailable while stopping.", japanese: "停止中のエンドポイントは利用不可として扱ってください。")
             accentColor = .orange
         }
     }
@@ -763,40 +777,42 @@ private struct DashboardClientSetupDisplay {
     private static func activeRelationshipText(
         activeEndpoint: String?,
         profileEndpoint: String?,
-        targetSummary: ConnectionTargetSummary
+        targetSummary: ConnectionTargetSummary,
+        l10n: AppLocalization
     ) -> String {
         guard let activeEndpoint else {
-            return "No active target is available yet."
+            return l10n.text(english: "No active target is available yet.", japanese: "有効な接続先はまだありません。")
         }
 
         guard let profileEndpoint else {
-            return "No selected profile endpoint is available."
+            return l10n.text(english: "No selected profile endpoint is available.", japanese: "選択プロファイルのエンドポイントはありません。")
         }
 
         if activeEndpoint == profileEndpoint {
-            return "Active endpoint matches the selected profile endpoint."
+            return l10n.text(english: "Active endpoint matches the selected profile endpoint.", japanese: "有効なエンドポイントは選択プロファイルのエンドポイントと一致しています。")
         }
 
         if targetSummary.targetType.localizedCaseInsensitiveContains("external") {
-            return "Adopted or detected external endpoint may differ from selected profile metadata."
+            return l10n.text(english: "Adopted or detected external endpoint may differ from selected profile metadata.", japanese: "採用または検出された外部エンドポイントは、選択プロファイルのメタデータと異なる場合があります。")
         }
 
-        return "Active endpoint and saved profile endpoint differ; check selected/running model state."
+        return l10n.text(english: "Active endpoint and saved profile endpoint differ; check selected/running model state.", japanese: "有効なエンドポイントと保存済みプロファイルのエンドポイントが異なります。選択中/実行中モデルの状態を確認してください。")
     }
 
     private static func modelIDGuidanceText(
         selectedModel: ModelConfig?,
-        targetSummary: ConnectionTargetSummary
+        targetSummary: ConnectionTargetSummary,
+        l10n: AppLocalization
     ) -> String {
         guard let selectedModel else {
-            return "No selected profile model ID. Use the model name exposed by the active server."
+            return l10n.text(english: "No selected profile model ID. Use the model name exposed by the active server.", japanese: "選択プロファイルのModel IDがありません。有効なサーバーが公開しているモデル名を使ってください。")
         }
 
         if targetSummary.targetType.localizedCaseInsensitiveContains("external") {
-            return "Selected profile model ID: \(selectedModel.modelID). External servers may expose a different model name."
+            return l10n.text(english: "Selected profile model ID: \(selectedModel.modelID). External servers may expose a different model name.", japanese: "選択プロファイルのModel ID: \(selectedModel.modelID)。外部サーバーは異なるモデル名を公開している場合があります。")
         }
 
-        return "Use selected profile model ID: \(selectedModel.modelID). If a client rejects it, check /v1/models or server logs."
+        return l10n.text(english: "Use selected profile model ID: \(selectedModel.modelID). If a client rejects it, check /v1/models or server logs.", japanese: "選択プロファイルのModel IDを使います: \(selectedModel.modelID)。クライアントが拒否する場合は/v1/modelsまたはサーバーログを確認してください。")
     }
 }
 
