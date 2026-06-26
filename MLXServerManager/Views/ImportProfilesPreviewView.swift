@@ -3,12 +3,21 @@ import SwiftUI
 struct ImportProfilesPreviewView: View {
     let result: ImportPreviewResult
     let importMessage: String?
+    var language: AppLanguage = .system
     let onImportSelected: ([ImportSelectedProfileRequest]) -> Void
     let onClose: () -> Void
 
     @State private var actionBySourceIndex: [Int: ImportProfileRowAction] = [:]
     @State private var renameBySourceIndex: [Int: String] = [:]
     @State private var isImportConfirmationPresented = false
+
+    private var l10n: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        l10n.text(english: english, japanese: japanese)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -18,7 +27,7 @@ struct ImportProfilesPreviewView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     importScopeNotice
                     documentSummary
-                    messageSection(title: "Document Messages", messages: result.documentMessages)
+                    messageSection(title: t("Document Messages", "ドキュメントメッセージ"), messages: result.documentMessages)
                     profilesSection
                 }
                 .padding(.trailing, 8)
@@ -31,13 +40,13 @@ struct ImportProfilesPreviewView: View {
 
                 Spacer()
 
-                Button("Import Selected Profiles") {
+                Button(t("Import Selected Profiles", "選択プロファイルをインポート")) {
                     isImportConfirmationPresented = true
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(selectedActionCount == 0)
 
-                Button("Close") {
+                Button(t("Close", "閉じる")) {
                     onClose()
                 }
                 .keyboardShortcut(.cancelAction)
@@ -62,7 +71,7 @@ struct ImportProfilesPreviewView: View {
                 onImportSelected(importRequests)
             }
 
-            Button("Cancel", role: .cancel) {}
+            Button(t("Cancel", "キャンセル"), role: .cancel) {}
         } message: {
             Text(importConfirmationMessage)
         }
@@ -71,7 +80,7 @@ struct ImportProfilesPreviewView: View {
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Import Profiles Preview")
+                Text(t("Import Profiles Preview", "プロファイルインポートプレビュー"))
                     .font(.title2.weight(.semibold))
 
                 Text(result.sourceFileName)
@@ -83,11 +92,11 @@ struct ImportProfilesPreviewView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 4) {
-                Text(result.canProceedToFutureImport ? "\(selectedActionCount) selected for import" : "Import blocked")
+                Text(result.canProceedToFutureImport ? t("\(selectedActionCount) selected for import", "\(selectedActionCount)件をインポート対象に選択") : t("Import blocked", "インポート不可"))
                     .font(.callout.weight(.medium))
                     .foregroundStyle(result.canProceedToFutureImport ? .green : .red)
 
-                Text("\(result.validProfilesCount) valid, \(result.invalidProfilesCount) invalid, \(result.warningCount) warning(s)")
+                Text(t("\(result.validProfilesCount) valid, \(result.invalidProfilesCount) invalid, \(result.warningCount) warning(s)", "有効\(result.validProfilesCount)件、無効\(result.invalidProfilesCount)件、警告\(result.warningCount)件"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -96,10 +105,10 @@ struct ImportProfilesPreviewView: View {
 
     private var importScopeNotice: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Valid profiles are selected by default. Profile-name conflicts can be renamed. Unambiguous existing-profile conflicts can be replaced only after confirmation.", systemImage: "checklist")
+            Label(t("Valid profiles are selected by default. Profile-name conflicts can be renamed. Unambiguous existing-profile conflicts can be replaced only after confirmation.", "有効なプロファイルは既定で選択されます。プロファイル名の競合はリネームできます。曖昧でない既存プロファイル競合は、確認後にのみ置換できます。"), systemImage: "checklist")
                 .font(.callout.weight(.semibold))
 
-            Text("Import does not start, stop, or restart servers. It does not call /v1/models, make external HTTP requests, download models, delete files, import secrets, change external ownership, or change process ownership.")
+            Text(t("Import does not start, stop, or restart servers. It does not call /v1/models, make external HTTP requests, download models, delete files, import secrets, change external ownership, or change process ownership.", "インポートはサーバーの起動・停止・再起動を行いません。/v1/modelsの呼び出し、外部HTTPリクエスト、モデルのダウンロード、ファイル削除、シークレットのインポート、外部所有権やプロセス所有権の変更も行いません。"))
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -111,14 +120,14 @@ struct ImportProfilesPreviewView: View {
 
     private var documentSummary: some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 8) {
-            summaryRow("Source File", result.sourceFileName)
-            summaryRow("schemaVersion", result.schemaVersion.map(String.init) ?? "Missing")
-            summaryRow("app", result.app ?? "Not provided")
+            summaryRow(t("Source File", "ソースファイル"), result.sourceFileName)
+            summaryRow("schemaVersion", result.schemaVersion.map(String.init) ?? t("Missing", "不足"))
+            summaryRow("app", result.app ?? t("Not provided", "未指定"))
             summaryRow("exportedAt", formattedDate(result.exportedAt))
-            summaryRow("Total Profiles", String(result.totalProfiles))
-            summaryRow("Valid Profiles", String(result.validProfilesCount))
-            summaryRow("Invalid Profiles", String(result.invalidProfilesCount))
-            summaryRow("Warnings", String(result.warningCount))
+            summaryRow(t("Total Profiles", "プロファイル総数"), String(result.totalProfiles))
+            summaryRow(t("Valid Profiles", "有効なプロファイル"), String(result.validProfilesCount))
+            summaryRow(t("Invalid Profiles", "無効なプロファイル"), String(result.invalidProfilesCount))
+            summaryRow(t("Warnings", "警告"), String(result.warningCount))
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -128,11 +137,11 @@ struct ImportProfilesPreviewView: View {
 
     private var profilesSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Profiles")
+            Text(t("Profiles", "プロファイル"))
                 .font(.headline)
 
             if result.profiles.isEmpty {
-                Text("No profile rows are available for preview.")
+                Text(t("No profile rows are available for preview.", "プレビューできるプロファイル行はありません。"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } else {
@@ -148,19 +157,19 @@ struct ImportProfilesPreviewView: View {
     private func profileRow(_ profile: ValidatedImportProfile) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
-                Picker("Action", selection: actionBinding(for: profile)) {
-                    Text("Skip").tag(ImportProfileRowAction.skip)
+                Picker(t("Action", "操作"), selection: actionBinding(for: profile)) {
+                    Text(t("Skip", "スキップ")).tag(ImportProfileRowAction.skip)
 
                     if profile.isImportable {
-                        Text("Import").tag(ImportProfileRowAction.importProfile)
+                        Text(t("Import", "インポート")).tag(ImportProfileRowAction.importProfile)
                     }
 
                     if profile.canImportWithRename {
-                        Text("Rename").tag(ImportProfileRowAction.rename)
+                        Text(t("Rename", "リネーム")).tag(ImportProfileRowAction.rename)
                     }
 
                     if profile.canImportWithReplace {
-                        Text("Replace").tag(ImportProfileRowAction.replace)
+                        Text(t("Replace", "置換")).tag(ImportProfileRowAction.replace)
                     }
                 }
                 .labelsHidden()
@@ -183,17 +192,17 @@ struct ImportProfilesPreviewView: View {
             }
 
             Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
-                compactRow("Host", profile.host)
-                compactRow("Port", profile.port.map(String.init) ?? "Missing")
-                compactRow("Advanced Launch Options", profile.hasAdvancedLaunchOptions ? "Included" : "Not included")
-                compactRow("Conflict", profile.conflictSummary ?? "None")
+                compactRow(t("Host", "ホスト"), profile.host)
+                compactRow(t("Port", "ポート"), profile.port.map(String.init) ?? t("Missing", "不足"))
+                compactRow(t("Advanced Launch Options", "詳細起動オプション"), profile.hasAdvancedLaunchOptions ? t("Included", "含む") : t("Not included", "含まない"))
+                compactRow(t("Conflict", "競合"), profile.conflictSummary ?? t("None", "なし"))
                 if let suggestedRename = profile.suggestedRename {
-                    compactRow("Suggested Rename", suggestedRename)
+                    compactRow(t("Suggested Rename", "推奨リネーム"), suggestedRename)
                 }
                 if let replaceTarget = profile.replaceTarget {
-                    compactRow("Replace Target", "\(replaceTarget.displayName) (\(replaceTarget.modelID), \(replaceTarget.endpointDescription))")
+                    compactRow(t("Replace Target", "置換対象"), "\(replaceTarget.displayName) (\(replaceTarget.modelID), \(replaceTarget.endpointDescription))")
                 }
-                compactRow("Planned Action", profile.plannedActionSummary)
+                compactRow(t("Planned Action", "予定操作"), profile.plannedActionSummary)
             }
 
             if profile.canImportWithRename {
@@ -204,7 +213,7 @@ struct ImportProfilesPreviewView: View {
                 replaceControls(for: profile)
             }
 
-            messageSection(title: "Messages", messages: profile.messages)
+            messageSection(title: t("Messages", "メッセージ"), messages: profile.messages)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -262,16 +271,16 @@ struct ImportProfilesPreviewView: View {
     private func renameControls(for profile: ValidatedImportProfile) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("Rename To")
+                Text(t("Rename To", "リネーム先"))
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
 
-                TextField("New profile name", text: renameBinding(for: profile))
+                TextField(t("New profile name", "新しいプロファイル名"), text: renameBinding(for: profile))
                     .textFieldStyle(.roundedBorder)
                     .disabled(actionBySourceIndex[profile.sourceIndex, default: .skip] != .rename)
 
                 if let suggestedRename = profile.suggestedRename {
-                    Button("Use Suggested") {
+                    Button(t("Use Suggested", "推奨名を使用")) {
                         renameBySourceIndex[profile.sourceIndex] = suggestedRename
                         actionBySourceIndex[profile.sourceIndex] = .rename
                     }
@@ -279,7 +288,7 @@ struct ImportProfilesPreviewView: View {
                 }
             }
 
-            Text("Rename imports this row as a new profile. It does not replace or overwrite the existing profile.")
+            Text(t("Rename imports this row as a new profile. It does not replace or overwrite the existing profile.", "リネームはこの行を新しいプロファイルとしてインポートします。既存プロファイルの置換や上書きは行いません。"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -295,13 +304,13 @@ struct ImportProfilesPreviewView: View {
     private func replaceControls(for profile: ValidatedImportProfile) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if let replaceTarget = profile.replaceTarget {
-                Label("Replace updates one existing local profile's saved metadata. It does not delete model files, caches, logs, or affect server processes.", systemImage: "arrow.triangle.2.circlepath")
+                Label(t("Replace updates one existing local profile's saved metadata. It does not delete model files, caches, logs, or affect server processes.", "置換は既存ローカルプロファイル1件の保存済みメタデータだけを更新します。モデルファイル、キャッシュ、ログは削除せず、サーバープロセスにも影響しません。"), systemImage: "arrow.triangle.2.circlepath")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
                 Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
-                    compactRow("Before", "\(replaceTarget.displayName) | \(replaceTarget.modelID) | \(replaceTarget.endpointDescription)")
-                    compactRow("After", "\(profile.name) | \(profile.modelID) | \(profile.host):\(profile.port.map(String.init) ?? "Missing")")
+                    compactRow(t("Before", "変更前"), "\(replaceTarget.displayName) | \(replaceTarget.modelID) | \(replaceTarget.endpointDescription)")
+                    compactRow(t("After", "変更後"), "\(profile.name) | \(profile.modelID) | \(profile.host):\(profile.port.map(String.init) ?? "Missing")")
                 }
             }
 
@@ -329,15 +338,15 @@ struct ImportProfilesPreviewView: View {
 
         let name = normalizedRenameName(for: profile)
         if name.isEmpty {
-            return "Rename name cannot be empty."
+            return t("Rename name cannot be empty.", "リネーム名は空にできません。")
         }
 
         if result.existingProfileNames.contains(name) {
-            return "Rename name already exists in local profiles."
+            return t("Rename name already exists in local profiles.", "リネーム名はローカルプロファイルにすでに存在します。")
         }
 
         if selectedFinalNameCounts[name, default: 0] > 1 {
-            return "Rename name conflicts with another selected import."
+            return t("Rename name conflicts with another selected import.", "リネーム名が別の選択済みインポートと競合しています。")
         }
 
         return nil
@@ -349,24 +358,24 @@ struct ImportProfilesPreviewView: View {
         }
 
         guard let replaceTarget = profile.replaceTarget else {
-            return "Replace target is ambiguous or unavailable."
+            return t("Replace target is ambiguous or unavailable.", "置換対象が曖昧、または利用できません。")
         }
 
         if selectedReplaceTargetCounts[replaceTarget.modelID, default: 0] > 1 {
-            return "Another selected import already replaces this existing profile."
+            return t("Another selected import already replaces this existing profile.", "別の選択済みインポートがすでにこの既存プロファイルを置換します。")
         }
 
         if selectedFinalNameCounts[profile.name, default: 0] > 1 {
-            return "Replacement name conflicts with another selected import."
+            return t("Replacement name conflicts with another selected import.", "置換後の名前が別の選択済みインポートと競合しています。")
         }
 
         if selectedFinalModelIDCounts[profile.modelID, default: 0] > 1 {
-            return "Replacement Model ID conflicts with another selected import."
+            return t("Replacement Model ID conflicts with another selected import.", "置換後のModel IDが別の選択済みインポートと競合しています。")
         }
 
         if let endpoint = endpointKey(for: profile),
            selectedFinalEndpointCounts[endpoint, default: 0] > 1 {
-            return "Replacement endpoint conflicts with another selected import."
+            return t("Replacement endpoint conflicts with another selected import.", "置換後のエンドポイントが別の選択済みインポートと競合しています。")
         }
 
         return nil
@@ -441,21 +450,21 @@ struct ImportProfilesPreviewView: View {
     }
 
     private var importConfirmationTitle: String {
-        hasReplacementActions ? "Replace existing profile metadata?" : "Import selected profile metadata?"
+        hasReplacementActions ? t("Replace existing profile metadata?", "既存プロファイルのメタデータを置換しますか？") : t("Import selected profile metadata?", "選択したプロファイルメタデータをインポートしますか？")
     }
 
     private var importConfirmationButtonTitle: String {
-        hasReplacementActions ? "Apply Import and Replace" : "Import Selected Profiles"
+        hasReplacementActions ? t("Apply Import and Replace", "インポートと置換を適用") : t("Import Selected Profiles", "選択プロファイルをインポート")
     }
 
     private var importConfirmationMessage: String {
-        let safetyNote = "This will not start servers, stop servers, call /v1/models, make external HTTP requests, download models, delete model files, import secrets, or change process ownership."
+        let safetyNote = t("This will not start servers, stop servers, call /v1/models, make external HTTP requests, download models, delete model files, import secrets, or change process ownership.", "サーバーの起動・停止、/v1/modelsの呼び出し、外部HTTPリクエスト、モデルのダウンロード、モデルファイル削除、シークレットのインポート、プロセス所有権の変更は行いません。")
 
         guard hasReplacementActions else {
-            return "This will add selected profile metadata and apply explicit Rename actions shown in the preview. \(safetyNote)"
+            return t("This will add selected profile metadata and apply explicit Rename actions shown in the preview. \(safetyNote)", "選択したプロファイルメタデータを追加し、プレビューに表示された明示的なリネーム操作を適用します。\(safetyNote)")
         }
 
-        return "\(replacementConfirmationSummary)\n\nReplace updates existing local profile metadata only. \(safetyNote)"
+        return "\(replacementConfirmationSummary)\n\n\(t("Replace updates existing local profile metadata only.", "置換は既存ローカルプロファイルのメタデータのみを更新します。")) \(safetyNote)"
     }
 
     private var replacementConfirmationSummary: String {
@@ -466,7 +475,7 @@ struct ImportProfilesPreviewView: View {
                 return nil
             }
 
-            return "Replace \(target.displayName) (\(target.modelID), \(target.endpointDescription)) with \(profile.name) (\(profile.modelID), \(profile.host):\(profile.port.map(String.init) ?? "Missing"))."
+            return t("Replace \(target.displayName) (\(target.modelID), \(target.endpointDescription)) with \(profile.name) (\(profile.modelID), \(profile.host):\(profile.port.map(String.init) ?? "Missing")).", "\(target.displayName)（\(target.modelID), \(target.endpointDescription)）を\(profile.name)（\(profile.modelID), \(profile.host):\(profile.port.map(String.init) ?? t("Missing", "不足"))）で置換します。")
         }
 
         return summaries.joined(separator: "\n")
@@ -562,7 +571,7 @@ struct ImportProfilesPreviewView: View {
 
     private func formattedDate(_ date: Date?) -> String {
         guard let date else {
-            return "Not provided"
+            return t("Not provided", "未指定")
         }
 
         return date.formatted(date: .abbreviated, time: .standard)

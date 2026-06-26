@@ -82,6 +82,7 @@ struct ContentView: View {
                 ImportProfilesPreviewView(
                     result: result,
                     importMessage: viewModel.modelProfileImportMessage,
+                    language: viewModel.settings.uiLanguage,
                     onImportSelected: viewModel.importSelectedProfilesRequested,
                     onClose: viewModel.dismissImportPreview
                 )
