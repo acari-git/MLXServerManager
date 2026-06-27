@@ -128,7 +128,6 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var modelProfileExportMessage: String?
     @Published private(set) var modelProfileImportMessage: String?
     @Published var modelListSourceFilter = "All"
-    @Published var modelListSearchText = ""
     @Published var isImportPreviewPresented = false
     @Published private(set) var importPreviewResult: ImportPreviewResult?
     @Published var huggingFaceDownloadDraft: HuggingFaceDownloadDraft = .defaults(
@@ -333,18 +332,8 @@ final class AppViewModel: ObservableObject {
         let sourceFiltered = modelListSourceFilter == "All"
             ? models
             : models.filter { sourceLabel(for: $0) == modelListSourceFilter }
-        let query = modelListSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let filtered = query.isEmpty
-            ? sourceFiltered
-            : sourceFiltered.filter { model in
-                model.displayName.localizedCaseInsensitiveContains(query)
-                    || model.modelID.localizedCaseInsensitiveContains(query)
-                    || model.family.localizedCaseInsensitiveContains(query)
-                    || model.quantization.localizedCaseInsensitiveContains(query)
-                    || model.notes.localizedCaseInsensitiveContains(query)
-            }
 
-        return sortedModels(filtered)
+        return sortedModels(sourceFiltered)
     }
 
     private func refreshDefaultUserFacingMessagesForCurrentLanguage() {
@@ -395,6 +384,12 @@ final class AppViewModel: ObservableObject {
             modelSortKey = key
             isModelSortAscending = true
         }
+    }
+
+    func beginModelReorderRequested() {
+        modelSortKey = nil
+        isModelSortAscending = true
+        modelListSourceFilter = "All"
     }
 
     func sortIndicator(for key: String) -> String {
@@ -455,6 +450,22 @@ final class AppViewModel: ObservableObject {
         let movedModel = models.remove(at: sourceIndex)
         let adjustedTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
         models.insert(movedModel, at: adjustedTargetIndex)
+        do {
+            try settingsStore.save(models: models)
+            appendLog("[model] reordered \(movedModel.displayName).")
+        } catch {
+            appendLog("[model] warning: failed to save model order: \(error.localizedDescription)")
+        }
+    }
+
+    func moveModelToEnd(withID draggedModelID: ModelConfig.ID) {
+        guard let sourceIndex = models.firstIndex(where: { $0.id == draggedModelID }),
+              sourceIndex != models.index(before: models.endIndex) else {
+            return
+        }
+
+        let movedModel = models.remove(at: sourceIndex)
+        models.append(movedModel)
         do {
             try settingsStore.save(models: models)
             appendLog("[model] reordered \(movedModel.displayName).")
@@ -2017,6 +2028,16 @@ final class AppViewModel: ObservableObject {
     func copyMiniChatResponseRequested() {
         guard !miniChatResponse.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         _ = copyToPasteboard(miniChatResponse)
+    }
+
+    func copyMiniChatMessageRequested(_ message: MiniChatTranscriptMessage) {
+        guard message.sender == .assistant,
+              !message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+        if copyToPasteboard(message.content) {
+            miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Copied response.", japanese: "返答をコピーしました。")
+        }
     }
 
     nonisolated private static func chatCompletionsURL(from baseURL: String) -> URL? {

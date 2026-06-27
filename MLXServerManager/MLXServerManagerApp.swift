@@ -15,6 +15,8 @@ struct MLXServerManagerApp: App {
         WindowGroup("MLX Server Manager", id: "main") {
             ContentView(viewModel: viewModel)
         }
+        .defaultSize(width: 1280, height: 820)
+        .windowToolbarStyle(.unifiedCompact(showsTitle: false))
 
         MenuBarExtra {
             MenuBarView(viewModel: viewModel)

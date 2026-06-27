@@ -52,7 +52,7 @@ struct LogsSurfaceView: View {
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .liquidGlassLayerOne(cornerRadius: 0)
         .accessibilityIdentifier("logs-surface")
     }
 
@@ -124,11 +124,7 @@ struct LogsSurfaceView: View {
             }
         }
         .padding(16)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.accentColor.opacity(0.16))
-        )
+        .liquidGlassLayerTwo(cornerRadius: 14)
         .accessibilityIdentifier("logs-surface-command-deck")
     }
 
@@ -157,12 +153,7 @@ struct LogsSurfaceView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay {
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(Color.secondary.opacity(0.12))
-        }
+        .liquidGlassLayerTwo(cornerRadius: 10)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(identifier)
     }
@@ -197,12 +188,7 @@ struct LogsSurfaceView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay {
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(Color.secondary.opacity(0.12))
-        }
+        .liquidGlassLayerTwo(cornerRadius: 10)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("logs-surface-troubleshooting")
     }
@@ -228,12 +214,7 @@ struct LogsSurfaceView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay {
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(Color.secondary.opacity(0.12))
-        }
+        .liquidGlassLayerTwo(cornerRadius: 10)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("logs-surface-boundary")
     }

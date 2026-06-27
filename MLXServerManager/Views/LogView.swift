@@ -74,12 +74,7 @@ struct LogView: View {
                 .accessibilityIdentifier("log-view-entry-list")
             }
             .frame(minHeight: 180)
-            .background(Color(nsColor: .textBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay {
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
-            }
+            .liquidGlassPanel(cornerRadius: 8)
         }
         .panelStyle()
         .accessibilityIdentifier("log-view")

@@ -42,7 +42,7 @@ struct ModelProfileEditorView: View {
                     } label: {
                         Label(saveButtonTitle, systemImage: "square.and.arrow.down")
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
                 }
             }
 

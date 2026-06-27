@@ -43,7 +43,7 @@ struct ImportProfilesPreviewView: View {
                 Button(t("Import Selected Profiles", "選択プロファイルをインポート")) {
                     isImportConfirmationPresented = true
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .disabled(selectedActionCount == 0)
 
                 Button(t("Close", "閉じる")) {

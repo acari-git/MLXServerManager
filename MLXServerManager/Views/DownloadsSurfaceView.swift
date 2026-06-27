@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct DownloadsSurfaceView: View {
@@ -49,7 +50,7 @@ struct DownloadsSurfaceView: View {
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .liquidGlassLayerOne(cornerRadius: 0)
         .accessibilityIdentifier("downloads-surface")
     }
 
@@ -93,11 +94,7 @@ struct DownloadsSurfaceView: View {
             }
         }
         .padding(16)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.accentColor.opacity(0.16))
-        )
+        .liquidGlassLayerTwo(cornerRadius: 14)
     }
 
     private var downloadStateHero: some View {
@@ -132,7 +129,7 @@ struct DownloadsSurfaceView: View {
                 Button(t("Preview files", "ファイルをプレビュー")) { viewModel.previewHuggingFaceFilesRequested() }
                     .disabled(viewModel.huggingFaceFilePreview.isLoading || viewModel.isHuggingFaceDownloadRunning)
                 Button(strings.text(.download)) { viewModel.startHuggingFaceDownloadRequested() }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
                     .disabled(!viewModel.canStartHuggingFaceDownload)
                 Button(strings.text(.cancel)) { viewModel.cancelHuggingFaceDownloadRequested() }
                     .disabled(!viewModel.isHuggingFaceDownloadRunning)
@@ -157,7 +154,7 @@ struct DownloadsSurfaceView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(Color(nsColor: .textBackgroundColor).opacity(0.72), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .liquidGlassLayerTwo(cornerRadius: 10)
     }
 
     @ViewBuilder
@@ -217,23 +214,68 @@ struct DownloadsSurfaceView: View {
         .panelStyle()
     }
 
+    private var isHuggingFaceSearchActive: Bool {
+        !viewModel.huggingFaceSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var huggingFaceSearchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: AppSymbol.search)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            TextField(
+                t("Search by repository or model name", "リポジトリ名またはモデル名で検索"),
+                text: $viewModel.huggingFaceSearchQuery
+            )
+            .textFieldStyle(.plain)
+            .font(.callout)
+            .onSubmit {
+                viewModel.performHuggingFaceSearchRequested()
+            }
+
+            if isHuggingFaceSearchActive {
+                Button {
+                    viewModel.huggingFaceSearchQuery = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help(t("Clear search", "検索をクリア"))
+            }
+        }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .background(
+            Color(nsColor: .textBackgroundColor).opacity(0.74),
+            in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08))
+        }
+        .accessibilityIdentifier("downloads-huggingface-search-field")
+    }
+
     private var searchCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(t("Hugging Face search", "Hugging Face検索"))
                 .font(.headline)
 
-            HStack {
-                TextField("mlx-community/Qwen...", text: $viewModel.huggingFaceSearchQuery)
-                    .textFieldStyle(.roundedBorder)
+            HStack(spacing: 10) {
+                huggingFaceSearchField
                 Button {
                     viewModel.performHuggingFaceSearchRequested()
                 } label: {
                     if viewModel.isHuggingFaceSearching {
                         ProgressView().scaleEffect(0.7)
                     } else {
-                        Label(strings.text(.search), systemImage: "magnifyingglass")
+                        Label(strings.text(.search), systemImage: AppSymbol.search)
                     }
                 }
+                .buttonStyle(.glassProminent)
                 .disabled(viewModel.isHuggingFaceSearching)
             }
 
@@ -268,8 +310,7 @@ struct DownloadsSurfaceView: View {
                             }
                             .padding(8)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color(nsColor: .textBackgroundColor))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .liquidGlassLayerTwo(cornerRadius: 8)
                         }
                         .buttonStyle(.plain)
                     }
@@ -363,7 +404,7 @@ struct DownloadsSurfaceView: View {
                 } label: {
                     Label(strings.text(.download), systemImage: "arrow.down.circle")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .disabled(!viewModel.canStartHuggingFaceDownload)
 
                 Button(strings.text(.retry)) {
@@ -408,8 +449,7 @@ struct DownloadsSurfaceView: View {
             }
         }
         .padding(8)
-        .background(Color(nsColor: .textBackgroundColor).opacity(0.7))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .liquidGlassLayerTwo(cornerRadius: 8)
         .accessibilityIdentifier("hf-download-progress-panel")
     }
 
@@ -439,8 +479,7 @@ struct DownloadsSurfaceView: View {
             previewFileList
         }
         .padding(8)
-        .background(Color(nsColor: .textBackgroundColor).opacity(0.7))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .liquidGlassLayerTwo(cornerRadius: 8)
     }
 
     @ViewBuilder
@@ -466,8 +505,7 @@ struct DownloadsSurfaceView: View {
                 }
             }
             .padding(8)
-            .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .liquidGlassLayerTwo(cornerRadius: 8)
         }
     }
 
@@ -531,8 +569,7 @@ struct DownloadsSurfaceView: View {
                         }
                     }
                     .padding(8)
-                    .background(Color(nsColor: .textBackgroundColor))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .liquidGlassLayerTwo(cornerRadius: 8)
                 }
             }
         }

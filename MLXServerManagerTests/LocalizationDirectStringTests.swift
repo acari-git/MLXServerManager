@@ -12,19 +12,13 @@ final class LocalizationDirectStringTests: XCTestCase {
     }
 
     private static let allowedKeys: Set<String> = [
-        "DashboardOverviewView.swift|accessibilityLabel|\\(label): \\(value)",
-        "MetricsSystemContextSurfaceView.swift|Text|Metrics",
-        "MetricsSystemContextSurfaceView.swift|Text|Read-only system and readiness context. No telemetry, background monitoring, or request inspection is added.",
-        "OnboardingGuidanceView.swift|Text|\\(index + 1). \\(hint)",
         "IntegratedWorkspaceView.swift|Text|SYSTEM",
         "IntegratedWorkspaceView.swift|Text|MLX Server Manager",
-        "IntegratedWorkspaceView.swift|Text|Version 22.5.0",
+        "IntegratedWorkspaceView.swift|Text|Version 24.0.0",
         "IntegratedWorkspaceView.swift|Text|127.0.0.1",
         "IntegratedWorkspaceView.swift|Toggle|",
         "IntegratedWorkspaceView.swift|Text|Direct Mode",
         "IntegratedWorkspaceView.swift|Text|-",
-        "ClientSetupSurfaceView.swift|Label|Direct Mode",
-        "ClientSetupSurfaceView.swift|Text|OpenAI-compatible client -> mlx_lm.server or adopted external server -> MLX model",
         "ModelProfileEditorView.swift|TextField|127.0.0.1",
         "ModelProfileEditorView.swift|TextField|8080",
         "ModelProfileEditorView.swift|TextField|0.0 - 1.0",
@@ -35,12 +29,7 @@ final class LocalizationDirectStringTests: XCTestCase {
         "TitlebarPanelControlsInstaller.swift|Text|MLX Server Manager",
         "SettingsPanelView.swift|TextField|127.0.0.1",
         "SettingsPanelView.swift|TextField|8080",
-        "SettingsPanelView.swift|TextField|not-required-local",
-        "RuntimeSurfaceView.swift|Button|Hermes",
-        "RuntimeSurfaceView.swift|Button|/v1/models curl",
-        "DiagnosticsPanelView.swift|Text|\\(count)",
-        "ProfilesSurfaceView.swift|Text|Thinking",
-        "ContentView.swift|Text|MLX Server Manager"
+        "SettingsPanelView.swift|TextField|not-required-local"
     ]
 
     private struct Finding {

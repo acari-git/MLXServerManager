@@ -92,7 +92,7 @@ struct SettingsPanelView: View {
                 } label: {
                     Label(strings.text(.saveSettings), systemImage: "square.and.arrow.down")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
 
                 Button {
                     onRunDiagnostics()

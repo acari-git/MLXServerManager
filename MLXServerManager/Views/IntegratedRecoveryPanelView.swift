@@ -67,7 +67,7 @@ struct IntegratedRecoveryPanelView: View {
                     ForEach(issue.actions) { action in
                         if action.isPrimary {
                             recoveryButton(action)
-                                .buttonStyle(.borderedProminent)
+                                .buttonStyle(.glassProminent)
                         } else {
                             recoveryButton(action)
                                 .buttonStyle(.bordered)

@@ -24,8 +24,10 @@ struct MiniChatInputView: NSViewRepresentable {
         textView.isAutomaticTextReplacementEnabled = false
         textView.allowsUndo = true
         textView.textContainerInset = NSSize(width: 8, height: 7)
-        textView.backgroundColor = .textBackgroundColor
-        textView.drawsBackground = true
+        textView.backgroundColor = .clear
+        textView.drawsBackground = false
+        scrollView.drawsBackground = false
+        scrollView.backgroundColor = .clear
         textView.string = text
         context.coordinator.textView = textView
         return scrollView
@@ -34,6 +36,7 @@ struct MiniChatInputView: NSViewRepresentable {
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let textView = nsView.documentView as? NSTextView else { return }
         context.coordinator.onSubmit = onSubmit
+        guard !textView.hasMarkedText() else { return }
         if textView.string != text {
             textView.string = text
         }
@@ -56,6 +59,10 @@ struct MiniChatInputView: NSViewRepresentable {
 
         func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             guard commandSelector == #selector(NSResponder.insertNewline(_:)) else {
+                return false
+            }
+
+            guard !textView.hasMarkedText() else {
                 return false
             }
 

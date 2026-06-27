@@ -29,13 +29,13 @@ enum IntegratedWorkspaceDestination: String, CaseIterable, Identifiable {
     var systemImageName: String {
         switch self {
         case .models:
-            "list.bullet.rectangle"
+            AppSymbol.models
         case .downloads:
-            "arrow.down.circle"
+            AppSymbol.downloads
         case .settings:
-            "gearshape"
+            AppSymbol.settings
         case .logs:
-            "doc.text"
+            AppSymbol.logs
         }
     }
 }

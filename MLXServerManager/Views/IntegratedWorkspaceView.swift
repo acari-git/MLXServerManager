@@ -15,13 +15,12 @@ struct IntegratedWorkspaceView: View {
     @State private var reasoningColumnWidth = ModelListColumn.reasoning
     @State private var rowActionsColumnWidth = ModelListColumn.rowActions
     @State private var draggedModelID: ModelConfig.ID?
+    @State private var hoveredModelID: ModelConfig.ID?
     @State private var hoveredStatusModelID: ModelConfig.ID?
     @State private var isQuickSettingsPopoverPresented = false
     @State private var expandedRightPanelID: String? = "model"
-    @State private var isLeftPanelVisible = true
     @State private var isBottomPanelVisible = true
     @State private var isRightPanelVisible = true
-    @State private var isLeftPanelAutoHidden = false
     @State private var isBottomPanelAutoHidden = false
     @State private var isRightPanelAutoHidden = false
     @State private var hostingWindow: NSWindow?
@@ -50,6 +49,32 @@ struct IntegratedWorkspaceView: View {
         .accentColor
     }
 
+    private var overallStatusSymbol: String {
+        switch viewModel.runtimeState {
+        case .ready, .externalServerDetected, .adoptedExternalServer:
+            AppSymbol.ready
+        case .starting, .loading, .stopping, .checkingPort, .checkingReady:
+            AppSymbol.refresh
+        case .portBusy, .portCheckFailed, .readyCheckFailed, .error, .unknown:
+            AppSymbol.error
+        case .stopped, .portAvailable:
+            "circle"
+        }
+    }
+
+    private var overallStatusColor: Color {
+        switch viewModel.runtimeState {
+        case .ready, .externalServerDetected, .adoptedExternalServer:
+            .green
+        case .starting, .loading, .stopping, .checkingPort, .checkingReady:
+            activeAccentColor
+        case .portBusy, .portCheckFailed, .readyCheckFailed, .error, .unknown:
+            .orange
+        case .stopped, .portAvailable:
+            .secondary
+        }
+    }
+
     private var languageBinding: Binding<AppLanguage> {
         Binding(
             get: { viewModel.settings.uiLanguage },
@@ -70,75 +95,11 @@ struct IntegratedWorkspaceView: View {
         )
     }
 
-    private var topLeftChromeControls: some View {
-        HStack(spacing: 0) {
-            chromeToggleButton(
-                systemImage: "sidebar.left",
-                isActive: isLeftPanelVisible,
-                help: isLeftPanelVisible
-                    ? strings.text(english: "Hide left sidebar", japanese: "左サイドパネルを隠す")
-                    : strings.text(english: "Show left sidebar", japanese: "左サイドパネルを表示")
-            ) {
-                toggleLeftPanelRequested()
-            }
-        }
-        .fixedSize()
-        .background(Color.clear)
-    }
-
-    private var topRightChromeControls: some View {
-        HStack(spacing: 8) {
-            chromeToggleButton(
-                systemImage: "rectangle.bottomthird.inset.filled",
-                isActive: isBottomPanelVisible,
-                help: isBottomPanelVisible
-                    ? strings.text(english: "Hide bottom log panel", japanese: "下段ログパネルを隠す")
-                    : strings.text(english: "Show bottom log panel", japanese: "下段ログパネルを表示")
-            ) {
-                toggleBottomPanelRequested()
-            }
-            chromeToggleButton(
-                systemImage: "sidebar.right",
-                isActive: isRightPanelVisible,
-                help: isRightPanelVisible
-                    ? strings.text(english: "Hide right sidebar", japanese: "右サイドパネルを隠す")
-                    : strings.text(english: "Show right sidebar", japanese: "右サイドパネルを表示")
-            ) {
-                toggleRightPanelRequested()
-            }
-        }
-        .fixedSize()
-        .background(Color.clear)
-    }
-
-    private func chromeToggleButton(systemImage: String, isActive: Bool, help: String, action: @escaping () -> Void) -> some View {
-        Image(systemName: systemImage)
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(isActive ? .primary : .secondary)
-            .frame(width: 24, height: 22)
-            .contentShape(RoundedRectangle(cornerRadius: 6))
-            .onTapGesture {
-                withAnimation(.easeInOut(duration: 0.24)) {
-                    action()
-                }
-            }
-            .help(help)
-    }
-
-    private func toggleLeftPanelRequested() {
-        if isLeftPanelVisible {
-            isLeftPanelAutoHidden = false
-            isLeftPanelVisible = false
-            return
-        }
-
-        isLeftPanelAutoHidden = false
-        expandWindowIfNeeded(leftVisible: true, rightVisible: isRightPanelVisible)
-        DispatchQueue.main.async {
-            withAnimation(.easeInOut(duration: 0.24)) {
-                isLeftPanelVisible = true
-            }
-        }
+    private func toggleNavigationSidebarRequested() {
+        NSApp.keyWindow?.firstResponder?.tryToPerform(
+            #selector(NSSplitViewController.toggleSidebar(_:)),
+            with: nil
+        )
     }
 
     private func toggleRightPanelRequested() {
@@ -149,7 +110,7 @@ struct IntegratedWorkspaceView: View {
         }
 
         isRightPanelAutoHidden = false
-        expandWindowIfNeeded(leftVisible: isLeftPanelVisible, rightVisible: true)
+        expandWindowIfNeeded(rightVisible: true)
         DispatchQueue.main.async {
             withAnimation(.easeInOut(duration: 0.24)) {
                 isRightPanelVisible = true
@@ -175,8 +136,7 @@ struct IntegratedWorkspaceView: View {
 
     private func applyAutomaticPanelCollapse(for size: CGSize) {
         withAnimation(.easeInOut(duration: 0.24)) {
-            let canShowLeftOnly = size.width >= comfortableWindowWidth(leftVisible: true, rightVisible: false)
-            let canShowBothSides = size.width >= comfortableWindowWidth(leftVisible: true, rightVisible: true)
+            let canShowBothSides = size.width >= comfortableWindowWidth(rightVisible: true)
             let canShowBottom = size.height >= Layout.minimumBottomPanelHeight
 
             if isRightPanelVisible, !canShowBothSides {
@@ -185,19 +145,7 @@ struct IntegratedWorkspaceView: View {
                 return
             }
 
-            if isLeftPanelVisible, !canShowLeftOnly {
-                isLeftPanelVisible = false
-                isLeftPanelAutoHidden = true
-                return
-            }
-
-            if !isLeftPanelVisible, isLeftPanelAutoHidden, canShowLeftOnly {
-                isLeftPanelVisible = true
-                isLeftPanelAutoHidden = false
-                return
-            }
-
-            if !isRightPanelVisible, isRightPanelAutoHidden, isLeftPanelVisible, canShowBothSides {
+            if !isRightPanelVisible, isRightPanelAutoHidden, canShowBothSides {
                 isRightPanelVisible = true
                 isRightPanelAutoHidden = false
                 return
@@ -213,9 +161,9 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
-    private func expandWindowIfNeeded(leftVisible: Bool, rightVisible: Bool) {
+    private func expandWindowIfNeeded(rightVisible: Bool) {
         guard let hostingWindow else { return }
-        let requiredWidth = requiredWindowWidth(leftVisible: leftVisible, rightVisible: rightVisible)
+        let requiredWidth = requiredWindowWidth(rightVisible: rightVisible)
         let widthDelta = requiredWidth - hostingWindow.frame.width
         guard widthDelta > 0 else { return }
 
@@ -236,14 +184,14 @@ struct IntegratedWorkspaceView: View {
         hostingWindow.setFrame(frame, display: true, animate: true)
     }
 
-    private func requiredWindowWidth(leftVisible: Bool, rightVisible: Bool) -> CGFloat {
-        (leftVisible ? Layout.leftPanelWidthWithDivider : 0)
+    private func requiredWindowWidth(rightVisible: Bool) -> CGFloat {
+        Layout.leftPanelWidthWithDivider
             + compactRequiredModelListWidth
             + (rightVisible ? Layout.rightPanelWidthWithDivider : 0)
     }
 
-    private func comfortableWindowWidth(leftVisible: Bool, rightVisible: Bool) -> CGFloat {
-        (leftVisible ? Layout.leftPanelWidthWithDivider : 0)
+    private func comfortableWindowWidth(rightVisible: Bool) -> CGFloat {
+        Layout.leftPanelWidthWithDivider
             + defaultRequiredModelListWidth
             + (rightVisible ? Layout.rightPanelWidthWithDivider : 0)
     }
@@ -351,7 +299,7 @@ struct IntegratedWorkspaceView: View {
     }
 
     private enum Layout {
-        static let leftPanelWidth: CGFloat = 220
+        static let leftPanelWidth: CGFloat = 320
         static let rightPanelWidth: CGFloat = 430
         static let dividerWidth: CGFloat = 1
         static let leftPanelWidthWithDivider = leftPanelWidth + dividerWidth
@@ -384,26 +332,30 @@ struct IntegratedWorkspaceView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            HStack(spacing: 0) {
-                if isLeftPanelVisible {
-                    leftColumn
-                        .frame(width: Layout.leftPanelWidth)
-                        .transition(.move(edge: .leading).combined(with: .opacity))
-                    Divider()
-                }
+            NavigationSplitView {
+                leftColumn
+                    .navigationSplitViewColumnWidth(
+                        min: 260,
+                        ideal: Layout.leftPanelWidth,
+                        max: 360
+                    )
+            } detail: {
+                HStack(spacing: 0) {
+                    centerColumn
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+                        .id("center-\(viewModel.settings.uiAppearance)")
 
-                centerColumn
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
-
-                if isRightPanelVisible {
-                    Divider()
-                    rightColumn
-                        .frame(width: Layout.rightPanelWidth)
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                    if isRightPanelVisible {
+                        Divider()
+                        rightColumn
+                            .frame(width: Layout.rightPanelWidth)
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
                 }
+                .backgroundExtensionEffect()
             }
-            .animation(.easeInOut(duration: 0.24), value: isLeftPanelVisible)
+            .navigationSplitViewStyle(.balanced)
             .animation(.easeInOut(duration: 0.24), value: isRightPanelVisible)
             .animation(.easeInOut(duration: 0.24), value: isBottomPanelVisible)
             .onAppear {
@@ -414,7 +366,8 @@ struct IntegratedWorkspaceView: View {
                 applyAutomaticPanelCollapse(for: size)
             }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .liquidGlassWindowBackground()
+        .containerBackground(Color(nsColor: .windowBackgroundColor), for: .window)
         .tint(activeAccentColor)
         .accentColor(activeAccentColor)
         .preferredColorScheme(preferredColorScheme)
@@ -422,16 +375,49 @@ struct IntegratedWorkspaceView: View {
         .background(WindowReader { window in
             hostingWindow = window
         })
-        .background(
-            TitlebarPanelControlsInstaller(
-                isLeftPanelVisible: $isLeftPanelVisible,
-                isBottomPanelVisible: $isBottomPanelVisible,
-                isRightPanelVisible: $isRightPanelVisible,
-                onLeftToggle: toggleLeftPanelRequested,
-                onBottomToggle: toggleBottomPanelRequested,
-                onRightToggle: toggleRightPanelRequested
-            )
-        )
+        .toolbar { workspaceToolbar }
+        .toolbarBackground(.hidden, for: .windowToolbar)
+    }
+
+    @ToolbarContentBuilder
+    private var workspaceToolbar: some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            Button {
+                toggleNavigationSidebarRequested()
+            } label: {
+                Label(t("Toggle sidebar", "サイドバーを切り替え"), systemImage: AppSymbol.leftSidebar)
+            }
+            .help(t("Toggle sidebar", "サイドバーを切り替え"))
+        }
+
+        ToolbarItemGroup(placement: .primaryAction) {
+            Button {
+                toggleBottomPanelRequested()
+            } label: {
+                Label(t("Toggle bottom panel", "下段パネルを切り替え"), systemImage: AppSymbol.bottomPanel)
+            }
+            .help(isBottomPanelVisible
+                ? t("Hide bottom panel", "下段パネルを隠す")
+                : t("Show bottom panel", "下段パネルを表示"))
+
+            Button {
+                toggleRightPanelRequested()
+            } label: {
+                Label(t("Toggle inspector", "インスペクターを切り替え"), systemImage: AppSymbol.rightInspector)
+            }
+            .help(isRightPanelVisible
+                ? t("Hide inspector", "インスペクターを隠す")
+                : t("Show inspector", "インスペクターを表示"))
+
+            if selectedDestination == .models {
+                Button {
+                    viewModel.addProfileRequested()
+                } label: {
+                    Label(t("Add model", "モデル追加"), systemImage: AppSymbol.add)
+                }
+                .help(t("Add model", "モデル追加"))
+            }
+        }
     }
 
     private var leftColumn: some View {
@@ -443,33 +429,26 @@ struct IntegratedWorkspaceView: View {
                 downloadProgress: viewModel.huggingFaceDownloadStatus.progress
             )
             Divider()
+                .padding(.horizontal, 14)
             systemPanel
             Divider()
+                .padding(.horizontal, 14)
             sidebarFooterControls
         }
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.55))
+        .navigationTitle("MLX Server Manager")
     }
 
     private var systemPanel: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("SYSTEM")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             systemInfoCard
-            memoryGaugeCard
-            usageMetricCard(
-                title: "CPU",
-                value: viewModel.integratedCPUUsageText,
-                detail: "",
-                samples: viewModel.systemUsageHistory.map(\.cpuFraction)
-            )
-            systemMetricCard(
-                title: t("Uptime", "起動時間"),
-                value: viewModel.integratedUptimeText,
-                detail: ""            )
+            systemHealthCard
         }
-        .padding(14)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
@@ -478,34 +457,30 @@ struct IntegratedWorkspaceView: View {
             ForEach(viewModel.systemInfoRows, id: \.0) { row in
                 HStack(alignment: .firstTextBaseline) {
                     Text(row.0)
-                        .font(.caption2)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                         .frame(width: 58, alignment: .leading)
                     Text(row.1)
-                        .font(.caption2.weight(.semibold))
+                        .font(.caption.weight(.semibold))
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
             }
         }
-        .padding(10)
+        .padding(.vertical, 2)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .textBackgroundColor).opacity(0.72))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private var memoryGaugeCard: some View {
+    private var systemHealthCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(t("Memory breakdown", "メモリ内訳"))
-                    .font(.caption)
+                Label(t("Memory", "メモリ"), systemImage: "memorychip")
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text(viewModel.integratedMemoryUsagePercentText)
-                    .font(.headline)
+                    .font(.callout.weight(.semibold))
             }
-
-            memoryPressureHistoryGraph
 
             memoryBreakdownBar
 
@@ -515,24 +490,34 @@ struct IntegratedWorkspaceView: View {
                 memoryLegendRow(color: .green, label: t("Available", "空き容量"), value: viewModel.memoryAvailableText)
             }
 
+            Divider()
+
+            HStack {
+                Label {
+                    Text(verbatim: "CPU")
+                } icon: {
+                    Image(systemName: "cpu")
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                Spacer()
+                Text(viewModel.integratedCPUUsageText)
+                    .font(.callout.weight(.semibold))
+            }
+
+            HStack {
+                Label(t("Uptime", "起動時間"), systemImage: "timer")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(viewModel.integratedUptimeText)
+                    .font(.callout.weight(.semibold))
+                    .lineLimit(1)
+            }
 
         }
-        .padding(10)
+        .padding(.vertical, 2)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .textBackgroundColor).opacity(0.72))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-
-    private var memoryPressureHistoryGraph: some View {
-        MemoryPressureHistoryGraph(samples: viewModel.memoryHistory)
-            .frame(height: 52)
-            .background(Color.green.opacity(0.08))
-            .clipShape(RoundedRectangle(cornerRadius: 4))
-            .overlay {
-                RoundedRectangle(cornerRadius: 4)
-                    .strokeBorder(Color.secondary.opacity(0.18))
-            }
-            .accessibilityIdentifier("integrated-memory-pressure-history-graph")
     }
 
     private var memoryBreakdownBar: some View {
@@ -579,53 +564,6 @@ struct IntegratedWorkspaceView: View {
         .lineLimit(1)
     }
 
-    private func usageMetricCard(title: String, value: String, detail: String, samples: [Double]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text(value)
-                    .font(.headline)
-                    .lineLimit(1)
-            }
-            ResourceUsageHistoryGraph(samples: samples)
-                .frame(height: 34)
-                .background(Color.green.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-            if !detail.isEmpty {
-                Text(detail)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .textBackgroundColor).opacity(0.72))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-
-    private func systemMetricCard(title: String, value: String, detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.headline)
-                .lineLimit(1)
-            if !detail.isEmpty {
-                Text(detail)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .textBackgroundColor).opacity(0.72))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-
     private var sidebarFooterControls: some View {
         VStack(alignment: .leading, spacing: 10) {
             quickSettingsMenu
@@ -638,9 +576,9 @@ struct IntegratedWorkspaceView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(14)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.72))
     }
 
     private var quickSettingsMenu: some View {
@@ -650,14 +588,14 @@ struct IntegratedWorkspaceView: View {
             HStack(spacing: 8) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(activeAccentColor.opacity(0.18))
-                    Image(systemName: "gearshape.fill")
+                        .fill(activeAccentColor.opacity(0.10))
+                    Image(systemName: "paintpalette.fill")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(activeAccentColor)
                 }
                 .frame(width: 28, height: 28)
 
-                Text(strings.text(.settings))
+                Text(t("Display", "表示"))
                     .font(.callout.weight(.semibold))
                 Spacer()
                 Image(systemName: "chevron.up")
@@ -666,12 +604,11 @@ struct IntegratedWorkspaceView: View {
             }
             .padding(9)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(selectedDestination == .settings ? activeAccentColor.opacity(0.16) : Color(nsColor: .textBackgroundColor).opacity(0.74))
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .overlay(
+            .background(Color.white.opacity(0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(selectedDestination == .settings ? activeAccentColor.opacity(0.45) : Color.primary.opacity(0.08))
-            )
+                    .strokeBorder(Color.white.opacity(0.16), lineWidth: 0.6)
+            }
         }
         .buttonStyle(.plain)
         .popover(isPresented: $isQuickSettingsPopoverPresented, arrowEdge: .bottom) {
@@ -684,7 +621,7 @@ struct IntegratedWorkspaceView: View {
 
     private var quickSettingsPopoverContent: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label(strings.text(.settings), systemImage: "gearshape")
+            Label(t("Display options", "表示オプション"), systemImage: "paintpalette")
                 .font(.headline)
 
             Picker(t("Language", "言語"), selection: languageBinding) {
@@ -746,7 +683,7 @@ struct IntegratedWorkspaceView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .background(Color(nsColor: .windowBackgroundColor))
+            .liquidGlassLayerOne(cornerRadius: 0)
         case .downloads:
             DownloadsSurfaceView(viewModel: viewModel, onOpenModels: { selectedDestination = .models })
         case .settings:
@@ -769,28 +706,28 @@ struct IntegratedWorkspaceView: View {
                 title: t("Models", "モデル一覧"),
                 value: String(viewModel.visibleModels.count),
                 detail: viewModel.runningModelText,
-                systemImage: "cube.box",
+                systemImage: AppSymbol.models,
                 destination: .models
             )
             workspaceRouteCard(
                 title: strings.text(.download),
                 value: viewModel.huggingFaceDownloadStatus.phase.localizedTitle(language: viewModel.settings.uiLanguage),
                 detail: viewModel.huggingFaceDownloadQueueSummary,
-                systemImage: "arrow.down.circle",
+                systemImage: AppSymbol.downloads,
                 destination: .downloads
             )
             workspaceRouteCard(
                 title: strings.text(.logs),
                 value: String(viewModel.logEntries.count),
                 detail: t("Lifecycle and diagnostics", "ライフサイクルと診断"),
-                systemImage: "doc.text.magnifyingglass",
+                systemImage: AppSymbol.logs,
                 destination: .logs
             )
             workspaceRouteCard(
                 title: strings.text(.settings),
                 value: appearanceDisplayName(viewModel.settings.uiAppearance),
                 detail: t("Language and theme", "言語とテーマ"),
-                systemImage: "gearshape",
+                systemImage: AppSymbol.settings,
                 destination: .settings
             )
         }
@@ -824,70 +761,70 @@ struct IntegratedWorkspaceView: View {
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .background(
-                selectedDestination == destination ? activeAccentColor.opacity(0.12) : Color(nsColor: .controlBackgroundColor).opacity(0.72),
+                selectedDestination == destination ? activeAccentColor.opacity(0.06) : Color.clear,
                 in: RoundedRectangle(cornerRadius: 12, style: .continuous)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(selectedDestination == destination ? activeAccentColor.opacity(0.42) : Color.primary.opacity(0.08))
+                    .stroke(selectedDestination == destination ? activeAccentColor.opacity(0.22) : Color.primary.opacity(0.08))
             )
+            .liquidGlassLayerTwo(cornerRadius: 12)
         }
         .buttonStyle(.plain)
     }
 
     private var modelEmptyState: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label(t("No models are visible", "表示できるモデルがありません"), systemImage: "cube.transparent")
+            Label(
+                t("No models are visible", "表示できるモデルがありません"),
+                systemImage: "cube.transparent"
+            )
                 .font(.title3.weight(.semibold))
-            Text(t(
-                "Add a local model profile or open Downloads to fetch a Hugging Face MLX model.",
-                "ローカルモデルのプロファイルを追加するか、ダウンロード画面でHugging FaceのMLXモデルを取得してください。"
-            ))
+            Text(
+                t(
+                    "Add a local model profile or open Downloads to fetch a Hugging Face MLX model.",
+                    "ローカルモデルのプロファイルを追加するか、ダウンロード画面でHugging FaceのMLXモデルを取得してください。"
+                )
+            )
             .font(.subheadline)
             .foregroundStyle(.secondary)
             HStack(spacing: 10) {
                 Button {
                     viewModel.addProfileRequested()
                 } label: {
-                    Label(t("Add local model", "ローカルモデルを追加"), systemImage: "plus")
+                    Label(t("Add local model", "ローカルモデルを追加"), systemImage: AppSymbol.add)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
 
                 Button {
                     selectedDestination = .downloads
                 } label: {
-                    Label(t("Open Downloads", "ダウンロードを開く"), systemImage: "arrow.down.circle")
+                    Label(t("Open Downloads", "ダウンロードを開く"), systemImage: AppSymbol.downloads)
                 }
+                .buttonStyle(.glass)
             }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.72), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .liquidGlassLayerTwo(cornerRadius: 14)
         .accessibilityIdentifier("integrated-model-empty-state")
     }
 
     private var modelListPanel: some View {
         GeometryReader { proxy in
             VStack(alignment: .leading, spacing: 0) {
-            HStack {
                 Text(t("Models", "モデル一覧"))
                     .font(.title3.weight(.semibold))
-                Spacer()
-                Button {
-                    viewModel.addProfileRequested()
-                } label: {
-                    Label(t("Add model", "モデル追加"), systemImage: "plus")
-                }
-                .buttonStyle(.borderedProminent)
-            }
-            .padding(14)
-
-            Divider()
-
-            modelHeaderRow
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(Color(nsColor: .controlBackgroundColor).opacity(0.72))
+                .padding(.vertical, 12)
+
+                Divider()
+
+                modelHeaderRow
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .liquidGlassLayerOne(cornerRadius: 0)
 
             ScrollView {
                 if viewModel.visibleModels.isEmpty {
@@ -895,21 +832,27 @@ struct IntegratedWorkspaceView: View {
                         .padding(18)
                 } else {
                     LazyVStack(spacing: 8) {
-                    ForEach(viewModel.visibleModels) { model in
-                        modelRow(model)
-                            .onDrag {
-                                draggedModelID = model.id
-                                return NSItemProvider(object: model.id as NSString)
-                            }
+                        ForEach(viewModel.visibleModels) { model in
+                            modelRow(model)
+                                .onDrop(
+                                    of: [.text],
+                                    delegate: ModelRowDropDelegate(
+                                        targetModel: model,
+                                        draggedModelID: $draggedModelID,
+                                        viewModel: viewModel
+                                    )
+                                )
+                        }
+
+                        modelListEndDropTarget
                             .onDrop(
                                 of: [.text],
                                 delegate: ModelRowDropDelegate(
-                                    targetModel: model,
+                                    targetModel: nil,
                                     draggedModelID: $draggedModelID,
                                     viewModel: viewModel
                                 )
                             )
-                    }
                     }
                     .padding(14)
                 }
@@ -942,7 +885,13 @@ struct IntegratedWorkspaceView: View {
     }
 
     private func modelRow(_ model: ModelConfig) -> some View {
-        HStack(alignment: .center, spacing: ModelListColumn.spacing) {
+        let isSelected = model.id == viewModel.selectedModelID
+        let isHovered = hoveredModelID == model.id
+
+        return HStack(alignment: .center, spacing: ModelListColumn.spacing) {
+            HStack(spacing: 8) {
+                modelDragHandle(for: model)
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text(model.displayName)
                         .font(.headline)
@@ -952,90 +901,128 @@ struct IntegratedWorkspaceView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
-                .frame(width: modelNameColumnWidth, alignment: .leading)
+            }
+            .frame(width: modelNameColumnWidth, alignment: .leading)
 
-                Text(viewModel.modelSizeText(for: model))
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: sizeColumnWidth, alignment: .leading)
+            Text(viewModel.modelSizeText(for: model))
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: sizeColumnWidth, alignment: .leading)
 
-                statusButton(for: model)
-                    .frame(width: statusColumnWidth, alignment: .leading)
+            statusButton(for: model)
+                .frame(width: statusColumnWidth, alignment: .leading)
 
-                portValue("\(model.host):\(model.serverPort)")
-                    .frame(width: portColumnWidth, alignment: .leading)
-                memoryCell(viewModel.integratedMemoryText(for: model))
-                    .frame(width: memoryColumnWidth, alignment: .leading)
-                HStack(spacing: 8) {
-                    TextField(
-                        t("min", "分"),
-                        value: Binding(
-                            get: { viewModel.autoUnloadMinutes(for: model) },
-                            set: { viewModel.setAutoUnloadMinutes($0, for: model) }
-                        ),
-                        format: .number
-                    )
-                    .font(.system(.caption, design: .monospaced))
-                    .frame(width: 48)
-                    .disabled(!viewModel.isAutoUnloadEnabled(for: model))
-                    .focused($focusedAutoUnloadModelID, equals: model.id)
-                    .onSubmit {
-                        focusedAutoUnloadModelID = nil
-                    }
-                    Text(t("min", "分"))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-
-                    Toggle(
-                        "",
-                        isOn: Binding(
-                            get: { viewModel.isAutoUnloadEnabled(for: model) },
-                            set: { viewModel.setAutoUnloadEnabled($0, for: model) }
-                        )
-                    )
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .scaleEffect(0.82)
+            portValue("\(model.host):\(model.serverPort)")
+                .frame(width: portColumnWidth, alignment: .leading)
+            memoryCell(viewModel.integratedMemoryText(for: model))
+                .frame(width: memoryColumnWidth, alignment: .leading)
+            HStack(spacing: 8) {
+                TextField(
+                    t("min", "分"),
+                    value: Binding(
+                        get: { viewModel.autoUnloadMinutes(for: model) },
+                        set: { viewModel.setAutoUnloadMinutes($0, for: model) }
+                    ),
+                    format: .number
+                )
+                .font(.system(.caption, design: .monospaced))
+                .frame(width: 48)
+                .disabled(!viewModel.isAutoUnloadEnabled(for: model))
+                .focused($focusedAutoUnloadModelID, equals: model.id)
+                .onSubmit {
+                    focusedAutoUnloadModelID = nil
                 }
-                .frame(width: unloadColumnWidth, alignment: .leading)
+                Text(t("min", "分"))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
 
                 Toggle(
                     "",
                     isOn: Binding(
-                        get: { model.enableThinking },
-                        set: { viewModel.toggleReasoning(for: model, isEnabled: $0) }
+                        get: { viewModel.isAutoUnloadEnabled(for: model) },
+                        set: { viewModel.setAutoUnloadEnabled($0, for: model) }
                     )
                 )
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .scaleEffect(0.82)
-                .frame(width: reasoningColumnWidth, alignment: .center)
+            }
+            .frame(width: unloadColumnWidth, alignment: .leading)
 
-                HStack(spacing: 6) {
-                    modelActionButton(t("Settings", "設定"), color: .secondary) {
-                        viewModel.editProfileRequested(for: model)
-                    }
-                    .help(viewModel.runtimeEditingSafetyText(for: model))
+            Toggle(
+                "",
+                isOn: Binding(
+                    get: { model.enableThinking },
+                    set: { viewModel.toggleReasoning(for: model, isEnabled: $0) }
+                )
+            )
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .scaleEffect(0.82)
+            .frame(width: reasoningColumnWidth, alignment: .center)
 
-                    modelActionButton(t("Delete", "削除"), color: .red) {
-                        viewModel.deleteProfileRequested(for: model)
-                    }
-                    .disabled(viewModel.models.count <= 1 || viewModel.isManagedProcessRunning)
+            HStack(spacing: 6) {
+                modelActionButton(t("Settings", "設定"), color: .secondary) {
+                    viewModel.editProfileRequested(for: model)
                 }
-                .frame(width: rowActionsColumnWidth, alignment: .center)
+                .help(viewModel.runtimeEditingSafetyText(for: model))
+
+                modelActionButton(t("Delete", "削除"), color: .red) {
+                    viewModel.deleteProfileRequested(for: model)
+                }
+                .disabled(viewModel.models.count <= 1 || viewModel.isManagedProcessRunning)
+            }
+            .frame(width: rowActionsColumnWidth, alignment: .center)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(model.id == viewModel.selectedModelID ? Color.accentColor.opacity(0.16) : Color(nsColor: .controlBackgroundColor).opacity(0.68))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .background(modelRowBackground(isSelected: isSelected, isHovered: isHovered))
+        .liquidGlassLayerTwo(cornerRadius: 10)
         .contentShape(RoundedRectangle(cornerRadius: 10))
+        .onHover { isHovered in
+            hoveredModelID = isHovered ? model.id : nil
+        }
+        .onDrag {
+            viewModel.beginModelReorderRequested()
+            draggedModelID = model.id
+            return NSItemProvider(object: model.id as NSString)
+        }
         .overlay {
             RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(model.id == viewModel.selectedModelID ? Color.accentColor.opacity(0.8) : Color.secondary.opacity(0.12))
+                .strokeBorder(isSelected ? Color.accentColor.opacity(0.28) : Color.secondary.opacity(0.12))
         }
         .onTapGesture {
             viewModel.selectedModelID = model.id
         }
+    }
+
+    private func modelRowBackground(isSelected: Bool, isHovered: Bool) -> Color {
+        if isSelected {
+            return Color.accentColor.opacity(0.08)
+        }
+        return isHovered ? Color.primary.opacity(0.045) : .clear
+    }
+
+    private func modelDragHandle(for model: ModelConfig) -> some View {
+        Image(systemName: "line.3.horizontal")
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(.secondary.opacity(0.72))
+            .frame(width: 22, height: 34)
+            .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .help(t("Drag to reorder", "ドラッグして並べ替え"))
+            .onDrag {
+                viewModel.beginModelReorderRequested()
+                draggedModelID = model.id
+                return NSItemProvider(object: model.id as NSString)
+            }
+    }
+
+    private var modelListEndDropTarget: some View {
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
+            .fill(Color.clear)
+            .frame(height: 14)
+            .contentShape(Rectangle())
+            .accessibilityHidden(true)
     }
 
     private func columnHeader(
@@ -1164,7 +1151,7 @@ struct IntegratedWorkspaceView: View {
                 Label(strings.text(.start), systemImage: "play.fill")
                     .frame(width: 110)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             .disabled(!viewModel.canStartSelectedModel)
 
             Button {
@@ -1173,6 +1160,7 @@ struct IntegratedWorkspaceView: View {
                 Label(strings.text(.stop), systemImage: "stop.fill")
                     .frame(width: 110)
             }
+            .buttonStyle(.glass)
             .disabled(!viewModel.canStopManagedServer)
 
             Button {
@@ -1181,6 +1169,7 @@ struct IntegratedWorkspaceView: View {
                 Label(strings.text(.restart), systemImage: "arrow.clockwise")
                     .frame(width: 120)
             }
+            .buttonStyle(.glass)
             .disabled(!viewModel.canRestartManagedServer)
 
                 Spacer()
@@ -1193,7 +1182,7 @@ struct IntegratedWorkspaceView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 14)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.36))
+        .liquidGlassBar()
     }
 
     private var bottomOperationsPanel: some View {
@@ -1204,7 +1193,7 @@ struct IntegratedWorkspaceView: View {
             logPanel
                 .frame(minWidth: 360, maxWidth: .infinity)
         }
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.16))
+        .liquidGlassLayerOne(cornerRadius: 0)
         .accessibilityIdentifier("integrated-bottom-operations-panel")
     }
 
@@ -1251,7 +1240,7 @@ struct IntegratedWorkspaceView: View {
                     .padding(10)
                 }
                 .frame(maxHeight: .infinity)
-                .background(Color(nsColor: .textBackgroundColor).opacity(0.74), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .liquidGlassLayerOne(cornerRadius: 8)
 
                 MiniChatInputView(
                     text: $viewModel.miniChatPrompt,
@@ -1260,6 +1249,7 @@ struct IntegratedWorkspaceView: View {
                 )
                 .frame(height: 58)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .stroke(Color.primary.opacity(0.08))
@@ -1269,21 +1259,24 @@ struct IntegratedWorkspaceView: View {
                     Button(t("Send", "送信")) {
                         viewModel.sendMiniChatRequested()
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
                     .disabled(!viewModel.canSendMiniChat)
 
                     Button(t("Cancel", "キャンセル")) {
                         viewModel.cancelMiniChatRequested()
                     }
+                    .buttonStyle(.glass)
                     .disabled(!viewModel.isMiniChatRunning)
 
                     Button(t("Clear", "クリア")) {
                         viewModel.clearMiniChatRequested()
                     }
+                    .buttonStyle(.glass)
 
                     Button(t("Copy latest", "最新をコピー")) {
                         viewModel.copyMiniChatResponseRequested()
                     }
+                    .buttonStyle(.glass)
                     .disabled(viewModel.miniChatResponse.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
                     Spacer()
@@ -1295,28 +1288,47 @@ struct IntegratedWorkspaceView: View {
             }
             .padding(14)
         }
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.20))
+        .liquidGlassLayerOne(cornerRadius: 0)
         .accessibilityIdentifier("integrated-test-chat-panel")
     }
 
     private func miniChatBubble(_ message: MiniChatTranscriptMessage) -> some View {
         let isUser = message.sender == .user
         let isSystem = message.sender == .system
+        let canCopy = message.sender == .assistant && !message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return HStack {
             if isUser { Spacer(minLength: 40) }
-            Text(message.content)
-                .font(.caption)
-                .textSelection(.enabled)
-                .foregroundStyle(isSystem ? Color.secondary : Color.primary)
-                .padding(.vertical, 8)
-                .padding(.horizontal, 10)
-                .background(
-                    isUser
-                    ? Color.accentColor.opacity(0.18)
-                    : (isSystem ? Color.orange.opacity(0.12) : Color(nsColor: .controlBackgroundColor).opacity(0.92)),
-                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-                )
-                .frame(maxWidth: 320, alignment: isUser ? .trailing : .leading)
+            VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
+                Text(message.content)
+                    .font(.caption)
+                    .textSelection(.enabled)
+                    .foregroundStyle(isSystem ? Color.secondary : Color.primary)
+                    .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
+
+                if canCopy {
+                    Button {
+                        viewModel.copyMiniChatMessageRequested(message)
+                    } label: {
+                        Image(systemName: AppSymbol.copy)
+                            .font(.system(size: 11, weight: .semibold))
+                            .frame(width: 22, height: 20)
+                            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    }
+                    .buttonStyle(.glass)
+                    .controlSize(.small)
+                    .help(t("Copy response", "返答をコピー"))
+                    .accessibilityLabel(t("Copy response", "返答をコピー"))
+                }
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 10)
+            .background(
+                isUser
+                ? Color.accentColor.opacity(0.12)
+                : (isSystem ? Color.orange.opacity(0.10) : Color.white.opacity(0.14)),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+            .frame(maxWidth: 320, alignment: isUser ? .trailing : .leading)
             if !isUser { Spacer(minLength: 40) }
         }
         .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
@@ -1338,10 +1350,12 @@ struct IntegratedWorkspaceView: View {
                 Button(t("Copy", "コピー")) {
                     viewModel.copyLogsRequested()
                 }
+                .buttonStyle(.glass)
                 .disabled(viewModel.visibleLogEntries.isEmpty)
                 Button(t("Clear", "クリア")) {
                     viewModel.clearLogsRequested()
                 }
+                .buttonStyle(.glass)
             }
             .padding(14)
 
@@ -1378,26 +1392,27 @@ struct IntegratedWorkspaceView: View {
             Divider()
 
             HStack {
-                Label("\(t("Overall status", "全体ステータス")): \(viewModel.runtimeState.title)", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
+                Label("\(t("Overall status", "全体ステータス")): \(viewModel.runtimeState.title)", systemImage: overallStatusSymbol)
+                    .foregroundStyle(overallStatusColor)
                 Spacer()
             }
             .font(.caption)
             .padding(10)
         }
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.20))
+        .liquidGlassLayerOne(cornerRadius: 0)
     }
 
     private var rightColumn: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                collapsibleRightPanel(id: "model", title: t("Model inspector", "モデル詳細"), systemImage: "slider.horizontal.3") {
+                compactInspectorHeader
+                collapsibleRightPanel(id: "model", title: t("Model inspector", "モデル詳細"), systemImage: AppSymbol.modelInspector) {
                     modelSettingsPanelContent
                 }
-                collapsibleRightPanel(id: "external", title: t("Connection", "接続"), systemImage: "network") {
+                collapsibleRightPanel(id: "external", title: t("Connection", "接続"), systemImage: AppSymbol.connection) {
                     externalServerPanelContent
                 }
-                collapsibleRightPanel(id: "recovery", title: t("Recovery", "復旧"), systemImage: "wrench.and.screwdriver") {
+                collapsibleRightPanel(id: "recovery", title: t("Recovery", "復旧"), systemImage: AppSymbol.recovery) {
                     IntegratedRecoveryPanelView(
                         issue: viewModel.currentRecoveryIssue,
                         language: viewModel.settings.uiLanguage,
@@ -1407,13 +1422,25 @@ struct IntegratedWorkspaceView: View {
                     )
                     recentRightPanelLogs
                 }
-                collapsibleRightPanel(id: "hermes", title: t("Hermes Agent connection", "Hermes Agent接続情報"), systemImage: "point.3.connected.trianglepath.dotted") {
+                collapsibleRightPanel(id: "hermes", title: t("Hermes Agent connection", "Hermes Agent接続情報"), systemImage: AppSymbol.hermesAgent) {
                     hermesPanelContent
                 }
             }
             .padding(12)
         }
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.38))
+        .liquidGlassSidebar()
+    }
+
+    private var compactInspectorHeader: some View {
+        HStack(spacing: 10) {
+            Label(t("Inspector", "インスペクター"), systemImage: AppSymbol.rightInspector)
+                .font(.headline)
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 6)
+        .accessibilityIdentifier("integrated-inspector-header")
     }
 
     private var rightPanelHeader: some View {
@@ -1422,7 +1449,7 @@ struct IntegratedWorkspaceView: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 9, style: .continuous)
                         .fill(activeAccentColor.opacity(0.16))
-                    Image(systemName: "sidebar.right")
+                    Image(systemName: AppSymbol.rightInspector)
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(activeAccentColor)
                 }
@@ -1445,7 +1472,7 @@ struct IntegratedWorkspaceView: View {
                 rightPanelStatusCard(
                     title: t("Selected", "選択中"),
                     value: selectedModel?.displayName ?? "-",
-                    systemImage: "cube.box"
+                    systemImage: AppSymbol.models
                 )
                 rightPanelStatusCard(
                     title: t("Runtime", "実行状態"),
@@ -1459,11 +1486,7 @@ struct IntegratedWorkspaceView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(12)
-        .background(Color(nsColor: .textBackgroundColor).opacity(0.72), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(activeAccentColor.opacity(0.18))
-        )
+        .liquidGlassLayerTwo(cornerRadius: 12)
     }
 
     private func rightPanelStatusCard(title: String, value: String, systemImage: String) -> some View {
@@ -1478,7 +1501,7 @@ struct IntegratedWorkspaceView: View {
         }
         .padding(9)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.68), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .liquidGlassLayerTwo(cornerRadius: 9)
     }
 
     private var externalServerPanelContent: some View {
@@ -1498,9 +1521,12 @@ struct IntegratedWorkspaceView: View {
             copyRow("API Key", value: viewModel.connectionTargetSummary.apiKeyPlaceholder, action: { viewModel.copyAPIKeyPlaceholder() })
             HStack {
                 Button(t("Ready Check", "Ready確認")) { viewModel.checkReadyRequested() }
+                    .buttonStyle(.glass)
                 Button(t("Adopt", "採用")) { viewModel.adoptExternalServerRequested() }
+                    .buttonStyle(.glass)
                     .disabled(!viewModel.canAdoptExternalServer)
                 Button(t("Forget", "解除")) { viewModel.forgetExternalServerRequested() }
+                    .buttonStyle(.glass)
                     .disabled(!viewModel.canForgetExternalServer)
             }
             Text(t("Adopt stores only the connection context. The app does not stop, restart, capture logs from, or monitor memory for external processes.", "採用は接続コンテキストの保存のみです。外部プロセスの停止・再起動・ログ取得・メモリ監視は行いません。"))
@@ -1529,8 +1555,7 @@ struct IntegratedWorkspaceView: View {
             }
         }
         .padding(10)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.35))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .liquidGlassLayerTwo(cornerRadius: 8)
     }
 
     private func collapsibleRightPanel<Content: View>(
@@ -1546,7 +1571,7 @@ struct IntegratedWorkspaceView: View {
                 }
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: expandedRightPanelID == id ? "chevron.down" : "chevron.right")
+                    Image(systemName: expandedRightPanelID == id ? AppSymbol.expanded : AppSymbol.collapsed)
                         .font(.caption.weight(.bold))
                         .frame(width: 12)
                     Label(title, systemImage: systemImage)
@@ -1565,8 +1590,7 @@ struct IntegratedWorkspaceView: View {
                 .padding([.horizontal, .bottom], 12)
             }
         }
-        .background(Color(nsColor: .textBackgroundColor).opacity(0.65))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .background(Color.clear)
     }
 
     private var modelSettingsPanelContent: some View {
@@ -1578,7 +1602,7 @@ struct IntegratedWorkspaceView: View {
                     Button {
                         viewModel.editProfileRequested()
                     } label: {
-                        Label(t("Configure selected model", "選択モデルを設定"), systemImage: "slider.horizontal.3")
+                        Label(t("Configure selected model", "選択モデルを設定"), systemImage: AppSymbol.modelInspector)
                             .frame(maxWidth: .infinity)
                     }
                     .disabled(viewModel.isManagedProcessRunning)
@@ -1681,10 +1705,11 @@ struct IntegratedWorkspaceView: View {
             .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
-        .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .liquidGlassLayerTwo(cornerRadius: 12)
+        .background(Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.accentColor.opacity(0.16))
+                .stroke(Color.primary.opacity(0.08))
         )
     }
 
@@ -1701,7 +1726,7 @@ struct IntegratedWorkspaceView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(Color(nsColor: .textBackgroundColor).opacity(0.72), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .liquidGlassLayerTwo(cornerRadius: 10)
     }
 
     private func groupedSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -1710,9 +1735,7 @@ struct IntegratedWorkspaceView: View {
                 .font(.headline)
             content()
         }
-        .padding(12)
-        .background(Color(nsColor: .textBackgroundColor).opacity(0.65))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .padding(.vertical, 6)
     }
 
     private func formRow(_ title: String, _ value: String, valueColor: Color = .primary) -> some View {
@@ -1726,11 +1749,8 @@ struct IntegratedWorkspaceView: View {
                 .foregroundStyle(valueColor)
                 .lineLimit(2)
                 .truncationMode(.middle)
-                .padding(.vertical, 5)
-                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(nsColor: .controlBackgroundColor).opacity(0.75))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
         }
     }
 
@@ -1828,7 +1848,7 @@ struct IntegratedWorkspaceView: View {
                 Text(t("Copy Hermes settings", "Hermes設定をまとめてコピー"))
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
 
             HStack {
                 Text("\(t("Manager", "マネージャー")): \(viewModel.runtimeState.title)")
@@ -1854,9 +1874,10 @@ struct IntegratedWorkspaceView: View {
                 .padding(.vertical, 6)
                 .padding(.horizontal, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(nsColor: .textBackgroundColor).opacity(0.70))
+                .background(Color.white.opacity(0.06))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             Button(t("Copy", "コピー"), action: action)
+                .buttonStyle(.glass)
         }
     }
 }
@@ -1890,18 +1911,31 @@ private struct ResourceUsageHistoryGraph: View {
 }
 
 private struct ModelRowDropDelegate: DropDelegate {
-    let targetModel: ModelConfig
+    let targetModel: ModelConfig?
     @Binding var draggedModelID: ModelConfig.ID?
     let viewModel: AppViewModel
 
+    func dropEntered(info: DropInfo) {
+        reorder()
+    }
+
     func performDrop(info: DropInfo) -> Bool {
-        guard let draggedModelID else {
+        guard draggedModelID != nil else {
             return false
         }
 
-        viewModel.moveModel(withID: draggedModelID, before: targetModel.id)
+        reorder()
         self.draggedModelID = nil
         return true
+    }
+
+    private func reorder() {
+        guard let draggedModelID else { return }
+        if let targetModel {
+            viewModel.moveModel(withID: draggedModelID, before: targetModel.id)
+        } else {
+            viewModel.moveModelToEnd(withID: draggedModelID)
+        }
     }
 }
 

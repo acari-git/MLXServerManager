@@ -30,7 +30,7 @@ struct SettingsSurfaceView: View {
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .liquidGlassLayerOne(cornerRadius: 0)
         .accessibilityIdentifier("settings-surface")
     }
 
@@ -50,47 +50,6 @@ struct SettingsSurfaceView: View {
             .font(.subheadline)
             .foregroundStyle(.secondary)
         }
-    }
-
-    private var settingsOverview: some View {
-        HStack(alignment: .top, spacing: 12) {
-            overviewCard(
-                title: t("Connection defaults", "接続の既定値"),
-                detail: t("Executable path, host, port, and API-key placeholder used by new profiles and copied client config.", "新規プロファイルとコピー用クライアント設定に使う実行ファイルパス、ホスト、ポート、APIキープレースホルダー。"),
-                systemImage: "point.3.connected.trianglepath.dotted"
-            )
-            overviewCard(
-                title: t("Left-bottom quick settings", "左下クイック設定"),
-                detail: t("Language and theme use the Settings menu in the sidebar footer.", "言語とテーマはサイドバー下部の設定メニューから変更します。"),
-                systemImage: "gearshape"
-            )
-            overviewCard(
-                title: t("Health checks", "健全性チェック"),
-                detail: t("Use Run Diagnostics after changing paths or ports. Runtime actions remain outside Settings.", "パスやポート変更後は診断を実行します。ランタイム操作は設定画面では行いません。"),
-                systemImage: "stethoscope"
-            )
-        }
-    }
-
-    private func overviewCard(title: String, detail: String, systemImage: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: systemImage)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(Color.accentColor)
-            Text(title)
-                .font(.callout.weight(.semibold))
-            Text(detail)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.primary.opacity(0.08))
-        )
     }
 
     private var appBoundaries: some View {

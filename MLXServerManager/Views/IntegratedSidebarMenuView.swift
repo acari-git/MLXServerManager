@@ -10,32 +10,28 @@ struct IntegratedSidebarMenuView: View {
         AppLocalization(language: language)
     }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(strings.text(english: "MENU", japanese: "メニュー"))
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.bottom, 4)
-
-            ForEach(IntegratedWorkspaceDestination.allCases.filter { $0 != .settings }) { destination in
-                Button {
-                    selectedDestination = destination
-                } label: {
-                    sidebarRow(for: destination)
-                        .padding(.vertical, 7)
-                        .padding(.horizontal, 10)
-                        .background(selectedDestination == destination ? Color.accentColor.opacity(0.85) : Color.clear)
-                        .foregroundStyle(selectedDestination == destination ? Color.white : Color.primary)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .contentShape(RoundedRectangle(cornerRadius: 6))
+    private var selection: Binding<IntegratedWorkspaceDestination?> {
+        Binding(
+            get: { selectedDestination },
+            set: { newValue in
+                if let newValue {
+                    selectedDestination = newValue
                 }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .accessibilityIdentifier("integrated-sidebar-\(destination.rawValue)")
+            }
+        )
+    }
+
+    var body: some View {
+        List(selection: selection) {
+            Section(strings.text(english: "MENU", japanese: "メニュー")) {
+                ForEach(IntegratedWorkspaceDestination.allCases) { destination in
+                    sidebarRow(for: destination)
+                        .tag(Optional(destination))
+                        .accessibilityIdentifier("integrated-sidebar-\(destination.rawValue)")
+                }
             }
         }
-        .padding(14)
+        .listStyle(.sidebar)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
