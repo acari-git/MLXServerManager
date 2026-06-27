@@ -637,7 +637,7 @@ struct IntegratedWorkspaceView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("MLX Server Manager")
                     .font(.caption.weight(.semibold))
-                Text("Version 22.27.0")
+                Text("Version 22.28.0")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -871,6 +871,37 @@ struct IntegratedWorkspaceView: View {
         .buttonStyle(.plain)
     }
 
+    private var modelEmptyState: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label(t("No models are visible", "表示できるモデルがありません"), systemImage: "cube.transparent")
+                .font(.title3.weight(.semibold))
+            Text(t(
+                "Add a local model profile or open Downloads to fetch a Hugging Face MLX model.",
+                "ローカルモデルのプロファイルを追加するか、ダウンロード画面でHugging FaceのMLXモデルを取得してください。"
+            ))
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            HStack(spacing: 10) {
+                Button {
+                    viewModel.addProfileRequested()
+                } label: {
+                    Label(t("Add local model", "ローカルモデルを追加"), systemImage: "plus")
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button {
+                    selectedDestination = .downloads
+                } label: {
+                    Label(t("Open Downloads", "ダウンロードを開く"), systemImage: "arrow.down.circle")
+                }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.72), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .accessibilityIdentifier("integrated-model-empty-state")
+    }
+
     private var modelListPanel: some View {
         GeometryReader { proxy in
             VStack(alignment: .leading, spacing: 0) {
@@ -895,7 +926,11 @@ struct IntegratedWorkspaceView: View {
                 .background(Color(nsColor: .controlBackgroundColor).opacity(0.72))
 
             ScrollView {
-                LazyVStack(spacing: 8) {
+                if viewModel.visibleModels.isEmpty {
+                    modelEmptyState
+                        .padding(18)
+                } else {
+                    LazyVStack(spacing: 8) {
                     ForEach(viewModel.visibleModels) { model in
                         modelRow(model)
                             .onDrag {
@@ -911,8 +946,9 @@ struct IntegratedWorkspaceView: View {
                                 )
                             )
                     }
+                    }
+                    .padding(14)
                 }
-                .padding(14)
             }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
