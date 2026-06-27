@@ -51,6 +51,31 @@ struct SystemUsageHistorySample: Equatable, Sendable {
     let timestamp: Date
 }
 
+private struct MiniChatMessagePayload: Codable {
+    let role: String
+    let content: String
+}
+
+private struct MiniChatRequestPayload: Encodable {
+    let model: String
+    let messages: [MiniChatMessagePayload]
+    let stream: Bool
+}
+
+private struct MiniChatResponsePayload: Decodable {
+    struct Choice: Decodable {
+        struct Message: Decodable {
+            let content: String?
+        }
+        let message: Message?
+    }
+    struct ErrorPayload: Decodable {
+        let message: String?
+    }
+    let choices: [Choice]?
+    let error: ErrorPayload?
+}
+
 @MainActor
 final class AppViewModel: ObservableObject {
     @Published var settings: AppSettings = .defaults
@@ -125,6 +150,12 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var latestSpeedTestDurationMS: Double?
     @Published private(set) var latestBenchmarkResult: BenchmarkResult?
     @Published private(set) var benchmarkHistory: [BenchmarkResult] = []
+    @Published var miniChatPrompt = ""
+    @Published private(set) var miniChatResponse = ""
+    @Published private(set) var miniChatStatus = "Ready."
+    @Published private(set) var miniChatHTTPStatusText = "-"
+    @Published private(set) var miniChatDurationText = "-"
+    @Published private(set) var isMiniChatRunning = false
     @Published private(set) var runtimeEvents: [RuntimeEvent] = []
 
     private let settingsStore: SettingsStore
@@ -144,6 +175,7 @@ final class AppViewModel: ObservableObject {
     private var systemUsageMonitorTask: Task<Void, Never>?
     private var autoUnloadTask: Task<Void, Never>?
     private var huggingFaceDownloadTask: Task<Void, Never>?
+    private var miniChatTask: Task<Void, Never>?
     private var huggingFaceDownloadCancellationRequested = false
     private var pendingDeleteModelID: ModelConfig.ID?
 
@@ -1866,6 +1898,119 @@ final class AppViewModel: ObservableObject {
             appendRuntimeEvent(category: "Benchmark", message: benchmarkResult.summary)
             isSpeedTestRunning = false
         }
+    }
+
+    var canSendMiniChat: Bool {
+        !isMiniChatRunning && !miniChatPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedModel != nil
+    }
+
+    func sendMiniChatRequested() {
+        let prompt = miniChatPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !prompt.isEmpty else {
+            miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Enter a test message.", japanese: "テストメッセージを入力してください。")
+            return
+        }
+        guard selectedModel != nil else {
+            miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Select a model before sending.", japanese: "送信前にモデルを選択してください。")
+            return
+        }
+        guard let url = Self.chatCompletionsURL(from: baseURL) else {
+            miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Invalid base URL.", japanese: "Base URLが無効です。")
+            return
+        }
+
+        let modelID = selectedModelIdentifier
+        let targetBaseURL = baseURL
+        isMiniChatRunning = true
+        miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Sending test request...", japanese: "テストリクエストを送信中...")
+        miniChatHTTPStatusText = "-"
+        miniChatDurationText = "-"
+        miniChatResponse = ""
+        appendLog("[test-chat] request started: \(targetBaseURL)/chat/completions model=\(modelID)")
+
+        miniChatTask?.cancel()
+        miniChatTask = Task {
+            let startedAt = Date()
+            do {
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.timeoutInterval = 60
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                let payload = MiniChatRequestPayload(
+                    model: modelID,
+                    messages: [MiniChatMessagePayload(role: "user", content: prompt)],
+                    stream: false
+                )
+                request.httpBody = try JSONEncoder().encode(payload)
+
+                let (data, response) = try await URLSession.shared.data(for: request)
+                let elapsedMS = Date().timeIntervalSince(startedAt) * 1000
+                let statusCode = (response as? HTTPURLResponse)?.statusCode
+                miniChatHTTPStatusText = statusCode.map { "HTTP \($0)" } ?? "-"
+                miniChatDurationText = "\(Int(elapsedMS)) ms"
+
+                let decoded = try? JSONDecoder().decode(MiniChatResponsePayload.self, from: data)
+                if let message = decoded?.error?.message, !message.isEmpty {
+                    miniChatResponse = message
+                    miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Request failed.", japanese: "リクエストに失敗しました。")
+                    appendLog("[test-chat] failed: \(miniChatHTTPStatusText) \(message)")
+                } else {
+                    let responseText = decoded?.choices?.first?.message?.content?.trimmingCharacters(in: .whitespacesAndNewlines)
+                    miniChatResponse = responseText?.isEmpty == false ? responseText! : Self.fallbackMiniChatResponseText(from: data)
+                    if let statusCode, (200..<300).contains(statusCode) {
+                        miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Response received.", japanese: "応答を受信しました。")
+                    } else {
+                        miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Response returned non-success status.", japanese: "成功以外のHTTPステータスが返りました。")
+                    }
+                    appendLog("[test-chat] response received: \(miniChatHTTPStatusText) in \(Int(elapsedMS)) ms.")
+                }
+            } catch is CancellationError {
+                miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Cancelled.", japanese: "キャンセルしました。")
+                appendLog("[test-chat] cancelled.")
+            } catch {
+                miniChatHTTPStatusText = "-"
+                miniChatDurationText = "-"
+                miniChatResponse = error.localizedDescription
+                miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Request failed.", japanese: "リクエストに失敗しました。")
+                appendLog("[test-chat] failed: \(error.localizedDescription)")
+            }
+            isMiniChatRunning = false
+        }
+    }
+
+    func cancelMiniChatRequested() {
+        miniChatTask?.cancel()
+        miniChatTask = nil
+        isMiniChatRunning = false
+        miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Cancelled.", japanese: "キャンセルしました。")
+        appendLog("[test-chat] cancelled by user.")
+    }
+
+    func clearMiniChatRequested() {
+        miniChatPrompt = ""
+        miniChatResponse = ""
+        miniChatStatus = "Ready."
+        miniChatHTTPStatusText = "-"
+        miniChatDurationText = "-"
+    }
+
+    func copyMiniChatResponseRequested() {
+        guard !miniChatResponse.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        _ = copyToPasteboard(miniChatResponse)
+    }
+
+    nonisolated private static func chatCompletionsURL(from baseURL: String) -> URL? {
+        let trimmed = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return URL(string: "\(trimmed)/chat/completions")
+    }
+
+    nonisolated private static func fallbackMiniChatResponseText(from data: Data) -> String {
+        if let object = try? JSONSerialization.jsonObject(with: data),
+           let prettyData = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted]),
+           let text = String(data: prettyData, encoding: .utf8) {
+            return text
+        }
+        return String(data: data, encoding: .utf8) ?? ""
     }
 
     func checkReadyRequested() {

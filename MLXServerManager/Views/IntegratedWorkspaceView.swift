@@ -628,7 +628,7 @@ struct IntegratedWorkspaceView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("MLX Server Manager")
                     .font(.caption.weight(.semibold))
-                Text("Version 23.0.2")
+                Text("Version 24.0.0")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -739,8 +739,8 @@ struct IntegratedWorkspaceView: View {
                     .frame(maxHeight: isBottomPanelVisible ? .infinity : .infinity)
                 if isBottomPanelVisible {
                     Divider()
-                    logPanel
-                        .frame(height: 250)
+                    bottomOperationsPanel
+                        .frame(height: 280)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
@@ -1192,6 +1192,99 @@ struct IntegratedWorkspaceView: View {
         }
         .padding(.horizontal, 14)
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.36))
+    }
+
+    private var bottomOperationsPanel: some View {
+        HStack(spacing: 0) {
+            testChatPanel
+                .frame(minWidth: 360, maxWidth: .infinity)
+            Divider()
+            logPanel
+                .frame(minWidth: 360, maxWidth: .infinity)
+        }
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.16))
+        .accessibilityIdentifier("integrated-bottom-operations-panel")
+    }
+
+    private var testChatPanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text(t("Test Chat", "テストチャット"))
+                    .font(.headline)
+                Spacer()
+                Text(viewModel.miniChatHTTPStatusText)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                Text(viewModel.miniChatDurationText)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            .padding(14)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(t(
+                    "Direct test only. Sends one user message directly to the selected OpenAI-compatible endpoint.",
+                    "Directテスト専用です。選択中のOpenAI互換エンドポイントへ1件のユーザーメッセージを直接送信します。"
+                ))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+                TextEditor(text: $viewModel.miniChatPrompt)
+                    .font(.system(.caption, design: .monospaced))
+                    .frame(height: 58)
+                    .scrollContentBackground(.hidden)
+                    .background(Color(nsColor: .textBackgroundColor).opacity(0.82), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.primary.opacity(0.08))
+                    )
+
+                HStack {
+                    Button(t("Send", "送信")) {
+                        viewModel.sendMiniChatRequested()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!viewModel.canSendMiniChat)
+
+                    Button(t("Cancel", "キャンセル")) {
+                        viewModel.cancelMiniChatRequested()
+                    }
+                    .disabled(!viewModel.isMiniChatRunning)
+
+                    Button(t("Clear", "クリア")) {
+                        viewModel.clearMiniChatRequested()
+                    }
+
+                    Button(t("Copy response", "応答をコピー")) {
+                        viewModel.copyMiniChatResponseRequested()
+                    }
+                    .disabled(viewModel.miniChatResponse.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    Spacer()
+                    Text(viewModel.miniChatStatus)
+                        .font(.caption)
+                        .foregroundStyle(viewModel.isMiniChatRunning ? .orange : .secondary)
+                        .lineLimit(1)
+                }
+
+                ScrollView {
+                    Text(viewModel.miniChatResponse.isEmpty ? t("No response yet", "まだ応答はありません") : viewModel.miniChatResponse)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(viewModel.miniChatResponse.isEmpty ? .secondary : .primary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                        .padding(10)
+                }
+                .frame(maxHeight: .infinity)
+                .background(Color(nsColor: .textBackgroundColor).opacity(0.74), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+            .padding(14)
+        }
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.20))
+        .accessibilityIdentifier("integrated-test-chat-panel")
     }
 
     private var logPanel: some View {
