@@ -552,7 +552,11 @@ final class AppViewModel: ObservableObject {
     }
 
     var integratedActionStateSummary: String {
-        [
+        if let selectedModel, selectedModel.id == runningModelID {
+            return Self.localizedText(language: settings.uiLanguage, english: "Loaded. Stop or restart is available.", japanese: "ロード済みです。停止または再起動できます。")
+        }
+
+        return [
             "Start: \(startActionReason)",
             "Stop: \(stopDisabledReason)",
             "Restart: \(restartDisabledReason)",
