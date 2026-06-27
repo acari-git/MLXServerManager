@@ -1234,15 +1234,36 @@ struct IntegratedWorkspaceView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-                TextEditor(text: $viewModel.miniChatPrompt)
-                    .font(.system(.caption, design: .monospaced))
-                    .frame(height: 58)
-                    .scrollContentBackground(.hidden)
-                    .background(Color(nsColor: .textBackgroundColor).opacity(0.82), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(Color.primary.opacity(0.08))
-                    )
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        if viewModel.miniChatMessages.isEmpty {
+                            Text(t("No messages yet", "まだメッセージはありません"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.vertical, 24)
+                        } else {
+                            ForEach(viewModel.miniChatMessages) { message in
+                                miniChatBubble(message)
+                            }
+                        }
+                    }
+                    .padding(10)
+                }
+                .frame(maxHeight: .infinity)
+                .background(Color(nsColor: .textBackgroundColor).opacity(0.74), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                MiniChatInputView(
+                    text: $viewModel.miniChatPrompt,
+                    placeholder: t("Type a test message. Enter sends. Shift+Enter inserts a new line.", "テストメッセージを入力。Enterで送信、Shift+Enterで改行。"),
+                    onSubmit: { viewModel.sendMiniChatRequested() }
+                )
+                .frame(height: 58)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color.primary.opacity(0.08))
+                )
 
                 HStack {
                     Button(t("Send", "送信")) {
@@ -1260,7 +1281,7 @@ struct IntegratedWorkspaceView: View {
                         viewModel.clearMiniChatRequested()
                     }
 
-                    Button(t("Copy response", "応答をコピー")) {
+                    Button(t("Copy latest", "最新をコピー")) {
                         viewModel.copyMiniChatResponseRequested()
                     }
                     .disabled(viewModel.miniChatResponse.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -1271,22 +1292,34 @@ struct IntegratedWorkspaceView: View {
                         .foregroundStyle(viewModel.isMiniChatRunning ? .orange : .secondary)
                         .lineLimit(1)
                 }
-
-                ScrollView {
-                    Text(viewModel.miniChatResponse.isEmpty ? t("No response yet", "まだ応答はありません") : viewModel.miniChatResponse)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(viewModel.miniChatResponse.isEmpty ? .secondary : .primary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
-                        .padding(10)
-                }
-                .frame(maxHeight: .infinity)
-                .background(Color(nsColor: .textBackgroundColor).opacity(0.74), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .padding(14)
         }
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.20))
         .accessibilityIdentifier("integrated-test-chat-panel")
+    }
+
+    private func miniChatBubble(_ message: MiniChatTranscriptMessage) -> some View {
+        let isUser = message.sender == .user
+        let isSystem = message.sender == .system
+        return HStack {
+            if isUser { Spacer(minLength: 40) }
+            Text(message.content)
+                .font(.caption)
+                .textSelection(.enabled)
+                .foregroundStyle(isSystem ? Color.secondary : Color.primary)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 10)
+                .background(
+                    isUser
+                    ? Color.accentColor.opacity(0.18)
+                    : (isSystem ? Color.orange.opacity(0.12) : Color(nsColor: .controlBackgroundColor).opacity(0.92)),
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                )
+                .frame(maxWidth: 320, alignment: isUser ? .trailing : .leading)
+            if !isUser { Spacer(minLength: 40) }
+        }
+        .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
     }
 
     private var logPanel: some View {

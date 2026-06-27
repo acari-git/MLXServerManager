@@ -51,6 +51,18 @@ struct SystemUsageHistorySample: Equatable, Sendable {
     let timestamp: Date
 }
 
+struct MiniChatTranscriptMessage: Identifiable, Equatable {
+    enum Sender: Equatable {
+        case user
+        case assistant
+        case system
+    }
+
+    let id = UUID()
+    let sender: Sender
+    let content: String
+}
+
 private struct MiniChatMessagePayload: Codable {
     let role: String
     let content: String
@@ -151,6 +163,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var latestBenchmarkResult: BenchmarkResult?
     @Published private(set) var benchmarkHistory: [BenchmarkResult] = []
     @Published var miniChatPrompt = ""
+    @Published private(set) var miniChatMessages: [MiniChatTranscriptMessage] = []
     @Published private(set) var miniChatResponse = ""
     @Published private(set) var miniChatStatus = "Ready."
     @Published private(set) var miniChatHTTPStatusText = "-"
@@ -1921,6 +1934,8 @@ final class AppViewModel: ObservableObject {
 
         let modelID = selectedModelIdentifier
         let targetBaseURL = baseURL
+        miniChatPrompt = ""
+        miniChatMessages.append(MiniChatTranscriptMessage(sender: .user, content: prompt))
         isMiniChatRunning = true
         miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Sending test request...", japanese: "テストリクエストを送信中...")
         miniChatHTTPStatusText = "-"
@@ -1952,11 +1967,13 @@ final class AppViewModel: ObservableObject {
                 let decoded = try? JSONDecoder().decode(MiniChatResponsePayload.self, from: data)
                 if let message = decoded?.error?.message, !message.isEmpty {
                     miniChatResponse = message
+                    miniChatMessages.append(MiniChatTranscriptMessage(sender: .system, content: message))
                     miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Request failed.", japanese: "リクエストに失敗しました。")
                     appendLog("[test-chat] failed: \(miniChatHTTPStatusText) \(message)")
                 } else {
                     let responseText = decoded?.choices?.first?.message?.content?.trimmingCharacters(in: .whitespacesAndNewlines)
                     miniChatResponse = responseText?.isEmpty == false ? responseText! : Self.fallbackMiniChatResponseText(from: data)
+                    miniChatMessages.append(MiniChatTranscriptMessage(sender: .assistant, content: miniChatResponse))
                     if let statusCode, (200..<300).contains(statusCode) {
                         miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Response received.", japanese: "応答を受信しました。")
                     } else {
@@ -1966,11 +1983,13 @@ final class AppViewModel: ObservableObject {
                 }
             } catch is CancellationError {
                 miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Cancelled.", japanese: "キャンセルしました。")
+                miniChatMessages.append(MiniChatTranscriptMessage(sender: .system, content: miniChatStatus))
                 appendLog("[test-chat] cancelled.")
             } catch {
                 miniChatHTTPStatusText = "-"
                 miniChatDurationText = "-"
                 miniChatResponse = error.localizedDescription
+                miniChatMessages.append(MiniChatTranscriptMessage(sender: .system, content: miniChatResponse))
                 miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Request failed.", japanese: "リクエストに失敗しました。")
                 appendLog("[test-chat] failed: \(error.localizedDescription)")
             }
@@ -1988,6 +2007,7 @@ final class AppViewModel: ObservableObject {
 
     func clearMiniChatRequested() {
         miniChatPrompt = ""
+        miniChatMessages = []
         miniChatResponse = ""
         miniChatStatus = "Ready."
         miniChatHTTPStatusText = "-"
