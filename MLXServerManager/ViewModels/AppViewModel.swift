@@ -271,12 +271,27 @@ final class AppViewModel: ObservableObject {
 
     var systemInfoRows: [(String, String)] {
         [
-            ("機種", systemProfilerHardwareInfo["Model Name"] ?? Self.sysctlString("hw.model") ?? "不明"),
+            (
+                Self.localizedText(language: settings.uiLanguage, english: "Model", japanese: "機種"),
+                systemProfilerHardwareInfo["Model Name"] ?? Self.sysctlString("hw.model") ?? Self.localizedText(language: settings.uiLanguage, english: "Unknown", japanese: "不明")
+            ),
             ("macOS", Self.macOSVersionNumberText),
-            ("チップ", systemProfilerHardwareInfo["Chip"] ?? Self.sysctlString("machdep.cpu.brand_string") ?? "Apple Silicon"),
-            ("処理能力", Self.processingCapabilityText(from: systemProfilerHardwareInfo)),
-            ("メモリ", systemProfilerHardwareInfo["Memory"] ?? Self.formatMemoryGigabytes(Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824)),
-            ("ストレージ", Self.storageUsageText())
+            (
+                Self.localizedText(language: settings.uiLanguage, english: "Chip", japanese: "チップ"),
+                systemProfilerHardwareInfo["Chip"] ?? Self.sysctlString("machdep.cpu.brand_string") ?? "Apple Silicon"
+            ),
+            (
+                Self.localizedText(language: settings.uiLanguage, english: "Processing", japanese: "処理能力"),
+                Self.processingCapabilityText(from: systemProfilerHardwareInfo)
+            ),
+            (
+                Self.localizedText(language: settings.uiLanguage, english: "Memory", japanese: "メモリ"),
+                systemProfilerHardwareInfo["Memory"] ?? Self.formatMemoryGigabytes(Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824)
+            ),
+            (
+                Self.localizedText(language: settings.uiLanguage, english: "Storage", japanese: "ストレージ"),
+                Self.storageUsageText(language: settings.uiLanguage)
+            )
         ]
     }
 
@@ -436,7 +451,8 @@ final class AppViewModel: ObservableObject {
     }
 
     func autoUnloadText(for model: ModelConfig) -> String {
-        isAutoUnloadEnabled(for: model) ? "\(autoUnloadMinutes(for: model))分" : "OFF"
+        guard isAutoUnloadEnabled(for: model) else { return "OFF" }
+        return Self.localizedText(language: settings.uiLanguage, english: "\(autoUnloadMinutes(for: model)) min", japanese: "\(autoUnloadMinutes(for: model))分")
     }
 
     func reasoningText(for model: ModelConfig) -> String {
@@ -537,6 +553,15 @@ final class AppViewModel: ObservableObject {
         guard let selectedModel else {
             return [("Selected model", "Missing")]
         }
+        if settings.uiLanguage.resolved == .english {
+            return [
+                ("Executable file", executableSafetyText),
+                ("Model validation", modelIdentitySafetyText(for: selectedModel)),
+                ("Port / IP address", portSafetyText(host: selectedModel.host, port: selectedModel.serverPort)),
+                ("Duplicate check", duplicateProfileWarning(for: selectedModel) ?? "No duplicate issue"),
+                ("Runtime edit safety", runtimeEditingSafetyText(for: selectedModel))
+            ]
+        }
         return [
             ("Executable", executableSafetyText),
             ("Model", modelIdentitySafetyText(for: selectedModel)),
@@ -548,6 +573,9 @@ final class AppViewModel: ObservableObject {
 
     var selectedModelSafetySummary: String {
         let warningCount = selectedModelSafetyRows.filter { !$0.1.localizedCaseInsensitiveContains("OK") && !$0.1.localizedCaseInsensitiveContains("Available") && !$0.1.localizedCaseInsensitiveContains("Ready") }.count
+        if settings.uiLanguage.resolved == .english {
+            return warningCount == 0 ? "Safety: no issues" : "Safety: \(warningCount) warning(s)"
+        }
         return warningCount == 0 ? "Safety: OK" : "Safety: \(warningCount) warning(s)"
     }
 
@@ -592,22 +620,25 @@ final class AppViewModel: ObservableObject {
         case let .readyCheckFailed(_, _, message):
             return recoveryGuidance(for: message)
         default:
-            return Self.localizedText(language: settings.uiLanguage, english: "No failed start recovery needed.", japanese: "起動失敗の復旧は不要です。")
+            return Self.localizedText(language: settings.uiLanguage, english: "No recovery action needed.", japanese: "起動失敗の復旧は不要です。")
         }
     }
 
     private var executableSafetyText: String {
         let executablePath = settings.mlxServerExecutablePath.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !executablePath.isEmpty else { return Self.localizedText(language: settings.uiLanguage, english: "Missing executable path", japanese: "実行ファイルパスが未設定") }
-        return FileManager.default.isExecutableFile(atPath: executablePath) ? "OK" : "Missing or not executable"
+        if FileManager.default.isExecutableFile(atPath: executablePath) {
+            return settings.uiLanguage.resolved == .english ? "Executable OK" : "OK"
+        }
+        return "Missing or not executable"
     }
 
     private func modelIdentitySafetyText(for model: ModelConfig) -> String {
         if let localPath = ModelAvailabilityPathFormatter.localPathCandidate(for: model) {
             var isDirectory = ObjCBool(false)
             return FileManager.default.fileExists(atPath: localPath, isDirectory: &isDirectory) && isDirectory.boolValue
-                ? "OK local path"
-                : "Missing local path"
+                ? Self.localizedText(language: settings.uiLanguage, english: "Local path OK", japanese: "OK local path")
+                : Self.localizedText(language: settings.uiLanguage, english: "Missing local path", japanese: "Missing local path")
         }
         return model.modelID.contains("/") ? "Needs review: HF ID" : "Needs review"
     }
@@ -615,7 +646,7 @@ final class AppViewModel: ObservableObject {
     private func portSafetyText(host: String, port: Int) -> String {
         switch portChecker.check(host: host, port: port) {
         case .available:
-            return Self.localizedText(language: settings.uiLanguage, english: "Available", japanese: "利用可能")
+            return Self.localizedText(language: settings.uiLanguage, english: "Port available", japanese: "利用可能")
         case .busy:
             return Self.localizedText(language: settings.uiLanguage, english: "Busy", japanese: "使用中")
         case let .invalidInput(message):
@@ -636,7 +667,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func runtimeEditingSafetyText(for model: ModelConfig) -> String {
-        guard isManagedProcessRunning, model.id == runningModelID else { return Self.localizedText(language: settings.uiLanguage, english: "Ready", japanese: "Ready") }
+        guard isManagedProcessRunning, model.id == runningModelID else { return Self.localizedText(language: settings.uiLanguage, english: "Edit safe", japanese: "Ready") }
         return Self.localizedText(language: settings.uiLanguage, english: "Stop before runtime-critical edits", japanese: "ランタイム重要項目の編集前に停止してください")
     }
 
@@ -930,20 +961,10 @@ final class AppViewModel: ObservableObject {
         }
 
         switch huggingFaceDownloadStatus.phase {
-        case .waiting:
-            return "待機中"
-        case .preparing:
-            return "準備中"
-        case .downloading:
-            return "進捗取得中"
-        case .finalizing:
-            return "最終処理中"
         case .completed:
             return "100%"
-        case .failed:
-            return "失敗"
-        case .cancelled:
-            return "キャンセル"
+        default:
+            return huggingFaceDownloadStatus.phase.localizedTitle(language: settings.uiLanguage)
         }
     }
 
@@ -1138,14 +1159,14 @@ final class AppViewModel: ObservableObject {
 
     var memoryUsageText: String {
         if runtimeState.isExternalServerContext {
-            return "MLX管理RSS: 外部サーバー対象外"
+            return Self.localizedText(language: settings.uiLanguage, english: "MLX managed RSS: external server not applicable", japanese: "MLX管理RSS: 外部サーバー対象外")
         }
 
         guard let memoryUsageGB else {
-            return "MLX管理RSS: 未稼働"
+            return Self.localizedText(language: settings.uiLanguage, english: "MLX managed RSS: not running", japanese: "MLX管理RSS: 未稼働")
         }
 
-        return "MLX管理RSS: \(Self.formatMemoryGigabytes(memoryUsageGB))"
+        return Self.localizedText(language: settings.uiLanguage, english: "MLX managed RSS: \(Self.formatMemoryGigabytes(memoryUsageGB))", japanese: "MLX管理RSS: \(Self.formatMemoryGigabytes(memoryUsageGB))")
     }
 
     var integratedMemoryUsageFraction: Double {
@@ -1164,6 +1185,12 @@ final class AppViewModel: ObservableObject {
     }
 
     var memoryTotalText: String {
+        if settings.uiLanguage.resolved == .english {
+            guard let systemMemorySnapshot = activeSystemMemorySnapshot else {
+                return "Total: Not available"
+            }
+            return "Total: \(Self.formatMemoryGigabytes(systemMemorySnapshot.totalGigabytes))"
+        }
         guard let systemMemorySnapshot = activeSystemMemorySnapshot else {
             return "合計: 未取得"
         }
@@ -1172,6 +1199,9 @@ final class AppViewModel: ObservableObject {
     }
 
     var memoryAvailableText: String {
+        if settings.uiLanguage.resolved == .english, activeSystemMemorySnapshot?.availableGigabytes == nil {
+            return "Not available"
+        }
         guard let availableGigabytes = activeSystemMemorySnapshot?.availableGigabytes else {
             return "未取得"
         }
@@ -1180,7 +1210,7 @@ final class AppViewModel: ObservableObject {
     }
 
     var memoryMLXProcessText: String {
-        guard !runtimeState.isExternalServerContext else { return "対象外" }
+        guard !runtimeState.isExternalServerContext else { return Self.localizedText(language: settings.uiLanguage, english: "N/A", japanese: "対象外") }
         guard let memoryBreakdown else { return Self.formatMemoryGigabytes(0) }
 
         return Self.formatMemoryGigabytes(memoryBreakdown.managedProcessGigabytes)
@@ -1188,7 +1218,7 @@ final class AppViewModel: ObservableObject {
 
     var memoryOtherProcessesText: String {
         guard let usedGigabytes = activeSystemMemorySnapshot?.usedGigabytes else {
-            return "未取得"
+            return Self.localizedText(language: settings.uiLanguage, english: "Not available", japanese: "未取得")
         }
 
         let managedProcessGigabytes = memoryBreakdown?.managedProcessGigabytes ?? 0
@@ -1196,11 +1226,17 @@ final class AppViewModel: ObservableObject {
     }
 
     var memoryBreakdownUpdateText: String {
-        memoryBreakdown == nil ? "管理サーバー起動後に更新開始" : "1秒ごとに更新 / 直近60秒"
+        if settings.uiLanguage.resolved == .english {
+            return memoryBreakdown == nil ? "Updates begin after managed server start" : "Updates every second / last 60 seconds"
+        }
+        return memoryBreakdown == nil ? "管理サーバー起動後に更新開始" : "1秒ごとに更新 / 直近60秒"
     }
 
     var memoryBreakdownAccuracyText: String {
-        "mlx-lmは管理プロセスRSS、その他/空き容量はvm_statベース"
+        if settings.uiLanguage.resolved == .english {
+            return "mlx-lm is managed process RSS; other/available memory is vm_stat-based"
+        }
+        return "mlx-lmは管理プロセスRSS、その他/空き容量はvm_statベース"
     }
 
     var memoryMLXProcessFraction: Double {
@@ -1218,11 +1254,13 @@ final class AppViewModel: ObservableObject {
     }
 
     var integratedCPUUsageText: String {
+        if settings.uiLanguage.resolved == .english, cpuUsagePercent == nil { return "Not available" }
         guard let cpuUsagePercent else { return "未取得" }
         return String(format: "%.0f%%", cpuUsagePercent)
     }
 
     var integratedGPUUsageText: String {
+        if settings.uiLanguage.resolved == .english, gpuUsagePercent == nil { return "Unsupported" }
         guard let gpuUsagePercent else { return "非対応" }
         return String(format: "%.0f%%", gpuUsagePercent)
     }
@@ -1237,6 +1275,9 @@ final class AppViewModel: ObservableObject {
         let hours = elapsed / 3600
         let minutes = (elapsed % 3600) / 60
         let seconds = elapsed % 60
+        if settings.uiLanguage.resolved == .english {
+            return String(format: "%02dh %02dm %02ds", hours, minutes, seconds)
+        }
         return String(format: "%02d時間%02d分%02d秒", hours, minutes, seconds)
     }
 
@@ -1245,6 +1286,19 @@ final class AppViewModel: ObservableObject {
     }
 
     func interactiveStatusText(for model: ModelConfig, isHovered: Bool) -> String {
+        if settings.uiLanguage.resolved == .english {
+            if model.id == runningModelID {
+                switch runtimeState {
+                case .starting, .loading, .checkingReady:
+                    return "Loading"
+                case .stopping:
+                    return "Unloading"
+                default:
+                    return isHovered ? "Unload" : "Loaded"
+                }
+            }
+            return isHovered ? "Load" : "Ready"
+        }
         if model.id == runningModelID {
             switch runtimeState {
             case .starting, .loading, .checkingReady:
@@ -1321,7 +1375,8 @@ final class AppViewModel: ObservableObject {
     }
 
     func integratedStopModeText(for model: ModelConfig) -> String {
-        isAutoUnloadEnabled(for: model) ? "ON / \(autoUnloadMinutes(for: model))分" : "OFF"
+        guard isAutoUnloadEnabled(for: model) else { return "OFF" }
+        return Self.localizedText(language: settings.uiLanguage, english: "ON / \(autoUnloadMinutes(for: model)) min", japanese: "ON / \(autoUnloadMinutes(for: model))分")
     }
 
     private func sortedModels(_ input: [ModelConfig]) -> [ModelConfig] {
@@ -1477,18 +1532,18 @@ final class AppViewModel: ObservableObject {
         return String(cString: buffer).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    nonisolated private static func storageUsageText() -> String {
+    private static func storageUsageText(language: AppLanguage) -> String {
         do {
             let attributes = try FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory())
             guard let size = attributes[.systemSize] as? NSNumber,
                   let free = attributes[.systemFreeSize] as? NSNumber else {
-                return "不明"
+                return localizedText(language: language, english: "Unknown", japanese: "不明")
             }
 
             let usedBytes = max(size.doubleValue - free.doubleValue, 0)
             return "\(formatStorageBytes(usedBytes)) / \(formatStorageBytes(size.doubleValue))"
         } catch {
-            return "不明"
+            return localizedText(language: language, english: "Unknown", japanese: "不明")
         }
     }
 
