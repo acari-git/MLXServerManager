@@ -153,11 +153,11 @@ Do not download the source archive if you want the app binary. Use the named `ML
 
 ## Current GUI Direction
 
-v20.2.0 focuses on integrated workspace operations polish. The model list now uses status-driven Load / Unload controls, sortable columns, model size display, reasoning toggles, functional auto-unload, Activity Monitor-style memory and CPU graphs, and a SYSTEM hardware summary while preserving Direct Mode.
+v23.0.0 completes the current integrated GUI refresh. The model list remains the primary operating table, while Downloads, Logs, Settings, and the right-side Operations Inspector now use clearer command-center, empty-state, and quick-settings patterns. Language, accent color, and theme are available from the bottom-left Settings menu.
 
-You must provide your own `mlx-lm` environment and `mlx_lm.server` executable. You can register existing model files, search Hugging Face and choose a result, or use the Dashboard Hugging Face card to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: the client connects directly to `mlx_lm.server`; MLX Server Manager does not proxy inference traffic or run chat completions.
+You must provide your own `mlx-lm` environment and `mlx_lm.server` executable. You can register existing model files, search Hugging Face and choose a result, or use Downloads to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: the client connects directly to `mlx_lm.server`; MLX Server Manager does not proxy inference traffic or run chat completions.
 
-See [docs/distribution.md](docs/distribution.md) for release asset and Gatekeeper details, [docs/known_limitations.md](docs/known_limitations.md) for the full stable-scope boundary, and [docs/v20_2_integrated_workspace_operations_polish.md](docs/v20_2_integrated_workspace_operations_polish.md) for the v20.2.0 integrated workspace operations note.
+See [docs/distribution.md](docs/distribution.md) for release asset and Gatekeeper details, [docs/known_limitations.md](docs/known_limitations.md) for the full stable-scope boundary, and [docs/v23_0_integrated_gui_refresh.md](docs/v23_0_integrated_gui_refresh.md) for the v23.0.0 GUI refresh note.
 
 See [docs/benchmark_findings.md](docs/benchmark_findings.md) for benchmark-informed notes on Direct Mode, long-context workloads, streaming TTFT, and future optional Advanced Launch Options.
 
