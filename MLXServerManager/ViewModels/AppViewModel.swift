@@ -319,6 +319,31 @@ final class AppViewModel: ObservableObject {
         return model.modelID.contains("/") ? "HF ID" : "Advanced"
     }
 
+    func modelListSourceFilterLabel(_ source: String) -> String {
+        sourceDisplayLabel(source)
+    }
+
+    func sourceDisplayLabel(for model: ModelConfig) -> String {
+        sourceDisplayLabel(sourceLabel(for: model))
+    }
+
+    private func sourceDisplayLabel(_ source: String) -> String {
+        switch source {
+        case "All":
+            return Self.localizedText(language: settings.uiLanguage, english: "All", japanese: "すべて")
+        case "Downloaded":
+            return Self.localizedText(language: settings.uiLanguage, english: "Downloaded", japanese: "ダウンロード済み")
+        case "Local":
+            return Self.localizedText(language: settings.uiLanguage, english: "Local", japanese: "ローカル")
+        case "HF ID":
+            return "HF ID"
+        case "Advanced":
+            return Self.localizedText(language: settings.uiLanguage, english: "Advanced", japanese: "詳細")
+        default:
+            return source
+        }
+    }
+
     func sortModelsRequested(by key: String) {
         if modelSortKey == key {
             isModelSortAscending.toggle()
@@ -856,6 +881,12 @@ final class AppViewModel: ObservableObject {
 
     var logCategoryFilterOptions: [String] {
         ["All"] + Array(Set(logEntries.map(\.category))).sorted()
+    }
+
+    func logCategoryFilterLabel(_ category: String) -> String {
+        category == "All"
+            ? Self.localizedText(language: settings.uiLanguage, english: "All", japanese: "すべて")
+            : category
     }
 
     var visibleLogEntries: [LogEntry] {

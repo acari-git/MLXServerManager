@@ -67,7 +67,7 @@ struct ProfilesSurfaceView: View {
         HStack(spacing: 10) {
             Picker(t("Source", "ソース"), selection: $viewModel.modelListSourceFilter) {
                 ForEach(viewModel.modelListSourceFilterOptions, id: \.self) { source in
-                    Text(source).tag(source)
+                    Text(viewModel.modelListSourceFilterLabel(source)).tag(source)
                 }
             }
             .frame(width: 190)
@@ -209,7 +209,7 @@ struct ProfilesSurfaceView: View {
                 Spacer()
 
                 HStack(spacing: 6) {
-                    statusPill(viewModel.sourceLabel(for: model))
+                    statusPill(viewModel.sourceDisplayLabel(for: model))
                     if model.id == viewModel.selectedModelID {
                         statusPill(t("Selected", "選択中"))
                     }
@@ -258,7 +258,7 @@ struct ProfilesSurfaceView: View {
                 DetailGrid(rows: [
                     ("Model ID", selectedModel.modelID),
                     (t("Display Name", "表示名"), selectedModel.displayName),
-                    (t("Source", "ソース"), viewModel.sourceLabel(for: selectedModel)),
+                    (t("Source", "ソース"), viewModel.sourceDisplayLabel(for: selectedModel)),
                     (t("Family", "ファミリー"), selectedModel.family),
                     (t("Quantization", "量子化"), selectedModel.quantization),
                     (t("Context", "コンテキスト"), selectedModel.contextWindow),

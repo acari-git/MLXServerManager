@@ -994,7 +994,7 @@ struct IntegratedWorkspaceView: View {
                 Spacer()
                 Picker(t("Category", "カテゴリ"), selection: $viewModel.logCategoryFilter) {
                     ForEach(viewModel.logCategoryFilterOptions, id: \.self) { category in
-                        Text(category).tag(category)
+                        Text(viewModel.logCategoryFilterLabel(category)).tag(category)
                     }
                 }
                 .labelsHidden()
