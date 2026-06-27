@@ -102,9 +102,6 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var huggingFaceDownloadQueue: [HuggingFaceDownloadQueueEntry] = []
     @Published private(set) var huggingFaceFilePreview: HuggingFaceDownloadFilePreviewState = .waiting
     @Published var selectedHuggingFacePreviewFileIDs: Set<String> = []
-    @Published var huggingFaceAccessInput = ""
-    @Published private(set) var isHuggingFaceAccessSaved = false
-    @Published private(set) var huggingFaceAccessMessage = AppViewModel.defaultHuggingFaceAccessMessage(language: .system)
     @Published private(set) var isHuggingFaceCLIAvailable = false
     @Published private(set) var huggingFaceCLIPath = AppViewModel.notCheckedText(language: .system)
     @Published private(set) var huggingFaceCLIMessage = AppViewModel.defaultHuggingFaceCLIMessage(language: .system)
@@ -142,7 +139,6 @@ final class AppViewModel: ObservableObject {
     private let huggingFaceDownloadManager: HuggingFaceModelDownloading
     private let huggingFaceSearchService: HuggingFaceModelSearching
     private let huggingFaceRepositoryFileService: HuggingFaceRepositoryFileListing
-    private let huggingFaceCredentialStore: HuggingFaceCredentialStoring
     private var logBuffer: LogBuffer
     private var memoryMonitorTask: Task<Void, Never>?
     private var systemUsageMonitorTask: Task<Void, Never>?
@@ -160,14 +156,6 @@ final class AppViewModel: ObservableObject {
 
     private static func localizedText(language: AppLanguage, english: String, japanese: String) -> String {
         AppLocalization(language: language).text(english: english, japanese: japanese)
-    }
-
-    private static func defaultHuggingFaceAccessMessage(language: AppLanguage) -> String {
-        localizedText(
-            language: language,
-            english: "No saved Hugging Face access value. Public repos can still be previewed.",
-            japanese: "保存済みのHugging Faceアクセス値はありません。公開リポジトリは引き続きプレビューできます。"
-        )
     }
 
     private static func defaultHuggingFaceCLIMessage(language: AppLanguage) -> String {
@@ -218,8 +206,7 @@ final class AppViewModel: ObservableObject {
         modelAvailabilityChecker: LocalModelAvailabilityChecking? = nil,
         huggingFaceDownloadManager: HuggingFaceModelDownloading? = nil,
         huggingFaceSearchService: HuggingFaceModelSearching? = nil,
-        huggingFaceRepositoryFileService: HuggingFaceRepositoryFileListing? = nil,
-        huggingFaceCredentialStore: HuggingFaceCredentialStoring? = nil
+        huggingFaceRepositoryFileService: HuggingFaceRepositoryFileListing? = nil
     ) {
         self.settingsStore = settingsStore ?? SettingsStore()
         self.portChecker = portChecker ?? PortChecker()
@@ -237,7 +224,6 @@ final class AppViewModel: ObservableObject {
         self.huggingFaceDownloadManager = huggingFaceDownloadManager ?? HuggingFaceDownloadManager()
         self.huggingFaceSearchService = huggingFaceSearchService ?? HuggingFaceSearchService()
         self.huggingFaceRepositoryFileService = huggingFaceRepositoryFileService ?? HuggingFaceRepositoryFileService()
-        self.huggingFaceCredentialStore = huggingFaceCredentialStore ?? HuggingFaceCredentialStore()
         self.logBuffer = LogBuffer(initialLines: Self.initialLogLines)
         self.logText = logBuffer.text
         self.logEntries = logBuffer.entries
@@ -247,7 +233,6 @@ final class AppViewModel: ObservableObject {
             defaultHost: settings.defaultHost,
             defaultPort: settings.defaultPort
         )
-        refreshHuggingFaceAccessStatus()
         refreshHuggingFaceCLIStatus(logResult: false)
         refreshAria2Status()
         localModelPortText = String(settings.defaultPort)
@@ -319,7 +304,6 @@ final class AppViewModel: ObservableObject {
 
     private func refreshDefaultUserFacingMessagesForCurrentLanguage() {
         let language = settings.uiLanguage
-        huggingFaceAccessMessage = Self.defaultHuggingFaceAccessMessage(language: language)
         huggingFaceCLIPath = Self.notCheckedText(language: language)
         huggingFaceCLIMessage = Self.defaultHuggingFaceCLIMessage(language: language)
         localModelMessage = Self.defaultLocalModelMessage(language: language)
@@ -1996,7 +1980,7 @@ final class AppViewModel: ObservableObject {
             let files = try await huggingFaceRepositoryFileService.fetchFiles(
                 repositoryID: repositoryID,
                 revision: revision,
-                token: huggingFaceCredentialStore.readValue()
+                token: nil
             )
             huggingFaceFilePreview = HuggingFaceDownloadFilePreviewState(
                 isLoading: false,
@@ -2156,39 +2140,8 @@ final class AppViewModel: ObservableObject {
         refreshHuggingFaceCLIStatus(logResult: true)
     }
 
-    func saveHuggingFaceAccessRequested() {
-        let value = huggingFaceAccessInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !value.isEmpty else {
-            huggingFaceAccessMessage = Self.localizedText(
-                language: settings.uiLanguage,
-                english: "Enter a value before saving.",
-                japanese: "保存前に値を入力してください。"
-            )
-            return
-        }
-        huggingFaceCredentialStore.saveValue(value)
-        huggingFaceAccessInput = ""
-        refreshHuggingFaceAccessStatus()
-    }
-
-    func deleteHuggingFaceAccessRequested() {
-        huggingFaceCredentialStore.deleteValue()
-        refreshHuggingFaceAccessStatus()
-    }
-
     func refreshAria2Status() {
         aria2Availability = Aria2AvailabilityChecker.check()
-    }
-
-    private func refreshHuggingFaceAccessStatus() {
-        isHuggingFaceAccessSaved = huggingFaceCredentialStore.readValue() != nil
-        huggingFaceAccessMessage = isHuggingFaceAccessSaved
-            ? Self.localizedText(
-                language: settings.uiLanguage,
-                english: "Saved locally. The value is used for gated/private Hugging Face requests and is not shown again.",
-                japanese: "ローカルに保存済みです。この値はgated/private Hugging Faceリクエストに使用され、再表示されません。"
-            )
-            : Self.defaultHuggingFaceAccessMessage(language: settings.uiLanguage)
     }
 
     private func refreshHuggingFaceCLIStatus(logResult: Bool) {
@@ -2979,7 +2932,7 @@ final class AppViewModel: ObservableObject {
                     revision: normalizedHuggingFaceRevision,
                     includePatterns: huggingFaceIncludePatternsForDownload(),
                     excludePatterns: Self.patternList(from: draft.excludePatterns),
-                    authorizationValue: huggingFaceCredentialStore.readValue()
+                    authorizationValue: nil
                 ),
                 outputHandler: { [weak self] line in
                     Task { @MainActor in

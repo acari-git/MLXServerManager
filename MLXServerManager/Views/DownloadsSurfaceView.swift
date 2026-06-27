@@ -197,16 +197,10 @@ struct DownloadsSurfaceView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             DetailGrid(rows: [
-                (t("HF access", "HFアクセス"), viewModel.huggingFaceAccessMessage),
                 ("aria2c", viewModel.aria2Availability.displayPath),
                 (t("Auto restart", "自動再開"), viewModel.enableDownloadAutoRestart ? t("Enabled below \(viewModel.lowSpeedRestartThresholdText)", "\(viewModel.lowSpeedRestartThresholdText)未満で有効") : t("Disabled", "無効"))
             ])
             HStack {
-                SecureField(t("Hugging Face access value", "Hugging Faceアクセストークン"), text: $viewModel.huggingFaceAccessInput)
-                    .textFieldStyle(.roundedBorder)
-                Button(t("Save", "保存")) { viewModel.saveHuggingFaceAccessRequested() }
-                Button(t("Delete", "削除")) { viewModel.deleteHuggingFaceAccessRequested() }
-                    .disabled(!viewModel.isHuggingFaceAccessSaved)
                 Button(t("Check aria2c", "aria2cを確認")) { viewModel.refreshAria2Status() }
             }
             Toggle(t("Enable low-speed auto-restart policy", "低速時の自動再開ポリシーを有効にする"), isOn: $viewModel.enableDownloadAutoRestart)
