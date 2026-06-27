@@ -568,7 +568,7 @@ final class AppViewModel: ObservableObject {
             return [
                 ("Executable file", executableSafetyText),
                 ("Model validation", modelIdentitySafetyText(for: selectedModel)),
-                ("Port / IP address", portSafetyText(host: selectedModel.host, port: selectedModel.serverPort)),
+                ("Port / IP address", portSafetyText(for: selectedModel))
                 ("Duplicate check", duplicateProfileWarning(for: selectedModel) ?? "No duplicate issue"),
                 ("Runtime edit safety", runtimeEditingSafetyText(for: selectedModel))
             ]
@@ -576,7 +576,7 @@ final class AppViewModel: ObservableObject {
         return [
             ("Executable", executableSafetyText),
             ("Model", modelIdentitySafetyText(for: selectedModel)),
-            ("Server port", portSafetyText(host: selectedModel.host, port: selectedModel.serverPort)),
+            ("Server port", portSafetyText(for: selectedModel))
             ("Duplicate", duplicateProfileWarning(for: selectedModel) ?? "OK"),
             ("Runtime edit", runtimeEditingSafetyText(for: selectedModel))
         ]
@@ -592,7 +592,7 @@ final class AppViewModel: ObservableObject {
 
     var selectedServerPortSafetyText: String {
         guard let selectedModel else { return Self.localizedText(language: settings.uiLanguage, english: "No model selected", japanese: "モデル未選択") }
-        return portSafetyText(host: selectedModel.host, port: selectedModel.serverPort)
+        return portSafetyText(for: selectedModel)
     }
 
 
@@ -652,6 +652,13 @@ final class AppViewModel: ObservableObject {
                 : Self.localizedText(language: settings.uiLanguage, english: "Missing local path", japanese: "Missing local path")
         }
         return model.modelID.contains("/") ? "Needs review: HF ID" : "Needs review"
+    }
+
+    private func portSafetyText(for model: ModelConfig) -> String {
+        if model.id == runningModelID {
+            return Self.localizedText(language: settings.uiLanguage, english: "OK: in use by loaded model", japanese: "OK: ロード済みモデルが使用中")
+        }
+        return portSafetyText(host: model.host, port: model.serverPort)
     }
 
     private func portSafetyText(host: String, port: Int) -> String {

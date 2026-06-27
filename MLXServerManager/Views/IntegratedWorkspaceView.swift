@@ -1665,6 +1665,8 @@ struct IntegratedWorkspaceView: View {
             || value == "ローカルパス確認済み"
             || value == "No duplicate endpoint detected"
             || value == "重複する接続先はありません"
+            || value == "OK: in use by loaded model"
+            || value == "OK: ロード済みモデルが使用中"
     }
 
     private func availabilityPill(_ text: String) -> some View {
