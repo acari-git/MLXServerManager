@@ -628,7 +628,7 @@ struct IntegratedWorkspaceView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("MLX Server Manager")
                     .font(.caption.weight(.semibold))
-                Text("Version 23.0.1")
+                Text("Version 23.0.2")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -652,14 +652,8 @@ struct IntegratedWorkspaceView: View {
                 }
                 .frame(width: 28, height: 28)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(strings.text(.settings))
-                        .font(.callout.weight(.semibold))
-                    Text("\(languageDisplayName(viewModel.settings.uiLanguage)) · \(appearanceDisplayName(viewModel.settings.uiAppearance))")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+                Text(strings.text(.settings))
+                    .font(.callout.weight(.semibold))
                 Spacer()
                 Image(systemName: "chevron.up")
                     .font(.caption2.weight(.semibold))
@@ -688,29 +682,19 @@ struct IntegratedWorkspaceView: View {
             Label(strings.text(.settings), systemImage: "gearshape")
                 .font(.headline)
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text(t("Language", "言語"))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Picker(t("Language", "言語"), selection: languageBinding) {
-                    ForEach(AppLanguage.allCases) { option in
-                        Text(languageDisplayName(option)).tag(option)
-                    }
+            Picker(t("Language", "言語"), selection: languageBinding) {
+                ForEach(AppLanguage.allCases) { option in
+                    Text(languageDisplayName(option)).tag(option)
                 }
-                .pickerStyle(.menu)
             }
+            .pickerStyle(.menu)
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text(t("Theme", "テーマ"))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Picker(t("Theme", "テーマ"), selection: appearanceBinding) {
-                    Text(t("System", "システム")).tag("system")
-                    Text(t("Light", "ライト")).tag("light")
-                    Text(t("Dark", "ダーク")).tag("dark")
-                }
-                .pickerStyle(.segmented)
+            Picker(t("Theme", "テーマ"), selection: appearanceBinding) {
+                Text(t("System", "システム")).tag("system")
+                Text(t("Light", "ライト")).tag("light")
+                Text(t("Dark", "ダーク")).tag("dark")
             }
+            .pickerStyle(.menu)
 
             Divider()
 

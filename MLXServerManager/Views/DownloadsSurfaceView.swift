@@ -91,13 +91,6 @@ struct DownloadsSurfaceView: View {
                 }
                 .frame(width: 260)
             }
-
-            HStack(spacing: 10) {
-                downloadStepPill("1", t("Search", "検索"), "magnifyingglass")
-                downloadStepPill("2", t("Preview files", "ファイル確認"), "list.bullet.rectangle")
-                downloadStepPill("3", t("Download", "ダウンロード"), "arrow.down.circle")
-                downloadStepPill("4", t("Open Models", "モデルを開く"), "cube.box")
-            }
         }
         .padding(16)
         .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -167,23 +160,6 @@ struct DownloadsSurfaceView: View {
         .background(Color(nsColor: .textBackgroundColor).opacity(0.72), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
-    private func downloadStepPill(_ number: String, _ title: String, _ systemImage: String) -> some View {
-        HStack(spacing: 6) {
-            Text(number)
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(.white)
-                .frame(width: 18, height: 18)
-                .background(Color.accentColor, in: Circle())
-            Label(title, systemImage: systemImage)
-                .font(.caption.weight(.semibold))
-                .lineLimit(1)
-        }
-        .padding(.vertical, 7)
-        .padding(.horizontal, 9)
-        .frame(maxWidth: .infinity)
-        .background(Color(nsColor: .textBackgroundColor).opacity(0.74), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-    }
-
     @ViewBuilder
     private var recoveryCard: some View {
         if let failed = viewModel.latestFailedHuggingFaceDownloadQueueEntry {
@@ -215,8 +191,11 @@ struct DownloadsSurfaceView: View {
 
     private var downloadEnvironmentCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(t("Download environment", "ダウンロード環境"))
+            Text(t("Download tools", "ダウンロードツール確認"))
                 .font(.headline)
+            Text(t("Checks download prerequisites. Model search is the separate search area below.", "ダウンロードの前提条件を確認します。モデル検索は下の別エリアです。"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
             DetailGrid(rows: [
                 (t("HF access", "HFアクセス"), viewModel.huggingFaceAccessMessage),
                 ("aria2c", viewModel.aria2Availability.displayPath),

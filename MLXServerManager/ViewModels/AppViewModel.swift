@@ -1463,6 +1463,11 @@ final class AppViewModel: ObservableObject {
     private static func processingCapabilityText(from hardwareInfo: [String: String]) -> String {
         let rawCoreText = hardwareInfo["Total Number of Cores"] ?? String(ProcessInfo.processInfo.activeProcessorCount)
         let totalCoreText = rawCoreText.split(separator: " ").first.map(String.init) ?? rawCoreText
+        let rawGPUCoreText = hardwareInfo["GPU Cores"]
+        let gpuCoreText = rawGPUCoreText?.split(separator: " ").first.map(String.init) ?? rawGPUCoreText
+        if let gpuCoreText, !gpuCoreText.isEmpty {
+            return "\(totalCoreText) CPU / \(gpuCoreText) GPU"
+        }
         return "\(totalCoreText) CPU"
     }
 
@@ -1559,9 +1564,9 @@ final class AppViewModel: ObservableObject {
     }
 
     nonisolated private static func formatStorageBytes(_ bytes: Double) -> String {
-        let gigabytes = bytes / 1_073_741_824
-        if gigabytes >= 1024 {
-            return String(format: "%.1f TB", gigabytes / 1024)
+        let gigabytes = bytes / 1_000_000_000
+        if gigabytes >= 1000 {
+            return String(format: "%.1f TB", gigabytes / 1000)
         }
 
         return String(format: "%.0f GB", gigabytes)
