@@ -2295,7 +2295,7 @@ final class AppViewModel: ObservableObject {
 
     func editProfileRequested() {
         guard let selectedModel else {
-            profileEditorMessage = "No model is selected."
+            profileEditorMessage = Self.localizedText(language: settings.uiLanguage, english: "No model is selected.", japanese: "モデルが選択されていません。")
             appendLog("[profile] edit failed: No model is selected.")
             return
         }
@@ -2331,21 +2331,21 @@ final class AppViewModel: ObservableObject {
 
     func exportProfilesRequested() {
         guard !models.isEmpty else {
-            let message = "No model profiles are available to export."
+            let message = Self.localizedText(language: settings.uiLanguage, english: "No model profiles are available to export.", japanese: "エクスポートできるモデルプロファイルがありません。")
             modelProfileExportMessage = message
             appendLog("[profile] export failed: \(message)")
             return
         }
 
         let panel = NSSavePanel()
-        panel.title = "Export Model Profiles"
+        panel.title = Self.localizedText(language: settings.uiLanguage, english: "Export Model Profiles", japanese: "モデルプロファイルをエクスポート")
         panel.nameFieldStringValue = "MLXServerManager-Profiles.json"
         panel.canCreateDirectories = true
         panel.allowedContentTypes = [.json]
 
         let response = panel.runModal()
         guard response == .OK, let url = panel.url else {
-            modelProfileExportMessage = "Export cancelled."
+            modelProfileExportMessage = Self.localizedText(language: settings.uiLanguage, english: "Export cancelled.", japanese: "エクスポートをキャンセルしました。")
             appendLog("[profile] export cancelled.")
             return
         }
@@ -2354,20 +2354,20 @@ final class AppViewModel: ObservableObject {
             let data = try modelProfileExportService.exportData(from: models)
             try data.write(to: url, options: [.atomic])
 
-            let message = "Exported \(models.count) profile(s) to \(url.lastPathComponent)."
+            let message = Self.localizedText(language: settings.uiLanguage, english: "Exported \(models.count) profile(s) to \(url.lastPathComponent).", japanese: "\(models.count)件のプロファイルを\(url.lastPathComponent)へエクスポートしました。")
             modelProfileExportMessage = message
             appendLog("[profile] \(message)")
             appendLog("[profile] export includes profile metadata only. It does not include API keys, tokens, model weights, caches, logs, executable paths, or runtime state.")
         } catch {
             let message = error.localizedDescription
-            modelProfileExportMessage = "Export failed: \(message)"
+            modelProfileExportMessage = Self.localizedText(language: settings.uiLanguage, english: "Export failed: \(message)", japanese: "エクスポートに失敗しました: \(message)")
             appendLog("[profile] export failed: \(message)")
         }
     }
 
     func importProfilesPreviewRequested() {
         let panel = NSOpenPanel()
-        panel.title = "Import Model Profiles Preview"
+        panel.title = Self.localizedText(language: settings.uiLanguage, english: "Import Model Profiles Preview", japanese: "モデルプロファイルのインポートプレビュー")
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
@@ -2375,7 +2375,7 @@ final class AppViewModel: ObservableObject {
 
         let response = panel.runModal()
         guard response == .OK, let url = panel.url else {
-            modelProfileImportMessage = "Import preview cancelled."
+            modelProfileImportMessage = Self.localizedText(language: settings.uiLanguage, english: "Import preview cancelled.", japanese: "インポートプレビューをキャンセルしました。")
             appendLog("[profile] import preview cancelled.")
             return
         }
@@ -2390,7 +2390,7 @@ final class AppViewModel: ObservableObject {
 
             importPreviewResult = result
             isImportPreviewPresented = true
-            modelProfileImportMessage = "Previewed \(result.totalProfiles) profile row(s) from \(result.sourceFileName)."
+            modelProfileImportMessage = Self.localizedText(language: settings.uiLanguage, english: "Previewed \(result.totalProfiles) profile row(s) from \(result.sourceFileName).", japanese: "\(result.sourceFileName)から\(result.totalProfiles)件のプロファイル行をプレビューしました。")
             appendLog("[profile] import preview loaded \(result.sourceFileName): \(result.validProfilesCount) valid, \(result.invalidProfilesCount) invalid, \(result.warningCount) warning(s).")
             appendLog("[profile] import preview only. No profiles were saved, no server lifecycle action was taken, and no external request was made.")
         } catch {
@@ -2402,7 +2402,7 @@ final class AppViewModel: ObservableObject {
 
             importPreviewResult = result
             isImportPreviewPresented = true
-            modelProfileImportMessage = "Import preview failed: \(error.localizedDescription)"
+            modelProfileImportMessage = Self.localizedText(language: settings.uiLanguage, english: "Import preview failed: \(error.localizedDescription)", japanese: "インポートプレビューに失敗しました: \(error.localizedDescription)")
             appendLog("[profile] import preview failed: \(error.localizedDescription)")
         }
     }
@@ -2413,7 +2413,7 @@ final class AppViewModel: ObservableObject {
 
     func importSelectedProfilesRequested(requests: [ImportSelectedProfileRequest]) {
         guard let importPreviewResult else {
-            let message = "No import preview is available."
+            let message = Self.localizedText(language: settings.uiLanguage, english: "No import preview is available.", japanese: "利用できるインポートプレビューがありません。")
             modelProfileImportMessage = message
             appendLog("[profile] import failed: \(message)")
             return
@@ -2430,7 +2430,7 @@ final class AppViewModel: ObservableObject {
         }
 
         guard importResult.didChangeModels else {
-            let message = importResult.messages.last ?? "No profiles were imported or replaced."
+            let message = importResult.messages.last ?? Self.localizedText(language: settings.uiLanguage, english: "No profiles were imported or replaced.", japanese: "インポートまたは置換されたプロファイルはありません。")
             modelProfileImportMessage = message
             return
         }
@@ -2452,7 +2452,7 @@ final class AppViewModel: ObservableObject {
                 appendLog("[profile] selected profile identity updated from \(previousSelectedModelID ?? "unknown") to \(selectionUpdate.selectedModelID ?? "unknown") after Replace.")
             }
 
-            modelProfileImportMessage = "Imported \(importResult.importedCount) profile(s). Renamed \(importResult.renamedCount) profile(s). Replaced \(importResult.replacedCount) profile(s). Skipped \(importResult.skippedCount) profile(s)."
+            modelProfileImportMessage = Self.localizedText(language: settings.uiLanguage, english: "Imported \(importResult.importedCount) profile(s). Renamed \(importResult.renamedCount) profile(s). Replaced \(importResult.replacedCount) profile(s). Skipped \(importResult.skippedCount) profile(s).", japanese: "\(importResult.importedCount)件をインポート、\(importResult.renamedCount)件をリネーム、\(importResult.replacedCount)件を置換、\(importResult.skippedCount)件をスキップしました。")
             appendLog("[profile] profile metadata changes saved to models.json.")
             if selectionUpdate.preservedThroughReplacement {
                 appendLog("[profile] selected profile was preserved through the explicit Replace action. No server lifecycle action was taken.")
@@ -2461,7 +2461,7 @@ final class AppViewModel: ObservableObject {
             }
             isImportPreviewPresented = false
         } catch {
-            modelProfileImportMessage = "Import failed: \(error.localizedDescription)"
+            modelProfileImportMessage = Self.localizedText(language: settings.uiLanguage, english: "Import failed: \(error.localizedDescription)", japanese: "インポートに失敗しました: \(error.localizedDescription)")
             appendLog("[profile] import failed: \(error.localizedDescription)")
         }
     }
@@ -2513,23 +2513,23 @@ final class AppViewModel: ObservableObject {
 
     func deleteProfileRequested() {
         guard let selectedModel else {
-            let message = "No model is selected."
+            let message = Self.localizedText(language: settings.uiLanguage, english: "No model is selected.", japanese: "モデルが選択されていません。")
             profileDeletionMessage = message
-            appendLog("[profile] delete failed: \(message)")
+            appendLog("[profile] delete failed: No model is selected.")
             return
         }
 
         guard models.count > 1 else {
-            let message = "At least one model profile is required."
+            let message = Self.localizedText(language: settings.uiLanguage, english: "At least one model profile is required.", japanese: "少なくとも1件のモデルプロファイルが必要です。")
             profileDeletionMessage = message
-            appendLog("[profile] delete failed: \(message)")
+            appendLog("[profile] delete failed: At least one model profile is required.")
             return
         }
 
         guard !isManagedProcessRunning else {
-            let message = "Stop the managed server before deleting profiles."
+            let message = Self.localizedText(language: settings.uiLanguage, english: "Stop the managed server before deleting profiles.", japanese: "プロファイルを削除する前に管理サーバーを停止してください。")
             profileDeletionMessage = message
-            appendLog("[profile] delete failed: \(message)")
+            appendLog("[profile] delete failed: Stop the managed server before deleting profiles.")
             return
         }
 
@@ -2547,10 +2547,10 @@ final class AppViewModel: ObservableObject {
 
     func confirmDeleteProfile() {
         guard let pendingDeleteModelID else {
-            let message = "No model profile is pending deletion."
+            let message = Self.localizedText(language: settings.uiLanguage, english: "No model profile is pending deletion.", japanese: "削除待ちのモデルプロファイルはありません。")
             profileDeletionMessage = message
             isDeleteProfileConfirmationPresented = false
-            appendLog("[profile] delete failed: \(message)")
+            appendLog("[profile] delete failed: No model profile is pending deletion.")
             return
         }
 
