@@ -583,7 +583,7 @@ final class AppViewModel: ObservableObject {
     }
 
     var selectedModelSafetySummary: String {
-        let warningCount = selectedModelSafetyRows.filter { !$0.1.localizedCaseInsensitiveContains("OK") && !$0.1.localizedCaseInsensitiveContains("Available") && !$0.1.localizedCaseInsensitiveContains("Ready") }.count
+        let warningCount = selectedModelSafetyRows.filter { isSafetyWarning(label: $0.0, value: $0.1) }.count
         if settings.uiLanguage.resolved == .english {
             return warningCount == 0 ? "Safety: no issues" : "Safety: \(warningCount) warning(s)"
         }
@@ -652,6 +652,28 @@ final class AppViewModel: ObservableObject {
                 : Self.localizedText(language: settings.uiLanguage, english: "Missing local path", japanese: "Missing local path")
         }
         return model.modelID.contains("/") ? "Needs review: HF ID" : "Needs review"
+    }
+
+    private func isSafetyWarning(label: String, value: String) -> Bool {
+        let normalized = value.lowercased()
+        if normalized.contains("missing")
+            || normalized.contains("invalid")
+            || normalized.contains("failed")
+            || normalized.contains("not executable")
+            || normalized.contains("要確認")
+            || normalized.contains("未検出")
+            || normalized.contains("未設定")
+            || normalized.contains("無効")
+            || normalized.contains("失敗") {
+            return true
+        }
+        if normalized.contains("stop before") || normalized.contains("停止") {
+            return true
+        }
+        if normalized == "busy" || normalized == "使用中" {
+            return true
+        }
+        return false
     }
 
     private func portSafetyText(for model: ModelConfig) -> String {
