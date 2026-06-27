@@ -104,10 +104,10 @@ final class AppViewModel: ObservableObject {
     @Published var selectedHuggingFacePreviewFileIDs: Set<String> = []
     @Published var huggingFaceAccessInput = ""
     @Published private(set) var isHuggingFaceAccessSaved = false
-    @Published private(set) var huggingFaceAccessMessage = "No saved Hugging Face access value. Public repos can still be previewed."
+    @Published private(set) var huggingFaceAccessMessage = AppViewModel.defaultHuggingFaceAccessMessage(language: .system)
     @Published private(set) var isHuggingFaceCLIAvailable = false
-    @Published private(set) var huggingFaceCLIPath = "Not checked"
-    @Published private(set) var huggingFaceCLIMessage = "Check Hugging Face CLI before downloading."
+    @Published private(set) var huggingFaceCLIPath = AppViewModel.notCheckedText(language: .system)
+    @Published private(set) var huggingFaceCLIMessage = AppViewModel.defaultHuggingFaceCLIMessage(language: .system)
     @Published private(set) var aria2Availability = Aria2AvailabilityChecker.check()
     @Published var enableDownloadAutoRestart = false
     @Published var lowSpeedRestartThresholdText = "50K"
@@ -115,16 +115,16 @@ final class AppViewModel: ObservableObject {
     @Published var localModelDisplayName = ""
     @Published var localModelPortText = String(AppSettings.defaults.defaultPort)
     @Published var localModelEnableThinking = false
-    @Published private(set) var localModelMessage = "Paste an existing local model folder path, then add it to the model list."
+    @Published private(set) var localModelMessage = AppViewModel.defaultLocalModelMessage(language: .system)
     @Published var huggingFaceSearchQuery = ""
     @Published var showOnlyMLXLikelySearchResults = false
-    @Published private(set) var huggingFaceSearchMessage = "Search Hugging Face explicitly, then choose a result for the download form."
+    @Published private(set) var huggingFaceSearchMessage = AppViewModel.defaultHuggingFaceSearchMessage(language: .system)
     @Published private(set) var huggingFaceSearchResults: [HuggingFaceSearchResult] = []
     private let systemProfilerHardwareInfo = AppViewModel.loadSystemProfilerHardwareInfo()
     @Published private(set) var selectedHuggingFaceSearchResult: HuggingFaceSearchResult?
     @Published private(set) var isHuggingFaceSearching = false
     @Published private(set) var isSpeedTestRunning = false
-    @Published private(set) var latestSpeedTestMessage = "Speed Test has not run yet."
+    @Published private(set) var latestSpeedTestMessage = AppViewModel.defaultSpeedTestMessage(language: .system)
     @Published private(set) var latestSpeedTestDurationMS: Double?
     @Published private(set) var latestBenchmarkResult: BenchmarkResult?
     @Published private(set) var benchmarkHistory: [BenchmarkResult] = []
@@ -157,6 +157,54 @@ final class AppViewModel: ObservableObject {
         "[info] Start, Stop, and Restart are available.",
         "[info] Memory monitoring starts after managed process launch."
     ]
+
+    private static func localizedText(language: AppLanguage, english: String, japanese: String) -> String {
+        AppLocalization(language: language).text(english: english, japanese: japanese)
+    }
+
+    private static func defaultHuggingFaceAccessMessage(language: AppLanguage) -> String {
+        localizedText(
+            language: language,
+            english: "No saved Hugging Face access value. Public repos can still be previewed.",
+            japanese: "保存済みのHugging Faceアクセス値はありません。公開リポジトリは引き続きプレビューできます。"
+        )
+    }
+
+    private static func defaultHuggingFaceCLIMessage(language: AppLanguage) -> String {
+        localizedText(
+            language: language,
+            english: "Check Hugging Face CLI before downloading.",
+            japanese: "ダウンロード前にHugging Face CLIを確認してください。"
+        )
+    }
+
+    private static func defaultLocalModelMessage(language: AppLanguage) -> String {
+        localizedText(
+            language: language,
+            english: "Paste an existing local model folder path, then add it to the model list.",
+            japanese: "既存のローカルモデルフォルダパスを貼り付けてから、モデル一覧へ追加してください。"
+        )
+    }
+
+    private static func defaultHuggingFaceSearchMessage(language: AppLanguage) -> String {
+        localizedText(
+            language: language,
+            english: "Search Hugging Face explicitly, then choose a result for the download form.",
+            japanese: "Hugging Faceを明示的に検索し、結果を選んでダウンロードフォームへ反映してください。"
+        )
+    }
+
+    private static func defaultSpeedTestMessage(language: AppLanguage) -> String {
+        localizedText(
+            language: language,
+            english: "Speed Test has not run yet.",
+            japanese: "スピードテストはまだ実行されていません。"
+        )
+    }
+
+    private static func notCheckedText(language: AppLanguage) -> String {
+        localizedText(language: language, english: "Not checked", japanese: "未確認")
+    }
 
     init(
         settingsStore: SettingsStore? = nil,
@@ -194,6 +242,7 @@ final class AppViewModel: ObservableObject {
         self.logText = logBuffer.text
         self.logEntries = logBuffer.entries
         loadSettings()
+        refreshDefaultUserFacingMessagesForCurrentLanguage()
         huggingFaceDownloadDraft = .defaults(
             defaultHost: settings.defaultHost,
             defaultPort: settings.defaultPort
@@ -251,6 +300,16 @@ final class AppViewModel: ObservableObject {
             }
 
         return sortedModels(filtered)
+    }
+
+    private func refreshDefaultUserFacingMessagesForCurrentLanguage() {
+        let language = settings.uiLanguage
+        huggingFaceAccessMessage = Self.defaultHuggingFaceAccessMessage(language: language)
+        huggingFaceCLIPath = Self.notCheckedText(language: language)
+        huggingFaceCLIMessage = Self.defaultHuggingFaceCLIMessage(language: language)
+        localModelMessage = Self.defaultLocalModelMessage(language: language)
+        huggingFaceSearchMessage = Self.defaultHuggingFaceSearchMessage(language: language)
+        latestSpeedTestMessage = Self.defaultSpeedTestMessage(language: language)
     }
 
     func sourceLabel(for model: ModelConfig) -> String {
@@ -1706,6 +1765,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func saveSettingsRequested() {
+        refreshDefaultUserFacingMessagesForCurrentLanguage()
         do {
             try settingsStore.save(settings: settings, models: models)
             appendLog("[settings] Saved settings.json and models.json to \(settingsDirectoryPath).")
@@ -1964,7 +2024,11 @@ final class AppViewModel: ObservableObject {
     func saveHuggingFaceAccessRequested() {
         let value = huggingFaceAccessInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty else {
-            huggingFaceAccessMessage = "Enter a value before saving."
+            huggingFaceAccessMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Enter a value before saving.",
+                japanese: "保存前に値を入力してください。"
+            )
             return
         }
         huggingFaceCredentialStore.saveValue(value)
@@ -1984,15 +2048,19 @@ final class AppViewModel: ObservableObject {
     private func refreshHuggingFaceAccessStatus() {
         isHuggingFaceAccessSaved = huggingFaceCredentialStore.readValue() != nil
         huggingFaceAccessMessage = isHuggingFaceAccessSaved
-            ? "Saved locally. The value is used for gated/private Hugging Face requests and is not shown again."
-            : "No saved Hugging Face access value. Public repos can still be previewed."
+            ? Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Saved locally. The value is used for gated/private Hugging Face requests and is not shown again.",
+                japanese: "ローカルに保存済みです。この値はgated/private Hugging Faceリクエストに使用され、再表示されません。"
+            )
+            : Self.defaultHuggingFaceAccessMessage(language: settings.uiLanguage)
     }
 
     private func refreshHuggingFaceCLIStatus(logResult: Bool) {
         if let resolution = HuggingFaceDownloadManager.resolveCLI() {
             isHuggingFaceCLIAvailable = true
             huggingFaceCLIPath = resolution.displayPath
-            huggingFaceCLIMessage = "Available"
+            huggingFaceCLIMessage = Self.localizedText(language: settings.uiLanguage, english: "Available", japanese: "利用可能")
             if logResult {
                 appendLog("[hf] CLI detected at \(resolution.displayPath).")
             }
@@ -2002,8 +2070,12 @@ final class AppViewModel: ObservableObject {
                 .map { ModelAvailabilityPathFormatter.compact(path: $0) }
                 .joined(separator: ", ")
             isHuggingFaceCLIAvailable = false
-            huggingFaceCLIPath = "Not found"
-            huggingFaceCLIMessage = "Install Hugging Face CLI, then press Retry CLI or restart the app."
+            huggingFaceCLIPath = Self.localizedText(language: settings.uiLanguage, english: "Not found", japanese: "見つかりません")
+            huggingFaceCLIMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Install Hugging Face CLI, then press Retry CLI or restart the app.",
+                japanese: "Hugging Face CLIをインストールしてから、CLI再確認を押すかアプリを再起動してください。"
+            )
             if logResult {
                 appendLog("[hf] CLI not found. Checked: \(checked)")
             }
@@ -2015,7 +2087,11 @@ final class AppViewModel: ObservableObject {
         guard !query.isEmpty else {
             huggingFaceSearchResults = []
             selectedHuggingFaceSearchResult = nil
-            huggingFaceSearchMessage = "Enter a search term before searching."
+            huggingFaceSearchMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Enter a search term before searching.",
+                japanese: "検索前に検索語を入力してください。"
+            )
             appendLog("[hf] search skipped: empty query.")
             return
         }
