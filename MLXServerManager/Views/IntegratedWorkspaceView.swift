@@ -637,7 +637,7 @@ struct IntegratedWorkspaceView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("MLX Server Manager")
                     .font(.caption.weight(.semibold))
-                Text("Version 22.26.0")
+                Text("Version 22.27.0")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -770,6 +770,9 @@ struct IntegratedWorkspaceView: View {
         switch selectedDestination {
         case .models:
             VStack(spacing: 0) {
+                workspaceOverviewStrip
+                    .padding(14)
+                Divider()
                 modelListPanel
                     .frame(maxHeight: isBottomPanelVisible ? .infinity : .infinity)
                 if isBottomPanelVisible {
@@ -794,6 +797,78 @@ struct IntegratedWorkspaceView: View {
                 onClear: viewModel.clearLogsRequested
             )
         }
+    }
+
+    private var workspaceOverviewStrip: some View {
+        HStack(alignment: .top, spacing: 10) {
+            workspaceRouteCard(
+                title: t("Models", "モデル一覧"),
+                value: String(viewModel.visibleModels.count),
+                detail: viewModel.runningModelText,
+                systemImage: "cube.box",
+                destination: .models
+            )
+            workspaceRouteCard(
+                title: strings.text(.download),
+                value: viewModel.huggingFaceDownloadStatus.phase.localizedTitle(language: viewModel.settings.uiLanguage),
+                detail: viewModel.huggingFaceDownloadQueueSummary,
+                systemImage: "arrow.down.circle",
+                destination: .downloads
+            )
+            workspaceRouteCard(
+                title: strings.text(.logs),
+                value: String(viewModel.logEntries.count),
+                detail: t("Lifecycle and diagnostics", "ライフサイクルと診断"),
+                systemImage: "doc.text.magnifyingglass",
+                destination: .logs
+            )
+            workspaceRouteCard(
+                title: strings.text(.settings),
+                value: appearanceDisplayName(viewModel.settings.uiAppearance),
+                detail: t("Language, color, theme", "言語、カラー、テーマ"),
+                systemImage: "gearshape",
+                destination: .settings
+            )
+        }
+        .accessibilityIdentifier("integrated-workspace-overview-strip")
+    }
+
+    private func workspaceRouteCard(
+        title: String,
+        value: String,
+        detail: String,
+        systemImage: String,
+        destination: IntegratedWorkspaceDestination
+    ) -> some View {
+        Button {
+            selectedDestination = destination
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                Label(title, systemImage: systemImage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .font(.callout.weight(.semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Text(detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .background(
+                selectedDestination == destination ? activeAccentColor.opacity(0.12) : Color(nsColor: .controlBackgroundColor).opacity(0.72),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(selectedDestination == destination ? activeAccentColor.opacity(0.42) : Color.primary.opacity(0.08))
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private var modelListPanel: some View {
@@ -1254,6 +1329,10 @@ struct IntegratedWorkspaceView: View {
                     systemImage: "bolt.horizontal"
                 )
             }
+
+            Text(t("Panel order: model details, connection target, recovery, and agent copy values.", "ペイン順序: モデル詳細、接続先、復旧、エージェントコピー値。"))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
         .padding(12)
         .background(Color(nsColor: .textBackgroundColor).opacity(0.72), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
