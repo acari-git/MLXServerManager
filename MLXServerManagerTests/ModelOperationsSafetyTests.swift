@@ -30,6 +30,7 @@ final class ModelOperationsSafetyTests: XCTestCase {
         try store.save(settings: .defaults, models: [first, second])
 
         let viewModel = AppViewModel(settingsStore: store)
+        viewModel.settings.uiLanguage = .english
 
         XCTAssertEqual(viewModel.duplicateProfileWarning(for: first), "Duplicate endpoint")
         XCTAssertEqual(viewModel.duplicateProfileWarning(for: second), "Duplicate endpoint")

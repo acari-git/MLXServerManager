@@ -598,7 +598,7 @@ final class AppViewModel: ObservableObject {
 
     private var executableSafetyText: String {
         let executablePath = settings.mlxServerExecutablePath.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !executablePath.isEmpty else { return "Missing executable path" }
+        guard !executablePath.isEmpty else { return Self.localizedText(language: settings.uiLanguage, english: "Missing executable path", japanese: "実行ファイルパスが未設定") }
         return FileManager.default.isExecutableFile(atPath: executablePath) ? "OK" : "Missing or not executable"
     }
 
@@ -615,13 +615,13 @@ final class AppViewModel: ObservableObject {
     private func portSafetyText(host: String, port: Int) -> String {
         switch portChecker.check(host: host, port: port) {
         case .available:
-            return "Available"
+            return Self.localizedText(language: settings.uiLanguage, english: "Available", japanese: "利用可能")
         case .busy:
-            return "Busy"
+            return Self.localizedText(language: settings.uiLanguage, english: "Busy", japanese: "使用中")
         case let .invalidInput(message):
-            return "Invalid: \(message)"
+            return Self.localizedText(language: settings.uiLanguage, english: "Invalid: \(message)", japanese: "無効: \(message)")
         case let .failed(_, _, message):
-            return "Check failed: \(message)"
+            return Self.localizedText(language: settings.uiLanguage, english: "Check failed: \(message)", japanese: "確認失敗: \(message)")
         }
     }
 
@@ -629,25 +629,25 @@ final class AppViewModel: ObservableObject {
         let duplicateName = models.contains { $0.id != model.id && $0.displayName == model.displayName }
         let duplicateModelID = models.contains { $0.id != model.id && $0.modelID == model.modelID }
         let duplicateEndpoint = models.contains { $0.id != model.id && $0.host == model.host && $0.serverPort == model.serverPort }
-        if duplicateName { return "Duplicate display name" }
-        if duplicateModelID { return "Duplicate model ID" }
-        if duplicateEndpoint { return "Duplicate endpoint" }
+        if duplicateName { return Self.localizedText(language: settings.uiLanguage, english: "Duplicate display name", japanese: "表示名が重複") }
+        if duplicateModelID { return Self.localizedText(language: settings.uiLanguage, english: "Duplicate model ID", japanese: "Model IDが重複") }
+        if duplicateEndpoint { return Self.localizedText(language: settings.uiLanguage, english: "Duplicate endpoint", japanese: "エンドポイントが重複") }
         return nil
     }
 
     func runtimeEditingSafetyText(for model: ModelConfig) -> String {
-        guard isManagedProcessRunning, model.id == runningModelID else { return "Ready" }
-        return "Stop before runtime-critical edits"
+        guard isManagedProcessRunning, model.id == runningModelID else { return Self.localizedText(language: settings.uiLanguage, english: "Ready", japanese: "Ready") }
+        return Self.localizedText(language: settings.uiLanguage, english: "Stop before runtime-critical edits", japanese: "ランタイム重要項目の編集前に停止してください")
     }
 
     private func recoveryGuidance(for message: String) -> String {
         let lower = message.lowercased()
-        if lower.contains("executable") { return "Executable problem. Check Settings and run Diagnostics." }
-        if lower.contains("model path") || lower.contains("missing") { return "Model problem. Check the selected model path or Hugging Face ID." }
-        if lower.contains("port") { return "Port problem. Check port safety or choose another port." }
-        if lower.contains("permission") { return "Permission problem. Check executable and model folder permissions." }
-        if lower.contains("timed out") || lower.contains("ready") { return "Readiness problem. Wait longer, run Ready Check, or inspect logs." }
-        return "Inspect logs and copy troubleshooting context."
+        if lower.contains("executable") { return Self.localizedText(language: settings.uiLanguage, english: "Executable problem. Check Settings and run Diagnostics.", japanese: "実行ファイルの問題です。設定を確認し、診断を実行してください。") }
+        if lower.contains("model path") || lower.contains("missing") { return Self.localizedText(language: settings.uiLanguage, english: "Model problem. Check the selected model path or Hugging Face ID.", japanese: "モデルの問題です。選択モデルのパスまたはHugging Face IDを確認してください。") }
+        if lower.contains("port") { return Self.localizedText(language: settings.uiLanguage, english: "Port problem. Check port safety or choose another port.", japanese: "ポートの問題です。ポート安全性を確認するか、別のポートを選択してください。") }
+        if lower.contains("permission") { return Self.localizedText(language: settings.uiLanguage, english: "Permission problem. Check executable and model folder permissions.", japanese: "権限の問題です。実行ファイルとモデルフォルダの権限を確認してください。") }
+        if lower.contains("timed out") || lower.contains("ready") { return Self.localizedText(language: settings.uiLanguage, english: "Readiness problem. Wait longer, run Ready Check, or inspect logs.", japanese: "Ready確認の問題です。少し待つか、Ready確認を実行し、ログを確認してください。") }
+        return Self.localizedText(language: settings.uiLanguage, english: "Inspect logs and copy troubleshooting context.", japanese: "ログを確認し、トラブルシューティング情報をコピーしてください。")
     }
 
     var latestSpeedTestSummary: String {
@@ -663,12 +663,12 @@ final class AppViewModel: ObservableObject {
         let average = successfulLatencies.isEmpty
             ? "-"
             : "\(Int(successfulLatencies.reduce(0, +) / Double(successfulLatencies.count))) ms"
-        return "Runs: \(benchmarkHistory.count), best \(best), average \(average), failed \(failedCount)"
+        return Self.localizedText(language: settings.uiLanguage, english: "Runs: \(benchmarkHistory.count), best \(best), average \(average), failed \(failedCount)", japanese: "実行: \(benchmarkHistory.count)回、最良 \(best)、平均 \(average)、失敗 \(failedCount)回")
     }
 
     var selectedLaunchCommandPreview: String {
         guard let selectedModel else {
-            return "Select a profile to preview the launch command."
+            return Self.localizedText(language: settings.uiLanguage, english: "Select a profile to preview the launch command.", japanese: "起動コマンドをプレビューするにはプロファイルを選択してください。")
         }
         return LaunchCommandBuilder.command(
             executablePath: settings.mlxServerExecutablePath,
@@ -678,7 +678,7 @@ final class AppViewModel: ObservableObject {
 
     var selectedAdvancedLaunchOptionsSummary: String {
         guard let options = selectedModel?.advancedLaunchOptions, !options.isEmpty else {
-            return "No advanced launch options configured."
+            return Self.localizedText(language: settings.uiLanguage, english: "No advanced launch options configured.", japanese: "詳細起動オプションは設定されていません。")
         }
         let fields: [(String, String?)] = [
             ("Raw extra args", options.rawExtraArgs),
@@ -720,13 +720,13 @@ final class AppViewModel: ObservableObject {
             return Self.localizedText(language: settings.uiLanguage, english: "Server is not running. Press Start before Speed Test.", japanese: "サーバーは実行されていません。スピードテスト前に起動してください。")
         }
         if runtimeSelectionWarning != nil {
-            return "Selected profile differs from the running profile. Stop → Start or Restart before measuring."
+            return Self.localizedText(language: settings.uiLanguage, english: "Selected profile differs from the running profile. Stop → Start or Restart before measuring.", japanese: "選択プロファイルが実行中プロファイルと異なります。測定前に停止→起動、または再起動してください。")
         }
         if message.contains("timed out") {
-            return "The server may still be loading the model or the model may be too heavy. Wait, then retry."
+            return Self.localizedText(language: settings.uiLanguage, english: "The server may still be loading the model or the model may be too heavy. Wait, then retry.", japanese: "サーバーがまだモデルをロード中、またはモデルが重すぎる可能性があります。少し待ってから再試行してください。")
         }
         if message.contains("http") {
-            return "The endpoint responded but was not ready. Confirm the port and run Ready Check again."
+            return Self.localizedText(language: settings.uiLanguage, english: "The endpoint responded but was not ready. Confirm the port and run Ready Check again.", japanese: "エンドポイントは応答しましたがReadyではありません。ポートを確認し、Ready確認を再実行してください。")
         }
         return Self.localizedText(language: settings.uiLanguage, english: "Check runtime diagnostics and logs, then retry Speed Test.", japanese: "ランタイム診断とログを確認してから、スピードテストを再試行してください。")
     }
@@ -917,7 +917,7 @@ final class AppViewModel: ObservableObject {
         let completed = huggingFaceDownloadQueue.filter { $0.phase == .completed }.count
         let failed = huggingFaceDownloadQueue.filter { $0.phase == .failed }.count
         let cancelled = huggingFaceDownloadQueue.filter { $0.phase == .cancelled }.count
-        return "Session downloads: \(huggingFaceDownloadQueue.count), completed \(completed), failed \(failed), cancelled \(cancelled)"
+        return Self.localizedText(language: settings.uiLanguage, english: "Session downloads: \(huggingFaceDownloadQueue.count), completed \(completed), failed \(failed), cancelled \(cancelled)", japanese: "セッションダウンロード: \(huggingFaceDownloadQueue.count)件、完了 \(completed)、失敗 \(failed)、キャンセル \(cancelled)")
     }
 
     var canRetryHuggingFaceDownload: Bool {
@@ -1107,10 +1107,10 @@ final class AppViewModel: ObservableObject {
 
     var runningModelText: String {
         guard let runningModelID else {
-            return "Running Model: Not running"
+            return Self.localizedText(language: settings.uiLanguage, english: "Running Model: Not running", japanese: "実行中モデル: 未実行")
         }
 
-        return "Running Model: \(runningModelID)"
+        return Self.localizedText(language: settings.uiLanguage, english: "Running Model: \(runningModelID)", japanese: "実行中モデル: \(runningModelID)")
     }
 
     var restartRequired: Bool {
@@ -1133,7 +1133,7 @@ final class AppViewModel: ObservableObject {
             ? "Advanced Launch Options: not included"
             : "Advanced Launch Options: included for \(advancedCount) profile(s)"
 
-        return "\(models.count) profile(s). \(advancedText). Export does not start or stop servers."
+        return Self.localizedText(language: settings.uiLanguage, english: "\(models.count) profile(s). \(advancedText). Export does not start or stop servers.", japanese: "\(models.count)件のプロファイル。\(advancedText)。エクスポートはサーバーを起動・停止しません。")
     }
 
     var memoryUsageText: String {
@@ -1561,24 +1561,24 @@ final class AppViewModel: ObservableObject {
         do {
             return try settingsStore.settingsDirectoryURL.path
         } catch {
-            return "Application Support directory unavailable"
+            return Self.localizedText(language: settings.uiLanguage, english: "Application Support directory unavailable", japanese: "Application Supportディレクトリを利用できません")
         }
     }
 
     var diagnosticsSummaryText: String {
         guard diagnosticsDidRun else {
-            return "Not run"
+            return Self.localizedText(language: settings.uiLanguage, english: "Not run", japanese: "未実行")
         }
 
         let passCount = diagnosticsResults.filter { $0.status == .pass }.count
         let failureCount = diagnosticsResults.filter { $0.status == .fail }.count
         let warningCount = diagnosticsResults.filter { $0.status == .warning }.count
-        return "\(passCount) pass(es), \(warningCount) warning(s), \(failureCount) failure(s)"
+        return Self.localizedText(language: settings.uiLanguage, english: "\(passCount) pass(es), \(warningCount) warning(s), \(failureCount) failure(s)", japanese: "成功 \(passCount)件、警告 \(warningCount)件、失敗 \(failureCount)件")
     }
 
     var menuBarTitle: String {
         if restartRequired {
-            return "MLX: \(runtimeState.menuBarStatus) - restart required"
+            return Self.localizedText(language: settings.uiLanguage, english: "MLX: \(runtimeState.menuBarStatus) - restart required", japanese: "MLX: \(runtimeState.menuBarStatus) - 再起動が必要")
         }
 
         return "MLX: \(runtimeState.menuBarStatus)"
@@ -2977,22 +2977,22 @@ final class AppViewModel: ObservableObject {
         let message = error.localizedDescription
         let lowercased = message.lowercased()
         if lowercased.contains("command is not available") || lowercased.contains("no such file") {
-            return "Hugging Face CLI was not found. Install `hf`, then press Retry CLI."
+            return Self.localizedText(language: settings.uiLanguage, english: "Hugging Face CLI was not found. Install `hf`, then press Retry CLI.", japanese: "Hugging Face CLIが見つかりません。`hf`をインストールしてからCLI再確認を押してください。")
         }
         if lowercased.contains("401") || lowercased.contains("403") || lowercased.contains("gated") || lowercased.contains("unauthorized") {
-            return "This may be gated or require authentication. Open the model page in a browser and confirm access."
+            return Self.localizedText(language: settings.uiLanguage, english: "This may be gated or require authentication. Open the model page in a browser and confirm access.", japanese: "ゲート付き、または認証が必要な可能性があります。ブラウザでモデルページを開き、アクセス権を確認してください。")
         }
         if lowercased.contains("404") || lowercased.contains("not found") || lowercased.contains("invalid") {
-            return "Repository was not found. Confirm the model ID or choose another search result."
+            return Self.localizedText(language: settings.uiLanguage, english: "Repository was not found. Confirm the model ID or choose another search result.", japanese: "リポジトリが見つかりません。Model IDを確認するか、別の検索結果を選択してください。")
         }
         if lowercased.contains("permission") || lowercased.contains("denied") {
-            return "Permission denied. Choose another save folder or check folder permissions."
+            return Self.localizedText(language: settings.uiLanguage, english: "Permission denied. Choose another save folder or check folder permissions.", japanese: "権限がありません。別の保存フォルダを選択するか、フォルダ権限を確認してください。")
         }
         if lowercased.contains("network") || lowercased.contains("timed out") || lowercased.contains("offline") || lowercased.contains("could not resolve") {
-            return "Network failure. Check the connection and retry the download."
+            return Self.localizedText(language: settings.uiLanguage, english: "Network failure. Check the connection and retry the download.", japanese: "ネットワーク障害です。接続を確認し、ダウンロードを再試行してください。")
         }
         if lowercased.contains("disk") || lowercased.contains("space") || lowercased.contains("no space") {
-            return "Disk or destination problem. Check free space and the save folder."
+            return Self.localizedText(language: settings.uiLanguage, english: "Disk or destination problem. Check free space and the save folder.", japanese: "ディスクまたは保存先の問題です。空き容量と保存フォルダを確認してください。")
         }
         return message
     }
