@@ -95,7 +95,8 @@ struct DashboardOverviewView: View {
                 DashboardProfileImportExportCard(
                     selectedModel: selectedModel,
                     targetSummary: targetSummary,
-                    exportSummaryText: exportSummaryText
+                    exportSummaryText: exportSummaryText,
+                    language: language
                 )
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
@@ -1267,10 +1268,19 @@ struct DashboardProfileImportExportCard: View {
     let selectedModel: ModelConfig?
     let targetSummary: ConnectionTargetSummary
     let exportSummaryText: String
+    var language: AppLanguage = .system
+
+    private var l10n: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        l10n.text(english: english, japanese: japanese)
+    }
 
     var body: some View {
         DashboardStatusCard(
-            title: "Profiles & Import / Export",
+            title: t("Profiles & Import / Export", "プロファイルとインポート/エクスポート"),
             systemImage: "list.bullet.rectangle",
             accentColor: .blue
         ) {
@@ -1288,26 +1298,26 @@ struct DashboardProfileImportExportCard: View {
                 Divider()
 
                 HStack(alignment: .top, spacing: 12) {
-                    DashboardKeyValueRow(label: "Selected Profile", value: display.selectedProfile)
+                    DashboardKeyValueRow(label: t("Selected Profile", "選択プロファイル"), value: display.selectedProfile)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    DashboardKeyValueRow(label: "Profile Endpoint", value: display.profileEndpoint)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                HStack(alignment: .top, spacing: 12) {
-                    DashboardKeyValueRow(label: "Current Target", value: display.currentTarget)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    DashboardKeyValueRow(label: "Relationship", value: display.relationship)
+                    DashboardKeyValueRow(label: t("Profile Endpoint", "プロファイルエンドポイント"), value: display.profileEndpoint)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 HStack(alignment: .top, spacing: 12) {
-                    DashboardKeyValueRow(label: "Export", value: display.exportSummary)
+                    DashboardKeyValueRow(label: t("Current Target", "現在の接続先"), value: display.currentTarget)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    DashboardKeyValueRow(label: "Import", value: display.importSummary)
+                    DashboardKeyValueRow(label: t("Relationship", "関係"), value: display.relationship)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack(alignment: .top, spacing: 12) {
+                    DashboardKeyValueRow(label: t("Export", "エクスポート"), value: display.exportSummary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    DashboardKeyValueRow(label: t("Import", "インポート"), value: display.importSummary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
@@ -1323,7 +1333,8 @@ struct DashboardProfileImportExportCard: View {
         DashboardProfileImportExportDisplay(
             selectedModel: selectedModel,
             targetSummary: targetSummary,
-            exportSummaryText: exportSummaryText
+            exportSummaryText: exportSummaryText,
+            language: language
         )
     }
 }
@@ -1342,57 +1353,61 @@ private struct DashboardProfileImportExportDisplay {
     init(
         selectedModel: ModelConfig?,
         targetSummary: ConnectionTargetSummary,
-        exportSummaryText: String
+        exportSummaryText: String,
+        language: AppLanguage = .system
     ) {
+        let l10n = AppLocalization(language: language)
         if let selectedModel {
             let displayName = selectedModel.displayName.isEmpty
                 ? selectedModel.modelID
                 : selectedModel.displayName
             let profileBaseURL = "http://\(selectedModel.host):\(selectedModel.serverPort)/v1"
             let advancedText = selectedModel.advancedLaunchOptions?.isEmpty == false
-                ? "Advanced options set"
-                : "Simple launch defaults"
+                ? l10n.text(english: "Advanced options set", japanese: "詳細オプションあり")
+                : l10n.text(english: "Simple launch defaults", japanese: "シンプルな起動既定値")
 
-            title = "Selected profile metadata"
-            message = "Selected profile is saved launch/configuration metadata. Current target is the active managed or adopted endpoint."
+            title = l10n.text(english: "Selected profile metadata", japanese: "選択プロファイルメタデータ")
+            message = l10n.text(english: "Selected profile is saved launch/configuration metadata. Current target is the active managed or adopted endpoint.", japanese: "選択プロファイルは保存済みの起動/設定メタデータです。現在の接続先は有効な管理エンドポイントまたは採用済みエンドポイントです。")
             selectedProfile = "\(displayName) - \(selectedModel.modelID)"
             profileEndpoint = "\(selectedModel.host):\(selectedModel.serverPort) (\(advancedText))"
             currentTarget = "\(targetSummary.targetType) - \(targetSummary.baseURL)"
             relationship = Self.relationshipText(
                 profileBaseURL: profileBaseURL,
-                targetSummary: targetSummary
+                targetSummary: targetSummary,
+                l10n: l10n
             )
         } else {
-            title = "No selected profile"
-            message = "Create or import a profile before starting a managed server."
-            selectedProfile = "No profile selected"
-            profileEndpoint = "Unavailable"
+            title = l10n.text(english: "No selected profile", japanese: "選択プロファイルなし")
+            message = l10n.text(english: "Create or import a profile before starting a managed server.", japanese: "管理サーバーを起動する前にプロファイルを作成またはインポートしてください。")
+            selectedProfile = l10n.text(english: "No profile selected", japanese: "プロファイルが選択されていません")
+            profileEndpoint = l10n.text(english: "Unavailable", japanese: "利用不可")
             currentTarget = "\(targetSummary.targetType) - \(targetSummary.baseURL)"
-            relationship = "A profile can be selected even when no managed server is running."
+            relationship = l10n.text(english: "A profile can be selected even when no managed server is running.", japanese: "管理サーバーが実行されていない場合でもプロファイルは選択できます。")
         }
 
-        exportSummary = "\(exportSummaryText) Metadata only: profile names, model IDs, endpoints, and launch options when present."
-        importSummary = "Preview validates first. Import Selected writes selected valid metadata. Rename changes imported display name; Replace updates one unambiguous local profile."
-        safetyNote = "Import / Export does not download models, delete model files, import secrets, start servers, stop servers, or change external process ownership."
+        exportSummary = l10n.text(english: "\(exportSummaryText) Metadata only: profile names, model IDs, endpoints, and launch options when present.", japanese: "\(exportSummaryText) メタデータのみ: プロファイル名、Model ID、エンドポイント、存在する場合は起動オプション。")
+        importSummary = l10n.text(english: "Preview validates first. Import Selected writes selected valid metadata. Rename changes imported display name; Replace updates one unambiguous local profile.", japanese: "先にプレビューで検証します。選択プロファイルをインポートすると、選択済みの有効なメタデータを書き込みます。リネームはインポート表示名を変更し、置換は曖昧でないローカルプロファイル1件を更新します。")
+        safetyNote = l10n.text(english: "Import / Export does not download models, delete model files, import secrets, start servers, stop servers, or change external process ownership.", japanese: "インポート/エクスポートはモデルのダウンロード、モデルファイル削除、シークレットのインポート、サーバー起動、サーバー停止、外部プロセス所有権の変更を行いません。")
     }
 
     private static func relationshipText(
         profileBaseURL: String,
-        targetSummary: ConnectionTargetSummary
+        targetSummary: ConnectionTargetSummary,
+        l10n: AppLocalization
     ) -> String {
         if !targetSummary.isActiveTarget {
-            return "No active target. Start uses the selected profile for managed launch."
+            return l10n.text(english: "No active target. Start uses the selected profile for managed launch.", japanese: "有効な接続先はありません。起動時は選択プロファイルを管理起動に使用します。")
         }
 
         if targetSummary.baseURL == profileBaseURL {
-            return "Active endpoint matches the selected profile endpoint."
+            return l10n.text(english: "Active endpoint matches the selected profile endpoint.", japanese: "有効なエンドポイントは選択プロファイルのエンドポイントと一致しています。")
         }
 
         if targetSummary.targetType.localizedCaseInsensitiveContains("external") {
-            return "Current target is external connection context; selected profile remains metadata."
+            return l10n.text(english: "Current target is external connection context; selected profile remains metadata.", japanese: "現在の接続先は外部接続コンテキストです。選択プロファイルはメタデータのままです。")
         }
 
-        return "Profile endpoint and active endpoint differ; check selected/running model state."
+        return l10n.text(english: "Profile endpoint and active endpoint differ; check selected/running model state.", japanese: "プロファイルエンドポイントと有効なエンドポイントが異なります。選択中/実行中モデルの状態を確認してください。")
     }
 }
 
