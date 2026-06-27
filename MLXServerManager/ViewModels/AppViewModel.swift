@@ -568,7 +568,7 @@ final class AppViewModel: ObservableObject {
             return [
                 ("Executable file", executableSafetyText),
                 ("Model validation", modelIdentitySafetyText(for: selectedModel)),
-                ("Port / IP address", portSafetyText(for: selectedModel))
+                ("Port / IP address", portSafetyText(for: selectedModel)),
                 ("Duplicate check", duplicateProfileWarning(for: selectedModel) ?? "No duplicate issue"),
                 ("Runtime edit safety", runtimeEditingSafetyText(for: selectedModel))
             ]
@@ -576,7 +576,7 @@ final class AppViewModel: ObservableObject {
         return [
             ("Executable", executableSafetyText),
             ("Model", modelIdentitySafetyText(for: selectedModel)),
-            ("Server port", portSafetyText(for: selectedModel))
+            ("Server port", portSafetyText(for: selectedModel)),
             ("Duplicate", duplicateProfileWarning(for: selectedModel) ?? "OK"),
             ("Runtime edit", runtimeEditingSafetyText(for: selectedModel))
         ]
@@ -680,7 +680,7 @@ final class AppViewModel: ObservableObject {
         let duplicateEndpoint = models.contains { $0.id != model.id && $0.host == model.host && $0.serverPort == model.serverPort }
         if duplicateName { return Self.localizedText(language: settings.uiLanguage, english: "Duplicate display name", japanese: "表示名が重複") }
         if duplicateModelID { return Self.localizedText(language: settings.uiLanguage, english: "Duplicate model ID", japanese: "Model IDが重複") }
-        if duplicateEndpoint { return Self.localizedText(language: settings.uiLanguage, english: "Duplicate endpoint", japanese: "エンドポイントが重複") }
+        if duplicateEndpoint { return Self.localizedText(language: settings.uiLanguage, english: "Shared endpoint", japanese: "共有エンドポイント") }
         return nil
     }
 

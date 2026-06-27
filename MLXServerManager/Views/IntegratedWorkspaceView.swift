@@ -1667,6 +1667,8 @@ struct IntegratedWorkspaceView: View {
             || value == "重複する接続先はありません"
             || value == "OK: in use by loaded model"
             || value == "OK: ロード済みモデルが使用中"
+            || value == "Shared endpoint"
+            || value == "共有エンドポイント"
     }
 
     private func availabilityPill(_ text: String) -> some View {
