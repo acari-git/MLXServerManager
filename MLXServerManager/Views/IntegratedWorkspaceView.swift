@@ -436,7 +436,12 @@ struct IntegratedWorkspaceView: View {
 
     private var leftColumn: some View {
         VStack(spacing: 0) {
-            IntegratedSidebarMenuView(selectedDestination: $selectedDestination, language: viewModel.settings.uiLanguage)
+            IntegratedSidebarMenuView(
+                selectedDestination: $selectedDestination,
+                language: viewModel.settings.uiLanguage,
+                downloadPhase: viewModel.huggingFaceDownloadStatus.phase,
+                downloadProgress: viewModel.huggingFaceDownloadStatus.progress
+            )
             Divider()
             systemPanel
             Divider()
@@ -732,9 +737,6 @@ struct IntegratedWorkspaceView: View {
         switch selectedDestination {
         case .models:
             VStack(spacing: 0) {
-                workspaceOverviewStrip
-                    .padding(14)
-                Divider()
                 modelListPanel
                     .frame(maxHeight: isBottomPanelVisible ? .infinity : .infinity)
                 if isBottomPanelVisible {
@@ -1356,8 +1358,6 @@ struct IntegratedWorkspaceView: View {
     private var rightColumn: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                rightPanelHeader
-
                 collapsibleRightPanel(id: "model", title: t("Model inspector", "モデル詳細"), systemImage: "slider.horizontal.3") {
                     modelSettingsPanelContent
                 }

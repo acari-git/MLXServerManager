@@ -3,6 +3,8 @@ import SwiftUI
 struct IntegratedSidebarMenuView: View {
     @Binding var selectedDestination: IntegratedWorkspaceDestination
     let language: AppLanguage
+    let downloadPhase: HuggingFaceDownloadPhase
+    let downloadProgress: Double?
 
     private var strings: AppLocalization {
         AppLocalization(language: language)
@@ -19,9 +21,7 @@ struct IntegratedSidebarMenuView: View {
                 Button {
                     selectedDestination = destination
                 } label: {
-                    Label(destination.title(language: language), systemImage: destination.systemImageName)
-                        .font(.callout.weight(.medium))
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    sidebarRow(for: destination)
                         .padding(.vertical, 7)
                         .padding(.horizontal, 10)
                         .background(selectedDestination == destination ? Color.accentColor.opacity(0.85) : Color.clear)
@@ -37,5 +37,43 @@ struct IntegratedSidebarMenuView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func sidebarRow(for destination: IntegratedWorkspaceDestination) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: destination.systemImageName)
+                .frame(width: 16)
+            Text(destination.title(language: language))
+                .font(.callout.weight(.medium))
+            Spacer(minLength: 6)
+            if destination == .downloads {
+                downloadIndicator
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var downloadIndicator: some View {
+        switch downloadPhase {
+        case .preparing, .downloading, .finalizing:
+            HStack(spacing: 4) {
+                ProgressView(value: downloadProgress)
+                    .controlSize(.small)
+                    .frame(width: 16, height: 16)
+                if let downloadProgress {
+                    Text("\(Int(downloadProgress * 100))%")
+                        .font(.caption2.monospacedDigit().weight(.semibold))
+                }
+            }
+            .accessibilityIdentifier("integrated-sidebar-download-progress")
+        case .completed:
+            Image(systemName: "checkmark.circle.fill")
+                .font(.caption.weight(.semibold))
+                .accessibilityLabel(strings.text(english: "Download completed", japanese: "ダウンロード完了"))
+                .accessibilityIdentifier("integrated-sidebar-download-completed")
+        default:
+            EmptyView()
+        }
     }
 }

@@ -15,7 +15,6 @@ struct SettingsSurfaceView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
-                settingsOverview
                 SettingsPanelView(
                     executablePath: $viewModel.settings.mlxServerExecutablePath,
                     defaultHost: $viewModel.settings.defaultHost,
