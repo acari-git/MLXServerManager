@@ -8,15 +8,24 @@ struct ModelListView: View {
     let exportSummaryText: String
     let exportMessage: String?
     let importMessage: String?
+    var language: AppLanguage = .system
     let onAddProfile: () -> Void
     let onExportProfiles: () -> Void
     let onImportProfilesPreview: () -> Void
+
+    private var l10n: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        l10n.text(english: english, japanese: japanese)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text("Models")
+                    Text(l10n.text(.models))
                         .font(.headline)
 
                     Spacer()
@@ -24,24 +33,24 @@ struct ModelListView: View {
                     Button {
                         onAddProfile()
                     } label: {
-                        Label("Add Profile", systemImage: "plus")
+                        Label(t("Add Profile", "プロファイルを追加"), systemImage: "plus")
                     }
                     .labelStyle(.iconOnly)
-                    .help("Add Profile")
+                    .help(t("Add Profile", "プロファイルを追加"))
                 }
 
                 HStack(spacing: 8) {
                     Button {
                         onExportProfiles()
                     } label: {
-                        Label("Export Profiles...", systemImage: "square.and.arrow.up")
+                        Label(t("Export Profiles...", "プロファイルを書き出し..."), systemImage: "square.and.arrow.up")
                     }
                     .disabled(models.isEmpty)
 
                     Button {
                         onImportProfilesPreview()
                     } label: {
-                        Label("Import Profiles...", systemImage: "square.and.arrow.down")
+                        Label(t("Import Profiles...", "プロファイルを読み込み..."), systemImage: "square.and.arrow.down")
                     }
 
                     Spacer()
@@ -49,8 +58,8 @@ struct ModelListView: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(exportSummaryText)
-                    Text("Exports profile metadata only. No API keys, tokens, model weights, caches, logs, executable paths, or runtime state.")
-                    Text("Import Profiles adds selected valid metadata, can rename profile-name conflicts, and can replace one unambiguous local profile after confirmation.")
+                    Text(t("Exports profile metadata only. No API keys, tokens, model weights, caches, logs, executable paths, or runtime state.", "プロファイルメタデータのみを書き出します。APIキー、トークン、モデル重み、キャッシュ、ログ、実行ファイルパス、ランタイム状態は含みません。"))
+                    Text(t("Import Profiles adds selected valid metadata, can rename profile-name conflicts, and can replace one unambiguous local profile after confirmation.", "プロファイル読み込みは選択した有効なメタデータを追加し、プロファイル名の競合をリネームでき、確認後に曖昧でないローカルプロファイル1件を置換できます。"))
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -84,15 +93,15 @@ struct ModelListView: View {
                         .lineLimit(1)
                     HStack(spacing: 6) {
                         if model.id == selectedModelID {
-                            statusPill("Selected", color: .accentColor)
+                            statusPill(t("Selected", "選択中"), color: .accentColor)
                         }
 
                         if model.id == runningModelID {
-                            statusPill("Running", color: .green)
+                            statusPill(t("Running", "実行中"), color: .green)
                         }
 
                         if restartRequired, model.id == selectedModelID {
-                            statusPill("Restart required", color: .orange)
+                            statusPill(t("Restart required", "再起動が必要"), color: .orange)
                         }
                     }
                 }

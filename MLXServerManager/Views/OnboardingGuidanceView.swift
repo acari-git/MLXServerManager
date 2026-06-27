@@ -2,6 +2,15 @@ import SwiftUI
 
 struct OnboardingGuidanceView: View {
     let guidance: OnboardingGuidance
+    var language: AppLanguage = .system
+
+    private var l10n: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        l10n.text(english: english, japanese: japanese)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -23,7 +32,7 @@ struct OnboardingGuidanceView: View {
 
             if !guidance.actionHints.isEmpty {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Next")
+                    Text(t("Next", "次"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
 

@@ -113,6 +113,7 @@ struct ContentView: View {
                     exportSummaryText: viewModel.modelProfileExportSummaryText,
                     exportMessage: viewModel.modelProfileExportMessage,
                     importMessage: viewModel.modelProfileImportMessage,
+                    language: viewModel.settings.uiLanguage,
                     onAddProfile: viewModel.addProfileRequested,
                     onExportProfiles: viewModel.exportProfilesRequested,
                     onImportProfilesPreview: viewModel.importProfilesPreviewRequested
@@ -132,7 +133,10 @@ struct ContentView: View {
                             onRunDiagnostics: viewModel.runDiagnosticsRequested
                         )
 
-                        OnboardingGuidanceView(guidance: viewModel.onboardingGuidance)
+                        OnboardingGuidanceView(
+                            guidance: viewModel.onboardingGuidance,
+                            language: viewModel.settings.uiLanguage
+                        )
 
                         DashboardOverviewView(
                             targetSummary: viewModel.connectionTargetSummary,
