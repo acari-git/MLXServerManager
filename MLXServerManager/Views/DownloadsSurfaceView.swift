@@ -3,7 +3,6 @@ import SwiftUI
 struct DownloadsSurfaceView: View {
     @ObservedObject var viewModel: AppViewModel
     var onOpenModels: () -> Void = {}
-    var onOpenRuntime: () -> Void = {}
 
     private var strings: AppLocalization {
         AppLocalization(language: viewModel.settings.uiLanguage)
@@ -40,9 +39,9 @@ struct DownloadsSurfaceView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
+                downloadCommandDeck
                 recoveryCard
                 downloadEnvironmentCard
-                downloadWorkflowCard
                 searchCard
                 downloadFormCard
                 queueCard
@@ -70,6 +69,119 @@ struct DownloadsSurfaceView: View {
             .font(.subheadline)
             .foregroundStyle(.secondary)
         }
+    }
+
+    private var downloadCommandDeck: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                downloadStateHero
+                VStack(spacing: 10) {
+                    downloadMetricCard(
+                        title: t("Queue", "キュー"),
+                        value: String(viewModel.huggingFaceDownloadQueue.count),
+                        detail: viewModel.huggingFaceDownloadQueueSummary,
+                        systemImage: "tray.full"
+                    )
+                    downloadMetricCard(
+                        title: "aria2c",
+                        value: viewModel.aria2Availability.displayPath,
+                        detail: t("Downloader availability", "ダウンローダー状態"),
+                        systemImage: "bolt.horizontal.circle"
+                    )
+                }
+                .frame(width: 260)
+            }
+
+            HStack(spacing: 10) {
+                downloadStepPill("1", t("Search", "検索"), "magnifyingglass")
+                downloadStepPill("2", t("Preview files", "ファイル確認"), "list.bullet.rectangle")
+                downloadStepPill("3", t("Download", "ダウンロード"), "arrow.down.circle")
+                downloadStepPill("4", t("Open Models", "モデルを開く"), "cube.box")
+            }
+        }
+        .padding(16)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.accentColor.opacity(0.16))
+        )
+    }
+
+    private var downloadStateHero: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(t("Download command center", "ダウンロード操作センター"))
+                        .font(.headline)
+                    Text(viewModel.huggingFaceDownloadStatus.phase.localizedTitle(language: viewModel.settings.uiLanguage))
+                        .font(.title3.weight(.semibold))
+                }
+                Spacer()
+                Text(downloadProgressText)
+                    .font(.system(.title3, design: .monospaced).weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+            }
+
+            if let progress = viewModel.huggingFaceDownloadStatus.progress {
+                ProgressView(value: progress)
+                    .progressViewStyle(.linear)
+            } else {
+                ProgressView(value: viewModel.huggingFaceDownloadStatus.phase == .completed ? 1 : 0)
+                    .progressViewStyle(.linear)
+            }
+
+            Text(viewModel.huggingFaceDownloadStatus.message)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+
+            HStack {
+                Button(t("Preview files", "ファイルをプレビュー")) { viewModel.previewHuggingFaceFilesRequested() }
+                    .disabled(viewModel.huggingFaceFilePreview.isLoading || viewModel.isHuggingFaceDownloadRunning)
+                Button(strings.text(.download)) { viewModel.startHuggingFaceDownloadRequested() }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!viewModel.canStartHuggingFaceDownload)
+                Button(strings.text(.cancel)) { viewModel.cancelHuggingFaceDownloadRequested() }
+                    .disabled(!viewModel.isHuggingFaceDownloadRunning)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func downloadMetricCard(title: String, value: String, detail: String, systemImage: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(title, systemImage: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.callout.weight(.semibold))
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Text(detail)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(Color(nsColor: .textBackgroundColor).opacity(0.72), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func downloadStepPill(_ number: String, _ title: String, _ systemImage: String) -> some View {
+        HStack(spacing: 6) {
+            Text(number)
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 18, height: 18)
+                .background(Color.accentColor, in: Circle())
+            Label(title, systemImage: systemImage)
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+        }
+        .padding(.vertical, 7)
+        .padding(.horizontal, 9)
+        .frame(maxWidth: .infinity)
+        .background(Color(nsColor: .textBackgroundColor).opacity(0.74), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 
     @ViewBuilder
@@ -129,20 +241,6 @@ struct DownloadsSurfaceView: View {
                     .frame(width: 100)
             }
         }
-        .panelStyle()
-    }
-
-    private var downloadWorkflowCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(t("Download workflow", "ダウンロード手順"))
-                .font(.headline)
-            Label(t("1. Search or paste a Hugging Face model ID.", "1. Hugging FaceのモデルIDを検索するか貼り付けます。"), systemImage: "magnifyingglass")
-            Label(t("2. Preview files and select MLX-related weights/config files.", "2. ファイルをプレビューし、MLX関連の重み・設定ファイルを選択します。"), systemImage: "list.bullet.rectangle")
-            Label(t("3. Download, auto-add to Models, then start the server.", "3. ダウンロード後、モデル一覧へ自動追加し、サーバーを起動します。"), systemImage: "arrow.down.circle")
-            Label(t("4. Copy client or Hermes connection settings from the right panel.", "4. 右ペインからクライアントまたはHermesの接続情報をコピーします。"), systemImage: "doc.on.doc")
-        }
-        .font(.caption)
-        .foregroundStyle(.secondary)
         .panelStyle()
     }
 
@@ -273,7 +371,6 @@ struct DownloadsSurfaceView: View {
                         .foregroundStyle(.green)
                     Spacer()
                     Button(t("Open Models", "モデルを開く")) { onOpenModels() }
-                    Button(t("Open Runtime", "ランタイムを開く")) { onOpenRuntime() }
                 }
                 .padding(8)
                 .background(Color.green.opacity(0.10))

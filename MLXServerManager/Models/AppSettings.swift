@@ -6,13 +6,17 @@ struct AppSettings: Codable, Hashable {
     var defaultPort: Int
     var apiKeyPlaceholder: String
     var uiLanguage: AppLanguage
+    var uiAccentColor: String
+    var uiAppearance: String
 
     static let defaults = AppSettings(
         mlxServerExecutablePath: "",
         defaultHost: "127.0.0.1",
         defaultPort: 8080,
         apiKeyPlaceholder: "not-required-local",
-        uiLanguage: .system
+        uiLanguage: .system,
+        uiAccentColor: "blue",
+        uiAppearance: "system"
     )
 
     init(
@@ -20,13 +24,17 @@ struct AppSettings: Codable, Hashable {
         defaultHost: String,
         defaultPort: Int,
         apiKeyPlaceholder: String,
-        uiLanguage: AppLanguage = .system
+        uiLanguage: AppLanguage = .system,
+        uiAccentColor: String = "blue",
+        uiAppearance: String = "system"
     ) {
         self.mlxServerExecutablePath = mlxServerExecutablePath
         self.defaultHost = defaultHost
         self.defaultPort = defaultPort
         self.apiKeyPlaceholder = apiKeyPlaceholder
         self.uiLanguage = uiLanguage
+        self.uiAccentColor = uiAccentColor
+        self.uiAppearance = uiAppearance
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -35,6 +43,8 @@ struct AppSettings: Codable, Hashable {
         case defaultPort
         case apiKeyPlaceholder
         case uiLanguage
+        case uiAccentColor
+        case uiAppearance
     }
 
     init(from decoder: Decoder) throws {
@@ -44,6 +54,8 @@ struct AppSettings: Codable, Hashable {
         defaultPort = try container.decode(Int.self, forKey: .defaultPort)
         apiKeyPlaceholder = try container.decode(String.self, forKey: .apiKeyPlaceholder)
         uiLanguage = try container.decodeIfPresent(AppLanguage.self, forKey: .uiLanguage) ?? .system
+        uiAccentColor = try container.decodeIfPresent(String.self, forKey: .uiAccentColor) ?? "blue"
+        uiAppearance = try container.decodeIfPresent(String.self, forKey: .uiAppearance) ?? "system"
     }
 }
 

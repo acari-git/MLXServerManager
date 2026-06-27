@@ -36,6 +36,7 @@ struct LogsSurfaceView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
+                logCommandDeck
                 summaryCards
                 troubleshootingCard
                 boundaryCard
@@ -75,6 +76,60 @@ struct LogsSurfaceView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("logs-surface-header")
+    }
+
+    private var logCommandDeck: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(t("Log command center", "ログ操作センター"), systemImage: "terminal")
+                        .font(.headline)
+                    Text(t(
+                        "Use logs for app-managed lifecycle, ready checks, and troubleshooting context. External server stdout/stderr remains outside this boundary.",
+                        "ログは、アプリ管理のライフサイクル、Ready確認、トラブルシューティング情報の確認に使います。外部サーバーのstdout/stderrは対象外です。"
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 8) {
+                    Text(String(entries.count))
+                        .font(.system(.title2, design: .monospaced).weight(.bold))
+                    Text(t("entries", "件"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let latestImportantLogEntry {
+                Label(latestImportantLogEntry.line, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .lineLimit(2)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+
+            HStack {
+                Button(t("Copy logs", "ログをコピー")) { onCopy() }
+                    .disabled(entries.isEmpty)
+                Button(t("Clear logs", "ログをクリア")) { onClear() }
+                    .disabled(entries.isEmpty)
+                Spacer()
+                Text(targetSummary.targetType)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.accentColor.opacity(0.16))
+        )
+        .accessibilityIdentifier("logs-surface-command-deck")
     }
 
     private var summaryCards: some View {

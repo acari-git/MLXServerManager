@@ -79,17 +79,12 @@ struct SettingsPanelView: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(strings.text(.language))
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(.secondary)
-                Picker(strings.text(.language), selection: $language) {
-                    ForEach(AppLanguage.allCases) { option in
-                        Text(languageDisplayName(option)).tag(option)
-                    }
-                }
-                .pickerStyle(.segmented)
-            }
+            Text(t(
+                "Language and color are now changed from the bottom-left Settings menu so app chrome settings stay one click away.",
+                "言語とカラーは左下の設定メニューから変更します。アプリ外観の設定を1クリックで開けるようにしています。"
+            ))
+            .font(.caption)
+            .foregroundStyle(.secondary)
 
             HStack(spacing: 12) {
                 Button {

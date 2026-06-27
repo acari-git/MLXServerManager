@@ -16,7 +16,6 @@ struct IntegratedWorkspaceView: View {
     @State private var rowActionsColumnWidth = ModelListColumn.rowActions
     @State private var draggedModelID: ModelConfig.ID?
     @State private var hoveredStatusModelID: ModelConfig.ID?
-    @State private var selectedAppearance = "system"
     @State private var expandedRightPanelID: String? = "model"
     @State private var isLeftPanelVisible = true
     @State private var isBottomPanelVisible = true
@@ -39,11 +38,45 @@ struct IntegratedWorkspaceView: View {
     }
 
     private var preferredColorScheme: ColorScheme? {
-        switch selectedAppearance {
+        switch viewModel.settings.uiAppearance {
         case "light": return .light
         case "dark": return .dark
         default: return nil
         }
+    }
+
+    private var activeAccentColor: Color {
+        accentColor(for: viewModel.settings.uiAccentColor)
+    }
+
+    private var languageBinding: Binding<AppLanguage> {
+        Binding(
+            get: { viewModel.settings.uiLanguage },
+            set: { newValue in
+                viewModel.settings.uiLanguage = newValue
+                viewModel.saveSettingsRequested()
+            }
+        )
+    }
+
+    private var accentColorBinding: Binding<String> {
+        Binding(
+            get: { viewModel.settings.uiAccentColor },
+            set: { newValue in
+                viewModel.settings.uiAccentColor = newValue
+                viewModel.saveSettingsRequested()
+            }
+        )
+    }
+
+    private var appearanceBinding: Binding<String> {
+        Binding(
+            get: { viewModel.settings.uiAppearance },
+            set: { newValue in
+                viewModel.settings.uiAppearance = newValue
+                viewModel.saveSettingsRequested()
+            }
+        )
     }
 
     private var topLeftChromeControls: some View {
@@ -391,6 +424,8 @@ struct IntegratedWorkspaceView: View {
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
+        .tint(activeAccentColor)
+        .accentColor(activeAccentColor)
         .preferredColorScheme(preferredColorScheme)
         .accessibilityIdentifier("integrated-workspace")
         .background(WindowReader { window in
@@ -414,9 +449,7 @@ struct IntegratedWorkspaceView: View {
             Divider()
             systemPanel
             Divider()
-            settingsFooterButton
-            Divider()
-            footerPanel
+            sidebarFooterControls
         }
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.55))
     }
@@ -597,37 +630,139 @@ struct IntegratedWorkspaceView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private var settingsFooterButton: some View {
-        Button {
-            selectedDestination = .settings
-        } label: {
-            Label(strings.text(.settings), systemImage: "gearshape")
-                .font(.callout.weight(.medium))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 7)
-                .padding(.horizontal, 10)
-                .background(selectedDestination == .settings ? Color.accentColor.opacity(0.85) : Color.clear)
-                .foregroundStyle(selectedDestination == .settings ? Color.white : Color.primary)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .contentShape(RoundedRectangle(cornerRadius: 6))
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 14)
-        .padding(.top, 8)
-        .padding(.bottom, 8)
-        .accessibilityIdentifier("integrated-sidebar-settings-footer")
-    }
+    private var sidebarFooterControls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            quickSettingsMenu
 
-    private var footerPanel: some View {
-        VStack(spacing: 6) {
-            Text("MLX Server Manager")
-                .font(.callout.weight(.semibold))
-            Text("Version 22.5.0")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("MLX Server Manager")
+                    .font(.caption.weight(.semibold))
+                Text("Version 22.26.0")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(14)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.72))
+    }
+
+    private var quickSettingsMenu: some View {
+        Menu {
+            Section(t("Language", "言語")) {
+                Picker(t("Language", "言語"), selection: languageBinding) {
+                    ForEach(AppLanguage.allCases) { option in
+                        Text(languageDisplayName(option)).tag(option)
+                    }
+                }
+                .pickerStyle(.inline)
+            }
+
+            Section(t("Color", "カラー")) {
+                Picker(t("Color", "カラー"), selection: accentColorBinding) {
+                    ForEach(accentColorOptions, id: \.self) { option in
+                        Text(accentColorDisplayName(option)).tag(option)
+                    }
+                }
+                .pickerStyle(.inline)
+            }
+
+            Section(t("Theme", "テーマ")) {
+                Picker(t("Theme", "テーマ"), selection: appearanceBinding) {
+                    Text(t("System", "システム")).tag("system")
+                    Text(t("Light", "ライト")).tag("light")
+                    Text(t("Dark", "ダーク")).tag("dark")
+                }
+                .pickerStyle(.inline)
+            }
+
+            Divider()
+
+            Button {
+                selectedDestination = .settings
+            } label: {
+                Label(t("Advanced settings", "詳細設定"), systemImage: "slider.horizontal.3")
+            }
+        } label: {
+            HStack(spacing: 8) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(activeAccentColor.opacity(0.18))
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(activeAccentColor)
+                }
+                .frame(width: 28, height: 28)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(strings.text(.settings))
+                        .font(.callout.weight(.semibold))
+                    Text("\(languageDisplayName(viewModel.settings.uiLanguage)) · \(accentColorDisplayName(viewModel.settings.uiAccentColor)) · \(appearanceDisplayName(viewModel.settings.uiAppearance))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(9)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(selectedDestination == .settings ? activeAccentColor.opacity(0.16) : Color(nsColor: .textBackgroundColor).opacity(0.74))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(selectedDestination == .settings ? activeAccentColor.opacity(0.45) : Color.primary.opacity(0.08))
+            )
+        }
+        .menuStyle(.borderlessButton)
+        .accessibilityIdentifier("integrated-sidebar-quick-settings-menu")
+    }
+
+    private var accentColorOptions: [String] {
+        ["blue", "purple", "pink", "orange", "green", "gray"]
+    }
+
+    private func languageDisplayName(_ option: AppLanguage) -> String {
+        switch option {
+        case .system:
+            return t("System", "システム")
+        case .japanese:
+            return t("Japanese", "日本語")
+        case .english:
+            return t("English", "英語")
+        }
+    }
+
+    private func accentColorDisplayName(_ option: String) -> String {
+        switch option {
+        case "purple": return t("Purple", "パープル")
+        case "pink": return t("Pink", "ピンク")
+        case "orange": return t("Orange", "オレンジ")
+        case "green": return t("Green", "グリーン")
+        case "gray": return t("Gray", "グレー")
+        default: return t("Blue", "ブルー")
+        }
+    }
+
+    private func appearanceDisplayName(_ option: String) -> String {
+        switch option {
+        case "light": return t("Light", "ライト")
+        case "dark": return t("Dark", "ダーク")
+        default: return t("System", "システム")
+        }
+    }
+
+    private func accentColor(for option: String) -> Color {
+        switch option {
+        case "purple": return .purple
+        case "pink": return .pink
+        case "orange": return .orange
+        case "green": return .green
+        case "gray": return .gray
+        default: return .blue
+        }
     }
 
     @ViewBuilder
@@ -646,9 +781,9 @@ struct IntegratedWorkspaceView: View {
             }
             .background(Color(nsColor: .windowBackgroundColor))
         case .downloads:
-            DownloadsSurfaceView(viewModel: viewModel)
+            DownloadsSurfaceView(viewModel: viewModel, onOpenModels: { selectedDestination = .models })
         case .settings:
-            SettingsSurfaceView(viewModel: viewModel, selectedAppearance: $selectedAppearance)
+            SettingsSurfaceView(viewModel: viewModel)
         case .logs:
             LogsSurfaceView(
                 entries: viewModel.logEntries,
@@ -867,9 +1002,9 @@ struct IntegratedWorkspaceView: View {
     private func statusButton(for model: ModelConfig) -> some View {
         let isHovered = hoveredStatusModelID == model.id
         let statusText = viewModel.interactiveStatusText(for: model, isHovered: isHovered)
-        let foregroundColor: Color = if statusText == "アンロード" {
+        let foregroundColor: Color = if ["Unload", "アンロード"].contains(statusText) {
             .red
-        } else if statusText == "ロード" || statusText == "ロード済" {
+        } else if ["Load", "Loaded", "ロード", "ロード済"].contains(statusText) {
             .green
         } else {
             .secondary
@@ -1055,10 +1190,12 @@ struct IntegratedWorkspaceView: View {
     private var rightColumn: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                collapsibleRightPanel(id: "model", title: t("Model settings", "モデル設定"), systemImage: "slider.horizontal.3") {
+                rightPanelHeader
+
+                collapsibleRightPanel(id: "model", title: t("Model inspector", "モデル詳細"), systemImage: "slider.horizontal.3") {
                     modelSettingsPanelContent
                 }
-                collapsibleRightPanel(id: "external", title: t("External server", "外部サーバー"), systemImage: "network") {
+                collapsibleRightPanel(id: "external", title: t("Connection", "接続"), systemImage: "network") {
                     externalServerPanelContent
                 }
                 collapsibleRightPanel(id: "recovery", title: t("Recovery", "復旧"), systemImage: "wrench.and.screwdriver") {
@@ -1080,23 +1217,65 @@ struct IntegratedWorkspaceView: View {
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.38))
     }
 
-    private var appearancePanel: some View {
-        HStack {
-            Label(t("Appearance", "外観"), systemImage: "circle.lefthalf.filled")
-                .font(.headline)
-            Spacer()
-            Picker(t("Appearance", "外観"), selection: $selectedAppearance) {
-                Text(t("System", "システム")).tag("system")
-                Text(t("Light", "ライト")).tag("light")
-                Text(t("Dark", "ダーク")).tag("dark")
+    private var rightPanelHeader: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(activeAccentColor.opacity(0.16))
+                    Image(systemName: "sidebar.right")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(activeAccentColor)
+                }
+                .frame(width: 36, height: 36)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(t("Operations inspector", "操作インスペクター"))
+                        .font(.headline)
+                    Text(t(
+                        "Review the selected model, connection target, recovery state, and Hermes copy values without leaving this workspace.",
+                        "このワークスペース内で、選択モデル、接続先、復旧状態、Hermesコピー値を確認します。"
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            .labelsHidden()
-            .pickerStyle(.segmented)
-            .frame(width: 190)
+
+            HStack(spacing: 8) {
+                rightPanelStatusCard(
+                    title: t("Selected", "選択中"),
+                    value: selectedModel?.displayName ?? "-",
+                    systemImage: "cube.box"
+                )
+                rightPanelStatusCard(
+                    title: t("Runtime", "実行状態"),
+                    value: viewModel.runtimeState.title,
+                    systemImage: "bolt.horizontal"
+                )
+            }
         }
         .padding(12)
-        .background(Color(nsColor: .textBackgroundColor).opacity(0.65))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .background(Color(nsColor: .textBackgroundColor).opacity(0.72), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(activeAccentColor.opacity(0.18))
+        )
+    }
+
+    private func rightPanelStatusCard(title: String, value: String, systemImage: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Label(title, systemImage: systemImage)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.caption.weight(.semibold))
+                .lineLimit(2)
+                .truncationMode(.middle)
+        }
+        .padding(9)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.68), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 
     private var externalServerPanelContent: some View {
@@ -1189,6 +1368,8 @@ struct IntegratedWorkspaceView: View {
 
     private var modelSettingsPanelContent: some View {
         VStack(alignment: .leading, spacing: 16) {
+            modelInspectorOverview
+
             groupedSection(t("Basic information", "基本情報")) {
                 HStack {
                     Button {
@@ -1213,13 +1394,13 @@ struct IntegratedWorkspaceView: View {
 
             groupedSection(t("Safety", "安全性")) {
                 let safetySummary = localizedStatusText(viewModel.selectedModelSafetySummary)
-                formRow(t("Summary", "概要"), safetySummary, valueColor: safetySummary == "問題なし" ? .green : .orange)
+                formRow(t("Summary", "概要"), safetySummary, valueColor: isPositiveLocalizedStatus(safetySummary) ? .green : .orange)
                 ForEach(viewModel.selectedModelSafetyRows, id: \.0) { row in
                     let value = localizedStatusText(row.1)
                     formRow(localizedSafetyLabel(row.0), value, valueColor: isPositiveLocalizedStatus(value) ? .green : .orange)
                 }
                 let recoverySummary = localizedStatusText(viewModel.failedStartRecoverySummary)
-                formRow(t("Recovery guide", "復旧ガイド"), recoverySummary, valueColor: recoverySummary == "復旧操作は不要です" ? .secondary : .orange)
+                formRow(t("Recovery guide", "復旧ガイド"), recoverySummary, valueColor: isPositiveLocalizedStatus(recoverySummary) ? .secondary : .orange)
             }
             .accessibilityIdentifier("integrated-model-safety-section")
 
@@ -1258,6 +1439,68 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
+    private var modelInspectorOverview: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                inspectorMetricCard(
+                    title: t("Load state", "ロード状態"),
+                    value: isSelectedRunning ? t("Loaded", "ロード済") : t("Not loaded", "未ロード"),
+                    systemImage: isSelectedRunning ? "checkmark.circle.fill" : "circle",
+                    valueColor: isSelectedRunning ? .green : .secondary
+                )
+                inspectorMetricCard(
+                    title: t("Safety", "安全性"),
+                    value: localizedStatusText(viewModel.selectedModelSafetySummary),
+                    systemImage: "shield.lefthalf.filled",
+                    valueColor: isPositiveLocalizedStatus(localizedStatusText(viewModel.selectedModelSafetySummary)) ? .green : .orange
+                )
+            }
+            HStack(alignment: .top, spacing: 10) {
+                inspectorMetricCard(
+                    title: t("Port", "ポート"),
+                    value: selectedModel.map { "\($0.host):\($0.serverPort)" } ?? "-",
+                    systemImage: "network",
+                    valueColor: .secondary
+                )
+                inspectorMetricCard(
+                    title: t("Changes", "変更"),
+                    value: viewModel.restartRequired ? t("Restart required", "再起動が必要") : t("Active", "有効"),
+                    systemImage: viewModel.restartRequired ? "arrow.clockwise.circle" : "checkmark.seal",
+                    valueColor: viewModel.restartRequired ? .orange : .green
+                )
+            }
+            Text(t(
+                "Use this panel to inspect the selected model. Edit profile data from Basic information; start/stop actions stay in the model list.",
+                "このペインでは選択モデルを確認します。プロファイル情報は基本情報から編集し、起動/停止操作はモデル一覧で行います。"
+            ))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.accentColor.opacity(0.16))
+        )
+    }
+
+    private func inspectorMetricCard(title: String, value: String, systemImage: String, valueColor: Color) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(title, systemImage: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(valueColor)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(Color(nsColor: .textBackgroundColor).opacity(0.72), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
     private func groupedSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
@@ -1290,23 +1533,39 @@ struct IntegratedWorkspaceView: View {
 
     private func localizedSafetyLabel(_ label: String) -> String {
         switch label {
-        case "Selected model": return "選択モデル"
-        case "Executable": return "実行ファイル"
-        case "Model": return "モデル"
-        case "Server port": return "ポート/IPアドレス"
-        case "Duplicate": return "重複"
-        case "Runtime edit": return "編集中の安全性"
+        case "Selected model": return t("Selected model", "選択モデル")
+        case "Executable": return t("Executable", "実行ファイル")
+        case "Model": return t("Model", "モデル")
+        case "Server port": return t("Port / IP address", "ポート/IPアドレス")
+        case "Duplicate": return t("Duplicate", "重複")
+        case "Runtime edit": return t("Runtime edit safety", "編集中の安全性")
         default: return label
         }
     }
 
     private func localizedStatusText(_ value: String) -> String {
+        if viewModel.settings.uiLanguage.resolved == .english {
+            switch value {
+            case "Safety: OK", "OK": return "OK"
+            case "Available": return "Available"
+            case "Ready": return "Ready"
+            case "OK local path": return "Local path OK"
+            case "No failed start recovery needed.": return "No recovery action needed"
+            case "No model selected": return "No model selected"
+            case "Select a model before Start.": return "Select a model before Start"
+            default:
+                return value
+                    .replacingOccurrences(of: "OK local path", with: "Local path OK")
+                    .replacingOccurrences(of: "No duplicate endpoint detected.", with: "No duplicate endpoint detected")
+            }
+        }
+
         switch value {
         case "Safety: OK", "OK": return "問題なし"
         case "Available": return "利用可能"
         case "Ready": return "準備完了"
-        case "OK local path": return "ローカルパス確認済み"
-        case "No failed start recovery needed.": return "復旧操作は不要です"
+        case "OK local path", "Local path OK": return "ローカルパス確認済み"
+        case "No failed start recovery needed.", "No recovery action needed": return "復旧操作は不要です"
         case "No model selected": return "モデル未選択"
         case "Select a model before Start.": return "モデルを選択してください"
         default:
@@ -1319,7 +1578,16 @@ struct IntegratedWorkspaceView: View {
     }
 
     private func isPositiveLocalizedStatus(_ value: String) -> Bool {
-        value == "問題なし" || value == "利用可能" || value == "準備完了" || value == "ローカルパス確認済み" || value == "重複する接続先はありません"
+        value == "OK"
+            || value == "問題なし"
+            || value == "Available"
+            || value == "利用可能"
+            || value == "Ready"
+            || value == "準備完了"
+            || value == "Local path OK"
+            || value == "ローカルパス確認済み"
+            || value == "No duplicate endpoint detected"
+            || value == "重複する接続先はありません"
     }
 
     private func availabilityPill(_ text: String) -> some View {
