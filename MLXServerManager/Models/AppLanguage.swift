@@ -55,7 +55,7 @@ struct AppLocalization {
     }
 }
 
-enum AppTextKey {
+enum AppTextKey: CaseIterable {
     case dashboard
     case models
     case downloads
