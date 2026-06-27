@@ -6,7 +6,6 @@ struct AppSettings: Codable, Hashable {
     var defaultPort: Int
     var apiKeyPlaceholder: String
     var uiLanguage: AppLanguage
-    var uiAccentColor: String
     var uiAppearance: String
 
     static let defaults = AppSettings(
@@ -15,7 +14,6 @@ struct AppSettings: Codable, Hashable {
         defaultPort: 8080,
         apiKeyPlaceholder: "not-required-local",
         uiLanguage: .system,
-        uiAccentColor: "blue",
         uiAppearance: "system"
     )
 
@@ -25,7 +23,6 @@ struct AppSettings: Codable, Hashable {
         defaultPort: Int,
         apiKeyPlaceholder: String,
         uiLanguage: AppLanguage = .system,
-        uiAccentColor: String = "blue",
         uiAppearance: String = "system"
     ) {
         self.mlxServerExecutablePath = mlxServerExecutablePath
@@ -33,7 +30,6 @@ struct AppSettings: Codable, Hashable {
         self.defaultPort = defaultPort
         self.apiKeyPlaceholder = apiKeyPlaceholder
         self.uiLanguage = uiLanguage
-        self.uiAccentColor = uiAccentColor
         self.uiAppearance = uiAppearance
     }
 
@@ -43,7 +39,6 @@ struct AppSettings: Codable, Hashable {
         case defaultPort
         case apiKeyPlaceholder
         case uiLanguage
-        case uiAccentColor
         case uiAppearance
     }
 
@@ -54,7 +49,6 @@ struct AppSettings: Codable, Hashable {
         defaultPort = try container.decode(Int.self, forKey: .defaultPort)
         apiKeyPlaceholder = try container.decode(String.self, forKey: .apiKeyPlaceholder)
         uiLanguage = try container.decodeIfPresent(AppLanguage.self, forKey: .uiLanguage) ?? .system
-        uiAccentColor = try container.decodeIfPresent(String.self, forKey: .uiAccentColor) ?? "blue"
         uiAppearance = try container.decodeIfPresent(String.self, forKey: .uiAppearance) ?? "system"
     }
 }

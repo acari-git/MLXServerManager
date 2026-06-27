@@ -45,8 +45,8 @@ struct SettingsSurfaceView: View {
                     .font(.title2.weight(.semibold))
             }
             Text(t(
-                "Use this page for connection defaults and diagnostics. Language, color, and theme are in the bottom-left Settings menu.",
-                "この画面では接続の既定値と診断を扱います。言語、カラー、テーマは左下の設定メニューに移動しました。"
+                "Use this page for connection defaults and diagnostics. Language and theme are in the bottom-left Settings menu.",
+                "この画面では接続の既定値と診断を扱います。言語とテーマは左下の設定メニューに移動しました。"
             ))
             .font(.subheadline)
             .foregroundStyle(.secondary)
@@ -62,7 +62,7 @@ struct SettingsSurfaceView: View {
             )
             overviewCard(
                 title: t("Left-bottom quick settings", "左下クイック設定"),
-                detail: t("Language, color, and theme use the Settings menu in the sidebar footer.", "言語、カラー、テーマはサイドバー下部の設定メニューから変更します。"),
+                detail: t("Language and theme use the Settings menu in the sidebar footer.", "言語とテーマはサイドバー下部の設定メニューから変更します。"),
                 systemImage: "gearshape"
             )
             overviewCard(
@@ -99,7 +99,7 @@ struct SettingsSurfaceView: View {
             Label(t("What Settings does not do", "設定画面で行わないこと"), systemImage: "hand.raised")
                 .font(.headline)
             Label(t("Direct Mode remains client to mlx_lm.server.", "Direct Modeでは、クライアントがmlx_lm.serverへ直接接続します。"), systemImage: "arrow.right.circle")
-            Label(t("Language and color changes affect app chrome only; model IDs, paths, commands, and raw logs stay unchanged.", "言語とカラーの変更対象はアプリ表示のみです。Model ID、パス、コマンド、生ログは変わりません。"), systemImage: "character.book.closed")
+            Label(t("Language and theme changes affect app chrome only; model IDs, paths, commands, and raw logs stay unchanged.", "言語とテーマの変更対象はアプリ表示のみです。Model ID、パス、コマンド、生ログは変わりません。"), systemImage: "character.book.closed")
             Label(t("Use Models for profile work, Downloads for Hugging Face, Runtime for server actions, and Logs for troubleshooting.", "プロファイル作業はモデル、Hugging Faceはダウンロード、サーバー操作はランタイム、調査はログで行います。"), systemImage: "square.grid.2x2")
         }
         .font(.caption)

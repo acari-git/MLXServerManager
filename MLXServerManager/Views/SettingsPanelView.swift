@@ -80,8 +80,8 @@ struct SettingsPanelView: View {
             }
 
             Text(t(
-                "Language and color are now changed from the bottom-left Settings menu so app chrome settings stay one click away.",
-                "言語とカラーは左下の設定メニューから変更します。アプリ外観の設定を1クリックで開けるようにしています。"
+                "Language and theme are now changed from the bottom-left Settings menu so app chrome settings stay one click away.",
+                "言語とテーマは左下の設定メニューから変更します。アプリ外観の設定を1クリックで開けるようにしています。"
             ))
             .font(.caption)
             .foregroundStyle(.secondary)

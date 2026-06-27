@@ -16,6 +16,7 @@ struct IntegratedWorkspaceView: View {
     @State private var rowActionsColumnWidth = ModelListColumn.rowActions
     @State private var draggedModelID: ModelConfig.ID?
     @State private var hoveredStatusModelID: ModelConfig.ID?
+    @State private var isQuickSettingsPopoverPresented = false
     @State private var expandedRightPanelID: String? = "model"
     @State private var isLeftPanelVisible = true
     @State private var isBottomPanelVisible = true
@@ -46,7 +47,7 @@ struct IntegratedWorkspaceView: View {
     }
 
     private var activeAccentColor: Color {
-        accentColor(for: viewModel.settings.uiAccentColor)
+        .accentColor
     }
 
     private var languageBinding: Binding<AppLanguage> {
@@ -54,16 +55,6 @@ struct IntegratedWorkspaceView: View {
             get: { viewModel.settings.uiLanguage },
             set: { newValue in
                 viewModel.settings.uiLanguage = newValue
-                viewModel.saveSettingsRequested()
-            }
-        )
-    }
-
-    private var accentColorBinding: Binding<String> {
-        Binding(
-            get: { viewModel.settings.uiAccentColor },
-            set: { newValue in
-                viewModel.settings.uiAccentColor = newValue
                 viewModel.saveSettingsRequested()
             }
         )
@@ -637,7 +628,7 @@ struct IntegratedWorkspaceView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("MLX Server Manager")
                     .font(.caption.weight(.semibold))
-                Text("Version 23.0.0")
+                Text("Version 23.0.1")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -648,41 +639,8 @@ struct IntegratedWorkspaceView: View {
     }
 
     private var quickSettingsMenu: some View {
-        Menu {
-            Section(t("Language", "言語")) {
-                Picker(t("Language", "言語"), selection: languageBinding) {
-                    ForEach(AppLanguage.allCases) { option in
-                        Text(languageDisplayName(option)).tag(option)
-                    }
-                }
-                .pickerStyle(.inline)
-            }
-
-            Section(t("Color", "カラー")) {
-                Picker(t("Color", "カラー"), selection: accentColorBinding) {
-                    ForEach(accentColorOptions, id: \.self) { option in
-                        Text(accentColorDisplayName(option)).tag(option)
-                    }
-                }
-                .pickerStyle(.inline)
-            }
-
-            Section(t("Theme", "テーマ")) {
-                Picker(t("Theme", "テーマ"), selection: appearanceBinding) {
-                    Text(t("System", "システム")).tag("system")
-                    Text(t("Light", "ライト")).tag("light")
-                    Text(t("Dark", "ダーク")).tag("dark")
-                }
-                .pickerStyle(.inline)
-            }
-
-            Divider()
-
-            Button {
-                selectedDestination = .settings
-            } label: {
-                Label(t("Advanced settings", "詳細設定"), systemImage: "slider.horizontal.3")
-            }
+        Button {
+            isQuickSettingsPopoverPresented.toggle()
         } label: {
             HStack(spacing: 8) {
                 ZStack {
@@ -697,13 +655,13 @@ struct IntegratedWorkspaceView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(strings.text(.settings))
                         .font(.callout.weight(.semibold))
-                    Text("\(languageDisplayName(viewModel.settings.uiLanguage)) · \(accentColorDisplayName(viewModel.settings.uiAccentColor)) · \(appearanceDisplayName(viewModel.settings.uiAppearance))")
+                    Text("\(languageDisplayName(viewModel.settings.uiLanguage)) · \(appearanceDisplayName(viewModel.settings.uiAppearance))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
                 Spacer()
-                Image(systemName: "chevron.up.chevron.down")
+                Image(systemName: "chevron.up")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
@@ -716,12 +674,54 @@ struct IntegratedWorkspaceView: View {
                     .stroke(selectedDestination == .settings ? activeAccentColor.opacity(0.45) : Color.primary.opacity(0.08))
             )
         }
-        .menuStyle(.borderlessButton)
+        .buttonStyle(.plain)
+        .popover(isPresented: $isQuickSettingsPopoverPresented, arrowEdge: .bottom) {
+            quickSettingsPopoverContent
+                .padding(14)
+                .frame(width: 280)
+        }
         .accessibilityIdentifier("integrated-sidebar-quick-settings-menu")
     }
 
-    private var accentColorOptions: [String] {
-        ["blue", "purple", "pink", "orange", "green", "gray"]
+    private var quickSettingsPopoverContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label(strings.text(.settings), systemImage: "gearshape")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(t("Language", "言語"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Picker(t("Language", "言語"), selection: languageBinding) {
+                    ForEach(AppLanguage.allCases) { option in
+                        Text(languageDisplayName(option)).tag(option)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(t("Theme", "テーマ"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Picker(t("Theme", "テーマ"), selection: appearanceBinding) {
+                    Text(t("System", "システム")).tag("system")
+                    Text(t("Light", "ライト")).tag("light")
+                    Text(t("Dark", "ダーク")).tag("dark")
+                }
+                .pickerStyle(.segmented)
+            }
+
+            Divider()
+
+            Button {
+                selectedDestination = .settings
+                isQuickSettingsPopoverPresented = false
+            } label: {
+                Label(t("Advanced settings", "詳細設定"), systemImage: "slider.horizontal.3")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
     }
 
     private func languageDisplayName(_ option: AppLanguage) -> String {
@@ -735,33 +735,11 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
-    private func accentColorDisplayName(_ option: String) -> String {
-        switch option {
-        case "purple": return t("Purple", "パープル")
-        case "pink": return t("Pink", "ピンク")
-        case "orange": return t("Orange", "オレンジ")
-        case "green": return t("Green", "グリーン")
-        case "gray": return t("Gray", "グレー")
-        default: return t("Blue", "ブルー")
-        }
-    }
-
     private func appearanceDisplayName(_ option: String) -> String {
         switch option {
         case "light": return t("Light", "ライト")
         case "dark": return t("Dark", "ダーク")
         default: return t("System", "システム")
-        }
-    }
-
-    private func accentColor(for option: String) -> Color {
-        switch option {
-        case "purple": return .purple
-        case "pink": return .pink
-        case "orange": return .orange
-        case "green": return .green
-        case "gray": return .gray
-        default: return .blue
         }
     }
 
@@ -825,7 +803,7 @@ struct IntegratedWorkspaceView: View {
             workspaceRouteCard(
                 title: strings.text(.settings),
                 value: appearanceDisplayName(viewModel.settings.uiAppearance),
-                detail: t("Language, color, theme", "言語、カラー、テーマ"),
+                detail: t("Language and theme", "言語とテーマ"),
                 systemImage: "gearshape",
                 destination: .settings
             )

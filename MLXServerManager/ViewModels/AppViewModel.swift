@@ -524,12 +524,23 @@ final class AppViewModel: ObservableObject {
     }
 
     private func blockingStartIssue(for model: ModelConfig) -> String? {
-        if executableSafetyText != "OK" { return executableSafetyText }
+        let executablePath = settings.mlxServerExecutablePath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !executablePath.isEmpty,
+              FileManager.default.isExecutableFile(atPath: executablePath) else {
+            return executableSafetyText
+        }
+
         let modelSafety = modelIdentitySafetyText(for: model)
-        if modelSafety.localizedCaseInsensitiveContains("Missing") { return modelSafety }
-        let portSafety = portSafetyText(host: model.host, port: model.serverPort)
-        if portSafety != "Available" { return "Server port: \(portSafety)" }
-        return nil
+        if modelSafety.localizedCaseInsensitiveContains("Missing") {
+            return modelSafety
+        }
+
+        switch portChecker.check(host: model.host, port: model.serverPort) {
+        case .available:
+            return nil
+        default:
+            return "Server port: \(portSafetyText(host: model.host, port: model.serverPort))"
+        }
     }
 
     var canStartSelectedModel: Bool {

@@ -4,9 +4,9 @@ v22.26.0 finishes the bottom-left quick settings pass that started the non-model
 
 ## Changes
 
-- Persisted the app appearance setting alongside language and accent color.
+- Persisted the app appearance setting alongside language.
 - Moved the integrated workspace theme source from local view state to saved `AppSettings`.
-- Kept the bottom-left Settings menu as the single place for language, color, and theme changes.
+- Kept the bottom-left Settings control as the place for language and theme changes.
 - Connected the Downloads completion action back to the Models workspace.
 - Removed the obsolete Downloads workflow card now covered by the command-center deck.
 - Removed the unused Settings appearance panel after moving appearance controls to the sidebar footer.

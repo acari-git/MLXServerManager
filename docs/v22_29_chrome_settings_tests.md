@@ -4,7 +4,7 @@ v22.29.0 adds regression coverage for the saved app chrome preferences used by t
 
 ## Changes
 
-- Added tests for default language, accent color, and appearance values.
+- Added tests for default language and appearance values.
 - Added a legacy settings decode test so older settings files continue to load.
 - Added an encode/decode round-trip test for the new chrome preferences.
 - Updated the integrated footer version label to 22.29.0.

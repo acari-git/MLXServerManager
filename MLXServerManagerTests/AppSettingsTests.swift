@@ -6,7 +6,6 @@ final class AppSettingsTests: XCTestCase {
         let settings = AppSettings.defaults
 
         XCTAssertEqual(settings.uiLanguage, .system)
-        XCTAssertEqual(settings.uiAccentColor, "blue")
         XCTAssertEqual(settings.uiAppearance, "system")
     }
 
@@ -23,7 +22,6 @@ final class AppSettingsTests: XCTestCase {
         let settings = try JSONDecoder().decode(AppSettings.self, from: json)
 
         XCTAssertEqual(settings.uiLanguage, .system)
-        XCTAssertEqual(settings.uiAccentColor, "blue")
         XCTAssertEqual(settings.uiAppearance, "system")
     }
 
@@ -34,7 +32,6 @@ final class AppSettingsTests: XCTestCase {
             defaultPort: 9999,
             apiKeyPlaceholder: "local-only",
             uiLanguage: .english,
-            uiAccentColor: "purple",
             uiAppearance: "dark"
         )
 
@@ -42,7 +39,6 @@ final class AppSettingsTests: XCTestCase {
         let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
 
         XCTAssertEqual(decoded.uiLanguage, .english)
-        XCTAssertEqual(decoded.uiAccentColor, "purple")
         XCTAssertEqual(decoded.uiAppearance, "dark")
     }
 }

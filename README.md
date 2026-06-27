@@ -153,7 +153,7 @@ Do not download the source archive if you want the app binary. Use the named `ML
 
 ## Current GUI Direction
 
-v23.0.0 completes the current integrated GUI refresh. The model list remains the primary operating table, while Downloads, Logs, Settings, and the right-side Operations Inspector now use clearer command-center, empty-state, and quick-settings patterns. Language, accent color, and theme are available from the bottom-left Settings menu.
+v23.0.0 completes the current integrated GUI refresh. The model list remains the primary operating table, while Downloads, Logs, Settings, and the right-side Operations Inspector now use clearer command-center, empty-state, and quick-settings patterns. Language and theme are available from the bottom-left Settings menu.
 
 You must provide your own `mlx-lm` environment and `mlx_lm.server` executable. You can register existing model files, search Hugging Face and choose a result, or use Downloads to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: the client connects directly to `mlx_lm.server`; MLX Server Manager does not proxy inference traffic or run chat completions.
 
