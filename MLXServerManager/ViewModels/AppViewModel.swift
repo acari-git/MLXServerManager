@@ -471,7 +471,7 @@ final class AppViewModel: ObservableObject {
 
     var huggingFaceSelectedPreviewSummary: String {
         let files = huggingFaceDownloadDraft.useSelectedPreviewFiles ? selectedHuggingFacePreviewFiles : filteredHuggingFacePreviewFiles
-        if files.isEmpty { return "No preview files selected." }
+        if files.isEmpty { return Self.localizedText(language: settings.uiLanguage, english: "No preview files selected.", japanese: "プレビューファイルが選択されていません。") }
         let total = files.compactMap(\.size).reduce(Int64(0), +)
         let hasUnknown = files.contains { $0.size == nil }
         let sizeText = hasUnknown ? "unknown size" : ByteCountFormatter.string(fromByteCount: total, countStyle: .file)
@@ -489,9 +489,9 @@ final class AppViewModel: ObservableObject {
     }
 
     var speedTestDisabledReason: String {
-        if isSpeedTestRunning { return "Speed Test is already running." }
-        if !connectionTargetSummary.isActiveTarget { return "Start or adopt a server before running Speed Test." }
-        return "Ready."
+        if isSpeedTestRunning { return Self.localizedText(language: settings.uiLanguage, english: "Speed Test is already running.", japanese: "スピードテストはすでに実行中です。") }
+        if !connectionTargetSummary.isActiveTarget { return Self.localizedText(language: settings.uiLanguage, english: "Start or adopt a server before running Speed Test.", japanese: "スピードテスト前にサーバーを起動するか採用してください。") }
+        return Self.localizedText(language: settings.uiLanguage, english: "Ready.", japanese: "準備完了。")
     }
 
     var stopDisabledReason: String {
@@ -503,7 +503,7 @@ final class AppViewModel: ObservableObject {
     }
 
     var selectedBlockingStartIssue: String? {
-        guard let selectedModel else { return "Select a model before Start." }
+        guard let selectedModel else { return Self.localizedText(language: settings.uiLanguage, english: "Select a model before Start.", japanese: "起動前にモデルを選択してください。") }
         return blockingStartIssue(for: selectedModel)
     }
 
@@ -552,27 +552,27 @@ final class AppViewModel: ObservableObject {
     }
 
     var selectedServerPortSafetyText: String {
-        guard let selectedModel else { return "No model selected" }
+        guard let selectedModel else { return Self.localizedText(language: settings.uiLanguage, english: "No model selected", japanese: "モデル未選択") }
         return portSafetyText(host: selectedModel.host, port: selectedModel.serverPort)
     }
 
 
     var selectedModelIdentityDetailText: String {
-        guard let selectedModel else { return "No model selected" }
+        guard let selectedModel else { return Self.localizedText(language: settings.uiLanguage, english: "No model selected", japanese: "モデル未選択") }
         if let localPath = ModelAvailabilityPathFormatter.localPathCandidate(for: selectedModel) {
             var isDirectory = ObjCBool(false)
             if FileManager.default.fileExists(atPath: localPath, isDirectory: &isDirectory), isDirectory.boolValue {
-                return "Local path exists: \(ModelAvailabilityPathFormatter.compact(path: localPath))"
+                return Self.localizedText(language: settings.uiLanguage, english: "Local path exists: \(ModelAvailabilityPathFormatter.compact(path: localPath))", japanese: "ローカルパスがあります: \(ModelAvailabilityPathFormatter.compact(path: localPath))")
             }
-            return "Missing local path: \(ModelAvailabilityPathFormatter.compact(path: localPath))"
+            return Self.localizedText(language: settings.uiLanguage, english: "Missing local path: \(ModelAvailabilityPathFormatter.compact(path: localPath))", japanese: "ローカルパスがありません: \(ModelAvailabilityPathFormatter.compact(path: localPath))")
         }
         if selectedModel.modelID.contains("https://huggingface.co/") {
-            return "Needs review: paste owner/model instead of a full URL when possible."
+            return Self.localizedText(language: settings.uiLanguage, english: "Needs review: paste owner/model instead of a full URL when possible.", japanese: "要確認: 可能な場合は完全なURLではなく owner/model を貼り付けてください。")
         }
         if selectedModel.modelID.split(separator: "/").count == 2 {
-            return "HF ID format looks valid."
+            return Self.localizedText(language: settings.uiLanguage, english: "HF ID format looks valid.", japanese: "HF ID形式は有効に見えます。")
         }
-        return "Needs review: expected local path or owner/model HF ID."
+        return Self.localizedText(language: settings.uiLanguage, english: "Needs review: expected local path or owner/model HF ID.", japanese: "要確認: ローカルパスまたは owner/model 形式のHF IDが必要です。")
     }
 
     var copyableSafetySummary: String {
@@ -586,13 +586,13 @@ final class AppViewModel: ObservableObject {
         case let .error(message):
             return recoveryGuidance(for: message)
         case let .portBusy(host, port):
-            return "Port busy at \(host):\(port). Stop the conflicting process or choose another port."
+            return Self.localizedText(language: settings.uiLanguage, english: "Port busy at \(host):\(port). Stop the conflicting process or choose another port.", japanese: "\(host):\(port) は使用中です。競合プロセスを停止するか、別のポートを選択してください。")
         case let .portCheckFailed(_, _, message):
             return recoveryGuidance(for: message)
         case let .readyCheckFailed(_, _, message):
             return recoveryGuidance(for: message)
         default:
-            return "No failed start recovery needed."
+            return Self.localizedText(language: settings.uiLanguage, english: "No failed start recovery needed.", japanese: "起動失敗の復旧は不要です。")
         }
     }
 
@@ -717,7 +717,7 @@ final class AppViewModel: ObservableObject {
         }
         let message = latestBenchmarkResult.message.lowercased()
         if !connectionTargetSummary.isActiveTarget {
-            return "Server is not running. Press Start before Speed Test."
+            return Self.localizedText(language: settings.uiLanguage, english: "Server is not running. Press Start before Speed Test.", japanese: "サーバーは実行されていません。スピードテスト前に起動してください。")
         }
         if runtimeSelectionWarning != nil {
             return "Selected profile differs from the running profile. Stop → Start or Restart before measuring."
@@ -728,7 +728,7 @@ final class AppViewModel: ObservableObject {
         if message.contains("http") {
             return "The endpoint responded but was not ready. Confirm the port and run Ready Check again."
         }
-        return "Check runtime diagnostics and logs, then retry Speed Test."
+        return Self.localizedText(language: settings.uiLanguage, english: "Check runtime diagnostics and logs, then retry Speed Test.", japanese: "ランタイム診断とログを確認してから、スピードテストを再試行してください。")
     }
 
     var latestFailedHuggingFaceDownloadQueueEntry: HuggingFaceDownloadQueueEntry? {
@@ -851,7 +851,7 @@ final class AppViewModel: ObservableObject {
 
     var benchmarkCopyText: String {
         guard !benchmarkHistory.isEmpty else {
-            return "No benchmark results in this session."
+            return Self.localizedText(language: settings.uiLanguage, english: "No benchmark results in this session.", japanese: "このセッションにはベンチマーク結果がありません。")
         }
         return (["Benchmark Summary", benchmarkSummaryText] + benchmarkHistory.prefix(10).map { result in
             "- \(result.timestamp): \(result.modelID) @ \(result.baseURL): \(result.summary)"
@@ -860,7 +860,7 @@ final class AppViewModel: ObservableObject {
 
     var latestBenchmarkCopyText: String {
         guard let latestBenchmarkResult else {
-            return "No benchmark result in this session."
+            return Self.localizedText(language: settings.uiLanguage, english: "No benchmark result in this session.", japanese: "このセッションにはベンチマーク結果がありません。")
         }
         return "Latest Benchmark\nModel: \(latestBenchmarkResult.modelID)\nEndpoint: \(latestBenchmarkResult.baseURL)\nSelected: \(latestBenchmarkResult.selectedProfileName)\nRunning: \(latestBenchmarkResult.runningProfileText)\nStatus: \(latestBenchmarkResult.phase.rawValue)\nLatency: \(latestBenchmarkResult.latencyText)\nHTTP: \(latestBenchmarkResult.httpStatusText)\nMessage: \(latestBenchmarkResult.message)"
     }
@@ -907,12 +907,12 @@ final class AppViewModel: ObservableObject {
         guard let runningModelID, let selectedModelID, runningModelID != selectedModelID else {
             return nil
         }
-        return "Selected model differs from the running model. Stop or restart before expecting runtime changes."
+        return Self.localizedText(language: settings.uiLanguage, english: "Selected model differs from the running model. Stop or restart before expecting runtime changes.", japanese: "選択モデルが実行中モデルと異なります。ランタイム変更を反映するには停止または再起動してください。")
     }
 
     var huggingFaceDownloadQueueSummary: String {
         guard !huggingFaceDownloadQueue.isEmpty else {
-            return "No downloads in this session."
+            return Self.localizedText(language: settings.uiLanguage, english: "No downloads in this session.", japanese: "このセッションにはダウンロードがありません。")
         }
         let completed = huggingFaceDownloadQueue.filter { $0.phase == .completed }.count
         let failed = huggingFaceDownloadQueue.filter { $0.phase == .failed }.count
@@ -1707,7 +1707,7 @@ final class AppViewModel: ObservableObject {
 
     func runSpeedTestRequested() {
         guard canRunSpeedTest else {
-            latestSpeedTestMessage = "Start the server before running Speed Test."
+            latestSpeedTestMessage = Self.localizedText(language: settings.uiLanguage, english: "Start the server before running Speed Test.", japanese: "スピードテスト前にサーバーを起動してください。")
             appendLog("[benchmark] speed test skipped: no active connection target.")
             return
         }
@@ -1720,7 +1720,7 @@ final class AppViewModel: ObservableObject {
         let modelID = selectedModelIdentifier
         let targetBaseURL = baseURL
         isSpeedTestRunning = true
-        latestSpeedTestMessage = "Running /v1/models readiness latency test..."
+        latestSpeedTestMessage = Self.localizedText(language: settings.uiLanguage, english: "Running /v1/models readiness latency test...", japanese: "/v1/models のReadyレイテンシーテストを実行中...")
         latestSpeedTestDurationMS = nil
         appendRuntimeEvent(category: "Benchmark", message: "Speed Test started for \(host):\(port)")
         appendLog("[benchmark] speed test started: http://\(host):\(port)/v1/models")
@@ -1733,7 +1733,7 @@ final class AppViewModel: ObservableObject {
             let benchmarkResult: BenchmarkResult
             switch result {
             case let .ready(url, statusCode):
-                latestSpeedTestMessage = "Success: \(url.absoluteString) returned HTTP \(statusCode)."
+                latestSpeedTestMessage = Self.localizedText(language: settings.uiLanguage, english: "Success: \(url.absoluteString) returned HTTP \(statusCode).", japanese: "成功: \(url.absoluteString) が HTTP \(statusCode) を返しました。")
                 benchmarkResult = BenchmarkResult(
                     profileID: profileID,
                     modelID: modelID,
@@ -1747,7 +1747,7 @@ final class AppViewModel: ObservableObject {
                 )
                 appendLog("[benchmark] speed test succeeded in \(Int(elapsedMS)) ms.")
             case let .notReady(_, statusCode):
-                latestSpeedTestMessage = "Failed: /v1/models returned HTTP \(statusCode)."
+                latestSpeedTestMessage = Self.localizedText(language: settings.uiLanguage, english: "Failed: /v1/models returned HTTP \(statusCode).", japanese: "失敗: /v1/models が HTTP \(statusCode) を返しました。")
                 benchmarkResult = BenchmarkResult(
                     profileID: profileID,
                     modelID: modelID,
@@ -1769,7 +1769,7 @@ final class AppViewModel: ObservableObject {
                 benchmarkResult = BenchmarkResult(profileID: profileID, modelID: modelID, baseURL: targetBaseURL, phase: .failed, readinessLatencyMS: elapsedMS, selectedProfileName: selectedProfileName, runningProfileID: runningProfileID, message: message)
                 appendLog("[benchmark] speed test failed in \(Int(elapsedMS)) ms: \(message)")
             case .timedOut:
-                latestSpeedTestMessage = "Failed: request timed out."
+                latestSpeedTestMessage = Self.localizedText(language: settings.uiLanguage, english: "Failed: request timed out.", japanese: "失敗: リクエストがタイムアウトしました。")
                 benchmarkResult = BenchmarkResult(profileID: profileID, modelID: modelID, baseURL: targetBaseURL, phase: .failed, readinessLatencyMS: elapsedMS, selectedProfileName: selectedProfileName, runningProfileID: runningProfileID, message: "Request timed out")
                 appendLog("[benchmark] speed test timed out after \(Int(elapsedMS)) ms.")
             }
@@ -1807,7 +1807,7 @@ final class AppViewModel: ObservableObject {
 
     func chooseMLXServerExecutableRequested() {
         let panel = NSOpenPanel()
-        panel.title = "Choose mlx_lm.server executable"
+        panel.title = Self.localizedText(language: settings.uiLanguage, english: "Choose mlx_lm.server executable", japanese: "mlx_lm.server実行ファイルを選択")
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
@@ -1822,7 +1822,7 @@ final class AppViewModel: ObservableObject {
 
     func chooseLocalModelFolderRequested() {
         let panel = NSOpenPanel()
-        panel.title = "Choose local model folder"
+        panel.title = Self.localizedText(language: settings.uiLanguage, english: "Choose local model folder", japanese: "ローカルモデルフォルダを選択")
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
@@ -1909,7 +1909,7 @@ final class AppViewModel: ObservableObject {
 
     func chooseHuggingFaceDownloadDirectoryRequested() {
         let panel = NSOpenPanel()
-        panel.title = "Choose Hugging Face download save directory"
+        panel.title = Self.localizedText(language: settings.uiLanguage, english: "Choose Hugging Face download save directory", japanese: "Hugging Faceダウンロード保存先を選択")
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
@@ -2128,7 +2128,7 @@ final class AppViewModel: ObservableObject {
         }
 
         isHuggingFaceSearching = true
-        huggingFaceSearchMessage = "Searching Hugging Face for: \(query)"
+        huggingFaceSearchMessage = Self.localizedText(language: settings.uiLanguage, english: "Searching Hugging Face for: \(query)", japanese: "Hugging Faceを検索中: \(query)")
         appendLog("[hf] search started: \(query)")
 
         Task { [weak self] in
@@ -2173,21 +2173,21 @@ final class AppViewModel: ObservableObject {
     func registerLocalModelRequested() {
         let trimmedPath = localModelPath.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let expandedPath = HuggingFaceDownloadPlanner.expandedLocalPath(from: trimmedPath) else {
-            localModelMessage = "Enter a local folder path such as ~/Models/mlx/model-name."
+            localModelMessage = Self.localizedText(language: settings.uiLanguage, english: "Enter a local folder path such as ~/Models/mlx/model-name.", japanese: "~/Models/mlx/model-name のようなローカルフォルダパスを入力してください。")
             appendLog("[profile] local model add failed: invalid local path.")
             return
         }
 
         var isDirectory = ObjCBool(false)
         guard FileManager.default.fileExists(atPath: expandedPath, isDirectory: &isDirectory), isDirectory.boolValue else {
-            localModelMessage = "Local model folder was not found."
+            localModelMessage = Self.localizedText(language: settings.uiLanguage, english: "Local model folder was not found.", japanese: "ローカルモデルフォルダが見つかりません。")
             appendLog("[profile] local model add failed: folder not found at \(ModelAvailabilityPathFormatter.compact(path: expandedPath)).")
             return
         }
 
         if models.contains(where: { $0.modelID == expandedPath }) {
             selectedModelID = expandedPath
-            localModelMessage = "Existing local model profile selected."
+            localModelMessage = Self.localizedText(language: settings.uiLanguage, english: "Existing local model profile selected.", japanese: "既存のローカルモデルプロファイルを選択しました。")
             appendLog("[profile] existing local model profile selected: \(ModelAvailabilityPathFormatter.compact(path: expandedPath)).")
             return
         }
@@ -2218,10 +2218,10 @@ final class AppViewModel: ObservableObject {
                 for: model,
                 result: .present(path: expandedPath)
             )
-            localModelMessage = "Local model added and selected."
+            localModelMessage = Self.localizedText(language: settings.uiLanguage, english: "Local model added and selected.", japanese: "ローカルモデルを追加して選択しました。")
             appendLog("[profile] local model added: \(displayName).")
         } catch {
-            localModelMessage = "Could not save local model profile: \(error.localizedDescription)"
+            localModelMessage = Self.localizedText(language: settings.uiLanguage, english: "Could not save local model profile: \(error.localizedDescription)", japanese: "ローカルモデルプロファイルを保存できませんでした: \(error.localizedDescription)")
             appendLog("[profile] local model add failed: \(error.localizedDescription)")
         }
     }
