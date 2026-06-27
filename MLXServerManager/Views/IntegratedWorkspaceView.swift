@@ -1669,6 +1669,10 @@ struct IntegratedWorkspaceView: View {
             || value == "OK: ロード済みモデルが使用中"
             || value == "Shared endpoint"
             || value == "共有エンドポイント"
+            || value == "No recovery action needed"
+            || value == "No recovery action needed."
+            || value == "復旧操作は不要です"
+            || value == "起動失敗の復旧は不要です。"
     }
 
     private func availabilityPill(_ text: String) -> some View {
