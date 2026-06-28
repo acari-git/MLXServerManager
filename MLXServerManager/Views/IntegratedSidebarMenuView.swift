@@ -11,41 +11,37 @@ struct IntegratedSidebarMenuView: View {
         AppLocalization(language: language)
     }
 
-    private var selection: Binding<IntegratedWorkspaceDestination?> {
-        Binding(
-            get: { selectedDestination },
-            set: { newValue in
-                if let newValue {
-                    selectedDestination = newValue
-                }
-            }
-        )
-    }
-
     var body: some View {
-        List(selection: selection) {
+        VStack(alignment: .leading, spacing: 6) {
             ForEach(IntegratedWorkspaceDestination.allCases) { destination in
-                sidebarRow(for: destination)
-                    .tag(destination)
-                    .listRowBackground(sidebarHoverBackground(for: destination))
-                    .onHover { isHovering in
-                        hoveredDestination = isHovering ? destination : (hoveredDestination == destination ? nil : hoveredDestination)
-                    }
-                    .accessibilityIdentifier("integrated-sidebar-\(destination.rawValue)")
+                Button {
+                    selectedDestination = destination
+                } label: {
+                    sidebarRow(for: destination)
+                }
+                .buttonStyle(.plain)
+                .background(sidebarBackground(for: destination))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .onHover { isHovering in
+                    hoveredDestination = isHovering ? destination : (hoveredDestination == destination ? nil : hoveredDestination)
+                }
+                .accessibilityIdentifier("integrated-sidebar-\(destination.rawValue)")
             }
         }
-        .listStyle(.sidebar)
-        .safeAreaInset(edge: .top) {
-            Color.clear.frame(height: 44)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.top, 52)
+        .padding(.bottom, 10)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     @ViewBuilder
-    private func sidebarHoverBackground(for destination: IntegratedWorkspaceDestination) -> some View {
-        if hoveredDestination == destination && selectedDestination != destination {
+    private func sidebarBackground(for destination: IntegratedWorkspaceDestination) -> some View {
+        if selectedDestination == destination {
+            Color(nsColor: .controlAccentColor)
+                .opacity(0.92)
+        } else if hoveredDestination == destination {
             Color(nsColor: .selectedContentBackgroundColor)
-                .opacity(0.16)
+                .opacity(0.18)
         } else {
             Color.clear
         }
@@ -56,13 +52,17 @@ struct IntegratedSidebarMenuView: View {
             Image(systemName: destination.systemImageName)
                 .frame(width: 16)
             Text(destination.title(language: language))
-                .font(.callout.weight(.medium))
+                .font(.body.weight(.semibold))
             Spacer(minLength: 6)
             if destination == .downloads {
                 downloadIndicator
             }
         }
+        .foregroundStyle(selectedDestination == destination ? Color.white : Color.primary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     @ViewBuilder

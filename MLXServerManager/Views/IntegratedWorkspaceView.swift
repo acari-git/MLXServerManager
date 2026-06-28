@@ -196,9 +196,6 @@ struct IntegratedWorkspaceView: View {
                     .clipped()
                     .id("center-\(viewModel.settings.uiAppearance)")
                     .background(Color(nsColor: .windowBackgroundColor))
-                    .overlay(alignment: .top) {
-                        topGlassOverlay
-                    }
             }
             .navigationSplitViewStyle(.balanced)
             .inspector(isPresented: $isRightPanelVisible) {
@@ -282,20 +279,22 @@ struct IntegratedWorkspaceView: View {
                 .padding(.horizontal, 14)
             sidebarFooterControls
         }
+        .frame(maxHeight: .infinity, alignment: .top)
         .navigationTitle("MLX Server Manager")
     }
 
     private var systemPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("SYSTEM")
-                .font(.caption.weight(.semibold))
+            Text(t("SYSTEM", "システム"))
+                .font(.callout.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             systemInfoCard
+            Divider()
             systemHealthCard
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
@@ -304,11 +303,11 @@ struct IntegratedWorkspaceView: View {
             ForEach(viewModel.systemInfoRows, id: \.0) { row in
                 HStack(alignment: .firstTextBaseline) {
                     Text(row.0)
-                        .font(.caption)
+                        .font(.callout)
                         .foregroundStyle(.secondary)
                         .frame(width: 58, alignment: .leading)
                     Text(row.1)
-                        .font(.caption.weight(.semibold))
+                        .font(.callout.weight(.semibold))
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
@@ -322,19 +321,19 @@ struct IntegratedWorkspaceView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Label(t("Memory", "メモリ"), systemImage: "memorychip")
-                    .font(.caption.weight(.semibold))
+                    .font(.callout.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text(viewModel.integratedMemoryUsagePercentText)
                     .font(.callout.weight(.semibold))
             }
 
-            ProgressView(value: viewModel.memoryMLXProcessFraction + viewModel.memoryOtherProcessesFraction)
+            memoryUsageBar
 
             VStack(alignment: .leading, spacing: 5) {
                 memoryLegendRow(color: .blue, label: "mlx-lm", value: viewModel.memoryMLXProcessText)
-                memoryLegendRow(color: .orange, label: t("Other", "その他"), value: viewModel.memoryOtherProcessesText)
-                memoryLegendRow(color: .green, label: t("Available", "空き容量"), value: viewModel.memoryAvailableText)
+                memoryLegendRow(color: .green, label: t("Other", "その他"), value: viewModel.memoryOtherProcessesText)
+                memoryLegendRow(color: .secondary.opacity(0.45), label: t("Available", "空き容量"), value: viewModel.memoryAvailableText)
             }
 
             Divider()
@@ -345,16 +344,18 @@ struct IntegratedWorkspaceView: View {
                 } icon: {
                     Image(systemName: "cpu")
                 }
-                .font(.caption.weight(.semibold))
+                .font(.callout.weight(.semibold))
                 .foregroundStyle(.secondary)
                 Spacer()
                 Text(viewModel.integratedCPUUsageText)
                     .font(.callout.weight(.semibold))
             }
 
+            Divider()
+
             HStack {
                 Label(t("Uptime", "起動時間"), systemImage: "timer")
-                    .font(.caption.weight(.semibold))
+                    .font(.callout.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text(viewModel.integratedUptimeText)
@@ -367,17 +368,39 @@ struct IntegratedWorkspaceView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var memoryUsageBar: some View {
+        GeometryReader { proxy in
+            let mlxWidth = max(0, proxy.size.width * viewModel.memoryMLXProcessFraction)
+            let otherWidth = max(0, proxy.size.width * viewModel.memoryOtherProcessesFraction)
+            let availableWidth = max(0, proxy.size.width - mlxWidth - otherWidth)
+
+            HStack(spacing: 0) {
+                Rectangle()
+                    .fill(Color.blue)
+                    .frame(width: mlxWidth)
+                Rectangle()
+                    .fill(Color.green)
+                    .frame(width: otherWidth)
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.28))
+                    .frame(width: availableWidth)
+            }
+            .clipShape(Capsule())
+        }
+        .frame(height: 7)
+    }
+
     private func memoryLegendRow(color: Color, label: String, value: String) -> some View {
         Label {
             Text(label)
-                .font(.system(.caption2, design: .monospaced))
-                .frame(width: 58, alignment: .leading)
+                .font(.system(.callout, design: .monospaced))
+                .frame(width: 72, alignment: .leading)
             Text(value)
-                .font(.system(.caption2, design: .monospaced).weight(.semibold))
-                .frame(width: 70, alignment: .trailing)
+                .font(.system(.callout, design: .monospaced).weight(.semibold))
+                .frame(width: 82, alignment: .trailing)
         } icon: {
             Image(systemName: "circle.fill")
-                .font(.system(size: 7))
+                .font(.system(size: 8))
                 .foregroundStyle(color)
         }
         .lineLimit(1)
@@ -389,9 +412,9 @@ struct IntegratedWorkspaceView: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("MLX Server Manager")
-                    .font(.caption.weight(.semibold))
+                    .font(.callout.weight(.semibold))
                 Text("Version 24.0.0")
-                    .font(.caption2)
+                    .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
             }
         }
@@ -592,32 +615,34 @@ struct IntegratedWorkspaceView: View {
 
             TableColumn(t("Size", "サイズ"), value: \ModelTableRow.sizeSortValue) { row in
                 let model = row.model
-                Text(viewModel.modelSizeText(for: model))
-                    .foregroundStyle(.secondary)
+                centeredTableText(viewModel.modelSizeText(for: model), color: .secondary)
             }
             .width(min: 72, ideal: 90, max: 120)
 
             TableColumn(t("Status", "ステータス"), value: \ModelTableRow.statusSortValue) { row in
                 let model = row.model
                 statusButton(for: model)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
             .width(min: 86, ideal: 112, max: 140)
 
             TableColumn(t("Port / IP address", "ポート/IPアドレス"), value: \ModelTableRow.endpointSortValue) { row in
                 let model = row.model
-                portValue("\(model.host):\(model.serverPort)")
+                centeredTableText("127.0.0.1:\(model.serverPort)", weight: .semibold)
             }
             .width(min: 120, ideal: 150, max: 200)
 
             TableColumn(t("Memory", "メモリ使用量"), value: \ModelTableRow.memorySortValue) { row in
                 let model = row.model
                 memoryCell(viewModel.integratedMemoryText(for: model))
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
             .width(min: 90, ideal: 120, max: 150)
 
             TableColumn(t("Auto unload", "自動アンロード"), value: \ModelTableRow.autoUnloadSortValue) { row in
                 let model = row.model
                 autoUnloadCell(for: model)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
             .width(min: 130, ideal: 160, max: 190)
 
@@ -631,15 +656,18 @@ struct IntegratedWorkspaceView: View {
                     )
                 )
                 .labelsHidden()
+                .frame(maxWidth: .infinity, alignment: .center)
             }
             .width(min: 70, ideal: 90, max: 110)
 
             TableColumn(t("Model management", "モデル管理")) { row in
                 let model = row.model
                 modelActions(for: model)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
             .width(min: 150, ideal: 170, max: 210)
         }
+        .alternatingRowBackgrounds(.disabled)
         .accessibilityIdentifier("integrated-model-table")
         .onDrop(of: [.plainText], isTargeted: nil) { providers in
             moveDroppedModelToEnd(providers)
@@ -647,6 +675,19 @@ struct IntegratedWorkspaceView: View {
         .onChange(of: modelTableSortOrder) { _, _ in
             viewModel.beginModelReorderRequested()
         }
+    }
+
+    private func centeredTableText(
+        _ value: String,
+        color: Color = .primary,
+        weight: Font.Weight = .regular
+    ) -> some View {
+        Text(value)
+            .font(.callout.weight(weight))
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .frame(maxWidth: .infinity, alignment: .center)
     }
 
     private var selectedModelBinding: Binding<ModelConfig.ID?> {
@@ -1040,56 +1081,37 @@ struct IntegratedWorkspaceView: View {
     }
 
     private var rightColumn: some View {
-        Form {
-            inspectorSection(id: "model", title: t("Model inspector", "モデル詳細"), systemImage: AppSymbol.modelInspector) {
-                modelSettingsPanelContent
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                inspectorSection(id: "model", title: t("Model inspector", "モデル詳細"), systemImage: AppSymbol.modelInspector) {
+                    modelSettingsPanelContent
+                }
 
-            inspectorSection(id: "external", title: t("Connection", "接続"), systemImage: AppSymbol.connection) {
-                externalServerPanelContent
-            }
+                inspectorSection(id: "external", title: t("Connection", "接続"), systemImage: AppSymbol.connection) {
+                    externalServerPanelContent
+                }
 
-            inspectorSection(id: "recovery", title: t("Recovery", "復旧"), systemImage: AppSymbol.recovery) {
-                IntegratedRecoveryPanelView(
-                    issue: viewModel.currentRecoveryIssue,
-                    language: viewModel.settings.uiLanguage,
-                    onAction: handleRecoveryAction,
-                    onCopyTroubleshooting: viewModel.copyTroubleshootingSummary,
-                    onRefreshSafety: viewModel.refreshIntegratedSafetyRequested
-                )
-                recentRightPanelLogs
-            }
+                inspectorSection(id: "recovery", title: t("Recovery", "復旧"), systemImage: AppSymbol.recovery) {
+                    IntegratedRecoveryPanelView(
+                        issue: viewModel.currentRecoveryIssue,
+                        language: viewModel.settings.uiLanguage,
+                        onAction: handleRecoveryAction,
+                        onCopyTroubleshooting: viewModel.copyTroubleshootingSummary,
+                        onRefreshSafety: viewModel.refreshIntegratedSafetyRequested
+                    )
+                    recentRightPanelLogs
+                }
 
-            inspectorSection(id: "hermes", title: t("Hermes Agent connection", "Hermes Agent接続情報"), systemImage: AppSymbol.hermesAgent) {
-                hermesPanelContent
+                inspectorSection(id: "hermes", title: t("Hermes Agent connection", "Hermes Agent接続情報"), systemImage: AppSymbol.hermesAgent) {
+                    hermesPanelContent
+                }
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 72)
+            .padding(.bottom, 24)
         }
-        .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-        .background(Color(nsColor: .windowBackgroundColor))
-        .overlay(alignment: .top) {
-            topGlassOverlay
-        }
-    }
-
-    private var topGlassOverlay: some View {
-        Rectangle()
-            .fill(.ultraThinMaterial)
-            .mask(
-                LinearGradient(
-                    stops: [
-                        .init(color: .black, location: 0),
-                        .init(color: .black, location: 0.42),
-                        .init(color: .clear, location: 1)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .frame(height: 96)
-            .ignoresSafeArea(.container, edges: .top)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
+        .background(.ultraThinMaterial)
     }
 
     private var externalServerPanelContent: some View {
@@ -1149,18 +1171,17 @@ struct IntegratedWorkspaceView: View {
         systemImage: String,
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
-        Section {
-            DisclosureGroup(
-                isExpanded: Binding(
-                    get: { expandedRightPanelID == id },
-                    set: { expandedRightPanelID = $0 ? id : nil }
-                )
-            ) {
-                content()
-                    .padding(.top, 8)
-            } label: {
-                Label(title, systemImage: systemImage)
-            }
+        DisclosureGroup(
+            isExpanded: Binding(
+                get: { expandedRightPanelID == id },
+                set: { expandedRightPanelID = $0 ? id : nil }
+            )
+        ) {
+            content()
+                .padding(.top, 8)
+        } label: {
+            Label(title, systemImage: systemImage)
+                .font(.headline)
         }
     }
 
@@ -1407,6 +1428,24 @@ struct IntegratedWorkspaceView: View {
                 }
             }
         }
+    }
+}
+
+private struct SidebarMaterialBackdrop: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .sidebar
+        view.blendingMode = .behindWindow
+        view.state = .active
+        view.isEmphasized = false
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = .sidebar
+        nsView.blendingMode = .behindWindow
+        nsView.state = .active
+        nsView.isEmphasized = false
     }
 }
 

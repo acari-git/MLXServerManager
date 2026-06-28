@@ -63,31 +63,12 @@ struct LogsSurfaceView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-        .background(Color(nsColor: .windowBackgroundColor))
-        .overlay(alignment: .top) {
-            topGlassOverlay
+        .background {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .ignoresSafeArea(.container, edges: .top)
         }
         .accessibilityIdentifier("logs-surface")
-    }
-
-    private var topGlassOverlay: some View {
-        Rectangle()
-            .fill(.ultraThinMaterial)
-            .mask(
-                LinearGradient(
-                    stops: [
-                        .init(color: .black, location: 0),
-                        .init(color: .black, location: 0.42),
-                        .init(color: .clear, location: 1)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .frame(height: 96)
-            .ignoresSafeArea(.container, edges: .top)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
     }
 
     private var header: some View {
