@@ -1,6 +1,10 @@
 import SwiftUI
 
 struct LogsSurfaceView: View {
+    private let contentWidth: CGFloat = 660
+    private let controlWidth: CGFloat = 248
+    private let cardCornerRadius: CGFloat = 8
+
     let entries: [LogEntry]
     let targetSummary: ConnectionTargetSummary
     let runningModelText: String
@@ -33,64 +37,57 @@ struct LogsSurfaceView: View {
     }
 
     var body: some View {
-        Form {
-            Section {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 26) {
                 header
-            }
-            Section {
-                logCommandDeck
-            }
-            Section {
-                summaryCards
-            } header: {
-                Text(t("Summary", "概要"))
-            }
-            Section {
-                troubleshootingCard
-            }
-            Section {
-                boundaryCard
-            }
-            Section {
-                LogView(
-                    entries: entries,
-                    language: language,
-                    onCopy: onCopy,
-                    onClear: onClear
+                settingsSection(title: t("Controls", "操作"), content: logCommandDeck)
+                settingsSection(title: t("Summary", "概要"), content: summaryCards)
+                settingsSection(title: t("Troubleshooting", "トラブルシューティング"), content: troubleshootingCard)
+                settingsSection(title: t("Log Boundary", "ログ境界"), content: boundaryCard)
+                settingsSection(title: strings.text(.logs), content:
+                    LogView(
+                        entries: entries,
+                        language: language,
+                        onCopy: onCopy,
+                        onClear: onClear
+                    )
+                    .accessibilityIdentifier("logs-surface-log-view")
                 )
-                .accessibilityIdentifier("logs-surface-log-view")
             }
+            .padding(.top, 64)
+            .padding(.bottom, 56)
+            .frame(maxWidth: contentWidth, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .background {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .ignoresSafeArea(.container, edges: .top)
-        }
+        .background(Color(nsColor: .windowBackgroundColor))
         .accessibilityIdentifier("logs-surface")
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Image(systemName: "doc.text.magnifyingglass")
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
+        Text(strings.text(.logs))
+            .font(.system(size: 18, weight: .semibold))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, 12)
+            .accessibilityIdentifier("logs-surface-header")
+    }
 
-                Text(strings.text(.logs))
-                    .font(.title2.weight(.semibold))
-            }
+    private func settingsSection<Content: View>(title: String, content: Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.primary)
 
-            Text(t(
-                "App-managed lifecycle and log context. External server logs are not captured.",
-                "アプリ管理のライフサイクルとログコンテキストを表示します。外部サーバーのログは取得しません。"
-            ))
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
+            content
+                .padding(.horizontal, 16)
+                .padding(.vertical, 18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
+                        .stroke(Color(nsColor: .separatorColor).opacity(0.80), lineWidth: 1.0)
+                )
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("logs-surface-header")
     }
 
     private var logCommandDeck: some View {
@@ -98,7 +95,7 @@ struct LogsSurfaceView: View {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 8) {
                     Label(t("Log command center", "ログ操作センター"), systemImage: "terminal")
-                        .font(.headline)
+                        .font(.system(size: 14, weight: .medium))
                     Text(t(
                         "Use logs for app-managed lifecycle, ready checks, and troubleshooting context. External server stdout/stderr remains outside this boundary.",
                         "ログは、アプリ管理のライフサイクル、Ready確認、トラブルシューティング情報の確認に使います。外部サーバーのstdout/stderrは対象外です。"
@@ -160,7 +157,7 @@ struct LogsSurfaceView: View {
     private var troubleshootingCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(t("Troubleshooting", "トラブルシューティング"), systemImage: "wrench.and.screwdriver")
-                .font(.headline)
+                .font(.system(size: 14, weight: .medium))
 
             detailRows([
                 (t("Latest important log", "直近の重要ログ"), latestImportantLogEntry?.line ?? t("None", "なし")),
@@ -185,7 +182,7 @@ struct LogsSurfaceView: View {
     private var boundaryCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(t("Log Boundary", "ログ境界"), systemImage: "lock")
-                .font(.headline)
+                .font(.system(size: 14, weight: .medium))
 
             Text(t(
                 "Logs shown here are app-managed lifecycle and captured managed-process context already available to MLX Server Manager. Adopted external server stdout/stderr is not captured, inspected, stopped, restarted, or owned by the app.",
@@ -207,12 +204,30 @@ struct LogsSurfaceView: View {
     }
 
     private func detailRows(_ rows: [(String, String)]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(rows, id: \.0) { label, value in
-                LabeledContent(label) {
-                    Text(value)
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.element.0) { index, row in
+                HStack(alignment: .center, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(row.0)
+                            .font(.system(size: 14, weight: .medium))
+                        Text(t("Current log context for this item.", "この項目の現在のログコンテキストです。"))
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 20)
+                    Text(row.1)
+                        .font(.system(size: 14))
                         .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .lineLimit(2)
+                        .frame(width: controlWidth, alignment: .leading)
+                }
+                .padding(.vertical, 14)
+
+                if index < rows.count - 1 {
+                    Rectangle()
+                        .fill(Color(nsColor: .separatorColor).opacity(0.80))
+                        .frame(height: 1.0)
+                        .padding(.horizontal, -16)
                 }
             }
         }

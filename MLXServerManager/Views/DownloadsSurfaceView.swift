@@ -5,6 +5,10 @@ struct DownloadsSurfaceView: View {
     @ObservedObject var viewModel: AppViewModel
     var onOpenModels: () -> Void = {}
 
+    private let contentWidth: CGFloat = 660
+    private let controlWidth: CGFloat = 248
+    private let cardCornerRadius: CGFloat = 8
+
     private var strings: AppLocalization {
         AppLocalization(language: viewModel.settings.uiLanguage)
     }
@@ -37,56 +41,64 @@ struct DownloadsSurfaceView: View {
     }
 
     var body: some View {
-        Form {
-            Section {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 26) {
                 header
-            }
-            Section {
-                downloadCommandDeck
-            }
-            if viewModel.latestFailedHuggingFaceDownloadQueueEntry != nil {
-                Section {
-                recoveryCard
+
+                settingsSection(title: t("Status", "状態"), content: statusSectionContent)
+
+                if viewModel.latestFailedHuggingFaceDownloadQueueEntry != nil {
+                    settingsSection(title: t("Recovery", "復旧"), content: recoveryCard)
                 }
+
+                settingsSection(title: t("Tools", "ツール"), content: downloadEnvironmentCard)
+                settingsSection(title: t("Search", "検索"), content: searchCard)
+                settingsSection(title: strings.text(.download), content: downloadFormCard)
             }
-            Section {
-                downloadEnvironmentCard
-            }
-            Section {
-                searchCard
-            }
-            Section {
-                downloadFormCard
-            }
-            Section {
-                queueCard
-            }
+            .padding(.top, 64)
+            .padding(.bottom, 56)
+            .frame(maxWidth: contentWidth, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .background {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .ignoresSafeArea(.container, edges: .top)
-        }
+        .background(Color(nsColor: .windowBackgroundColor))
         .accessibilityIdentifier("downloads-surface")
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Image(systemName: "arrow.down.circle")
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
-                Text(strings.text(.downloads))
-                    .font(.title2.weight(.semibold))
-            }
-            Text(t(
-                "Search Hugging Face, review the selected result, download explicitly, and recover failed queue entries.",
-                "Hugging Faceを検索し、候補を確認してから明示的にダウンロードします。失敗したキュー項目の復旧もここで行います。"
-            ))
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
+        Text(strings.text(.downloads))
+            .font(.system(size: 18, weight: .semibold))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, 12)
+    }
+
+    private func settingsSection<Content: View>(title: String, content: Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.primary)
+
+            content
+                .padding(.horizontal, 16)
+                .padding(.vertical, 18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
+                        .stroke(Color(nsColor: .separatorColor).opacity(0.80), lineWidth: 1.0)
+                )
+        }
+    }
+
+    private var statusSectionContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            downloadCommandDeck
+            Rectangle()
+                .fill(Color(nsColor: .separatorColor).opacity(0.80))
+                .frame(height: 1.0)
+                .padding(.horizontal, -16)
+                .padding(.vertical, 16)
+            queueCard
         }
     }
 
@@ -119,7 +131,7 @@ struct DownloadsSurfaceView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(t("Download command center", "ダウンロード操作センター"))
-                        .font(.headline)
+                        .font(.system(size: 14, weight: .medium))
                     Text(viewModel.huggingFaceDownloadStatus.phase.localizedTitle(language: viewModel.settings.uiLanguage))
                         .font(.title3.weight(.semibold))
                 }
@@ -205,9 +217,9 @@ struct DownloadsSurfaceView: View {
     private var downloadEnvironmentCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(t("Download tools", "ダウンロードツール確認"))
-                .font(.headline)
+                .font(.system(size: 14, weight: .medium))
             Text(t("Checks download prerequisites. Model search is the separate search area below.", "ダウンロードの前提条件を確認します。モデル検索は下の別エリアです。"))
-                .font(.caption)
+                .font(.system(size: 13))
                 .foregroundStyle(.secondary)
             detailRows([
                 ("aria2c", viewModel.aria2Availability.displayPath),
@@ -222,9 +234,10 @@ struct DownloadsSurfaceView: View {
                 Text(t("Low-speed threshold", "低速判定しきい値"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                TextField("50K", text: $viewModel.lowSpeedRestartThresholdText)
+                TextField("50K", text: $viewModel.lowSpeedRestartThresholdText, prompt: Text("50K").foregroundStyle(.tertiary))
                     .textFieldStyle(.roundedBorder)
-                    .frame(width: 100)
+                    .font(.system(size: 13))
+                    .frame(width: controlWidth, alignment: .leading)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -238,9 +251,12 @@ struct DownloadsSurfaceView: View {
         HStack(spacing: 8) {
             TextField(
                 t("Search by repository or model name", "リポジトリ名またはモデル名で検索"),
-                text: $viewModel.huggingFaceSearchQuery
+                text: $viewModel.huggingFaceSearchQuery,
+                prompt: Text(t("Search by repository or model name", "リポジトリ名またはモデル名で検索")).foregroundStyle(.tertiary)
             )
             .textFieldStyle(.roundedBorder)
+            .font(.system(size: 13))
+            .frame(width: controlWidth, alignment: .leading)
             .onSubmit {
                 viewModel.performHuggingFaceSearchRequested()
             }
@@ -262,7 +278,7 @@ struct DownloadsSurfaceView: View {
     private var searchCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(t("Hugging Face search", "Hugging Face検索"))
-                .font(.headline)
+                .font(.system(size: 14, weight: .medium))
 
             HStack(spacing: 10) {
                 huggingFaceSearchField
@@ -330,16 +346,19 @@ struct DownloadsSurfaceView: View {
 
     private var downloadFormCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(strings.text(.download))
-                .font(.headline)
-
-            TextField(t("Repository ID or URL", "リポジトリIDまたはURL"), text: $viewModel.huggingFaceDownloadDraft.source)
+            TextField(t("Repository ID or URL", "リポジトリIDまたはURL"), text: $viewModel.huggingFaceDownloadDraft.source, prompt: Text(t("Repository ID or URL", "リポジトリIDまたはURL")).foregroundStyle(.tertiary))
                 .textFieldStyle(.roundedBorder)
+                .font(.system(size: 13))
+                .frame(width: controlWidth, alignment: .leading)
             HStack {
-                TextField(t("Revision", "リビジョン"), text: $viewModel.huggingFaceDownloadDraft.revision)
+                TextField(t("Revision", "リビジョン"), text: $viewModel.huggingFaceDownloadDraft.revision, prompt: Text(t("Revision", "リビジョン")).foregroundStyle(.tertiary))
                     .textFieldStyle(.roundedBorder)
-                TextField(t("Display name", "表示名"), text: $viewModel.huggingFaceDownloadDraft.displayName)
+                    .font(.system(size: 13))
+                    .frame(width: controlWidth, alignment: .leading)
+                TextField(t("Display name", "表示名"), text: $viewModel.huggingFaceDownloadDraft.displayName, prompt: Text(t("Display name", "表示名")).foregroundStyle(.tertiary))
                     .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 13))
+                    .frame(width: controlWidth, alignment: .leading)
             }
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
@@ -348,17 +367,23 @@ struct DownloadsSurfaceView: View {
                     Button(t("No filters", "フィルターなし")) { viewModel.clearHuggingFaceFileFilters() }
                     Spacer()
                 }
-                TextField(t("Include patterns", "含めるパターン"), text: $viewModel.huggingFaceDownloadDraft.includePatterns)
+                TextField(t("Include patterns", "含めるパターン"), text: $viewModel.huggingFaceDownloadDraft.includePatterns, prompt: Text("*.safetensors, *.json, tokenizer*").foregroundStyle(.tertiary))
                     .textFieldStyle(.roundedBorder)
-                TextField(t("Exclude patterns", "除外するパターン"), text: $viewModel.huggingFaceDownloadDraft.excludePatterns)
+                    .font(.system(size: 13))
+                    .frame(width: controlWidth, alignment: .leading)
+                TextField(t("Exclude patterns", "除外するパターン"), text: $viewModel.huggingFaceDownloadDraft.excludePatterns, prompt: Text("*.onnx, *.msgpack, *.bin").foregroundStyle(.tertiary))
                     .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 13))
+                    .frame(width: controlWidth, alignment: .leading)
                 Text(t("Patterns are comma-separated. Preview files first, then download selected or filtered files.", "パターンはカンマ区切りです。先にファイルをプレビューし、選択済みまたはフィルター済みのファイルをダウンロードします。"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
             HStack {
-                TextField(t("Save directory", "保存先フォルダ"), text: $viewModel.huggingFaceDownloadDraft.saveDirectory)
+                TextField(t("Save directory", "保存先フォルダ"), text: $viewModel.huggingFaceDownloadDraft.saveDirectory, prompt: Text("~/Models/mlx").foregroundStyle(.tertiary))
                     .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 13))
+                    .frame(width: controlWidth, alignment: .leading)
                 Button(t("Choose", "選択")) {
                     viewModel.chooseHuggingFaceDownloadDirectoryRequested()
                 }
@@ -521,7 +546,7 @@ struct DownloadsSurfaceView: View {
     private var queueCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(strings.text(.downloadQueue))
-                .font(.headline)
+                .font(.system(size: 14, weight: .medium))
             Text(viewModel.huggingFaceDownloadQueueSummary)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -565,12 +590,30 @@ struct DownloadsSurfaceView: View {
     }
 
     private func detailRows(_ rows: [(String, String)]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(rows, id: \.0) { label, value in
-                LabeledContent(label) {
-                    Text(value)
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.element.0) { index, row in
+                HStack(alignment: .center, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(row.0)
+                            .font(.system(size: 13, weight: .medium))
+                        Text(t("Current value for this item.", "この項目の現在値です。"))
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 20)
+                    Text(row.1)
+                        .font(.system(size: 13))
                         .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .lineLimit(2)
+                        .frame(width: controlWidth, alignment: .leading)
+                }
+                .padding(.vertical, 14)
+
+                if index < rows.count - 1 {
+                    Rectangle()
+                        .fill(Color(nsColor: .separatorColor).opacity(0.80))
+                        .frame(height: 1.0)
+                        .padding(.horizontal, -16)
                 }
             }
         }

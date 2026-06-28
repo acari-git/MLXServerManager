@@ -285,7 +285,7 @@ struct IntegratedWorkspaceView: View {
 
     private var systemPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(t("SYSTEM", "システム"))
+            Label(t("SYSTEM", "システム"), systemImage: "desktopcomputer")
                 .font(.callout.weight(.semibold))
                 .foregroundStyle(.secondary)
 
@@ -313,6 +313,7 @@ struct IntegratedWorkspaceView: View {
                 }
             }
         }
+        .padding(.leading, 14)
         .padding(.vertical, 2)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -404,6 +405,7 @@ struct IntegratedWorkspaceView: View {
                 .foregroundStyle(color)
         }
         .lineLimit(1)
+        .padding(.leading, 14)
     }
 
     private var sidebarFooterControls: some View {
