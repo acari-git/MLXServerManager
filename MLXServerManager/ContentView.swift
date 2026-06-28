@@ -30,11 +30,18 @@ struct ContentView: View {
                 viewModel.confirmDeleteProfile()
             }
 
+            Button(t("Delete Profile and Hugging Face Cache", "プロファイルとHugging Faceキャッシュを削除"), role: .destructive) {
+                viewModel.confirmDeleteProfile(deleteHuggingFaceCache: true)
+            }
+
             Button(strings.text(.cancel), role: .cancel) {
                 viewModel.cancelDeleteProfile()
             }
         } message: {
-            Text(t("This removes only the saved profile. Model files and Hugging Face cache are not deleted.", "削除するのは保存済みプロファイルのみです。モデルファイルとHugging Faceキャッシュは削除されません。"))
+            Text(t(
+                "Choose profile-only deletion, or also remove the matching Hugging Face hub cache. Local model folders are not deleted.",
+                "プロファイルのみ削除するか、一致するHugging Face hubキャッシュも削除するかを選択します。ローカルのモデルフォルダは削除されません。"
+            ))
         }
         .sheet(isPresented: Binding(
             get: { viewModel.isProfileEditorPresented },
@@ -49,6 +56,7 @@ struct ContentView: View {
                     : nil,
                 message: viewModel.profileEditorMessage,
                 runtimeFieldsLocked: viewModel.isManagedProcessRunning,
+                language: viewModel.settings.uiLanguage,
                 onSave: viewModel.saveProfileEditing,
                 onCancel: viewModel.cancelProfileEditing,
                 onCopyPreview: viewModel.copyLaunchCommandPreview
@@ -69,6 +77,7 @@ struct ContentView: View {
                     : nil,
                 message: viewModel.addProfileMessage,
                 runtimeFieldsLocked: false,
+                language: viewModel.settings.uiLanguage,
                 onSave: viewModel.saveNewProfile,
                 onCancel: viewModel.cancelAddProfile,
                 onCopyPreview: viewModel.copyLaunchCommandPreview

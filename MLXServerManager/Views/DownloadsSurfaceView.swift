@@ -37,21 +37,58 @@ struct DownloadsSurfaceView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+        Form {
+            Section {
                 header
+            }
+            Section {
                 downloadCommandDeck
+            }
+            if viewModel.latestFailedHuggingFaceDownloadQueueEntry != nil {
+                Section {
                 recoveryCard
+                }
+            }
+            Section {
                 downloadEnvironmentCard
+            }
+            Section {
                 searchCard
+            }
+            Section {
                 downloadFormCard
+            }
+            Section {
                 queueCard
             }
-            .padding(20)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .liquidGlassLayerOne(cornerRadius: 0)
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .overlay(alignment: .top) {
+            topGlassOverlay
+        }
         .accessibilityIdentifier("downloads-surface")
+    }
+
+    private var topGlassOverlay: some View {
+        Rectangle()
+            .fill(.ultraThinMaterial)
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .black, location: 0),
+                        .init(color: .black, location: 0.42),
+                        .init(color: .clear, location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .frame(height: 96)
+            .ignoresSafeArea(.container, edges: .top)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 
     private var header: some View {
@@ -93,8 +130,7 @@ struct DownloadsSurfaceView: View {
                 .frame(width: 260)
             }
         }
-        .padding(16)
-        .liquidGlassLayerTwo(cornerRadius: 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var downloadStateHero: some View {
@@ -129,7 +165,7 @@ struct DownloadsSurfaceView: View {
                 Button(t("Preview files", "ファイルをプレビュー")) { viewModel.previewHuggingFaceFilesRequested() }
                     .disabled(viewModel.huggingFaceFilePreview.isLoading || viewModel.isHuggingFaceDownloadRunning)
                 Button(strings.text(.download)) { viewModel.startHuggingFaceDownloadRequested() }
-                    .buttonStyle(.glassProminent)
+                    .buttonStyle(.borderedProminent)
                     .disabled(!viewModel.canStartHuggingFaceDownload)
                 Button(strings.text(.cancel)) { viewModel.cancelHuggingFaceDownloadRequested() }
                     .disabled(!viewModel.isHuggingFaceDownloadRunning)
@@ -139,22 +175,21 @@ struct DownloadsSurfaceView: View {
     }
 
     private func downloadMetricCard(title: String, value: String, detail: String, systemImage: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        LabeledContent {
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(value)
+                    .font(.callout.weight(.semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Text(detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        } label: {
             Label(title, systemImage: systemImage)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.callout.weight(.semibold))
-                .lineLimit(1)
-                .truncationMode(.middle)
-            Text(detail)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
         }
-        .padding(10)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .liquidGlassLayerTwo(cornerRadius: 10)
     }
 
     @ViewBuilder
@@ -164,7 +199,7 @@ struct DownloadsSurfaceView: View {
                 Label(t("Latest failed download", "直近の失敗したダウンロード"), systemImage: "exclamationmark.triangle")
                     .font(.headline)
                     .foregroundStyle(.orange)
-                DetailGrid(rows: [
+                detailRows([
                     (t("Repository", "リポジトリ"), failed.repositoryID),
                     (t("Destination", "保存先"), failed.compactDestinationPath),
                     (t("Message", "メッセージ"), failed.message)
@@ -182,7 +217,7 @@ struct DownloadsSurfaceView: View {
                     .disabled(!viewModel.canRetryHuggingFaceDownload)
                 }
             }
-            .panelStyle()
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -193,7 +228,7 @@ struct DownloadsSurfaceView: View {
             Text(t("Checks download prerequisites. Model search is the separate search area below.", "ダウンロードの前提条件を確認します。モデル検索は下の別エリアです。"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            DetailGrid(rows: [
+            detailRows([
                 ("aria2c", viewModel.aria2Availability.displayPath),
                 (t("Auto restart", "自動再開"), viewModel.enableDownloadAutoRestart ? t("Enabled below \(viewModel.lowSpeedRestartThresholdText)", "\(viewModel.lowSpeedRestartThresholdText)未満で有効") : t("Disabled", "無効"))
             ])
@@ -211,7 +246,7 @@ struct DownloadsSurfaceView: View {
                     .frame(width: 100)
             }
         }
-        .panelStyle()
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var isHuggingFaceSearchActive: Bool {
@@ -220,16 +255,11 @@ struct DownloadsSurfaceView: View {
 
     private var huggingFaceSearchField: some View {
         HStack(spacing: 8) {
-            Image(systemName: AppSymbol.search)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
-
             TextField(
                 t("Search by repository or model name", "リポジトリ名またはモデル名で検索"),
                 text: $viewModel.huggingFaceSearchQuery
             )
-            .textFieldStyle(.plain)
-            .font(.callout)
+            .textFieldStyle(.roundedBorder)
             .onSubmit {
                 viewModel.performHuggingFaceSearchRequested()
             }
@@ -242,19 +272,8 @@ struct DownloadsSurfaceView: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
                 .help(t("Clear search", "検索をクリア"))
             }
-        }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 8)
-        .background(
-            Color(nsColor: .textBackgroundColor).opacity(0.74),
-            in: RoundedRectangle(cornerRadius: 9, style: .continuous)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.08))
         }
         .accessibilityIdentifier("downloads-huggingface-search-field")
     }
@@ -275,7 +294,7 @@ struct DownloadsSurfaceView: View {
                         Label(strings.text(.search), systemImage: AppSymbol.search)
                     }
                 }
-                .buttonStyle(.glassProminent)
+                .buttonStyle(.borderedProminent)
                 .disabled(viewModel.isHuggingFaceSearching)
             }
 
@@ -308,9 +327,7 @@ struct DownloadsSurfaceView: View {
                                     .font(.caption2)
                                     .foregroundStyle(result.isMLXLikely ? Color.secondary : Color.orange)
                             }
-                            .padding(8)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .liquidGlassLayerTwo(cornerRadius: 8)
                         }
                         .buttonStyle(.plain)
                     }
@@ -318,7 +335,7 @@ struct DownloadsSurfaceView: View {
             }
 
             if let selected = viewModel.selectedHuggingFaceSearchResult {
-                DetailGrid(rows: [
+                detailRows([
                     (t("Selected", "選択中"), selected.id),
                     (t("Owner", "所有者"), selected.owner),
                     (t("Stats", "統計"), selected.qualitySummary),
@@ -327,7 +344,7 @@ struct DownloadsSurfaceView: View {
                 ])
             }
         }
-        .panelStyle()
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var downloadFormCard: some View {
@@ -367,7 +384,7 @@ struct DownloadsSurfaceView: View {
                 .disabled(viewModel.isHuggingFaceDownloadRunning)
             }
 
-            DetailGrid(rows: [
+            detailRows([
                 (t("Preview", "プレビュー"), viewModel.huggingFaceDownloadPreview.compactDestinationPath),
                 (t("Files", "ファイル"), viewModel.huggingFaceSelectedPreviewSummary),
                 (t("Status", "ステータス"), viewModel.huggingFaceDownloadStatus.phase.localizedTitle(language: viewModel.settings.uiLanguage)),
@@ -386,9 +403,6 @@ struct DownloadsSurfaceView: View {
                     Spacer()
                     Button(t("Open Models", "モデルを開く")) { onOpenModels() }
                 }
-                .padding(8)
-                .background(Color.green.opacity(0.10))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
 
             HStack {
@@ -404,7 +418,7 @@ struct DownloadsSurfaceView: View {
                 } label: {
                     Label(strings.text(.download), systemImage: "arrow.down.circle")
                 }
-                .buttonStyle(.glassProminent)
+                .buttonStyle(.borderedProminent)
                 .disabled(!viewModel.canStartHuggingFaceDownload)
 
                 Button(strings.text(.retry)) {
@@ -418,7 +432,7 @@ struct DownloadsSurfaceView: View {
                 .disabled(!viewModel.isHuggingFaceDownloadRunning)
             }
         }
-        .panelStyle()
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var downloadProgressPanel: some View {
@@ -448,8 +462,6 @@ struct DownloadsSurfaceView: View {
                     .lineLimit(1)
             }
         }
-        .padding(8)
-        .liquidGlassLayerTwo(cornerRadius: 8)
         .accessibilityIdentifier("hf-download-progress-panel")
     }
 
@@ -478,8 +490,6 @@ struct DownloadsSurfaceView: View {
             }
             previewFileList
         }
-        .padding(8)
-        .liquidGlassLayerTwo(cornerRadius: 8)
     }
 
     @ViewBuilder
@@ -504,8 +514,6 @@ struct DownloadsSurfaceView: View {
                     }
                 }
             }
-            .padding(8)
-            .liquidGlassLayerTwo(cornerRadius: 8)
         }
     }
 
@@ -568,11 +576,22 @@ struct DownloadsSurfaceView: View {
                             Spacer()
                         }
                     }
-                    .padding(8)
-                    .liquidGlassLayerTwo(cornerRadius: 8)
+                    .padding(.vertical, 4)
                 }
             }
         }
-        .panelStyle()
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func detailRows(_ rows: [(String, String)]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(rows, id: \.0) { label, value in
+                LabeledContent(label) {
+                    Text(value)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
     }
 }

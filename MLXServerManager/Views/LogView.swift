@@ -56,27 +56,24 @@ struct LogView: View {
             }
             .accessibilityIdentifier("log-view-header")
 
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 6) {
-                    if entries.isEmpty {
-                        Text(t("No logs", "ログはありません"))
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .accessibilityIdentifier("log-view-empty-state")
-                    } else {
-                        ForEach(entries) { entry in
-                            LogEntryRow(entry: entry)
-                        }
+            List {
+                if entries.isEmpty {
+                    Text(t("No logs", "ログはありません"))
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("log-view-empty-state")
+                } else {
+                    ForEach(entries) { entry in
+                        LogEntryRow(entry: entry)
                     }
                 }
-                .padding(12)
-                .accessibilityIdentifier("log-view-entry-list")
             }
+            .listStyle(.inset)
+            .accessibilityIdentifier("log-view-entry-list")
             .frame(minHeight: 180)
-            .liquidGlassPanel(cornerRadius: 8)
         }
-        .panelStyle()
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityIdentifier("log-view")
     }
 }

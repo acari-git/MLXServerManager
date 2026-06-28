@@ -41,73 +41,60 @@ struct SettingsPanelView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(strings.text(.settings))
-                .font(.headline)
+        Form {
+            Section {
+                LabeledContent(t("mlx_lm.server executable path", "mlx_lm.server実行ファイルのパス")) {
+                    TextField(t("Unset", "未設定"), text: $executablePath)
+                        .textFieldStyle(.roundedBorder)
+                }
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(t("mlx_lm.server executable path", "mlx_lm.server実行ファイルのパス"))
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(.secondary)
-
-                TextField(t("Unset", "未設定"), text: $executablePath)
-                    .textFieldStyle(.roundedBorder)
-            }
-
-            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
-                GridRow {
-                    Text(t("Default host", "デフォルトホスト"))
-                        .font(.callout.weight(.medium))
-                        .foregroundStyle(.secondary)
+                LabeledContent(t("Default host", "デフォルトホスト")) {
                     TextField("127.0.0.1", text: $defaultHost)
                         .textFieldStyle(.roundedBorder)
                 }
-                GridRow {
-                    Text(t("Default port", "デフォルトポート"))
-                        .font(.callout.weight(.medium))
-                        .foregroundStyle(.secondary)
+
+                LabeledContent(t("Default port", "デフォルトポート")) {
                     TextField("8080", text: portTextBinding)
                         .textFieldStyle(.roundedBorder)
                         .frame(maxWidth: 160)
                 }
-                GridRow {
-                    Text(t("API key placeholder", "APIキーのプレースホルダー"))
-                        .font(.callout.weight(.medium))
-                        .foregroundStyle(.secondary)
+
+                LabeledContent(t("API key placeholder", "APIキーのプレースホルダー")) {
                     TextField("not-required-local", text: $apiKeyPlaceholder)
                         .textFieldStyle(.roundedBorder)
                 }
+            } header: {
+                Text(strings.text(.settings))
+            } footer: {
+                Text(t(
+                    "Language and theme are changed from the bottom-left Display menu.",
+                    "言語とテーマは左下の表示メニューから変更します。"
+                ))
             }
 
-            Text(t(
-                "Language and theme are now changed from the bottom-left Settings menu so app chrome settings stay one click away.",
-                "言語とテーマは左下の設定メニューから変更します。アプリ外観の設定を1クリックで開けるようにしています。"
-            ))
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            Section {
+                LabeledContent(t("Settings folder", "設定フォルダ")) {
+                    Text(settingsDirectoryPath)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                }
 
-            HStack(spacing: 12) {
                 Button {
                     onSave()
                 } label: {
                     Label(strings.text(.saveSettings), systemImage: "square.and.arrow.down")
                 }
-                .buttonStyle(.glassProminent)
+                .buttonStyle(.borderedProminent)
 
                 Button {
                     onRunDiagnostics()
                 } label: {
                     Label(strings.text(.runDiagnostics), systemImage: "stethoscope")
                 }
-
-                Text(settingsDirectoryPath)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .textSelection(.enabled)
             }
         }
-        .panelStyle()
+        .formStyle(.grouped)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

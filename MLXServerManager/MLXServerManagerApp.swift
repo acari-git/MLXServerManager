@@ -16,7 +16,7 @@ struct MLXServerManagerApp: App {
             ContentView(viewModel: viewModel)
         }
         .defaultSize(width: 1280, height: 820)
-        .windowToolbarStyle(.unifiedCompact(showsTitle: false))
+        .windowStyle(.hiddenTitleBar)
 
         MenuBarExtra {
             MenuBarView(viewModel: viewModel)

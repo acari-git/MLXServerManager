@@ -187,6 +187,7 @@ final class AppViewModel: ObservableObject {
     private var systemUsageMonitorTask: Task<Void, Never>?
     private var autoUnloadTask: Task<Void, Never>?
     private var huggingFaceDownloadTask: Task<Void, Never>?
+    private var huggingFaceDownloadProgressTask: Task<Void, Never>?
     private var miniChatTask: Task<Void, Never>?
     private var huggingFaceDownloadCancellationRequested = false
     private var pendingDeleteModelID: ModelConfig.ID?
@@ -1450,6 +1451,36 @@ final class AppViewModel: ObservableObject {
         return Self.formatMemoryGigabytes(memoryUsageGB)
     }
 
+    func modelSizeSortValue(for model: ModelConfig) -> Double {
+        modelSizeGigabytes(for: model) ?? -1
+    }
+
+    func integratedStatusSortValue(for model: ModelConfig) -> Int {
+        if isModelTransitioning(model) {
+            return 0
+        }
+        if isModelLoaded(model) {
+            return 1
+        }
+        return 2
+    }
+
+    func endpointSortValue(for model: ModelConfig) -> String {
+        "\(model.host):\(String(format: "%05d", model.serverPort))"
+    }
+
+    func integratedMemorySortValue(for model: ModelConfig) -> Double {
+        memoryValueForSort(model)
+    }
+
+    func autoUnloadTableSortValue(for model: ModelConfig) -> Int {
+        autoUnloadSortValue(model)
+    }
+
+    func reasoningSortValue(for model: ModelConfig) -> Int {
+        model.enableThinking ? 1 : 0
+    }
+
     func integratedLatestUseText(for model: ModelConfig) -> String {
         guard model.id == runningModelID else { return "-" }
         if let latestBenchmarkResult {
@@ -2232,6 +2263,8 @@ final class AppViewModel: ObservableObject {
 
         let displayName = preview.displayName
         let draft = huggingFaceDownloadDraft
+        let expectedDownloadFiles = huggingFaceExpectedDownloadFiles()
+        let expectedDownloadBytes = totalBytes(for: expectedDownloadFiles)
         let queueEntryID = UUID()
         huggingFaceDownloadQueue.insert(
             HuggingFaceDownloadQueueEntry(
@@ -2240,9 +2273,9 @@ final class AppViewModel: ObservableObject {
                 destinationPath: destinationPath,
                 phase: .preparing,
                 message: "Preparing",
-                fileCount: huggingFaceDownloadDraft.useSelectedPreviewFiles ? selectedHuggingFacePreviewFiles.count : nil,
+                fileCount: expectedDownloadFiles.isEmpty ? nil : expectedDownloadFiles.count,
                 downloadedBytes: nil,
-                totalBytes: nil,
+                totalBytes: expectedDownloadBytes,
                 speedBytesPerSecond: nil
             ),
             at: 0
@@ -2258,6 +2291,11 @@ final class AppViewModel: ObservableObject {
         )
         appendLog("[hf] starting Hugging Face download for \(reference.repositoryID).")
         appendLog("[hf] destination: \(ModelAvailabilityPathFormatter.compact(path: destinationPath))")
+        startHuggingFaceProgressPolling(
+            destinationPath: destinationPath,
+            totalBytes: expectedDownloadBytes,
+            queueEntryID: queueEntryID
+        )
 
         huggingFaceDownloadTask = Task { [weak self] in
             await self?.runHuggingFaceDownload(
@@ -2309,6 +2347,7 @@ final class AppViewModel: ObservableObject {
         huggingFaceDownloadCancellationRequested = true
         huggingFaceDownloadStatus.phase = .cancelled
         huggingFaceDownloadStatus.message = "Cancelling download. The model will not be added."
+        stopHuggingFaceProgressPolling()
         huggingFaceDownloadManager.cancel()
         huggingFaceDownloadTask?.cancel()
         appendLog("[hf] cancel requested.")
@@ -2788,7 +2827,7 @@ final class AppViewModel: ObservableObject {
         appendLog("[profile] delete cancelled.")
     }
 
-    func confirmDeleteProfile() {
+    func confirmDeleteProfile(deleteHuggingFaceCache: Bool = false) {
         guard let pendingDeleteModelID else {
             let message = Self.localizedText(language: settings.uiLanguage, english: "No model profile is pending deletion.", japanese: "削除待ちのモデルプロファイルはありません。")
             profileDeletionMessage = message
@@ -2822,6 +2861,9 @@ final class AppViewModel: ObservableObject {
         }
 
         let deletedModel = models[index]
+        let cacheDeletionMessage = deleteHuggingFaceCache
+            ? deleteHuggingFaceCacheIfAvailable(for: deletedModel)
+            : nil
         var nextModels = models
         nextModels.remove(at: index)
 
@@ -2856,7 +2898,7 @@ final class AppViewModel: ObservableObject {
             addProfileDraft = .empty
             addProfileMessage = nil
             isAddProfilePresented = false
-            profileDeletionMessage = nil
+            profileDeletionMessage = cacheDeletionMessage
             self.pendingDeleteModelID = nil
             isDeleteProfileConfirmationPresented = false
         } catch {
@@ -2865,6 +2907,112 @@ final class AppViewModel: ObservableObject {
             isDeleteProfileConfirmationPresented = false
             appendLog("[profile] delete failed: \(error.localizedDescription)")
         }
+    }
+
+    private func deleteHuggingFaceCacheIfAvailable(for model: ModelConfig) -> String {
+        guard let cacheURL = huggingFaceCacheURL(for: model) else {
+            appendLog("[profile] Hugging Face cache delete skipped: repository ID could not be resolved for \(model.modelID).")
+            return Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Profile deleted. Hugging Face cache was not deleted because the repository ID could not be resolved.",
+                japanese: "プロファイルを削除しました。リポジトリIDを特定できなかったため、Hugging Faceキャッシュは削除していません。"
+            )
+        }
+
+        guard cacheURL.path.hasPrefix(FileManager.default.homeDirectoryForCurrentUser.path) else {
+            appendLog("[profile] Hugging Face cache delete skipped: resolved path is outside the home directory.")
+            return Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Profile deleted. Hugging Face cache was not deleted because the resolved cache path was outside the home directory.",
+                japanese: "プロファイルを削除しました。解決されたキャッシュパスがホームディレクトリ外だったため、Hugging Faceキャッシュは削除していません。"
+            )
+        }
+
+        guard FileManager.default.fileExists(atPath: cacheURL.path) else {
+            appendLog("[profile] Hugging Face cache was not present at \(ModelAvailabilityPathFormatter.compact(path: cacheURL.path)).")
+            return Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Profile deleted. Matching Hugging Face cache was not found.",
+                japanese: "プロファイルを削除しました。一致するHugging Faceキャッシュは見つかりませんでした。"
+            )
+        }
+
+        do {
+            try FileManager.default.removeItem(at: cacheURL)
+            appendLog("[profile] deleted Hugging Face cache at \(ModelAvailabilityPathFormatter.compact(path: cacheURL.path)).")
+            return Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Profile and matching Hugging Face cache were deleted.",
+                japanese: "プロファイルと一致するHugging Faceキャッシュを削除しました。"
+            )
+        } catch {
+            appendLog("[profile] Hugging Face cache delete failed: \(error.localizedDescription)")
+            return Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Profile deleted, but Hugging Face cache deletion failed: \(error.localizedDescription)",
+                japanese: "プロファイルは削除しましたが、Hugging Faceキャッシュの削除に失敗しました: \(error.localizedDescription)"
+            )
+        }
+    }
+
+    private func huggingFaceCacheURL(for model: ModelConfig) -> URL? {
+        guard let repositoryID = huggingFaceRepositoryID(for: model) else {
+            return nil
+        }
+
+        let parts = repositoryID.split(separator: "/", maxSplits: 1).map(String.init)
+        guard parts.count == 2 else {
+            return nil
+        }
+
+        let cacheFolderName = "models--\(parts[0])--\(parts[1])"
+        return FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".cache", isDirectory: true)
+            .appendingPathComponent("huggingface", isDirectory: true)
+            .appendingPathComponent("hub", isDirectory: true)
+            .appendingPathComponent(cacheFolderName, isDirectory: true)
+    }
+
+    private func huggingFaceRepositoryID(for model: ModelConfig) -> String? {
+        if let repositoryID = Self.validHuggingFaceRepositoryID(model.modelID) {
+            return repositoryID
+        }
+
+        return Self.huggingFaceRepositoryID(in: model.notes)
+    }
+
+    nonisolated private static func validHuggingFaceRepositoryID(_ text: String) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              !trimmed.hasPrefix("/"),
+              !trimmed.hasPrefix("~"),
+              !trimmed.localizedCaseInsensitiveContains("file:"),
+              trimmed.split(separator: "/").count == 2,
+              trimmed.rangeOfCharacter(from: .whitespacesAndNewlines) == nil else {
+            return nil
+        }
+
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-/")
+        guard trimmed.unicodeScalars.allSatisfy({ allowed.contains($0) }) else {
+            return nil
+        }
+
+        return trimmed
+    }
+
+    nonisolated private static func huggingFaceRepositoryID(in text: String) -> String? {
+        let pattern = #"(?:huggingface\.co/|Downloaded from\s+)([A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return nil
+        }
+
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = regex.firstMatch(in: text, range: range),
+              let repositoryRange = Range(match.range(at: 1), in: text) else {
+            return nil
+        }
+
+        return validHuggingFaceRepositoryID(String(text[repositoryRange]))
     }
 
     func saveProfileEditing() {
@@ -3130,6 +3278,7 @@ final class AppViewModel: ObservableObject {
             guard !huggingFaceDownloadCancellationRequested else {
                 huggingFaceDownloadStatus.phase = .cancelled
                 huggingFaceDownloadStatus.message = "Download cancelled. The model was not added."
+                stopHuggingFaceProgressPolling()
                 updateHuggingFaceQueueEntry(queueEntryID, phase: .cancelled, message: "Cancelled")
                 appendLog("[hf] download cancelled for \(reference.repositoryID).")
                 huggingFaceDownloadTask = nil
@@ -3139,6 +3288,7 @@ final class AppViewModel: ObservableObject {
             huggingFaceDownloadStatus.phase = .finalizing
             huggingFaceDownloadStatus.message = "Finalizing downloaded model profile..."
             huggingFaceDownloadStatus.progress = 1
+            stopHuggingFaceProgressPolling()
 
             if draft.autoAddToModelList {
                 let didAddProfile = addDownloadedHuggingFaceModelProfile(
@@ -3167,12 +3317,14 @@ final class AppViewModel: ObservableObject {
             if huggingFaceDownloadCancellationRequested {
                 huggingFaceDownloadStatus.phase = .cancelled
                 huggingFaceDownloadStatus.message = "Download cancelled. The model was not added."
+                stopHuggingFaceProgressPolling()
                 updateHuggingFaceQueueEntry(queueEntryID, phase: .cancelled, message: "Cancelled")
                 appendLog("[hf] download cancelled.")
             } else {
                 let guidance = huggingFaceDownloadFailureGuidance(from: error)
                 huggingFaceDownloadStatus.phase = .failed
                 huggingFaceDownloadStatus.message = guidance
+                stopHuggingFaceProgressPolling()
                 updateHuggingFaceQueueEntry(queueEntryID, phase: .failed, message: guidance)
                 appendLog("[hf] download failed: \(guidance)")
             }
@@ -3190,6 +3342,26 @@ final class AppViewModel: ObservableObject {
             return selectedHuggingFacePreviewFiles.map(\.path)
         }
         return Self.patternList(from: huggingFaceDownloadDraft.includePatterns)
+    }
+
+    private func huggingFaceExpectedDownloadFiles() -> [HuggingFaceDownloadPreviewFile] {
+        let files = huggingFaceDownloadDraft.useSelectedPreviewFiles ? selectedHuggingFacePreviewFiles : filteredHuggingFacePreviewFiles
+        return files
+    }
+
+    private func totalBytes(for files: [HuggingFaceDownloadPreviewFile]) -> Int64? {
+        guard !files.isEmpty else {
+            return nil
+        }
+
+        var total: Int64 = 0
+        for file in files {
+            guard let size = file.size else {
+                return nil
+            }
+            total += size
+        }
+        return total > 0 ? total : nil
     }
 
     nonisolated private static func patternList(from text: String) -> [String] {
@@ -3247,9 +3419,124 @@ final class AppViewModel: ObservableObject {
         huggingFaceDownloadQueue[index].phase = phase
         huggingFaceDownloadQueue[index].message = message
         if let progress {
-            huggingFaceDownloadQueue[index].downloadedBytes = Int64(progress * 10_000)
-            huggingFaceDownloadQueue[index].totalBytes = 10_000
+            let totalBytes = huggingFaceDownloadQueue[index].totalBytes ?? 10_000
+            huggingFaceDownloadQueue[index].downloadedBytes = Int64(progress * Double(totalBytes))
+            huggingFaceDownloadQueue[index].totalBytes = totalBytes
         }
+    }
+
+    private func updateMeasuredHuggingFaceProgress(
+        queueEntryID: UUID,
+        downloadedBytes: Int64,
+        totalBytes: Int64?,
+        speedBytesPerSecond: Int64?
+    ) {
+        if case .preparing = huggingFaceDownloadStatus.phase {
+            huggingFaceDownloadStatus.phase = .downloading
+        }
+
+        let downloadedText = ByteCountFormatter.string(fromByteCount: downloadedBytes, countStyle: .file)
+        guard let totalBytes, totalBytes > 0 else {
+            if case .downloading = huggingFaceDownloadStatus.phase {
+                huggingFaceDownloadStatus.progress = nil
+                huggingFaceDownloadStatus.message = "Downloading... \(downloadedText)"
+            }
+
+            guard let index = huggingFaceDownloadQueue.firstIndex(where: { $0.id == queueEntryID }) else {
+                return
+            }
+            huggingFaceDownloadQueue[index].phase = .downloading
+            huggingFaceDownloadQueue[index].message = "Downloading... \(downloadedText)"
+            huggingFaceDownloadQueue[index].downloadedBytes = max(downloadedBytes, 0)
+            huggingFaceDownloadQueue[index].speedBytesPerSecond = speedBytesPerSecond
+            return
+        }
+
+        let clampedDownloadedBytes = min(max(downloadedBytes, 0), totalBytes)
+        let measuredProgress = min(max(Double(clampedDownloadedBytes) / Double(totalBytes), 0), 1)
+        let currentProgress = huggingFaceDownloadStatus.progress ?? 0
+        let progress = max(currentProgress, measuredProgress)
+        let percent = Int(progress * 100)
+
+        if case .downloading = huggingFaceDownloadStatus.phase {
+            huggingFaceDownloadStatus.progress = progress
+            huggingFaceDownloadStatus.message = "Downloading... \(percent)%"
+        }
+
+        guard let index = huggingFaceDownloadQueue.firstIndex(where: { $0.id == queueEntryID }) else {
+            return
+        }
+        huggingFaceDownloadQueue[index].phase = .downloading
+        huggingFaceDownloadQueue[index].message = "Downloading... \(percent)%"
+        huggingFaceDownloadQueue[index].downloadedBytes = Int64(progress * Double(totalBytes))
+        huggingFaceDownloadQueue[index].totalBytes = totalBytes
+        huggingFaceDownloadQueue[index].speedBytesPerSecond = speedBytesPerSecond
+    }
+
+    private func startHuggingFaceProgressPolling(
+        destinationPath: String,
+        totalBytes: Int64?,
+        queueEntryID: UUID
+    ) {
+        stopHuggingFaceProgressPolling()
+
+        huggingFaceDownloadProgressTask = Task { [weak self] in
+            var lastBytes: Int64 = 0
+            var lastDate = Date()
+
+            while !Task.isCancelled {
+                let downloadedBytes = await Task.detached(priority: .utility) {
+                    Self.directorySizeBytes(atPath: destinationPath)
+                }.value
+                let now = Date()
+                let elapsed = max(now.timeIntervalSince(lastDate), 0.001)
+                let speed = Int64(max(Double(downloadedBytes - lastBytes) / elapsed, 0))
+                lastBytes = downloadedBytes
+                lastDate = now
+
+                self?.updateMeasuredHuggingFaceProgress(
+                    queueEntryID: queueEntryID,
+                    downloadedBytes: downloadedBytes,
+                    totalBytes: totalBytes,
+                    speedBytesPerSecond: speed
+                )
+
+                try? await Task.sleep(nanoseconds: 700_000_000)
+            }
+        }
+    }
+
+    private func stopHuggingFaceProgressPolling() {
+        huggingFaceDownloadProgressTask?.cancel()
+        huggingFaceDownloadProgressTask = nil
+    }
+
+    nonisolated private static func directorySizeBytes(atPath path: String) -> Int64 {
+        let url = URL(fileURLWithPath: path, isDirectory: true)
+        let keys: Set<URLResourceKey> = [.isRegularFileKey, .fileSizeKey]
+
+        if let values = try? url.resourceValues(forKeys: keys),
+           values.isRegularFile == true {
+            return Int64(values.fileSize ?? 0)
+        }
+
+        guard let enumerator = FileManager.default.enumerator(
+            at: url,
+            includingPropertiesForKeys: Array(keys),
+            options: [.skipsPackageDescendants]
+        ) else {
+            return 0
+        }
+
+        var total: Int64 = 0
+        for case let fileURL as URL in enumerator {
+            guard let values = try? fileURL.resourceValues(forKeys: keys),
+                  values.isRegularFile == true else {
+                continue
+            }
+            total += Int64(values.fileSize ?? 0)
+        }
+        return total
     }
 
     private func appendHuggingFaceOutputLine(_ line: String, queueEntryID: UUID? = nil) {

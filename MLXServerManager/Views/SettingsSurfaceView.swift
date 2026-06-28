@@ -30,7 +30,7 @@ struct SettingsSurfaceView: View {
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .liquidGlassLayerOne(cornerRadius: 0)
+        .background(Color(nsColor: .windowBackgroundColor))
         .accessibilityIdentifier("settings-surface")
     }
 
@@ -62,6 +62,7 @@ struct SettingsSurfaceView: View {
         }
         .font(.caption)
         .foregroundStyle(.secondary)
-        .panelStyle()
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

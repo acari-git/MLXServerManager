@@ -251,6 +251,9 @@ struct HuggingFaceDownloadQueueEntry: Identifiable, Equatable {
 
     var progressText: String {
         guard let progressFraction else {
+            if let downloadedBytes {
+                return "\(ByteCountFormatter.string(fromByteCount: downloadedBytes, countStyle: .file)) downloaded"
+            }
             return fileCount.map { "\($0) files" } ?? "Progress unavailable"
         }
         let downloaded = downloadedBytes ?? 0

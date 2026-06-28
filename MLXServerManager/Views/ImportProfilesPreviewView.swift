@@ -43,7 +43,7 @@ struct ImportProfilesPreviewView: View {
                 Button(t("Import Selected Profiles", "選択プロファイルをインポート")) {
                     isImportConfirmationPresented = true
                 }
-                .buttonStyle(.glassProminent)
+                .buttonStyle(.borderedProminent)
                 .disabled(selectedActionCount == 0)
 
                 Button(t("Close", "閉じる")) {
@@ -104,35 +104,35 @@ struct ImportProfilesPreviewView: View {
     }
 
     private var importScopeNotice: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(t("Valid profiles are selected by default. Profile-name conflicts can be renamed. Unambiguous existing-profile conflicts can be replaced only after confirmation.", "有効なプロファイルは既定で選択されます。プロファイル名の競合はリネームできます。曖昧でない既存プロファイル競合は、確認後にのみ置換できます。"), systemImage: "checklist")
-                .font(.callout.weight(.semibold))
+        GroupBox {
+            VStack(alignment: .leading, spacing: 8) {
+                Label(t("Valid profiles are selected by default. Profile-name conflicts can be renamed. Unambiguous existing-profile conflicts can be replaced only after confirmation.", "有効なプロファイルは既定で選択されます。プロファイル名の競合はリネームできます。曖昧でない既存プロファイル競合は、確認後にのみ置換できます。"), systemImage: "checklist")
+                    .font(.callout.weight(.semibold))
 
-            Text(t("Import does not start, stop, or restart servers. It does not call /v1/models, make external HTTP requests, download models, delete files, import secrets, change external ownership, or change process ownership.", "インポートはサーバーの起動・停止・再起動を行いません。/v1/modelsの呼び出し、外部HTTPリクエスト、モデルのダウンロード、ファイル削除、シークレットのインポート、外部所有権やプロセス所有権の変更も行いません。"))
-                .font(.callout)
-                .foregroundStyle(.secondary)
+                Text(t("Import does not start, stop, or restart servers. It does not call /v1/models, make external HTTP requests, download models, delete files, import secrets, change external ownership, or change process ownership.", "インポートはサーバーの起動・停止・再起動を行いません。/v1/modelsの呼び出し、外部HTTPリクエスト、モデルのダウンロード、ファイル削除、シークレットのインポート、外部所有権やプロセス所有権の変更も行いません。"))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .textBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private var documentSummary: some View {
-        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 8) {
-            summaryRow(t("Source File", "ソースファイル"), result.sourceFileName)
-            summaryRow("schemaVersion", result.schemaVersion.map(String.init) ?? t("Missing", "不足"))
-            summaryRow("app", result.app ?? t("Not provided", "未指定"))
-            summaryRow("exportedAt", formattedDate(result.exportedAt))
-            summaryRow(t("Total Profiles", "プロファイル総数"), String(result.totalProfiles))
-            summaryRow(t("Valid Profiles", "有効なプロファイル"), String(result.validProfilesCount))
-            summaryRow(t("Invalid Profiles", "無効なプロファイル"), String(result.invalidProfilesCount))
-            summaryRow(t("Warnings", "警告"), String(result.warningCount))
+        GroupBox {
+            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 8) {
+                summaryRow(t("Source File", "ソースファイル"), result.sourceFileName)
+                summaryRow("schemaVersion", result.schemaVersion.map(String.init) ?? t("Missing", "不足"))
+                summaryRow("app", result.app ?? t("Not provided", "未指定"))
+                summaryRow("exportedAt", formattedDate(result.exportedAt))
+                summaryRow(t("Total Profiles", "プロファイル総数"), String(result.totalProfiles))
+                summaryRow(t("Valid Profiles", "有効なプロファイル"), String(result.validProfilesCount))
+                summaryRow(t("Invalid Profiles", "無効なプロファイル"), String(result.invalidProfilesCount))
+                summaryRow(t("Warnings", "警告"), String(result.warningCount))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .underPageBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private var profilesSection: some View {
@@ -155,7 +155,8 @@ struct ImportProfilesPreviewView: View {
     }
 
     private func profileRow(_ profile: ValidatedImportProfile) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
                 Picker(t("Action", "操作"), selection: actionBinding(for: profile)) {
                     Text(t("Skip", "スキップ")).tag(ImportProfileRowAction.skip)
@@ -214,11 +215,9 @@ struct ImportProfilesPreviewView: View {
             }
 
             messageSection(title: t("Messages", "メッセージ"), messages: profile.messages)
+            }
         }
-        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .textBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private var selectedActionCount: Int {
@@ -519,10 +518,6 @@ struct ImportProfilesPreviewView: View {
         return Text(status.rawValue)
             .font(.caption.weight(.semibold))
             .foregroundStyle(color)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(color.opacity(0.12))
-            .clipShape(RoundedRectangle(cornerRadius: 5))
     }
 
     private func summaryRow(_ label: String, _ value: String) -> some View {

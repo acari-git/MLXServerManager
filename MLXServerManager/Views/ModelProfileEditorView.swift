@@ -9,7 +9,7 @@ struct ModelProfileEditorView: View {
     let noticeMessage: String?
     let message: String?
     let runtimeFieldsLocked: Bool
-    let language: AppLanguage = .system
+    let language: AppLanguage
     let onSave: () -> Void
     let onCancel: () -> Void
     let onCopyPreview: (String) -> Void
@@ -23,29 +23,49 @@ struct ModelProfileEditorView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text(title)
-                    .font(.headline)
+        VStack(alignment: .leading, spacing: 0) {
+            header
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 12)
 
-                Spacer()
+            Divider()
 
-                HStack(spacing: 10) {
-                    Button {
-                        onCancel()
-                    } label: {
-                        Label(t("Cancel", "キャンセル"), systemImage: "xmark")
-                    }
-
-                    Button {
-                        onSave()
-                    } label: {
-                        Label(saveButtonTitle, systemImage: "square.and.arrow.down")
-                    }
-                    .buttonStyle(.glassProminent)
-                }
+            ScrollView {
+                editorContent
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
 
+    private var header: some View {
+        HStack {
+            Text(title)
+                .font(.headline)
+
+            Spacer()
+
+            HStack(spacing: 10) {
+                Button {
+                    onCancel()
+                } label: {
+                    Label(t("Cancel", "キャンセル"), systemImage: "xmark")
+                }
+
+                Button {
+                    onSave()
+                } label: {
+                    Label(saveButtonTitle, systemImage: "square.and.arrow.down")
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+    }
+
+    private var editorContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
             if let noticeMessage, !noticeMessage.isEmpty {
                 Label(noticeMessage, systemImage: "info.circle")
                     .font(.callout)
@@ -100,11 +120,6 @@ struct ModelProfileEditorView: View {
                     TextEditor(text: $draft.notes)
                         .font(.callout)
                         .frame(minHeight: 72)
-                        .scrollContentBackground(.hidden)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
-                    }
                 }
             }
 
@@ -183,11 +198,6 @@ struct ModelProfileEditorView: View {
                             TextEditor(text: advancedBinding(\.chatTemplateArgs))
                                 .font(.system(.callout, design: .monospaced))
                                 .frame(minHeight: 60)
-                                .scrollContentBackground(.hidden)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
-                                }
                         }
 
                         advancedRow("Raw Extra Args") {
@@ -195,11 +205,6 @@ struct ModelProfileEditorView: View {
                                 TextEditor(text: advancedBinding(\.rawExtraArgs))
                                     .font(.system(.callout, design: .monospaced))
                                     .frame(minHeight: 60)
-                                    .scrollContentBackground(.hidden)
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
-                                    }
 
                                 Text(t("Expert only. Raw arguments are appended last and used only when explicitly set.", "上級者向けです。Raw引数は最後に追加され、明示した場合のみ使われます。"))
                                     .font(.caption)
@@ -234,10 +239,7 @@ struct ModelProfileEditorView: View {
                         Text(launchCommandPreview)
                             .font(.system(.caption, design: .monospaced))
                             .textSelection(.enabled)
-                            .padding(8)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color(nsColor: .textBackgroundColor))
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
 
                         if let advancedOptionsStatus {
                             Text(advancedOptionsStatus)
@@ -250,7 +252,7 @@ struct ModelProfileEditorView: View {
             }
             .disabled(runtimeFieldsLocked)
         }
-        .panelStyle()
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func editorRow<Content: View>(

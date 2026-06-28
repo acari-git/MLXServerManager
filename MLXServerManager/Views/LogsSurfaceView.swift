@@ -33,14 +33,25 @@ struct LogsSurfaceView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+        Form {
+            Section {
                 header
+            }
+            Section {
                 logCommandDeck
+            }
+            Section {
                 summaryCards
+            } header: {
+                Text(t("Summary", "概要"))
+            }
+            Section {
                 troubleshootingCard
+            }
+            Section {
                 boundaryCard
-
+            }
+            Section {
                 LogView(
                     entries: entries,
                     language: language,
@@ -49,11 +60,34 @@ struct LogsSurfaceView: View {
                 )
                 .accessibilityIdentifier("logs-surface-log-view")
             }
-            .padding(20)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .liquidGlassLayerOne(cornerRadius: 0)
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .overlay(alignment: .top) {
+            topGlassOverlay
+        }
         .accessibilityIdentifier("logs-surface")
+    }
+
+    private var topGlassOverlay: some View {
+        Rectangle()
+            .fill(.ultraThinMaterial)
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .black, location: 0),
+                        .init(color: .black, location: 0.42),
+                        .init(color: .clear, location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .frame(height: 96)
+            .ignoresSafeArea(.container, edges: .top)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 
     private var header: some View {
@@ -107,9 +141,7 @@ struct LogsSurfaceView: View {
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .lineLimit(2)
-                    .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
 
             HStack {
@@ -123,39 +155,17 @@ struct LogsSurfaceView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(16)
-        .liquidGlassLayerTwo(cornerRadius: 14)
         .accessibilityIdentifier("logs-surface-command-deck")
     }
 
     private var summaryCards: some View {
-        LazyVGrid(
-            columns: [GridItem(.adaptive(minimum: 160), spacing: 12)],
-            alignment: .leading,
-            spacing: 12
-        ) {
-            summaryCard(t("Entries", "件数"), value: String(entries.count), identifier: "logs-surface-summary-entries")
-            summaryCard(t("Target", "接続先"), value: targetSummary.targetType, identifier: "logs-surface-summary-target")
-            summaryCard(t("Readiness", "準備状態"), value: targetSummary.readinessSummary, identifier: "logs-surface-summary-readiness")
-            summaryCard(t("Running", "実行中"), value: runningModelText, identifier: "logs-surface-summary-running")
-        }
+        detailRows([
+            (t("Entries", "件数"), String(entries.count)),
+            (t("Target", "接続先"), targetSummary.targetType),
+            (t("Readiness", "準備状態"), targetSummary.readinessSummary),
+            (t("Running", "実行中"), runningModelText)
+        ])
         .accessibilityIdentifier("logs-surface-summary")
-    }
-
-    private func summaryCard(_ title: String, value: String, identifier: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.headline)
-                .lineLimit(1)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .liquidGlassLayerTwo(cornerRadius: 10)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier(identifier)
     }
 
     private var latestImportantLogEntry: LogEntry? {
@@ -171,7 +181,7 @@ struct LogsSurfaceView: View {
             Label(t("Troubleshooting", "トラブルシューティング"), systemImage: "wrench.and.screwdriver")
                 .font(.headline)
 
-            DetailGrid(rows: [
+            detailRows([
                 (t("Latest important log", "直近の重要ログ"), latestImportantLogEntry?.line ?? t("None", "なし")),
                 (t("Target", "接続先"), targetSummary.targetType),
                 ("Base URL", targetSummary.baseURL),
@@ -186,9 +196,7 @@ struct LogsSurfaceView: View {
                     .disabled(entries.isEmpty)
             }
         }
-        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .liquidGlassLayerTwo(cornerRadius: 10)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("logs-surface-troubleshooting")
     }
@@ -205,17 +213,27 @@ struct LogsSurfaceView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
 
-            DetailGrid(rows: [
+            detailRows([
                 (t("Ownership", "管理範囲"), targetSummary.ownershipNote),
                 ("Direct Mode", targetSummary.directModeNote),
                 ("Base URL", targetSummary.baseURL),
                 ("Model ID", targetSummary.modelID)
             ])
         }
-        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .liquidGlassLayerTwo(cornerRadius: 10)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("logs-surface-boundary")
+    }
+
+    private func detailRows(_ rows: [(String, String)]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(rows, id: \.0) { label, value in
+                LabeledContent(label) {
+                    Text(value)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
     }
 }

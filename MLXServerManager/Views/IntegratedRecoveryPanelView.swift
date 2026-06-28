@@ -38,10 +38,6 @@ struct IntegratedRecoveryPanelView: View {
                 Text(issue.severity.rawValue)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(severityColor)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(severityColor.opacity(0.14))
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
             }
 
             Text(issue.title)
@@ -52,14 +48,11 @@ struct IntegratedRecoveryPanelView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             if let relatedLogLine = issue.relatedLogLine {
-                Text(relatedLogLine)
+                Label(relatedLogLine, systemImage: "exclamationmark.triangle")
                     .font(.system(.caption2, design: .monospaced))
                     .foregroundStyle(.orange)
                     .lineLimit(2)
-                    .padding(8)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.orange.opacity(0.10))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
             }
 
             if !issue.actions.isEmpty {
@@ -67,7 +60,7 @@ struct IntegratedRecoveryPanelView: View {
                     ForEach(issue.actions) { action in
                         if action.isPrimary {
                             recoveryButton(action)
-                                .buttonStyle(.glassProminent)
+                                .buttonStyle(.borderedProminent)
                         } else {
                             recoveryButton(action)
                                 .buttonStyle(.bordered)
@@ -82,9 +75,6 @@ struct IntegratedRecoveryPanelView: View {
             }
             .font(.caption)
         }
-        .padding(12)
-        .background(Color(nsColor: .textBackgroundColor).opacity(0.65))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     private func recoveryButton(_ action: RecoveryAction) -> some View {
