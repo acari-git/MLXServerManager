@@ -5,6 +5,7 @@ struct AppSettings: Codable, Hashable {
     var defaultHost: String
     var defaultPort: Int
     var apiKeyPlaceholder: String
+    var hermesConfigPath: String
     var uiLanguage: AppLanguage
     var uiAppearance: String
 
@@ -13,6 +14,7 @@ struct AppSettings: Codable, Hashable {
         defaultHost: "127.0.0.1",
         defaultPort: 8080,
         apiKeyPlaceholder: "not-required-local",
+        hermesConfigPath: "~/.hermes/config.yaml",
         uiLanguage: .system,
         uiAppearance: "system"
     )
@@ -22,6 +24,7 @@ struct AppSettings: Codable, Hashable {
         defaultHost: String,
         defaultPort: Int,
         apiKeyPlaceholder: String,
+        hermesConfigPath: String = "~/.hermes/config.yaml",
         uiLanguage: AppLanguage = .system,
         uiAppearance: String = "system"
     ) {
@@ -29,6 +32,7 @@ struct AppSettings: Codable, Hashable {
         self.defaultHost = defaultHost
         self.defaultPort = defaultPort
         self.apiKeyPlaceholder = apiKeyPlaceholder
+        self.hermesConfigPath = hermesConfigPath
         self.uiLanguage = uiLanguage
         self.uiAppearance = uiAppearance
     }
@@ -38,6 +42,7 @@ struct AppSettings: Codable, Hashable {
         case defaultHost
         case defaultPort
         case apiKeyPlaceholder
+        case hermesConfigPath
         case uiLanguage
         case uiAppearance
     }
@@ -48,8 +53,8 @@ struct AppSettings: Codable, Hashable {
         defaultHost = try container.decode(String.self, forKey: .defaultHost)
         defaultPort = try container.decode(Int.self, forKey: .defaultPort)
         apiKeyPlaceholder = try container.decode(String.self, forKey: .apiKeyPlaceholder)
+        hermesConfigPath = try container.decodeIfPresent(String.self, forKey: .hermesConfigPath) ?? "~/.hermes/config.yaml"
         uiLanguage = try container.decodeIfPresent(AppLanguage.self, forKey: .uiLanguage) ?? .system
         uiAppearance = try container.decodeIfPresent(String.self, forKey: .uiAppearance) ?? "system"
     }
 }
-

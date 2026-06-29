@@ -5,6 +5,7 @@ struct SettingsPanelView: View {
     @Binding var defaultHost: String
     @Binding var defaultPort: Int
     @Binding var apiKeyPlaceholder: String
+    @Binding var hermesConfigPath: String
     @Binding var language: AppLanguage
     @Binding var appearance: String
     let settingsDirectoryPath: String
@@ -82,6 +83,15 @@ struct SettingsPanelView: View {
                             ),
                             placeholder: "8080",
                             text: portTextBinding
+                        )),
+                        AnyView(editableSettingRow(
+                            title: t("Hermes Agent config file", "Hermes Agent設定ファイル"),
+                            detail: t(
+                                "YAML file updated by the Hermes Agent apply action. A backup is created before changes.",
+                                "Hermes Agentへ反映するときに更新するYAMLファイルです。変更前にバックアップを作成します。"
+                            ),
+                            placeholder: "~/.hermes/config.yaml",
+                            text: $hermesConfigPath
                         ))
                     ]
                 )
@@ -256,11 +266,13 @@ struct SettingsPanelView: View {
 
             Spacer(minLength: 16)
 
-            Picker("", selection: $language) {
+            Picker(selection: $language) {
                 ForEach(AppLanguage.allCases) { option in
                     Text(languageDisplayName(option))
                         .tag(option)
                 }
+            } label: {
+                EmptyView()
             }
             .labelsHidden()
             .pickerStyle(.menu)
@@ -283,11 +295,13 @@ struct SettingsPanelView: View {
 
             Spacer(minLength: 16)
 
-            Picker("", selection: $appearance) {
+            Picker(selection: $appearance) {
                 ForEach(themeOptions, id: \.value) { option in
                     Text(option.title)
                         .tag(option.value)
                 }
+            } label: {
+                EmptyView()
             }
             .labelsHidden()
             .pickerStyle(.menu)

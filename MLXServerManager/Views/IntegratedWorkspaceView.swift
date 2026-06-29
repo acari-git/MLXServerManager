@@ -1331,7 +1331,29 @@ struct IntegratedWorkspaceView: View {
             copyRow("Base URL", value: viewModel.baseURL, action: { viewModel.copyBaseURL() })
             copyRow("API Key", value: viewModel.apiKeyPlaceholder, action: { viewModel.copyAPIKeyPlaceholder() })
             copyRow("Model", value: viewModel.selectedModelIdentifier, action: { viewModel.copyModelID() })
+            formRow(t("Config file", "設定ファイル"), viewModel.hermesAgentConfigPathText)
 
+            HStack(spacing: 8) {
+                Button {
+                    viewModel.applyHermesAgentConfigRequested()
+                } label: {
+                    Label(t("Apply to Hermes Agent", "Hermes Agentへ反映"), systemImage: "square.and.arrow.down")
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!viewModel.canApplyHermesAgentConfig)
+
+                Button {
+                    viewModel.copyHermesAgentConfig()
+                } label: {
+                    Label(t("Copy", "コピー"), systemImage: AppSymbol.copy)
+                }
+                .buttonStyle(.bordered)
+            }
+
+            Text(viewModel.hermesAgentConfigMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

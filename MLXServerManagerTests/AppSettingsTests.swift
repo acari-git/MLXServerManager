@@ -7,6 +7,7 @@ final class AppSettingsTests: XCTestCase {
 
         XCTAssertEqual(settings.uiLanguage, .system)
         XCTAssertEqual(settings.uiAppearance, "system")
+        XCTAssertEqual(settings.hermesConfigPath, "~/.hermes/config.yaml")
     }
 
     func testDecodingLegacySettingsFillsChromePreferences() throws {
@@ -23,6 +24,7 @@ final class AppSettingsTests: XCTestCase {
 
         XCTAssertEqual(settings.uiLanguage, .system)
         XCTAssertEqual(settings.uiAppearance, "system")
+        XCTAssertEqual(settings.hermesConfigPath, "~/.hermes/config.yaml")
     }
 
     func testEncodingRoundTripsChromePreferences() throws {
@@ -31,6 +33,7 @@ final class AppSettingsTests: XCTestCase {
             defaultHost: "127.0.0.1",
             defaultPort: 9999,
             apiKeyPlaceholder: "local-only",
+            hermesConfigPath: "/tmp/hermes/config.yaml",
             uiLanguage: .english,
             uiAppearance: "dark"
         )
@@ -40,5 +43,6 @@ final class AppSettingsTests: XCTestCase {
 
         XCTAssertEqual(decoded.uiLanguage, .english)
         XCTAssertEqual(decoded.uiAppearance, "dark")
+        XCTAssertEqual(decoded.hermesConfigPath, "/tmp/hermes/config.yaml")
     }
 }

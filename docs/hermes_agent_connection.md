@@ -79,6 +79,21 @@ Depending on your Hermes Agent setup, this may involve a provider entry, local m
 
 If the client requires an API key, use a dummy local value such as `not-required-local`. Do not use a real hosted API key for this local endpoint.
 
+### Applying values to Hermes Agent config
+
+MLX Server Manager can update a configured Hermes Agent YAML file with the selected model connection values.
+
+The apply action updates only the Hermes `model` connection keys:
+
+- `model.default`
+- `model.provider`
+- `model.base_url`
+- `model.api_key`
+
+Before writing changes, MLX Server Manager creates a timestamped backup next to the original file. Other Hermes settings, such as agent, terminal, browser, toolset, checkpoint, and auxiliary configuration, are preserved.
+
+This action does not start Hermes Agent, does not start an MLX server, does not proxy inference requests, and does not inspect Hermes runtime traffic.
+
 ## Example Connection Values
 
 Base URL:

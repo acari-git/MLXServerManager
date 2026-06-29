@@ -15,6 +15,7 @@ struct SettingsSurfaceView: View {
             defaultHost: $draftSettings.defaultHost,
             defaultPort: $draftSettings.defaultPort,
             apiKeyPlaceholder: $draftSettings.apiKeyPlaceholder,
+            hermesConfigPath: $draftSettings.hermesConfigPath,
             language: $draftSettings.uiLanguage,
             appearance: $draftSettings.uiAppearance,
             settingsDirectoryPath: viewModel.settingsDirectoryPath,

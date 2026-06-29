@@ -180,6 +180,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var miniChatHTTPStatusText = "-"
     @Published private(set) var miniChatDurationText = "-"
     @Published private(set) var isMiniChatRunning = false
+    @Published private(set) var hermesAgentConfigMessage = AppViewModel.defaultHermesAgentConfigMessage(language: .system)
     @Published private(set) var runtimeEvents: [RuntimeEvent] = []
 
     private let settingsStore: SettingsStore
@@ -194,6 +195,7 @@ final class AppViewModel: ObservableObject {
     private let huggingFaceDownloadManager: HuggingFaceModelDownloading
     private let huggingFaceSearchService: HuggingFaceModelSearching
     private let huggingFaceRepositoryFileService: HuggingFaceRepositoryFileListing
+    private let hermesAgentConfigService: HermesAgentConfigService
     private var logBuffer: LogBuffer
     private var memoryMonitorTask: Task<Void, Never>?
     private var systemUsageMonitorTask: Task<Void, Never>?
@@ -247,6 +249,14 @@ final class AppViewModel: ObservableObject {
         )
     }
 
+    private static func defaultHermesAgentConfigMessage(language: AppLanguage) -> String {
+        localizedText(
+            language: language,
+            english: "Apply the selected model connection values to the configured Hermes Agent YAML file.",
+            japanese: "選択モデルの接続値を設定済みのHermes Agent YAMLファイルへ反映します。"
+        )
+    }
+
     private static func notCheckedText(language: AppLanguage) -> String {
         localizedText(language: language, english: "Not checked", japanese: "未確認")
     }
@@ -263,7 +273,8 @@ final class AppViewModel: ObservableObject {
         modelAvailabilityChecker: LocalModelAvailabilityChecking? = nil,
         huggingFaceDownloadManager: HuggingFaceModelDownloading? = nil,
         huggingFaceSearchService: HuggingFaceModelSearching? = nil,
-        huggingFaceRepositoryFileService: HuggingFaceRepositoryFileListing? = nil
+        huggingFaceRepositoryFileService: HuggingFaceRepositoryFileListing? = nil,
+        hermesAgentConfigService: HermesAgentConfigService? = nil
     ) {
         self.settingsStore = settingsStore ?? SettingsStore()
         self.portChecker = portChecker ?? PortChecker()
@@ -281,6 +292,7 @@ final class AppViewModel: ObservableObject {
         self.huggingFaceDownloadManager = huggingFaceDownloadManager ?? HuggingFaceDownloadManager()
         self.huggingFaceSearchService = huggingFaceSearchService ?? HuggingFaceSearchService()
         self.huggingFaceRepositoryFileService = huggingFaceRepositoryFileService ?? HuggingFaceRepositoryFileService()
+        self.hermesAgentConfigService = hermesAgentConfigService ?? HermesAgentConfigService()
         self.logBuffer = LogBuffer(initialLines: Self.initialLogLines)
         self.logText = logBuffer.text
         self.logEntries = logBuffer.entries
@@ -356,6 +368,7 @@ final class AppViewModel: ObservableObject {
         localModelMessage = Self.defaultLocalModelMessage(language: language)
         huggingFaceSearchMessage = Self.defaultHuggingFaceSearchMessage(language: language)
         latestSpeedTestMessage = Self.defaultSpeedTestMessage(language: language)
+        hermesAgentConfigMessage = Self.defaultHermesAgentConfigMessage(language: language)
     }
 
     func sourceLabel(for model: ModelConfig) -> String {
@@ -1744,6 +1757,15 @@ final class AppViewModel: ObservableObject {
         connectionConfigBuilder.hermesAgentConfigText(summary: connectionTargetSummary)
     }
 
+    var hermesAgentConfigPathText: String {
+        let path = settings.hermesConfigPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        return path.isEmpty ? "~/.hermes/config.yaml" : path
+    }
+
+    var canApplyHermesAgentConfig: Bool {
+        selectedModel != nil && !hermesAgentConfigPathText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var settingsDirectoryPath: String {
         do {
             return try settingsStore.settingsDirectoryURL.path
@@ -3107,6 +3129,54 @@ final class AppViewModel: ObservableObject {
     func copyHermesAgentConfig() {
         copyToPasteboard(hermesAgentConfigText)
         appendLog("[ui] Copied Hermes Agent connection config.")
+    }
+
+    func applyHermesAgentConfigRequested() {
+        guard canApplyHermesAgentConfig else {
+            hermesAgentConfigMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Select a model and configure the Hermes Agent config file path first.",
+                japanese: "先にモデルを選択し、Hermes Agent設定ファイルのパスを設定してください。"
+            )
+            appendLog("[hermes] apply skipped: missing selected model or config path.")
+            return
+        }
+
+        let connection = HermesAgentConnectionSettings(
+            baseURL: baseURL,
+            modelID: selectedModelIdentifier,
+            apiKey: apiKeyPlaceholder
+        )
+
+        do {
+            let result = try hermesAgentConfigService.apply(
+                connection: connection,
+                configPath: hermesAgentConfigPathText
+            )
+            if result.didChange {
+                let backupPath = result.backupURL.map { ModelAvailabilityPathFormatter.compact(path: $0.path) } ?? "-"
+                hermesAgentConfigMessage = Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "Applied to Hermes Agent config. Backup: \(backupPath)",
+                    japanese: "Hermes Agent設定へ反映しました。バックアップ: \(backupPath)"
+                )
+                appendLog("[hermes] applied selected model connection to \(ModelAvailabilityPathFormatter.compact(path: result.configURL.path)). Backup: \(backupPath). Keys: \(result.changedKeys.joined(separator: ", "))")
+            } else {
+                hermesAgentConfigMessage = Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "Hermes Agent config already matches the selected model.",
+                    japanese: "Hermes Agent設定はすでに選択モデルと一致しています。"
+                )
+                appendLog("[hermes] config already matched selected model connection.")
+            }
+        } catch {
+            hermesAgentConfigMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Could not apply Hermes Agent config: \(error.localizedDescription)",
+                japanese: "Hermes Agent設定を反映できませんでした: \(error.localizedDescription)"
+            )
+            appendLog("[hermes] apply failed: \(error.localizedDescription)")
+        }
     }
 
     func copyModelsCurl() {
