@@ -113,6 +113,8 @@ private struct WindowTitlebarSeparatorHider: NSViewRepresentable {
         let view = NSView()
         DispatchQueue.main.async {
             view.window?.titlebarSeparatorStyle = .none
+            view.window?.isOpaque = false
+            view.window?.backgroundColor = .clear
         }
         return view
     }
@@ -120,6 +122,8 @@ private struct WindowTitlebarSeparatorHider: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {
         DispatchQueue.main.async {
             nsView.window?.titlebarSeparatorStyle = .none
+            nsView.window?.isOpaque = false
+            nsView.window?.backgroundColor = .clear
         }
     }
 }

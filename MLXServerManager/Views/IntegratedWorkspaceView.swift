@@ -1129,6 +1129,7 @@ struct IntegratedWorkspaceView: View {
             .padding(.bottom, 24)
         }
         .scrollContentBackground(.hidden)
+        .background(TransparentScrollViewBackground())
         .background {
             SidebarMaterialBackdrop()
                 .ignoresSafeArea()
@@ -1396,6 +1397,35 @@ private struct SidebarMaterialBackdrop: NSViewRepresentable {
         nsView.blendingMode = .behindWindow
         nsView.state = .active
         nsView.isEmphasized = false
+    }
+}
+
+private struct TransparentScrollViewBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        DispatchQueue.main.async {
+            Self.clearScrollViewBackground(from: view)
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async {
+            Self.clearScrollViewBackground(from: nsView)
+        }
+    }
+
+    private static func clearScrollViewBackground(from view: NSView) {
+        var current: NSView? = view
+        while let parent = current?.superview {
+            if let scrollView = parent as? NSScrollView {
+                scrollView.drawsBackground = false
+                scrollView.backgroundColor = .clear
+                scrollView.contentView.drawsBackground = false
+                break
+            }
+            current = parent
+        }
     }
 }
 
