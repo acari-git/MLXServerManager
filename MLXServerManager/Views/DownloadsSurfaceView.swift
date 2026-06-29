@@ -16,7 +16,6 @@ struct DownloadsSurfaceView: View {
 
     private let contentWidth: CGFloat = 760
     private let controlWidth: CGFloat = 300
-    private let cardCornerRadius: CGFloat = 10
 
     private var strings: AppLocalization {
         AppLocalization(language: viewModel.settings.uiLanguage)
@@ -81,7 +80,11 @@ struct DownloadsSurfaceView: View {
     }
 
     private func section<Content: View>(title: String, subtitle: String? = nil, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        GroupBox {
+            content()
+                .padding(.top, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.headline)
@@ -92,18 +95,8 @@ struct DownloadsSurfaceView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-
-            content()
-                .padding(.horizontal, 16)
-                .padding(.vertical, 16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(nsColor: .windowBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
-                        .stroke(Color(nsColor: .separatorColor).opacity(0.80), lineWidth: 1.0)
-                )
         }
+        .groupBoxStyle(.automatic)
     }
 
     private var searchSection: some View {

@@ -3,7 +3,6 @@ import SwiftUI
 struct LogsSurfaceView: View {
     private let contentWidth: CGFloat = 760
     private let controlWidth: CGFloat = 360
-    private let cardCornerRadius: CGFloat = 10
 
     let entries: [LogEntry]
     let targetSummary: ConnectionTargetSummary
@@ -70,7 +69,11 @@ struct LogsSurfaceView: View {
     }
 
     private func section<Content: View>(title: String, subtitle: String? = nil, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        GroupBox {
+            content()
+                .padding(.top, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.headline)
@@ -81,18 +84,8 @@ struct LogsSurfaceView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-
-            content()
-                .padding(.horizontal, 16)
-                .padding(.vertical, 16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(nsColor: .windowBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
-                        .stroke(Color(nsColor: .separatorColor).opacity(0.80), lineWidth: 1.0)
-                )
         }
+        .groupBoxStyle(.automatic)
     }
 
     private var controlsSection: some View {
@@ -126,10 +119,6 @@ struct LogsSurfaceView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Color(nsColor: .selectedContentBackgroundColor).opacity(0.10))
-        .clipShape(Capsule(style: .continuous))
     }
 
     private func statusPill(_ text: String) -> some View {
@@ -138,10 +127,6 @@ struct LogsSurfaceView: View {
             .foregroundStyle(.secondary)
             .lineLimit(1)
             .truncationMode(.middle)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color(nsColor: .selectedContentBackgroundColor).opacity(0.10))
-            .clipShape(Capsule(style: .continuous))
     }
 
     private var contextSection: some View {
@@ -216,7 +201,6 @@ struct LogsSurfaceView: View {
                     Rectangle()
                         .fill(Color(nsColor: .separatorColor).opacity(0.55))
                         .frame(height: 1.0)
-                        .padding(.horizontal, -16)
                 }
             }
         }

@@ -41,6 +41,13 @@ The working interpretation for MLX Server Manager is:
 - Added lightweight hover feedback for sidebar rows using system selection colors.
 - Changed the right inspector background from a flat window color to sidebar material.
 
+## Second-Pass Fixes Applied
+
+- Replaced hand-drawn Settings, Downloads, and Logs section containers with standard SwiftUI `GroupBox`.
+- Removed custom rounded rectangle strokes from those section containers.
+- Removed custom capsule decoration from the Logs summary metadata.
+- Replaced the read-only Settings folder display with a disabled rounded `TextField` instead of a hand-drawn text container.
+
 ## Still To Refine
 
 - Replace custom settings/downloads/logs section containers with more native `Form`, `Section`, `Table`, or `List` structure where practical.

@@ -17,7 +17,6 @@ struct SettingsPanelView: View {
     private let controlWidth: CGFloat = 248
     private let rowHorizontalPadding: CGFloat = 12
     private let rowVerticalPadding: CGFloat = 14
-    private let cardCornerRadius: CGFloat = 8
 
     private var strings: AppLocalization {
         AppLocalization(language: language)
@@ -132,11 +131,7 @@ struct SettingsPanelView: View {
     }
 
     private var settingsSaveFooter: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(t("Unsaved settings", "未保存の設定"))
-                .font(.headline)
-                .foregroundStyle(.primary)
-
+        GroupBox {
             HStack(alignment: .center, spacing: 16) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(t("Save changes made on this settings screen.", "この設定画面で変更した内容を保存します。"))
@@ -166,43 +161,34 @@ struct SettingsPanelView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(!hasUnsavedChanges)
             }
-            .padding(.horizontal, rowHorizontalPadding + 4)
-            .padding(.vertical, rowVerticalPadding + 3)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(nsColor: .windowBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
-                    .stroke(Color(nsColor: .separatorColor).opacity(0.80), lineWidth: 1.0)
-            )
+            .padding(.top, 4)
+        } label: {
+            Text(t("Unsaved settings", "未保存の設定"))
+                .font(.headline)
+                .foregroundStyle(.primary)
         }
+        .groupBoxStyle(.automatic)
     }
 
     private func settingsSection(title: String, rows: [AnyView]) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.primary)
-
+        GroupBox {
             VStack(spacing: 0) {
                 ForEach(rows.indices, id: \.self) { index in
                     rows[index]
 
                     if index < rows.count - 1 {
-                        Rectangle()
-                            .fill(Color(nsColor: .separatorColor).opacity(0.80))
-                            .frame(height: 1.0)
+                        Divider()
                     }
                 }
             }
+            .padding(.top, 4)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(nsColor: .windowBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
-                    .stroke(Color(nsColor: .separatorColor).opacity(0.80), lineWidth: 1.0)
-            )
+        } label: {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(.primary)
         }
+        .groupBoxStyle(.automatic)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -235,19 +221,12 @@ struct SettingsPanelView: View {
 
             Spacer(minLength: 16)
 
-            Text(value)
+            TextField(value, text: .constant(value))
+                .textFieldStyle(.roundedBorder)
                 .font(.callout)
                 .lineLimit(1)
-                .truncationMode(.middle)
-                .textSelection(.enabled)
-                .padding(.horizontal, 10)
                 .frame(width: controlWidth, height: 28, alignment: .leading)
-                .background(Color(nsColor: .textBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .stroke(Color(nsColor: .separatorColor).opacity(0.80), lineWidth: 1.0)
-                )
+                .disabled(true)
         }
         .padding(.horizontal, rowHorizontalPadding + 4)
         .padding(.vertical, rowVerticalPadding + 3)
