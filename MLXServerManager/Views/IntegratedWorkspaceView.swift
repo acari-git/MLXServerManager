@@ -98,15 +98,11 @@ struct IntegratedWorkspaceView: View {
 
     private func toggleRightPanelRequested() {
         if isRightPanelVisible {
-            isRightPanelAutoHidden = false
-            isRightPanelVisible = false
+            setRightPanelVisible(false, autoHidden: false)
             return
         }
 
-        isRightPanelAutoHidden = false
-        withAnimation(.easeInOut(duration: 0.24)) {
-            isRightPanelVisible = true
-        }
+        setRightPanelVisible(true, autoHidden: false)
     }
 
     private func toggleBottomPanelRequested() {
@@ -123,22 +119,20 @@ struct IntegratedWorkspaceView: View {
     }
 
     private func applyAutomaticPanelCollapse(for size: CGSize) {
+        let canShowBothSides = size.width >= comfortableWindowWidth(rightVisible: true)
+        let canShowBottom = size.height >= Layout.minimumBottomPanelHeight
+
+        if isRightPanelVisible, !canShowBothSides {
+            setRightPanelVisible(false, autoHidden: true)
+            return
+        }
+
+        if !isRightPanelVisible, isRightPanelAutoHidden, canShowBothSides {
+            setRightPanelVisible(true, autoHidden: false)
+            return
+        }
+
         withAnimation(.easeInOut(duration: 0.24)) {
-            let canShowBothSides = size.width >= comfortableWindowWidth(rightVisible: true)
-            let canShowBottom = size.height >= Layout.minimumBottomPanelHeight
-
-            if isRightPanelVisible, !canShowBothSides {
-                isRightPanelVisible = false
-                isRightPanelAutoHidden = true
-                return
-            }
-
-            if !isRightPanelVisible, isRightPanelAutoHidden, canShowBothSides {
-                isRightPanelVisible = true
-                isRightPanelAutoHidden = false
-                return
-            }
-
             if isBottomPanelVisible, !canShowBottom {
                 isBottomPanelVisible = false
                 isBottomPanelAutoHidden = true
@@ -146,6 +140,15 @@ struct IntegratedWorkspaceView: View {
                 isBottomPanelVisible = true
                 isBottomPanelAutoHidden = false
             }
+        }
+    }
+
+    private func setRightPanelVisible(_ isVisible: Bool, autoHidden: Bool) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            isRightPanelVisible = isVisible
+            isRightPanelAutoHidden = autoHidden
         }
     }
 
@@ -182,7 +185,6 @@ struct IntegratedWorkspaceView: View {
                 panelToolbarItems
             }
             .toolbarBackground(.hidden, for: .windowToolbar)
-            .animation(.easeInOut(duration: 0.24), value: isRightPanelVisible)
             .animation(.easeInOut(duration: 0.24), value: isBottomPanelVisible)
             .onAppear {
                 applyAutomaticPanelCollapse(for: geometry.size)
@@ -209,7 +211,6 @@ struct IntegratedWorkspaceView: View {
                 Divider()
                 rightColumn
                     .frame(width: Layout.rightPanelWidth)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
