@@ -56,13 +56,13 @@ struct LogsSurfaceView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(strings.text(.logs))
-                .font(.system(size: 20, weight: .regular))
+                .font(.title3)
                 .accessibilityIdentifier("logs-surface-header")
             Text(t(
                 "App lifecycle, managed server events, ready checks, and download activity are shown here.",
                 "アプリのライフサイクル、管理サーバー、Ready確認、ダウンロード処理のログを表示します。"
             ))
-            .font(.system(size: 14, weight: .light))
+            .font(.callout)
             .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -73,11 +73,11 @@ struct LogsSurfaceView: View {
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.system(size: 15, weight: .light))
+                    .font(.headline)
                     .foregroundStyle(.primary)
                 if let subtitle {
                     Text(subtitle)
-                        .font(.system(size: 13, weight: .light))
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -102,7 +102,7 @@ struct LogsSurfaceView: View {
         ) {
             HStack(alignment: .center, spacing: 14) {
                 Label(t("Log buffer", "ログバッファ"), systemImage: "terminal")
-                    .font(.system(size: 15, weight: .light))
+                    .font(.callout)
 
                 Spacer()
 

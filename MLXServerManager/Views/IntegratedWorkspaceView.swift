@@ -15,6 +15,7 @@ struct IntegratedWorkspaceView: View {
     @State private var bottomPanelHeight: CGFloat = 280
     @State private var bottomPanelDragStartHeight: CGFloat?
     @State private var isMiniChatInputFocused = false
+    @State private var isSettingsSidebarHovered = false
 
     private var selectedModel: ModelConfig? { viewModel.selectedModel }
     private var isSelectedRunning: Bool { selectedModel?.id == viewModel.runningModelID }
@@ -270,7 +271,7 @@ struct IntegratedWorkspaceView: View {
     private var systemPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(t("SYSTEM", "システム"), systemImage: "desktopcomputer")
-                .font(.system(size: 16, weight: .regular))
+                .font(.headline)
                 .foregroundStyle(.primary)
 
             systemInfoCard
@@ -288,11 +289,11 @@ struct IntegratedWorkspaceView: View {
             ForEach(viewModel.systemInfoRows, id: \.0) { row in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(row.0)
-                        .font(.system(size: 14, weight: .regular))
+                        .font(.callout)
                         .foregroundStyle(.primary)
                         .frame(width: 100, alignment: .leading)
                     Text(row.1)
-                        .font(.system(size: 14, weight: .regular))
+                        .font(.callout)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -308,11 +309,11 @@ struct IntegratedWorkspaceView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label(t("Memory", "メモリ"), systemImage: "memorychip")
-                    .font(.system(size: 16, weight: .regular))
+                    .font(.headline)
                     .foregroundStyle(.primary)
                 Spacer()
                 Text(viewModel.integratedMemoryUsagePercentText)
-                    .font(.system(size: 16, weight: .regular))
+                    .font(.headline.monospacedDigit())
                     .foregroundStyle(.primary)
             }
 
@@ -332,11 +333,11 @@ struct IntegratedWorkspaceView: View {
                 } icon: {
                     Image(systemName: "cpu")
                 }
-                .font(.system(size: 16, weight: .regular))
+                .font(.headline)
                 .foregroundStyle(.primary)
                 Spacer()
                 Text(viewModel.integratedCPUUsageText)
-                    .font(.system(size: 16, weight: .regular))
+                    .font(.headline.monospacedDigit())
                     .foregroundStyle(.primary)
             }
 
@@ -344,11 +345,11 @@ struct IntegratedWorkspaceView: View {
 
             HStack {
                 Label(t("Uptime", "起動時間"), systemImage: "timer")
-                    .font(.system(size: 16, weight: .regular))
+                    .font(.headline)
                     .foregroundStyle(.primary)
                 Spacer()
                 Text(viewModel.integratedUptimeText)
-                    .font(.system(size: 16, weight: .regular))
+                    .font(.headline.monospacedDigit())
                     .foregroundStyle(.primary)
                     .lineLimit(1)
             }
@@ -387,11 +388,11 @@ struct IntegratedWorkspaceView: View {
                 .foregroundStyle(color)
                 .frame(width: 8, alignment: .leading)
             Text(label)
-                .font(.system(size: 14, weight: .regular))
+                .font(.caption)
                 .foregroundStyle(.primary)
                 .frame(width: 84, alignment: .leading)
             Text(value)
-                .font(.system(size: 14, weight: .regular))
+                .font(.caption.monospacedDigit())
                 .foregroundStyle(.primary)
                 .frame(width: 82, alignment: .leading)
         }
@@ -401,14 +402,19 @@ struct IntegratedWorkspaceView: View {
 
     private var sidebarFooterControls: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
+            Button {
+                selectedDestination = .settings
+            } label: {
+                HStack(spacing: 8) {
                     Image(systemName: IntegratedWorkspaceDestination.settings.systemImageName)
-                        .font(.system(size: 16, weight: .regular))
+                        .font(.body)
                         .frame(width: 18)
                     Text(t("Settings", "設定"))
-                        .font(.system(size: 16, weight: .regular))
+                        .font(.body)
                     Spacer(minLength: 6)
+                }
             }
+            .buttonStyle(.plain)
             .padding(.leading, 8)
             .padding(.trailing, 8)
             .padding(.vertical, 8)
@@ -416,15 +422,14 @@ struct IntegratedWorkspaceView: View {
             .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .background(
                 selectedDestination == .settings
-                ? Color(nsColor: .controlAccentColor).opacity(0.92)
-                : Color.clear
+                ? Color(nsColor: .controlAccentColor).opacity(0.90)
+                : (isSettingsSidebarHovered ? Color(nsColor: .selectedContentBackgroundColor).opacity(0.10) : Color.clear)
             )
             .foregroundStyle(selectedDestination == .settings ? Color.white : Color.primary)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .onLongPressGesture(minimumDuration: 0, maximumDistance: 40) {
-                selectedDestination = .settings
+            .onHover { isHovering in
+                isSettingsSidebarHovered = isHovering
             }
-            .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("integrated-sidebar-footer-settings")
         }
         .padding(.leading, 12)
@@ -524,7 +529,7 @@ struct IntegratedWorkspaceView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(t("Models", "モデル一覧"))
-                    .font(.system(size: 20, weight: .regular))
+                    .font(.title3)
                 Spacer()
                 Button {
                     viewModel.addProfileRequested()
@@ -567,11 +572,11 @@ struct IntegratedWorkspaceView: View {
 
                     VStack(alignment: .leading, spacing: 5) {
                         Text(model.displayName)
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.callout.weight(.semibold))
                             .foregroundStyle(.primary)
                             .lineLimit(1)
                         Text(model.notes.isEmpty ? model.family : model.notes)
-                            .font(.system(size: 14, weight: .ultraLight))
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
@@ -650,7 +655,7 @@ struct IntegratedWorkspaceView: View {
         .alternatingRowBackgrounds(.disabled)
         .scrollContentBackground(.hidden)
         .background(Color(nsColor: .windowBackgroundColor))
-        .font(.system(size: 14, weight: .light))
+        .font(.callout)
         .accessibilityIdentifier("integrated-model-table")
         .onDrop(of: [.plainText], isTargeted: nil) { providers in
             moveDroppedModelToEnd(providers)
@@ -663,10 +668,10 @@ struct IntegratedWorkspaceView: View {
     private func centeredTableText(
         _ value: String,
         color: Color = .primary,
-        weight: Font.Weight = .light
+        weight: Font.Weight = .regular
     ) -> some View {
         Text(value)
-            .font(.system(size: 15, weight: weight))
+            .font(.callout.weight(weight))
             .foregroundStyle(color)
             .padding(.vertical, 5)
             .lineLimit(1)
@@ -678,7 +683,7 @@ struct IntegratedWorkspaceView: View {
         let components = value.split(separator: " ", maxSplits: 1).map(String.init)
         return HStack(alignment: .firstTextBaseline, spacing: 3) {
             Text(components.first ?? value)
-                .font(.system(size: 15, weight: .light))
+                .font(.callout.monospacedDigit())
             if components.count > 1 {
                 Text(components[1])
                     .font(.caption)
@@ -694,9 +699,9 @@ struct IntegratedWorkspaceView: View {
     private func endpointTableText(host: String, port: Int) -> some View {
         HStack(spacing: 0) {
             Text("\(host) : ")
-                .font(.system(size: 15, weight: .light))
+                .font(.callout.monospacedDigit())
             Text(String(port))
-                .font(.system(size: 15, weight: .semibold))
+                .font(.callout.monospacedDigit().weight(.semibold))
         }
         .foregroundStyle(.primary)
         .padding(.vertical, 5)
@@ -764,7 +769,7 @@ struct IntegratedWorkspaceView: View {
         let isInteractive = !isTransitioning && canUseAction
 
         return Text(statusText)
-            .font(.system(size: 13, weight: .regular))
+            .font(.caption.weight(.medium))
             .frame(minWidth: 76, maxWidth: .infinity)
             .padding(.vertical, 4)
             .foregroundStyle(statusForegroundColor(for: model))
@@ -871,7 +876,7 @@ struct IntegratedWorkspaceView: View {
     private func memoryCell(_ text: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(text)
-                .font(.system(size: 16, weight: .light))
+                .font(.callout.monospacedDigit())
                 .foregroundColor(text == "-" ? .secondary : .blue)
             ProgressView(value: text == "-" ? 0 : 0.48)
                 .tint(.blue)
@@ -895,7 +900,7 @@ struct IntegratedWorkspaceView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(t("Test Chat", "テストチャット"))
-                    .font(.system(size: 20, weight: .regular))
+                    .font(.headline)
                     .foregroundStyle(.primary)
                 Spacer()
                 Text(viewModel.miniChatHTTPStatusText)
@@ -959,7 +964,7 @@ struct IntegratedWorkspaceView: View {
             ZStack(alignment: .topLeading) {
                 if viewModel.miniChatPrompt.isEmpty && !isMiniChatInputFocused {
                     Text(t("Type a test chat", "テストチャットを入力"))
-                        .font(.system(size: 14, weight: .regular))
+                        .font(.callout)
                         .foregroundStyle(.secondary.opacity(0.45))
                         .padding(.top, 7)
                         .padding(.leading, 8)
@@ -979,7 +984,7 @@ struct IntegratedWorkspaceView: View {
                     viewModel.sendMiniChatRequested()
                 } label: {
                     Image(systemName: "arrow.up")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.body.weight(.semibold))
                         .foregroundStyle(Color.white)
                         .frame(width: 28, height: 28)
                         .background(Color.secondary, in: Circle())
@@ -1004,7 +1009,7 @@ struct IntegratedWorkspaceView: View {
         return HStack {
             if isUser { Spacer(minLength: 40) }
             Text(message.content)
-                .font(.system(size: 14, weight: .regular))
+                .font(.callout)
                 .textSelection(.enabled)
                 .foregroundStyle(isSystem ? Color.secondary : Color.primary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1023,7 +1028,7 @@ struct IntegratedWorkspaceView: View {
                             viewModel.copyMiniChatMessageRequested(message)
                         } label: {
                             Image(systemName: "doc.on.doc")
-                                .font(.system(size: 10, weight: .regular))
+                                .font(.caption2)
                                 .foregroundStyle(.secondary)
                                 .frame(width: 20, height: 18)
                         }
@@ -1044,7 +1049,7 @@ struct IntegratedWorkspaceView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(strings.text(.logs))
-                    .font(.system(size: 20, weight: .regular))
+                    .font(.headline)
                     .foregroundStyle(.primary)
                 Spacer()
                 Picker(t("Category", "カテゴリ"), selection: $viewModel.logCategoryFilter) {
@@ -1136,7 +1141,10 @@ struct IntegratedWorkspaceView: View {
             .padding(.bottom, 24)
         }
         .scrollContentBackground(.hidden)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background {
+            SidebarMaterialBackdrop()
+                .ignoresSafeArea()
+        }
     }
 
     private var externalServerPanelContent: some View {
@@ -1175,7 +1183,7 @@ struct IntegratedWorkspaceView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Label(title, systemImage: systemImage)
-                .font(.system(size: 16, weight: .regular))
+                .font(.headline)
                 .foregroundStyle(.primary)
                 .padding(.vertical, 2)
             content()
@@ -1212,7 +1220,7 @@ struct IntegratedWorkspaceView: View {
     private func groupedSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.system(size: 16, weight: .regular))
+                .font(.headline)
                 .foregroundStyle(.primary)
             VStack(alignment: .leading, spacing: 8) {
                 content()
@@ -1225,11 +1233,11 @@ struct IntegratedWorkspaceView: View {
     private func formRow(_ title: String, _ value: String, valueColor: Color = .primary) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text(title)
-                .font(.system(size: 14, weight: .regular))
+                .font(.callout)
                 .foregroundStyle(.primary)
                 .frame(width: 132, alignment: .leading)
             Text(value)
-                .font(.system(size: 14, weight: .regular))
+                .font(.callout)
                 .foregroundStyle(valueColor)
                 .lineLimit(2)
                 .truncationMode(.middle)
@@ -1360,12 +1368,12 @@ struct IntegratedWorkspaceView: View {
     private func copyRow(_ title: String, value: String, action: @escaping () -> Void) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text(title)
-                .font(.system(size: 14, weight: .regular))
+                .font(.callout)
                 .foregroundStyle(.primary)
                 .frame(width: 132, alignment: .leading)
             Button(action: action) {
                 Text(value)
-                    .font(.system(size: 14, weight: .regular))
+                    .font(.callout)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .frame(maxWidth: .infinity, alignment: .leading)

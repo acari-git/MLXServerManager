@@ -5,6 +5,7 @@ struct IntegratedSidebarMenuView: View {
     let language: AppLanguage
     let downloadPhase: HuggingFaceDownloadPhase
     let downloadProgress: Double?
+    @State private var hoveredDestination: IntegratedWorkspaceDestination?
 
     private var strings: AppLocalization {
         AppLocalization(language: language)
@@ -13,14 +14,18 @@ struct IntegratedSidebarMenuView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(IntegratedWorkspaceDestination.allCases.filter { $0 != .settings }) { destination in
-                sidebarRow(for: destination)
-                    .background(sidebarBackground(for: destination))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .onLongPressGesture(minimumDuration: 0, maximumDistance: 40) {
-                        selectedDestination = destination
-                    }
-                    .accessibilityAddTraits(.isButton)
-                    .accessibilityIdentifier("integrated-sidebar-\(destination.rawValue)")
+                Button {
+                    selectedDestination = destination
+                } label: {
+                    sidebarRow(for: destination)
+                }
+                .buttonStyle(.plain)
+                .background(sidebarBackground(for: destination))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .onHover { isHovering in
+                    hoveredDestination = isHovering ? destination : (hoveredDestination == destination ? nil : hoveredDestination)
+                }
+                .accessibilityIdentifier("integrated-sidebar-\(destination.rawValue)")
             }
         }
         .padding(.leading, 12)
@@ -34,7 +39,10 @@ struct IntegratedSidebarMenuView: View {
     private func sidebarBackground(for destination: IntegratedWorkspaceDestination) -> some View {
         if selectedDestination == destination {
             Color(nsColor: .controlAccentColor)
-                .opacity(0.92)
+                .opacity(0.90)
+        } else if hoveredDestination == destination {
+            Color(nsColor: .selectedContentBackgroundColor)
+                .opacity(0.10)
         } else {
             Color.clear
         }
@@ -43,10 +51,10 @@ struct IntegratedSidebarMenuView: View {
     private func sidebarRow(for destination: IntegratedWorkspaceDestination) -> some View {
         HStack(spacing: 8) {
             Image(systemName: destination.systemImageName)
-                .font(.system(size: 16, weight: .regular))
+                .font(.body)
                 .frame(width: 18)
             Text(destination.title(language: language))
-                .font(.system(size: 16, weight: .regular))
+                .font(.body)
             Spacer(minLength: 6)
             if destination == .downloads {
                 downloadIndicator

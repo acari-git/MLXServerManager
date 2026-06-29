@@ -50,7 +50,7 @@ struct SettingsPanelView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 Text(strings.text(.settings))
-                    .font(.system(size: 20, weight: .regular))
+                    .font(.title3)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.bottom, 12)
 
@@ -134,18 +134,18 @@ struct SettingsPanelView: View {
     private var settingsSaveFooter: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(t("Unsaved settings", "未保存の設定"))
-                .font(.system(size: 15, weight: .light))
+                .font(.headline)
                 .foregroundStyle(.primary)
 
             HStack(alignment: .center, spacing: 16) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(t("Save changes made on this settings screen.", "この設定画面で変更した内容を保存します。"))
-                        .font(.system(size: 15, weight: .light))
+                        .font(.callout)
                     Text(t(
                         "Leaving this screen without saving discards the changes.",
                         "保存せずにこの画面を離れると、変更内容は破棄されます。"
                     ))
-                    .font(.system(size: 14, weight: .ultraLight))
+                    .font(.caption)
                     .foregroundStyle(.secondary)
                 }
 
@@ -181,7 +181,7 @@ struct SettingsPanelView: View {
     private func settingsSection(title: String, rows: [AnyView]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.system(size: 15, weight: .light))
+                .font(.headline)
                 .foregroundStyle(.primary)
 
             VStack(spacing: 0) {
@@ -219,7 +219,7 @@ struct SettingsPanelView: View {
 
             TextField(placeholder, text: text, prompt: Text(placeholder).foregroundStyle(.tertiary))
                 .textFieldStyle(.roundedBorder)
-                .font(.system(size: 15, weight: .light))
+                .font(.callout)
                 .lineLimit(1)
                 .frame(width: controlWidth, height: 28, alignment: .leading)
                 .contentShape(Rectangle())
@@ -236,7 +236,7 @@ struct SettingsPanelView: View {
             Spacer(minLength: 16)
 
             Text(value)
-                .font(.system(size: 15, weight: .light))
+                .font(.callout)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .textSelection(.enabled)
@@ -326,12 +326,12 @@ struct SettingsPanelView: View {
     private func rowText(title: String, detail: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title)
-                .font(.system(size: 15, weight: .light))
+                .font(.callout.weight(.medium))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
 
             Text(detail)
-                .font(.system(size: 14, weight: .ultraLight))
+                .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .lineSpacing(2.5)

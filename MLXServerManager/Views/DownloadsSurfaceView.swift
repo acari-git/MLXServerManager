@@ -71,9 +71,9 @@ struct DownloadsSurfaceView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(strings.text(.downloads))
-                .font(.system(size: 20, weight: .regular))
+                .font(.title3)
             Text(t("Search Hugging Face, choose a save location, and download MLX model files.", "Hugging Faceから検索し、保存先を選んでMLXモデルファイルをダウンロードします。"))
-                .font(.system(size: 14, weight: .light))
+                .font(.callout)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -84,11 +84,11 @@ struct DownloadsSurfaceView: View {
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.system(size: 15, weight: .light))
+                    .font(.headline)
                     .foregroundStyle(.primary)
                 if let subtitle {
                     Text(subtitle)
-                        .font(.system(size: 13, weight: .light))
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -119,7 +119,7 @@ struct DownloadsSurfaceView: View {
                         prompt: Text(t("Repository, model name, or Hugging Face URL", "リポジトリ名、モデル名、Hugging Face URL")).foregroundStyle(.tertiary)
                     )
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 14, weight: .light))
+                    .font(.callout)
                     .frame(minWidth: 360, maxWidth: .infinity, alignment: .leading)
                     .onSubmit {
                         viewModel.performHuggingFaceSearchRequested()
@@ -164,7 +164,7 @@ struct DownloadsSurfaceView: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(result.id)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.caption.weight(.semibold))
                         .lineLimit(1)
                     Spacer()
                     Text(result.isMLXLikely ? t("MLX", "MLX") : t("Review", "要確認"))
@@ -206,7 +206,7 @@ struct DownloadsSurfaceView: View {
                         prompt: Text("~/Models/mlx").foregroundStyle(.tertiary)
                     )
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
+                    .font(.callout)
                     .frame(width: controlWidth, alignment: .leading)
 
                     Button(t("Choose", "選択")) {
@@ -244,7 +244,7 @@ struct DownloadsSurfaceView: View {
                         prompt: Text(t("Repository ID or URL", "リポジトリIDまたはURL")).foregroundStyle(.tertiary)
                     )
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
+                    .font(.callout)
                     .frame(width: controlWidth, alignment: .leading)
 
                     TextField(
@@ -253,7 +253,7 @@ struct DownloadsSurfaceView: View {
                         prompt: Text(t("Display name", "表示名")).foregroundStyle(.tertiary)
                     )
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
+                    .font(.callout)
                     .frame(width: controlWidth, alignment: .leading)
                 }
 
@@ -264,7 +264,7 @@ struct DownloadsSurfaceView: View {
                         prompt: Text("main").foregroundStyle(.tertiary)
                     )
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
+                    .font(.callout)
                     .frame(width: 160, alignment: .leading)
 
                     Button(t("MLX preset", "MLXプリセット")) { viewModel.applyHuggingFaceMLXPreset() }
@@ -379,7 +379,7 @@ struct DownloadsSurfaceView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(viewModel.huggingFaceDownloadStatus.phase.localizedTitle(language: viewModel.settings.uiLanguage))
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.callout.weight(.semibold))
                 Spacer()
                 Text(downloadProgressText)
                     .font(.caption.monospacedDigit())
