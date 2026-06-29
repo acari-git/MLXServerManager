@@ -12,6 +12,9 @@ struct IntegratedWorkspaceView: View {
     @State private var isRightPanelAutoHidden = false
     @State private var modelTableSortOrder = [KeyPathComparator<ModelTableRow>]()
     @State private var hoveredStatusModelID: ModelConfig.ID?
+    @State private var bottomPanelHeight: CGFloat = 280
+    @State private var bottomPanelDragStartHeight: CGFloat?
+    @State private var isMiniChatInputFocused = false
 
     private var selectedModel: ModelConfig? { viewModel.selectedModel }
     private var isSelectedRunning: Bool { selectedModel?.id == viewModel.runningModelID }
@@ -83,26 +86,6 @@ struct IntegratedWorkspaceView: View {
         case .stopped, .portAvailable:
             .secondary
         }
-    }
-
-    private var languageBinding: Binding<AppLanguage> {
-        Binding(
-            get: { viewModel.settings.uiLanguage },
-            set: { newValue in
-                viewModel.settings.uiLanguage = newValue
-                viewModel.saveSettingsRequested()
-            }
-        )
-    }
-
-    private var appearanceBinding: Binding<String> {
-        Binding(
-            get: { viewModel.settings.uiAppearance },
-            set: { newValue in
-                viewModel.settings.uiAppearance = newValue
-                viewModel.saveSettingsRequested()
-            }
-        )
     }
 
     private func toggleNavigationSidebarRequested() {
@@ -275,6 +258,7 @@ struct IntegratedWorkspaceView: View {
             Divider()
                 .padding(.horizontal, 14)
             systemPanel
+            Spacer(minLength: 12)
             Divider()
                 .padding(.horizontal, 14)
             sidebarFooterControls
@@ -284,30 +268,32 @@ struct IntegratedWorkspaceView: View {
     }
 
     private var systemPanel: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             Label(t("SYSTEM", "システム"), systemImage: "desktopcomputer")
-                .font(.callout.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(.primary)
 
             systemInfoCard
             Divider()
             systemHealthCard
         }
-        .padding(.horizontal, 14)
+        .padding(.leading, 20)
+        .padding(.trailing, 14)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     private var systemInfoCard: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 12) {
             ForEach(viewModel.systemInfoRows, id: \.0) { row in
-                HStack(alignment: .firstTextBaseline) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(row.0)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 58, alignment: .leading)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundStyle(.primary)
+                        .frame(width: 100, alignment: .leading)
                     Text(row.1)
-                        .font(.callout.weight(.semibold))
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundStyle(.primary)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
@@ -319,19 +305,20 @@ struct IntegratedWorkspaceView: View {
     }
 
     private var systemHealthCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label(t("Memory", "メモリ"), systemImage: "memorychip")
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(.primary)
                 Spacer()
                 Text(viewModel.integratedMemoryUsagePercentText)
-                    .font(.callout.weight(.semibold))
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(.primary)
             }
 
             memoryUsageBar
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 12) {
                 memoryLegendRow(color: .blue, label: "mlx-lm", value: viewModel.memoryMLXProcessText)
                 memoryLegendRow(color: .green, label: t("Other", "その他"), value: viewModel.memoryOtherProcessesText)
                 memoryLegendRow(color: .secondary.opacity(0.45), label: t("Available", "空き容量"), value: viewModel.memoryAvailableText)
@@ -345,22 +332,24 @@ struct IntegratedWorkspaceView: View {
                 } icon: {
                     Image(systemName: "cpu")
                 }
-                .font(.callout.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(.primary)
                 Spacer()
                 Text(viewModel.integratedCPUUsageText)
-                    .font(.callout.weight(.semibold))
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(.primary)
             }
 
             Divider()
 
             HStack {
                 Label(t("Uptime", "起動時間"), systemImage: "timer")
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(.primary)
                 Spacer()
                 Text(viewModel.integratedUptimeText)
-                    .font(.callout.weight(.semibold))
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
             }
 
@@ -392,117 +381,75 @@ struct IntegratedWorkspaceView: View {
     }
 
     private func memoryLegendRow(color: Color, label: String, value: String) -> some View {
-        Label {
-            Text(label)
-                .font(.system(.callout, design: .monospaced))
-                .frame(width: 72, alignment: .leading)
-            Text(value)
-                .font(.system(.callout, design: .monospaced).weight(.semibold))
-                .frame(width: 82, alignment: .trailing)
-        } icon: {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             Image(systemName: "circle.fill")
                 .font(.system(size: 8))
                 .foregroundStyle(color)
+                .frame(width: 8, alignment: .leading)
+            Text(label)
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(.primary)
+                .frame(width: 84, alignment: .leading)
+            Text(value)
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(.primary)
+                .frame(width: 82, alignment: .leading)
         }
         .lineLimit(1)
         .padding(.leading, 14)
     }
 
     private var sidebarFooterControls: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            quickSettingsMenu
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("MLX Server Manager")
-                    .font(.callout.weight(.semibold))
-                Text("Version 24.0.0")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                    Image(systemName: IntegratedWorkspaceDestination.settings.systemImageName)
+                        .font(.system(size: 16, weight: .regular))
+                        .frame(width: 18)
+                    Text(t("Settings", "設定"))
+                        .font(.system(size: 16, weight: .regular))
+                    Spacer(minLength: 6)
             }
+            .padding(.leading, 8)
+            .padding(.trailing, 8)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(
+                selectedDestination == .settings
+                ? Color(nsColor: .controlAccentColor).opacity(0.92)
+                : Color.clear
+            )
+            .foregroundStyle(selectedDestination == .settings ? Color.white : Color.primary)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .onLongPressGesture(minimumDuration: 0, maximumDistance: 40) {
+                selectedDestination = .settings
+            }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityIdentifier("integrated-sidebar-footer-settings")
         }
-        .padding(.horizontal, 14)
+        .padding(.leading, 12)
+        .padding(.trailing, 14)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var quickSettingsMenu: some View {
-        Menu {
-            Section {
-                ForEach(AppLanguage.allCases) { option in
-                    Button {
-                        languageBinding.wrappedValue = option
-                    } label: {
-                        if option == viewModel.settings.uiLanguage {
-                            Label(languageDisplayName(option), systemImage: "checkmark")
-                        } else {
-                            Text(languageDisplayName(option))
-                        }
-                    }
-                }
-            } header: {
-                Text(t("Language", "言語"))
-            }
-
-            Section {
-                themeMenuButton(title: t("System", "システム"), value: "system")
-                themeMenuButton(title: t("Light", "ライト"), value: "light")
-                themeMenuButton(title: t("Dark", "ダーク"), value: "dark")
-            } header: {
-                Text(t("Theme", "テーマ"))
-            }
-
-            Divider()
-
-            Button {
-                selectedDestination = .settings
-            } label: {
-                Label(t("Advanced settings", "詳細設定"), systemImage: "slider.horizontal.3")
-            }
-        } label: {
-            Label(t("Display", "表示"), systemImage: "paintpalette")
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .accessibilityIdentifier("integrated-sidebar-quick-settings-menu")
-    }
-
-    private func themeMenuButton(title: String, value: String) -> some View {
-        Button {
-            appearanceBinding.wrappedValue = value
-        } label: {
-            if viewModel.settings.uiAppearance == value {
-                Label(title, systemImage: "checkmark")
-            } else {
-                Text(title)
-            }
-        }
-    }
-
-    private func languageDisplayName(_ option: AppLanguage) -> String {
-        switch option {
-        case .system:
-            return t("System", "システム")
-        case .japanese:
-            return t("Japanese", "日本語")
-        case .english:
-            return t("English", "英語")
-        }
     }
 
     @ViewBuilder
     private var centerColumn: some View {
         switch selectedDestination {
         case .models:
-            VStack(spacing: 0) {
-                modelListPanel
-                    .frame(maxHeight: isBottomPanelVisible ? .infinity : .infinity)
-                if isBottomPanelVisible {
-                    Divider()
-                    bottomOperationsPanel
-                        .frame(height: 280)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+            GeometryReader { proxy in
+                VStack(spacing: 0) {
+                    modelListPanel
+                        .frame(maxHeight: .infinity)
+
+                    if isBottomPanelVisible {
+                        Divider()
+                        bottomOperationsPanel
+                            .frame(height: max(180, proxy.size.height / 3))
+                    }
                 }
+                .background(Color(nsColor: .windowBackgroundColor))
             }
-            .background(Color(nsColor: .windowBackgroundColor))
         case .downloads:
             DownloadsSurfaceView(viewModel: viewModel, onOpenModels: { selectedDestination = .models })
         case .settings:
@@ -517,6 +464,34 @@ struct IntegratedWorkspaceView: View {
                 onClear: viewModel.clearLogsRequested
             )
         }
+    }
+
+    private var bottomPanelResizeHandle: some View {
+        Rectangle()
+            .fill(Color(nsColor: .separatorColor))
+            .frame(height: 6)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { value in
+                        if bottomPanelDragStartHeight == nil {
+                            bottomPanelDragStartHeight = bottomPanelHeight
+                        }
+                        let startHeight = bottomPanelDragStartHeight ?? bottomPanelHeight
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            bottomPanelHeight = min(max(startHeight - value.translation.height, 180), 520)
+                        }
+                    }
+                    .onEnded { _ in
+                        bottomPanelDragStartHeight = nil
+                    }
+            )
+            .transaction { transaction in
+                transaction.animation = nil
+            }
+            .accessibilityIdentifier("integrated-bottom-panel-resize-handle")
     }
 
     private var modelEmptyState: some View {
@@ -549,7 +524,7 @@ struct IntegratedWorkspaceView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(t("Models", "モデル一覧"))
-                    .font(.title3.weight(.semibold))
+                    .font(.system(size: 20, weight: .regular))
                 Spacer()
                 Button {
                     viewModel.addProfileRequested()
@@ -573,6 +548,7 @@ struct IntegratedWorkspaceView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private var modelTable: some View {
@@ -589,16 +565,18 @@ struct IntegratedWorkspaceView: View {
                         .help(t("Drag to reorder", "ドラッグして並び替え"))
                         .accessibilityLabel(t("Drag to reorder model", "モデルをドラッグして並び替え"))
 
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 5) {
                         Text(model.displayName)
-                            .font(.body.weight(.semibold))
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(.primary)
                             .lineLimit(1)
                         Text(model.notes.isEmpty ? model.family : model.notes)
-                            .font(.caption)
+                            .font(.system(size: 14, weight: .ultraLight))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
                 }
+                .padding(.vertical, 5)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     viewModel.selectedModelID = model.id
@@ -617,7 +595,7 @@ struct IntegratedWorkspaceView: View {
 
             TableColumn(t("Size", "サイズ"), value: \ModelTableRow.sizeSortValue) { row in
                 let model = row.model
-                centeredTableText(viewModel.modelSizeText(for: model), color: .secondary)
+                modelSizeTableText(viewModel.modelSizeText(for: model))
             }
             .width(min: 72, ideal: 90, max: 120)
 
@@ -628,9 +606,9 @@ struct IntegratedWorkspaceView: View {
             }
             .width(min: 86, ideal: 112, max: 140)
 
-            TableColumn(t("Port / IP address", "ポート/IPアドレス"), value: \ModelTableRow.endpointSortValue) { row in
+            TableColumn(t("IP address : port", "IPアドレス : ポート"), value: \ModelTableRow.endpointSortValue) { row in
                 let model = row.model
-                centeredTableText("127.0.0.1:\(model.serverPort)", weight: .semibold)
+                endpointTableText(host: "127.0.0.1", port: model.serverPort)
             }
             .width(min: 120, ideal: 150, max: 200)
 
@@ -670,6 +648,9 @@ struct IntegratedWorkspaceView: View {
             .width(min: 150, ideal: 170, max: 210)
         }
         .alternatingRowBackgrounds(.disabled)
+        .scrollContentBackground(.hidden)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .font(.system(size: 14, weight: .light))
         .accessibilityIdentifier("integrated-model-table")
         .onDrop(of: [.plainText], isTargeted: nil) { providers in
             moveDroppedModelToEnd(providers)
@@ -682,14 +663,45 @@ struct IntegratedWorkspaceView: View {
     private func centeredTableText(
         _ value: String,
         color: Color = .primary,
-        weight: Font.Weight = .regular
+        weight: Font.Weight = .light
     ) -> some View {
         Text(value)
-            .font(.callout.weight(weight))
+            .font(.system(size: 15, weight: weight))
             .foregroundStyle(color)
+            .padding(.vertical, 5)
             .lineLimit(1)
             .truncationMode(.middle)
             .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private func modelSizeTableText(_ value: String) -> some View {
+        let components = value.split(separator: " ", maxSplits: 1).map(String.init)
+        return HStack(alignment: .firstTextBaseline, spacing: 3) {
+            Text(components.first ?? value)
+                .font(.system(size: 15, weight: .light))
+            if components.count > 1 {
+                Text(components[1])
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .foregroundStyle(.primary)
+        .padding(.vertical, 5)
+        .lineLimit(1)
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private func endpointTableText(host: String, port: Int) -> some View {
+        HStack(spacing: 0) {
+            Text("\(host) : ")
+                .font(.system(size: 15, weight: .light))
+            Text(String(port))
+                .font(.system(size: 15, weight: .semibold))
+        }
+        .foregroundStyle(.primary)
+        .padding(.vertical, 5)
+        .lineLimit(1)
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     private var selectedModelBinding: Binding<ModelConfig.ID?> {
@@ -749,39 +761,36 @@ struct IntegratedWorkspaceView: View {
         let statusText = viewModel.interactiveStatusText(for: model, isHovered: isHovered)
         let isTransitioning = viewModel.isModelTransitioning(model)
         let canUseAction = viewModel.canUseStatusAction(for: model)
+        let isInteractive = !isTransitioning && canUseAction
 
-        return Button {
-            guard !isTransitioning, canUseAction else {
-                return
-            }
-            viewModel.statusActionRequested(for: model)
-        } label: {
-            Text(statusText)
-                .frame(minWidth: 76, maxWidth: .infinity)
-                .foregroundStyle(statusForegroundColor(for: model))
-        }
-        .buttonStyle(.bordered)
-        .tint(statusTintColor(for: model))
-        .frame(maxWidth: .infinity)
-        .contentShape(Rectangle())
-        .onHover { isHovering in
-            hoveredStatusModelID = isHovering ? model.id : nil
-        }
-        .onContinuousHover { phase in
-            switch phase {
-            case .active:
-                hoveredStatusModelID = model.id
-            case .ended:
-                if hoveredStatusModelID == model.id {
-                    hoveredStatusModelID = nil
+        return Text(statusText)
+            .font(.system(size: 13, weight: .regular))
+            .frame(minWidth: 76, maxWidth: .infinity)
+            .padding(.vertical, 4)
+            .foregroundStyle(statusForegroundColor(for: model))
+            .background(statusBackgroundColor(for: model, isHovered: isHovered), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 5)
+            .contentShape(Rectangle())
+            .onHover { isHovering in
+                guard isInteractive else {
+                    if hoveredStatusModelID == model.id {
+                        hoveredStatusModelID = nil
+                    }
+                    return
                 }
+                hoveredStatusModelID = isHovering ? model.id : nil
             }
-        }
-        .transaction { transaction in
-            transaction.animation = nil
-        }
-        .disabled(!isTransitioning && !canUseAction)
-        .allowsHitTesting(!isTransitioning && canUseAction)
+            .onTapGesture {
+                guard isInteractive else {
+                    return
+                }
+                viewModel.statusActionRequested(for: model)
+            }
+            .transaction { transaction in
+                transaction.animation = nil
+            }
+            .help(statusText)
     }
 
     private func statusForegroundColor(for model: ModelConfig) -> Color {
@@ -789,16 +798,16 @@ struct IntegratedWorkspaceView: View {
             return .red
         }
         if viewModel.isModelLoaded(model) {
-            return .green
+            return .white
         }
-        return .primary
+        return .blue
     }
 
-    private func statusTintColor(for model: ModelConfig) -> Color? {
+    private func statusBackgroundColor(for model: ModelConfig, isHovered: Bool) -> Color {
         if viewModel.isModelLoaded(model) {
-            return .green
+            return .blue
         }
-        return nil
+        return Color.blue.opacity(isHovered ? 0.12 : 0.08)
     }
 
     private func autoUnloadCell(for model: ModelConfig) -> some View {
@@ -862,9 +871,10 @@ struct IntegratedWorkspaceView: View {
     private func memoryCell(_ text: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(text)
-                .font(.callout.weight(.semibold))
-                .foregroundColor(text == "-" ? .secondary : .green)
+                .font(.system(size: 16, weight: .light))
+                .foregroundColor(text == "-" ? .secondary : .blue)
             ProgressView(value: text == "-" ? 0 : 0.48)
+                .tint(.blue)
                 .frame(width: 62)
         }
     }
@@ -872,10 +882,10 @@ struct IntegratedWorkspaceView: View {
     private var bottomOperationsPanel: some View {
         HStack(spacing: 0) {
             testChatPanel
-                .frame(minWidth: 360, maxWidth: .infinity)
+                .frame(minWidth: 260, maxWidth: .infinity)
             Divider()
             logPanel
-                .frame(minWidth: 360, maxWidth: .infinity)
+                .frame(minWidth: 260, maxWidth: .infinity)
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .accessibilityIdentifier("integrated-bottom-operations-panel")
@@ -885,7 +895,8 @@ struct IntegratedWorkspaceView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(t("Test Chat", "テストチャット"))
-                    .font(.headline)
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundStyle(.primary)
                 Spacer()
                 Text(viewModel.miniChatHTTPStatusText)
                     .font(.caption.monospacedDigit())
@@ -893,82 +904,97 @@ struct IntegratedWorkspaceView: View {
                 Text(viewModel.miniChatDurationText)
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
+                Button(t("Clear", "クリア")) {
+                    viewModel.clearMiniChatRequested()
+                }
+                .buttonStyle(.bordered)
             }
             .padding(.horizontal, 14)
             .frame(height: 52)
 
             Divider()
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(t(
-                    "Direct test only. Sends one user message directly to the selected OpenAI-compatible endpoint.",
-                    "Directテスト専用です。選択中のOpenAI互換エンドポイントへ1件のユーザーメッセージを直接送信します。"
-                ))
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 8) {
-                        if viewModel.miniChatMessages.isEmpty {
-                            Text(t("No messages yet", "まだメッセージはありません"))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .padding(.vertical, 24)
-                        } else {
-                            ForEach(viewModel.miniChatMessages) { message in
-                                miniChatBubble(message)
-                            }
-                        }
-                    }
-                    .padding(10)
-                }
-                .frame(maxHeight: .infinity)
-                .background(Color(nsColor: .textBackgroundColor))
-
-                MiniChatInputView(
-                    text: $viewModel.miniChatPrompt,
-                    placeholder: t("Type a test message. Enter sends. Shift+Enter inserts a new line.", "テストメッセージを入力。Enterで送信、Shift+Enterで改行。"),
-                    onSubmit: { viewModel.sendMiniChatRequested() }
-                )
-                .frame(height: 58)
-
-                HStack {
-                    Button(t("Send", "送信")) {
-                        viewModel.sendMiniChatRequested()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!viewModel.canSendMiniChat)
-
-                    Button(t("Cancel", "キャンセル")) {
-                        viewModel.cancelMiniChatRequested()
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(!viewModel.isMiniChatRunning)
-
-                    Button(t("Clear", "クリア")) {
-                        viewModel.clearMiniChatRequested()
-                    }
-                    .buttonStyle(.bordered)
-
-                    Button(t("Copy latest", "最新をコピー")) {
-                        viewModel.copyMiniChatResponseRequested()
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(viewModel.miniChatResponse.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-                    Spacer()
-                    Text(viewModel.miniChatStatus)
-                        .font(.caption)
-                        .foregroundStyle(viewModel.isMiniChatRunning ? .orange : .secondary)
-                        .lineLimit(1)
-                }
+            VStack(alignment: .leading, spacing: 10) {
+                miniChatTranscript
+                miniChatComposer
             }
             .padding(14)
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .accessibilityIdentifier("integrated-test-chat-panel")
+    }
+
+    private var miniChatTranscript: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    if viewModel.miniChatMessages.isEmpty {
+                        Text(t("No messages yet", "まだメッセージはありません"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 24)
+                    } else {
+                        ForEach(viewModel.miniChatMessages) { message in
+                            miniChatBubble(message)
+                                .id(message.id)
+                        }
+                    }
+                }
+                .padding(10)
+            }
+            .frame(maxHeight: .infinity)
+            .background(Color(nsColor: .windowBackgroundColor))
+            .onChange(of: viewModel.miniChatMessages.count) { _, _ in
+                guard let lastID = viewModel.miniChatMessages.last?.id else { return }
+                DispatchQueue.main.async {
+                    proxy.scrollTo(lastID, anchor: .bottom)
+                }
+            }
+        }
+    }
+
+    private var miniChatComposer: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ZStack(alignment: .topLeading) {
+                if viewModel.miniChatPrompt.isEmpty && !isMiniChatInputFocused {
+                    Text(t("Type a test chat", "テストチャットを入力"))
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundStyle(.secondary.opacity(0.45))
+                        .padding(.top, 7)
+                        .padding(.leading, 8)
+                }
+                MiniChatInputView(
+                    text: $viewModel.miniChatPrompt,
+                    placeholder: t("Type a test chat", "テストチャットを入力"),
+                    isFocused: $isMiniChatInputFocused,
+                    onSubmit: { viewModel.sendMiniChatRequested() }
+                )
+            }
+            .frame(height: 42)
+
+            HStack {
+                Spacer()
+                Button {
+                    viewModel.sendMiniChatRequested()
+                } label: {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.white)
+                        .frame(width: 28, height: 28)
+                        .background(Color.secondary, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!viewModel.canSendMiniChat)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+        )
     }
 
     private func miniChatBubble(_ message: MiniChatTranscriptMessage) -> some View {
@@ -977,37 +1003,38 @@ struct IntegratedWorkspaceView: View {
         let canCopy = message.sender == .assistant && !message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return HStack {
             if isUser { Spacer(minLength: 40) }
-            VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
-                Text(message.content)
-                    .font(.caption)
-                    .textSelection(.enabled)
-                    .foregroundStyle(isSystem ? Color.secondary : Color.primary)
-                    .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
-
-                if canCopy {
-                    Button {
-                        viewModel.copyMiniChatMessageRequested(message)
-                    } label: {
-                        Image(systemName: AppSymbol.copy)
-                            .font(.system(size: 11, weight: .semibold))
-                            .frame(width: 22, height: 20)
-                            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            Text(message.content)
+                .font(.system(size: 14, weight: .regular))
+                .textSelection(.enabled)
+                .foregroundStyle(isSystem ? Color.secondary : Color.primary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 10)
+                .padding(.trailing, canCopy ? 24 : 0)
+                .background(
+                    isUser
+                    ? Color.accentColor.opacity(0.12)
+                    : Color.secondary.opacity(isSystem ? 0.10 : 0.16),
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                )
+                .overlay(alignment: .topTrailing) {
+                    if canCopy {
+                        Button {
+                            viewModel.copyMiniChatMessageRequested(message)
+                        } label: {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: 10, weight: .regular))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 20, height: 18)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 3)
+                        .padding(.trailing, 3)
+                        .help(t("Copy response", "返答をコピー"))
+                        .accessibilityLabel(t("Copy response", "返答をコピー"))
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .help(t("Copy response", "返答をコピー"))
-                    .accessibilityLabel(t("Copy response", "返答をコピー"))
                 }
-            }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 10)
-            .background(
-                isUser
-                ? Color.accentColor.opacity(0.12)
-                : (isSystem ? Color.orange.opacity(0.10) : Color.white.opacity(0.14)),
-                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-            )
-            .frame(maxWidth: 320, alignment: isUser ? .trailing : .leading)
+                .frame(maxWidth: 420, alignment: isUser ? .trailing : .leading)
             if !isUser { Spacer(minLength: 40) }
         }
         .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
@@ -1017,7 +1044,8 @@ struct IntegratedWorkspaceView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(strings.text(.logs))
-                    .font(.headline)
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundStyle(.primary)
                 Spacer()
                 Picker(t("Category", "カテゴリ"), selection: $viewModel.logCategoryFilter) {
                     ForEach(viewModel.logCategoryFilterOptions, id: \.self) { category in
@@ -1084,66 +1112,39 @@ struct IntegratedWorkspaceView: View {
 
     private var rightColumn: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                inspectorSection(id: "model", title: t("Model inspector", "モデル詳細"), systemImage: AppSymbol.modelInspector) {
+            VStack(alignment: .leading, spacing: 12) {
+                inspectorSection(title: t("Model inspector", "モデル詳細"), systemImage: AppSymbol.modelInspector) {
                     modelSettingsPanelContent
                 }
 
-                inspectorSection(id: "external", title: t("Connection", "接続"), systemImage: AppSymbol.connection) {
+                Divider()
+                    .padding(.horizontal, 14)
+
+                inspectorSection(title: t("Connection", "接続"), systemImage: AppSymbol.connection) {
                     externalServerPanelContent
                 }
 
-                inspectorSection(id: "recovery", title: t("Recovery", "復旧"), systemImage: AppSymbol.recovery) {
-                    IntegratedRecoveryPanelView(
-                        issue: viewModel.currentRecoveryIssue,
-                        language: viewModel.settings.uiLanguage,
-                        onAction: handleRecoveryAction,
-                        onCopyTroubleshooting: viewModel.copyTroubleshootingSummary,
-                        onRefreshSafety: viewModel.refreshIntegratedSafetyRequested
-                    )
-                    recentRightPanelLogs
-                }
+                Divider()
+                    .padding(.horizontal, 14)
 
-                inspectorSection(id: "hermes", title: t("Hermes Agent connection", "Hermes Agent接続情報"), systemImage: AppSymbol.hermesAgent) {
+                inspectorSection(title: t("Hermes Agent connection", "Hermes Agent接続情報"), systemImage: AppSymbol.hermesAgent) {
                     hermesPanelContent
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.top, 72)
+            .padding(.top, 8)
             .padding(.bottom, 24)
         }
         .scrollContentBackground(.hidden)
-        .background(.ultraThinMaterial)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private var externalServerPanelContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(t("OpenAI-compatible servers such as vLLM, Rapid-MLX, LM Studio, and Ollama are adopted as external servers by storing connection values only.", "vLLM / Rapid-MLX / LM Studio / OllamaなどのOpenAI互換サーバーは、外部サーバーとして接続情報だけを採用します。"))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            detailRows([
-                (t("Target", "接続先"), viewModel.connectionTargetSummary.targetType),
-                ("Base URL", viewModel.connectionTargetSummary.baseURL),
-                ("Model", viewModel.connectionTargetSummary.modelID),
-                (t("Ownership", "管理範囲"), viewModel.connectionTargetSummary.ownershipNote),
-                (t("Lifecycle", "ライフサイクル"), viewModel.runtimeState.isExternalServerContext ? t("External management. Start / Stop / Restart are unavailable.", "外部管理。起動 / 停止 / 再起動の対象外です。") : t("Not adopted. It can be adopted after Ready Check detection.", "未採用。Ready確認で検出後に採用可能です。"))
-            ])
+            formRow(t("Target", "接続先"), viewModel.connectionTargetSummary.targetType)
             copyRow("Base URL", value: viewModel.connectionTargetSummary.baseURL, action: { viewModel.copyBaseURL() })
             copyRow("Model", value: viewModel.connectionTargetSummary.modelID, action: { viewModel.copyModelID() })
             copyRow("API Key", value: viewModel.connectionTargetSummary.apiKeyPlaceholder, action: { viewModel.copyAPIKeyPlaceholder() })
-            HStack {
-                Button(t("Ready Check", "Ready確認")) { viewModel.checkReadyRequested() }
-                    .buttonStyle(.bordered)
-                Button(t("Adopt", "採用")) { viewModel.adoptExternalServerRequested() }
-                    .buttonStyle(.bordered)
-                    .disabled(!viewModel.canAdoptExternalServer)
-                Button(t("Forget", "解除")) { viewModel.forgetExternalServerRequested() }
-                    .buttonStyle(.bordered)
-                    .disabled(!viewModel.canForgetExternalServer)
-            }
-            Text(t("Adopt stores only the connection context. The app does not stop, restart, capture logs from, or monitor memory for external processes.", "採用は接続コンテキストの保存のみです。外部プロセスの停止・再起動・ログ取得・メモリ監視は行いません。"))
-                .font(.caption2)
-                .foregroundStyle(.secondary)
         }
         .accessibilityIdentifier("integrated-external-server-panel")
     }
@@ -1168,96 +1169,33 @@ struct IntegratedWorkspaceView: View {
     }
 
     private func inspectorSection<Content: View>(
-        id: String,
         title: String,
         systemImage: String,
-        @ViewBuilder content: @escaping () -> Content
+        @ViewBuilder content: () -> Content
     ) -> some View {
-        DisclosureGroup(
-            isExpanded: Binding(
-                get: { expandedRightPanelID == id },
-                set: { expandedRightPanelID = $0 ? id : nil }
-            )
-        ) {
-            content()
-                .padding(.top, 8)
-        } label: {
+        VStack(alignment: .leading, spacing: 10) {
             Label(title, systemImage: systemImage)
-                .font(.headline)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(.primary)
+                .padding(.vertical, 2)
+            content()
+                .padding(.leading, 14)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var modelSettingsPanelContent: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            modelInspectorOverview
-
-            groupedSection(t("Basic information", "基本情報")) {
-                HStack {
-                    Button {
-                        viewModel.editProfileRequested()
-                    } label: {
-                        Label(t("Configure selected model", "選択モデルを設定"), systemImage: AppSymbol.modelInspector)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .disabled(viewModel.isManagedProcessRunning)
-                }
-                if viewModel.isManagedProcessRunning {
-                    Text(t("Model ID, host, port, and advanced options are locked while running. Stop the server before editing them.", "実行中はModel ID、ホスト、ポート、詳細オプションの変更を止めています。停止後に設定してください。"))
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                }
-                formRow(t("Model name", "モデル名"), selectedModel?.displayName ?? "-")
-                formRow("Model ID (Hugging Face)", selectedModel?.modelID ?? "-")
-                formRow(t("Model validation", "モデル検証"), viewModel.selectedModelIdentityDetailText, valueColor: viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("Missing") || viewModel.selectedModelIdentityDetailText.localizedCaseInsensitiveContains("review") ? .orange : .green)
-                formRow(t("Purpose / notes", "用途・メモ"), selectedModel?.notes.isEmpty == false ? selectedModel?.notes ?? "-" : "-")
+        VStack(alignment: .leading, spacing: 12) {
+            formRow(t("Save location", "保存場所"), selectedModel.flatMap(modelStorageLocationText) ?? "-")
+            let safetySummary = localizedStatusText(viewModel.selectedModelSafetySummary)
+            formRow(t("Summary", "概要"), safetySummary, valueColor: isPositiveLocalizedStatus(safetySummary) ? .green : .orange)
+            ForEach(viewModel.selectedModelSafetyRows.filter { $0.0 != "Server port" }, id: \.0) { row in
+                let value = localizedStatusText(row.1)
+                formRow(localizedSafetyLabel(row.0), value, valueColor: isPositiveLocalizedStatus(value) ? .green : .orange)
             }
-            .accessibilityIdentifier("integrated-model-basic-info-section")
-
-            groupedSection(t("Safety", "安全性")) {
-                let safetySummary = localizedStatusText(viewModel.selectedModelSafetySummary)
-                formRow(t("Summary", "概要"), safetySummary, valueColor: isPositiveLocalizedStatus(safetySummary) ? .green : .orange)
-                ForEach(viewModel.selectedModelSafetyRows, id: \.0) { row in
-                    let value = localizedStatusText(row.1)
-                    formRow(localizedSafetyLabel(row.0), value, valueColor: isPositiveLocalizedStatus(value) ? .green : .orange)
-                }
-                let recoverySummary = localizedStatusText(viewModel.failedStartRecoverySummary)
-                formRow(t("Recovery guide", "復旧ガイド"), recoverySummary, valueColor: isPositiveLocalizedStatus(recoverySummary) ? .secondary : .orange)
-            }
-            .accessibilityIdentifier("integrated-model-safety-section")
-
-            groupedSection(t("Direct Mode port", "Direct Modeポート")) {
-                formRow(t("Port / IP address", "ポート/IPアドレス"), selectedModel.map { "\($0.host):\($0.serverPort)" } ?? "-")
-                availabilityStatus("\(selectedModel.map { "\($0.host):\($0.serverPort)" } ?? "-"): \(localizedStatusText(viewModel.selectedServerPortSafetyText))")
-            }
-            .accessibilityIdentifier("integrated-model-port-section")
-
-            groupedSection(t("Operation settings", "動作設定")) {
-                formRow(t("Applied changes", "変更反映"), viewModel.restartRequired ? t("Restart required", "再起動が必要") : t("Current settings are active", "現在の設定が有効"), valueColor: viewModel.restartRequired ? .orange : .green)
-                HStack {
-                    Text(t("Reasoning mode for Qwen models", "推論モード（Qwen系）"))
-                        .font(.caption)
-                    Spacer()
-                    Toggle("", isOn: .constant(selectedModel?.enableThinking ?? false))
-                        .labelsHidden()
-                        .scaleEffect(0.82)
-                        .disabled(true)
-                    Text((selectedModel?.enableThinking ?? false) ? "ON" : "OFF")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                formRow(t("Stop method", "停止方式"), t("Manual stop", "手動で停止"))
-            }
-
-            groupedSection(t("State information", "状態情報")) {
-                formRow(t("Operation safety", "操作安全性"), viewModel.integratedActionStateSummary, valueColor: viewModel.canStartSelectedModel ? .green : .orange)
-                formRow(t("Status", "ステータス"), isSelectedRunning ? t("Loaded", "ロード済") : t("Not loaded", "未ロード"), valueColor: isSelectedRunning ? .green : .secondary)
-                formRow(t("Latest check", "最終確認"), selectedModel.map { viewModel.integratedLatestUseText(for: $0) } ?? "-")
-                formRow(t("Start time", "起動時刻"), viewModel.runtimeEvents.first?.timestamp.formatted(date: .numeric, time: .standard) ?? "-")
-                formRow(t("Process", "プロセス"), isSelectedRunning ? t("App managed", "アプリ管理") : "-")
-                formRow(t("Memory usage", "メモリ使用量"), isSelectedRunning ? viewModel.memoryUsageText : "-")
-                formRow(t("Speed Test", "スピードテスト"), viewModel.latestBenchmarkResult?.summary ?? t("Not run", "未実行"))
-            }
+            formRow(t("IP address:port", "IPアドレス:ポート"), selectedModelEndpointAvailabilityText, valueColor: isPositiveLocalizedStatus(localizedStatusText(viewModel.selectedServerPortSafetyText)) ? .green : .orange)
         }
+        .accessibilityIdentifier("integrated-model-settings-panel-content")
     }
 
     private var modelInspectorOverview: some View {
@@ -1268,33 +1206,30 @@ struct IntegratedWorkspaceView: View {
                 (t("Port", "ポート"), selectedModel.map { "\($0.host):\($0.serverPort)" } ?? "-"),
                 (t("Changes", "変更"), viewModel.restartRequired ? t("Restart required", "再起動が必要") : t("Active", "有効"))
             ])
-            Text(t(
-                "Use this panel to inspect the selected model. Edit profile data from Basic information; start/stop actions stay in the model list.",
-                "このペインでは選択モデルを確認します。プロファイル情報は基本情報から編集し、起動/停止操作はモデル一覧で行います。"
-            ))
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
     private func groupedSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.headline)
-            content()
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 8) {
+                content()
+            }
+            .padding(.leading, 14)
         }
         .padding(.vertical, 6)
     }
 
     private func formRow(_ title: String, _ value: String, valueColor: Color = .primary) -> some View {
-        HStack(alignment: .firstTextBaseline) {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(.primary)
                 .frame(width: 132, alignment: .leading)
             Text(value)
-                .font(.callout)
+                .font(.system(size: 14, weight: .regular))
                 .foregroundStyle(valueColor)
                 .lineLimit(2)
                 .truncationMode(.middle)
@@ -1303,12 +1238,26 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
+    private func modelStorageLocationText(for model: ModelConfig) -> String {
+        if let localPath = ModelAvailabilityPathFormatter.localPathCandidate(for: model) {
+            return ModelAvailabilityPathFormatter.compact(path: localPath)
+        }
+        return model.modelID
+    }
+
+    private var selectedModelEndpointAvailabilityText: String {
+        guard let selectedModel else { return "-" }
+        let endpoint = "\(selectedModel.host):\(selectedModel.serverPort)"
+        let status = localizedStatusText(viewModel.selectedServerPortSafetyText)
+        return "\(endpoint)（\(status)）"
+    }
+
     private func localizedSafetyLabel(_ label: String) -> String {
         switch label {
         case "Selected model": return t("Selected model", "選択モデル")
         case "Executable": return t("Executable", "実行ファイル")
         case "Model": return t("Model", "モデル")
-        case "Server port": return t("Port / IP address", "ポート/IPアドレス")
+        case "Server port": return t("IP address:port", "IPアドレス:ポート")
         case "Duplicate": return t("Duplicate", "重複")
         case "Runtime edit": return t("Runtime edit safety", "編集中の安全性")
         default: return label
@@ -1343,7 +1292,7 @@ struct IntegratedWorkspaceView: View {
         default:
             return value
                 .replacingOccurrences(of: "Missing", with: "未検出")
-                .replacingOccurrences(of: "Server port", with: "ポート/IPアドレス")
+                .replacingOccurrences(of: "Server port", with: "IPアドレス:ポート")
                 .replacingOccurrences(of: "Stop the managed server before editing runtime identity.", with: "実行中のサーバーを停止してから編集してください")
                 .replacingOccurrences(of: "No duplicate endpoint detected.", with: "重複する接続先はありません")
         }
@@ -1383,51 +1332,32 @@ struct IntegratedWorkspaceView: View {
             copyRow("API Key", value: viewModel.apiKeyPlaceholder, action: { viewModel.copyAPIKeyPlaceholder() })
             copyRow("Model", value: viewModel.selectedModelIdentifier, action: { viewModel.copyModelID() })
 
-            Text(t("Direct Mode: Hermes Agent connects directly to mlx_lm.server. Direct Mode only.", "Direct Mode: Hermes Agentはmlx_lm.serverへ直接接続します。Direct Modeのみです。"))
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-
-            Button {
-                viewModel.copyHermesAgentConfig()
-            } label: {
-                Text(t("Copy Hermes settings", "Hermes設定をまとめてコピー"))
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-
-            HStack {
-                Text("\(t("Manager", "マネージャー")): \(viewModel.runtimeState.title)")
-                Spacer()
-                Text("Direct Mode")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
     }
 
     private func copyRow(_ title: String, value: String, action: @escaping () -> Void) -> some View {
-        LabeledContent(title) {
-            HStack {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(title)
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(.primary)
+                .frame(width: 132, alignment: .leading)
+            Button(action: action) {
                 Text(value)
-                    .font(.system(.caption, design: .monospaced))
+                    .font(.system(size: 14, weight: .regular))
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
-                Button(t("Copy", "コピー"), action: action)
-                    .buttonStyle(.bordered)
             }
+            .buttonStyle(.plain)
+            .help(t("Click to copy", "クリックでコピー"))
         }
     }
 
     private func detailRows(_ rows: [(String, String)]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(rows, id: \.0) { label, value in
-                LabeledContent(label) {
-                    Text(value)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                formRow(label, value)
             }
         }
     }

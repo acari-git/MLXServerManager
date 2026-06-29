@@ -21,6 +21,7 @@ struct ContentView: View {
     var body: some View {
         IntegratedWorkspaceView(viewModel: viewModel)
             .frame(minWidth: 1280, minHeight: 760)
+            .background(WindowTitlebarSeparatorHider())
         .confirmationDialog(
             t("Delete Model Profile?", "モデルプロファイルを削除しますか？"),
             isPresented: $viewModel.isDeleteProfileConfirmationPresented,
@@ -103,6 +104,22 @@ struct ContentView: View {
                 }
                 .padding(20)
             }
+        }
+    }
+}
+
+private struct WindowTitlebarSeparatorHider: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async {
+            view.window?.titlebarSeparatorStyle = .none
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async {
+            nsView.window?.titlebarSeparatorStyle = .none
         }
     }
 }

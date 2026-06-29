@@ -289,8 +289,9 @@ final class ModelProcessManager {
         stderrPipe = nil
     }
 
-    nonisolated private static func thinkingChatTemplateArgs(isEnabled: Bool) -> String {
-        "{\"enable_thinking\":\(isEnabled ? "true" : "false")}"
+    nonisolated private static func thinkingChatTemplateArgs(isEnabled: Bool) -> String? {
+        guard isEnabled else { return nil }
+        return "{\"enable_thinking\":true}"
     }
 
     nonisolated private static func appendValue(_ value: String?, flag: String, to arguments: inout [String]) {

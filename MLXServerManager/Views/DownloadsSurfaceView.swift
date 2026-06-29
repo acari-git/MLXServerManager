@@ -42,7 +42,7 @@ struct DownloadsSurfaceView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 26) {
+            VStack(alignment: .leading, spacing: 28) {
                 header
 
                 settingsSection(title: t("Status", "状態"), content: statusSectionContent)
@@ -55,7 +55,7 @@ struct DownloadsSurfaceView: View {
                 settingsSection(title: t("Search", "検索"), content: searchCard)
                 settingsSection(title: strings.text(.download), content: downloadFormCard)
             }
-            .padding(.top, 64)
+            .padding(.top, 12)
             .padding(.bottom, 56)
             .frame(maxWidth: contentWidth, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .center)
@@ -66,7 +66,7 @@ struct DownloadsSurfaceView: View {
 
     private var header: some View {
         Text(strings.text(.downloads))
-            .font(.system(size: 18, weight: .semibold))
+            .font(.system(size: 20, weight: .regular))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, 12)
     }
@@ -74,12 +74,12 @@ struct DownloadsSurfaceView: View {
     private func settingsSection<Content: View>(title: String, content: Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 15, weight: .light))
                 .foregroundStyle(.primary)
 
             content
                 .padding(.horizontal, 16)
-                .padding(.vertical, 18)
+                .padding(.vertical, 17)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color(nsColor: .windowBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous))
@@ -217,9 +217,10 @@ struct DownloadsSurfaceView: View {
     private var downloadEnvironmentCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(t("Download tools", "ダウンロードツール確認"))
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 15, weight: .light))
             Text(t("Checks download prerequisites. Model search is the separate search area below.", "ダウンロードの前提条件を確認します。モデル検索は下の別エリアです。"))
-                .font(.system(size: 13))
+                .font(.system(size: 14, weight: .ultraLight))
+                .lineSpacing(2.5)
                 .foregroundStyle(.secondary)
             detailRows([
                 ("aria2c", viewModel.aria2Availability.displayPath),
@@ -255,7 +256,7 @@ struct DownloadsSurfaceView: View {
                 prompt: Text(t("Search by repository or model name", "リポジトリ名またはモデル名で検索")).foregroundStyle(.tertiary)
             )
             .textFieldStyle(.roundedBorder)
-            .font(.system(size: 13))
+            .font(.system(size: 15, weight: .light))
             .frame(width: controlWidth, alignment: .leading)
             .onSubmit {
                 viewModel.performHuggingFaceSearchRequested()
@@ -278,7 +279,7 @@ struct DownloadsSurfaceView: View {
     private var searchCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(t("Hugging Face search", "Hugging Face検索"))
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 15, weight: .light))
 
             HStack(spacing: 10) {
                 huggingFaceSearchField
@@ -546,7 +547,7 @@ struct DownloadsSurfaceView: View {
     private var queueCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(strings.text(.downloadQueue))
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 15, weight: .light))
             Text(viewModel.huggingFaceDownloadQueueSummary)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -593,16 +594,17 @@ struct DownloadsSurfaceView: View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.element.0) { index, row in
                 HStack(alignment: .center, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 5) {
                         Text(row.0)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 15, weight: .light))
                         Text(t("Current value for this item.", "この項目の現在値です。"))
-                            .font(.system(size: 12))
+                            .font(.system(size: 14, weight: .ultraLight))
                             .foregroundStyle(.secondary)
+                            .lineSpacing(2.5)
                     }
                     Spacer(minLength: 20)
                     Text(row.1)
-                        .font(.system(size: 13))
+                        .font(.system(size: 15, weight: .light))
                         .textSelection(.enabled)
                         .lineLimit(2)
                         .frame(width: controlWidth, alignment: .leading)

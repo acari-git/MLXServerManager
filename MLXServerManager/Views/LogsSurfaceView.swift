@@ -38,7 +38,7 @@ struct LogsSurfaceView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 26) {
+            VStack(alignment: .leading, spacing: 28) {
                 header
                 settingsSection(title: t("Controls", "操作"), content: logCommandDeck)
                 settingsSection(title: t("Summary", "概要"), content: summaryCards)
@@ -54,7 +54,7 @@ struct LogsSurfaceView: View {
                     .accessibilityIdentifier("logs-surface-log-view")
                 )
             }
-            .padding(.top, 64)
+            .padding(.top, 12)
             .padding(.bottom, 56)
             .frame(maxWidth: contentWidth, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .center)
@@ -65,7 +65,7 @@ struct LogsSurfaceView: View {
 
     private var header: some View {
         Text(strings.text(.logs))
-            .font(.system(size: 18, weight: .semibold))
+            .font(.system(size: 20, weight: .regular))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, 12)
             .accessibilityIdentifier("logs-surface-header")
@@ -74,12 +74,12 @@ struct LogsSurfaceView: View {
     private func settingsSection<Content: View>(title: String, content: Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 15, weight: .light))
                 .foregroundStyle(.primary)
 
             content
                 .padding(.horizontal, 16)
-                .padding(.vertical, 18)
+                .padding(.vertical, 17)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color(nsColor: .windowBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous))
@@ -95,13 +95,14 @@ struct LogsSurfaceView: View {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 8) {
                     Label(t("Log command center", "ログ操作センター"), systemImage: "terminal")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 15, weight: .light))
                     Text(t(
                         "Use logs for app-managed lifecycle, ready checks, and troubleshooting context. External server stdout/stderr remains outside this boundary.",
                         "ログは、アプリ管理のライフサイクル、Ready確認、トラブルシューティング情報の確認に使います。外部サーバーのstdout/stderrは対象外です。"
                     ))
-                    .font(.caption)
+                    .font(.system(size: 14, weight: .ultraLight))
                     .foregroundStyle(.secondary)
+                    .lineSpacing(2.5)
                     .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
@@ -157,7 +158,7 @@ struct LogsSurfaceView: View {
     private var troubleshootingCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(t("Troubleshooting", "トラブルシューティング"), systemImage: "wrench.and.screwdriver")
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 15, weight: .light))
 
             detailRows([
                 (t("Latest important log", "直近の重要ログ"), latestImportantLogEntry?.line ?? t("None", "なし")),
@@ -182,14 +183,15 @@ struct LogsSurfaceView: View {
     private var boundaryCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(t("Log Boundary", "ログ境界"), systemImage: "lock")
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 15, weight: .light))
 
             Text(t(
                 "Logs shown here are app-managed lifecycle and captured managed-process context already available to MLX Server Manager. Adopted external server stdout/stderr is not captured, inspected, stopped, restarted, or owned by the app.",
                 "ここに表示するログは、MLX Server Managerがすでに保持しているアプリ管理のライフサイクルと管理プロセスのコンテキストです。採用済み外部サーバーのstdout/stderrは取得・検査・停止・再起動・所有しません。"
             ))
-            .font(.caption)
+            .font(.system(size: 14, weight: .ultraLight))
             .foregroundStyle(.secondary)
+            .lineSpacing(2.5)
 
             detailRows([
                 (t("Ownership", "管理範囲"), targetSummary.ownershipNote),
@@ -207,16 +209,17 @@ struct LogsSurfaceView: View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.element.0) { index, row in
                 HStack(alignment: .center, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 5) {
                         Text(row.0)
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 15, weight: .light))
                         Text(t("Current log context for this item.", "この項目の現在のログコンテキストです。"))
-                            .font(.system(size: 13))
+                            .font(.system(size: 14, weight: .ultraLight))
                             .foregroundStyle(.secondary)
+                            .lineSpacing(2.5)
                     }
                     Spacer(minLength: 20)
                     Text(row.1)
-                        .font(.system(size: 14))
+                        .font(.system(size: 15, weight: .light))
                         .textSelection(.enabled)
                         .lineLimit(2)
                         .frame(width: controlWidth, alignment: .leading)

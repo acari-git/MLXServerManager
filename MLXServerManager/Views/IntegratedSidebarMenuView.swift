@@ -5,31 +5,27 @@ struct IntegratedSidebarMenuView: View {
     let language: AppLanguage
     let downloadPhase: HuggingFaceDownloadPhase
     let downloadProgress: Double?
-    @State private var hoveredDestination: IntegratedWorkspaceDestination?
 
     private var strings: AppLocalization {
         AppLocalization(language: language)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(IntegratedWorkspaceDestination.allCases) { destination in
-                Button {
-                    selectedDestination = destination
-                } label: {
-                    sidebarRow(for: destination)
-                }
-                .buttonStyle(.plain)
-                .background(sidebarBackground(for: destination))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .onHover { isHovering in
-                    hoveredDestination = isHovering ? destination : (hoveredDestination == destination ? nil : hoveredDestination)
-                }
-                .accessibilityIdentifier("integrated-sidebar-\(destination.rawValue)")
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(IntegratedWorkspaceDestination.allCases.filter { $0 != .settings }) { destination in
+                sidebarRow(for: destination)
+                    .background(sidebarBackground(for: destination))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .onLongPressGesture(minimumDuration: 0, maximumDistance: 40) {
+                        selectedDestination = destination
+                    }
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityIdentifier("integrated-sidebar-\(destination.rawValue)")
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 52)
+        .padding(.leading, 12)
+        .padding(.trailing, 14)
+        .padding(.top, 8)
         .padding(.bottom, 10)
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
@@ -39,9 +35,6 @@ struct IntegratedSidebarMenuView: View {
         if selectedDestination == destination {
             Color(nsColor: .controlAccentColor)
                 .opacity(0.92)
-        } else if hoveredDestination == destination {
-            Color(nsColor: .selectedContentBackgroundColor)
-                .opacity(0.18)
         } else {
             Color.clear
         }
@@ -50,17 +43,19 @@ struct IntegratedSidebarMenuView: View {
     private func sidebarRow(for destination: IntegratedWorkspaceDestination) -> some View {
         HStack(spacing: 8) {
             Image(systemName: destination.systemImageName)
-                .frame(width: 16)
+                .font(.system(size: 16, weight: .regular))
+                .frame(width: 18)
             Text(destination.title(language: language))
-                .font(.body.weight(.semibold))
+                .font(.system(size: 16, weight: .regular))
             Spacer(minLength: 6)
             if destination == .downloads {
                 downloadIndicator
             }
         }
         .foregroundStyle(selectedDestination == destination ? Color.white : Color.primary)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 7)
+        .padding(.leading, 8)
+        .padding(.trailing, 8)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }

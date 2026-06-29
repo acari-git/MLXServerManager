@@ -108,10 +108,13 @@ struct MemoryMonitor: Sendable {
             return .notRunning(processIdentifier: processIdentifier)
         }
 
+        let physicalFootprintKilobytes = physicalFootprintKilobytes(processIdentifier: processIdentifier)
+        let residentKilobytes = Int64(taskInfo.pti_resident_size / 1024)
+
         return .usage(
             MemoryUsageSnapshot(
                 processIdentifier: processIdentifier,
-                rssKilobytes: Int64(taskInfo.pti_resident_size / 1024)
+                rssKilobytes: physicalFootprintKilobytes ?? residentKilobytes
             )
         )
     }
@@ -146,6 +149,19 @@ struct MemoryMonitor: Sendable {
 
     nonisolated func currentSystemSnapshot() -> SystemMemorySnapshot {
         currentSystemMemory()
+    }
+
+    nonisolated private func physicalFootprintKilobytes(processIdentifier: Int32) -> Int64? {
+        var resourceInfo = rusage_info_v4()
+        let result = withUnsafeMutablePointer(to: &resourceInfo) { pointer in
+            pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { reboundPointer in
+                proc_pid_rusage(processIdentifier, RUSAGE_INFO_V4, reboundPointer)
+            }
+        }
+        guard result == 0, resourceInfo.ri_phys_footprint > 0 else {
+            return nil
+        }
+        return Int64(resourceInfo.ri_phys_footprint / 1024)
     }
 
     nonisolated func estimatedModelStorageGigabytes(modelDirectoryPath: String?) -> Double? {

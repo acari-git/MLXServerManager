@@ -6,9 +6,11 @@ struct SettingsPanelView: View {
     @Binding var defaultPort: Int
     @Binding var apiKeyPlaceholder: String
     @Binding var language: AppLanguage
+    @Binding var appearance: String
     let settingsDirectoryPath: String
+    let hasUnsavedChanges: Bool
+    let onDiscard: () -> Void
     let onSave: () -> Void
-    let onRunDiagnostics: () -> Void
 
     private let contentWidth: CGFloat = 660
     private let controlWidth: CGFloat = 248
@@ -18,6 +20,14 @@ struct SettingsPanelView: View {
 
     private var strings: AppLocalization {
         AppLocalization(language: language)
+    }
+
+    private var themeOptions: [(value: String, title: String)] {
+        [
+            ("system", t("System", "システム")),
+            ("light", t("Light", "ライト")),
+            ("dark", t("Dark", "ダーク"))
+        ]
     }
 
     private func t(_ english: String, _ japanese: String) -> String {
@@ -39,7 +49,7 @@ struct SettingsPanelView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 Text(strings.text(.settings))
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 20, weight: .regular))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.bottom, 12)
 
@@ -79,6 +89,8 @@ struct SettingsPanelView: View {
                 settingsSection(
                     title: t("General", "一般"),
                     rows: [
+                        AnyView(languageSettingRow),
+                        AnyView(themeSettingRow),
                         AnyView(editableSettingRow(
                             title: t("API key placeholder", "APIキーのプレースホルダー"),
                             detail: t(
@@ -99,35 +111,9 @@ struct SettingsPanelView: View {
                     ]
                 )
 
-                settingsSection(
-                    title: t("Actions", "操作"),
-                    rows: [
-                        AnyView(actionRow(
-                            title: strings.text(.saveSettings),
-                            detail: t(
-                                "Persist the current settings to the app support folder.",
-                                "現在の設定をアプリのサポートフォルダへ保存します。"
-                            ),
-                            buttonTitle: strings.text(.saveSettings),
-                            systemImage: "square.and.arrow.down",
-                            isPrimary: true,
-                            action: onSave
-                        )),
-                        AnyView(actionRow(
-                            title: strings.text(.runDiagnostics),
-                            detail: t(
-                                "Check whether the configured executable, folders, and connection defaults are usable.",
-                                "設定済みの実行ファイル、フォルダ、接続既定値が利用可能か確認します。"
-                            ),
-                            buttonTitle: strings.text(.runDiagnostics),
-                            systemImage: "stethoscope",
-                            isPrimary: false,
-                            action: onRunDiagnostics
-                        ))
-                    ]
-                )
+                settingsSaveFooter
             }
-            .padding(.top, 64)
+            .padding(.top, 12)
             .padding(.bottom, 56)
             .frame(maxWidth: contentWidth, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .center)
@@ -135,10 +121,57 @@ struct SettingsPanelView: View {
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
+    private var settingsSaveFooter: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(t("Unsaved settings", "未保存の設定"))
+                .font(.system(size: 15, weight: .light))
+                .foregroundStyle(.primary)
+
+            HStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(t("Save changes made on this settings screen.", "この設定画面で変更した内容を保存します。"))
+                        .font(.system(size: 15, weight: .light))
+                    Text(t(
+                        "Leaving this screen without saving discards the changes.",
+                        "保存せずにこの画面を離れると、変更内容は破棄されます。"
+                    ))
+                    .font(.system(size: 14, weight: .ultraLight))
+                    .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 16)
+
+                Button(t("Discard changes", "変更を破棄")) {
+                    onDiscard()
+                }
+                .buttonStyle(.bordered)
+                .disabled(!hasUnsavedChanges)
+
+                Button {
+                    onSave()
+                } label: {
+                    Label(t("Save", "保存"), systemImage: "square.and.arrow.down")
+                        .frame(width: 92, alignment: .center)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!hasUnsavedChanges)
+            }
+            .padding(.horizontal, rowHorizontalPadding + 4)
+            .padding(.vertical, rowVerticalPadding + 3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(nsColor: .windowBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.80), lineWidth: 1.0)
+            )
+        }
+    }
+
     private func settingsSection(title: String, rows: [AnyView]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 15, weight: .light))
                 .foregroundStyle(.primary)
 
             VStack(spacing: 0) {
@@ -152,6 +185,7 @@ struct SettingsPanelView: View {
                     }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(nsColor: .windowBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous))
             .overlay(
@@ -159,6 +193,7 @@ struct SettingsPanelView: View {
                     .stroke(Color(nsColor: .separatorColor).opacity(0.80), lineWidth: 1.0)
             )
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func editableSettingRow(
@@ -174,7 +209,7 @@ struct SettingsPanelView: View {
 
             TextField(placeholder, text: text, prompt: Text(placeholder).foregroundStyle(.tertiary))
                 .textFieldStyle(.roundedBorder)
-                .font(.system(size: 14))
+                .font(.system(size: 15, weight: .light))
                 .lineLimit(1)
                 .frame(width: controlWidth, height: 28, alignment: .leading)
                 .contentShape(Rectangle())
@@ -191,7 +226,7 @@ struct SettingsPanelView: View {
             Spacer(minLength: 16)
 
             Text(value)
-                .font(.system(size: 14))
+                .font(.system(size: 15, weight: .light))
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .textSelection(.enabled)
@@ -209,50 +244,83 @@ struct SettingsPanelView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func actionRow(
-        title: String,
-        detail: String,
-        buttonTitle: String,
-        systemImage: String,
-        isPrimary: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
+    private var languageSettingRow: some View {
         HStack(alignment: .center, spacing: 18) {
-            rowText(title: title, detail: detail)
+            rowText(
+                title: t("Language", "言語"),
+                detail: t(
+                    "Choose the display language used in MLX Server Manager.",
+                    "MLX Server Managerで使用する表示言語を選択します。"
+                )
+            )
 
             Spacer(minLength: 16)
 
-            if isPrimary {
-                Button(action: action) {
-                    Label(buttonTitle, systemImage: systemImage)
-                        .frame(width: controlWidth - 20, alignment: .center)
+            Picker("", selection: $language) {
+                ForEach(AppLanguage.allCases) { option in
+                    Text(languageDisplayName(option))
+                        .tag(option)
                 }
-                .buttonStyle(.borderedProminent)
-            } else {
-                Button(action: action) {
-                    Label(buttonTitle, systemImage: systemImage)
-                        .frame(width: controlWidth - 20, alignment: .center)
-                }
-                .buttonStyle(.bordered)
             }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: controlWidth, height: 28, alignment: .leading)
         }
         .padding(.horizontal, rowHorizontalPadding + 4)
         .padding(.vertical, rowVerticalPadding + 3)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var themeSettingRow: some View {
+        HStack(alignment: .center, spacing: 18) {
+            rowText(
+                title: t("Theme", "テーマ"),
+                detail: t(
+                    "Follow the system appearance or choose a fixed light or dark theme.",
+                    "システム外観に合わせるか、ライトまたはダークテーマを固定します。"
+                )
+            )
+
+            Spacer(minLength: 16)
+
+            Picker("", selection: $appearance) {
+                ForEach(themeOptions, id: \.value) { option in
+                    Text(option.title)
+                        .tag(option.value)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: controlWidth, height: 28, alignment: .leading)
+        }
+        .padding(.horizontal, rowHorizontalPadding + 4)
+        .padding(.vertical, rowVerticalPadding + 3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func languageDisplayName(_ option: AppLanguage) -> String {
+        switch option {
+        case .system:
+            return t("System", "システム")
+        case .japanese:
+            return t("Japanese", "日本語")
+        case .english:
+            return t("English", "英語")
+        }
+    }
+
     private func rowText(title: String, detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 5) {
             Text(title)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 15, weight: .light))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
 
             Text(detail)
-                .font(.system(size: 13, weight: .regular))
+                .font(.system(size: 14, weight: .ultraLight))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-                .lineSpacing(1)
+                .lineSpacing(2.5)
         }
     }
 }

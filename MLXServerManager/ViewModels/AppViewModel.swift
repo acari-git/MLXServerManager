@@ -72,6 +72,18 @@ private struct MiniChatRequestPayload: Encodable {
     let model: String
     let messages: [MiniChatMessagePayload]
     let stream: Bool
+    let maxTokens: Int
+    let temperature: Double
+    let stop: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case model
+        case messages
+        case stream
+        case maxTokens = "max_tokens"
+        case temperature
+        case stop
+    }
 }
 
 private struct MiniChatResponsePayload: Decodable {
@@ -1996,7 +2008,10 @@ final class AppViewModel: ObservableObject {
                 let payload = MiniChatRequestPayload(
                     model: modelID,
                     messages: [MiniChatMessagePayload(role: "user", content: prompt)],
-                    stream: false
+                    stream: false,
+                    maxTokens: 1024,
+                    temperature: 0.7,
+                    stop: ["USER:", "ASSISTANT:"]
                 )
                 request.httpBody = try JSONEncoder().encode(payload)
 
@@ -2069,6 +2084,20 @@ final class AppViewModel: ObservableObject {
         if copyToPasteboard(message.content) {
             miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Copied response.", japanese: "返答をコピーしました。")
         }
+    }
+
+    nonisolated private static var miniChatStopSequences: [String] {
+        ["USER:", "ASSISTANT:", "\nUSER:", "\nASSISTANT:"]
+    }
+
+    nonisolated private static func miniChatMessagesPayload(for prompt: String) -> [MiniChatMessagePayload] {
+        [
+            MiniChatMessagePayload(
+                role: "system",
+                content: "日本語で自然に簡潔に返答してください。会話ロール名やテンプレート文字列は出力しないでください。ユーザー入力をそのまま反復するだけの返答は避けてください。"
+            ),
+            MiniChatMessagePayload(role: "user", content: prompt)
+        ]
     }
 
     nonisolated private static func chatCompletionsURL(from baseURL: String) -> URL? {
