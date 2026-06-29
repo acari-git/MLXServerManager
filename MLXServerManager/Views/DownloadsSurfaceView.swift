@@ -140,11 +140,13 @@ struct DownloadsSurfaceView: View {
                     .foregroundStyle(.secondary)
 
                 if !viewModel.visibleHuggingFaceSearchResults.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
+                    List {
                         ForEach(viewModel.visibleHuggingFaceSearchResults.prefix(8)) { result in
                             searchResultRow(result)
                         }
                     }
+                    .listStyle(.inset)
+                    .frame(minHeight: 160)
                 }
             }
         }
@@ -154,36 +156,34 @@ struct DownloadsSurfaceView: View {
         Button {
             viewModel.selectHuggingFaceSearchResult(result)
         } label: {
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(result.id)
-                        .font(.caption.weight(.semibold))
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: viewModel.selectedHuggingFaceSearchResult?.id == result.id ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(viewModel.selectedHuggingFaceSearchResult?.id == result.id ? Color.accentColor : Color.secondary)
+                    .padding(.top, 2)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(result.id)
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(1)
+                        Spacer()
+                        Text(result.isMLXLikely ? t("MLX", "MLX") : t("Review", "要確認"))
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(result.isMLXLikely ? Color.green : Color.orange)
+                    }
+                    Text(result.qualitySummary)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
-                    Spacer()
-                    Text(result.isMLXLikely ? t("MLX", "MLX") : t("Review", "要確認"))
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(result.isMLXLikely ? Color.green : Color.orange)
+                    Text(result.selectionWarning)
+                        .font(.caption2)
+                        .foregroundStyle(result.isMLXLikely ? Color.secondary : Color.orange)
+                        .lineLimit(2)
                 }
-                Text(result.qualitySummary)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                Text(result.selectionWarning)
-                    .font(.caption2)
-                    .foregroundStyle(result.isMLXLikely ? Color.secondary : Color.orange)
-                    .lineLimit(2)
             }
-            .padding(.vertical, 6)
-            .padding(.horizontal, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                viewModel.selectedHuggingFaceSearchResult?.id == result.id
-                ? Color(nsColor: .controlAccentColor).opacity(0.12)
-                : Color.clear
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderless)
     }
 
     private var destinationSection: some View {

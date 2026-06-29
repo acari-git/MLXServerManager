@@ -54,10 +54,16 @@ The working interpretation for MLX Server Manager is:
 - Kept the instant hover text change while moving the control interaction to standard button semantics.
 - Used standard bordered/prominent button styles and system tinting for unloaded and loaded states.
 
+## Fourth-Pass Fixes Applied
+
+- Replaced the hand-highlighted Hugging Face search result stack with an inset `List`.
+- Removed the custom selected-row rounded rectangle from Hugging Face search results.
+- Kept a lightweight checkmark symbol for the selected search result because the selection updates a form outside the list.
+
 ## Still To Refine
 
 - Replace custom settings/downloads/logs section containers with more native `Form`, `Section`, `Table`, or `List` structure where practical.
-- Review whether any remaining row-selection decorations in Downloads should become `List` selection.
+- Remaining custom shapes are limited to sidebar selection hit areas, the memory usage bar, and the Test Chat diagnostic transcript/composer.
 - Keep the Test Chat bubbles as an exception because they are diagnostic transcript content, but avoid expanding them into full chat UI.
 - Continue reducing hard-coded padding and widths where native controls can own their layout.
 - Recheck dark mode, Japanese labels, English labels, and narrow window behavior after each batch.
