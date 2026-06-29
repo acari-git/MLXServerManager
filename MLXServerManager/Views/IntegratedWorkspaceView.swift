@@ -761,58 +761,47 @@ struct IntegratedWorkspaceView: View {
         return true
     }
 
+    @ViewBuilder
     private func statusButton(for model: ModelConfig) -> some View {
         let isHovered = hoveredStatusModelID == model.id
         let statusText = viewModel.interactiveStatusText(for: model, isHovered: isHovered)
         let isTransitioning = viewModel.isModelTransitioning(model)
         let canUseAction = viewModel.canUseStatusAction(for: model)
         let isInteractive = !isTransitioning && canUseAction
-
-        return Text(statusText)
-            .font(.caption.weight(.medium))
-            .frame(minWidth: 76, maxWidth: .infinity)
-            .padding(.vertical, 4)
-            .foregroundStyle(statusForegroundColor(for: model))
-            .background(statusBackgroundColor(for: model, isHovered: isHovered), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 5)
-            .contentShape(Rectangle())
-            .onHover { isHovering in
-                guard isInteractive else {
-                    if hoveredStatusModelID == model.id {
-                        hoveredStatusModelID = nil
-                    }
-                    return
+        let button = Button {
+            guard isInteractive else { return }
+            viewModel.statusActionRequested(for: model)
+        } label: {
+            Text(statusText)
+                .font(.caption.weight(.medium))
+                .frame(minWidth: 76)
+        }
+        .controlSize(.small)
+        .disabled(!isInteractive)
+        .padding(.vertical, 5)
+        .onHover { isHovering in
+            guard isInteractive else {
+                if hoveredStatusModelID == model.id {
+                    hoveredStatusModelID = nil
                 }
-                hoveredStatusModelID = isHovering ? model.id : nil
+                return
             }
-            .onTapGesture {
-                guard isInteractive else {
-                    return
-                }
-                viewModel.statusActionRequested(for: model)
-            }
-            .transaction { transaction in
-                transaction.animation = nil
-            }
-            .help(statusText)
-    }
+            hoveredStatusModelID = isHovering ? model.id : nil
+        }
+        .transaction { transaction in
+            transaction.animation = nil
+        }
+        .help(statusText)
 
-    private func statusForegroundColor(for model: ModelConfig) -> Color {
-        if viewModel.isModelTransitioning(model) {
-            return .red
-        }
         if viewModel.isModelLoaded(model) {
-            return .white
+            button
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+        } else {
+            button
+                .buttonStyle(.bordered)
+                .tint(isTransitioning ? .red : .accentColor)
         }
-        return .blue
-    }
-
-    private func statusBackgroundColor(for model: ModelConfig, isHovered: Bool) -> Color {
-        if viewModel.isModelLoaded(model) {
-            return .blue
-        }
-        return Color.blue.opacity(isHovered ? 0.12 : 0.08)
     }
 
     private func autoUnloadCell(for model: ModelConfig) -> some View {

@@ -48,10 +48,16 @@ The working interpretation for MLX Server Manager is:
 - Removed custom capsule decoration from the Logs summary metadata.
 - Replaced the read-only Settings folder display with a disabled rounded `TextField` instead of a hand-drawn text container.
 
+## Third-Pass Fixes Applied
+
+- Replaced the model status pseudo-button with a real SwiftUI `Button`.
+- Kept the instant hover text change while moving the control interaction to standard button semantics.
+- Used standard bordered/prominent button styles and system tinting for unloaded and loaded states.
+
 ## Still To Refine
 
 - Replace custom settings/downloads/logs section containers with more native `Form`, `Section`, `Table`, or `List` structure where practical.
-- Keep custom model status control only if a standard button cannot express loaded/loading/unloaded states clearly.
+- Review whether any remaining row-selection decorations in Downloads should become `List` selection.
 - Keep the Test Chat bubbles as an exception because they are diagnostic transcript content, but avoid expanding them into full chat UI.
 - Continue reducing hard-coded padding and widths where native controls can own their layout.
 - Recheck dark mode, Japanese labels, English labels, and narrow window behavior after each batch.
