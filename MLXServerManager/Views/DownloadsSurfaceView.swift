@@ -5,9 +5,18 @@ struct DownloadsSurfaceView: View {
     @ObservedObject var viewModel: AppViewModel
     var onOpenModels: () -> Void = {}
 
-    private let contentWidth: CGFloat = 660
-    private let controlWidth: CGFloat = 248
-    private let cardCornerRadius: CGFloat = 8
+    private enum DownloadSchedulingMode: String, CaseIterable, Identifiable {
+        case queue
+        case parallel
+
+        var id: String { rawValue }
+    }
+
+    @State private var schedulingMode: DownloadSchedulingMode = .queue
+
+    private let contentWidth: CGFloat = 760
+    private let controlWidth: CGFloat = 300
+    private let cardCornerRadius: CGFloat = 10
 
     private var strings: AppLocalization {
         AppLocalization(language: viewModel.settings.uiLanguage)
@@ -28,7 +37,7 @@ struct DownloadsSurfaceView: View {
         case .preparing:
             return t("Preparing", "準備中")
         case .downloading:
-            return t("Reading progress", "進捗取得中")
+            return t("Downloading", "ダウンロード中")
         case .finalizing:
             return t("Finalizing", "最終処理中")
         case .completed:
@@ -44,16 +53,11 @@ struct DownloadsSurfaceView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 header
-
-                settingsSection(title: t("Status", "状態"), content: statusSectionContent)
-
-                if viewModel.latestFailedHuggingFaceDownloadQueueEntry != nil {
-                    settingsSection(title: t("Recovery", "復旧"), content: recoveryCard)
-                }
-
-                settingsSection(title: t("Tools", "ツール"), content: downloadEnvironmentCard)
-                settingsSection(title: t("Search", "検索"), content: searchCard)
-                settingsSection(title: strings.text(.download), content: downloadFormCard)
+                searchSection
+                destinationSection
+                downloadFormSection
+                transferSection
+                queueSection
             }
             .padding(.top, 12)
             .padding(.bottom, 56)
@@ -65,21 +69,33 @@ struct DownloadsSurfaceView: View {
     }
 
     private var header: some View {
-        Text(strings.text(.downloads))
-            .font(.system(size: 20, weight: .regular))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.bottom, 12)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(strings.text(.downloads))
+                .font(.system(size: 20, weight: .regular))
+            Text(t("Search Hugging Face, choose a save location, and download MLX model files.", "Hugging Faceから検索し、保存先を選んでMLXモデルファイルをダウンロードします。"))
+                .font(.system(size: 14, weight: .light))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, 4)
     }
 
-    private func settingsSection<Content: View>(title: String, content: Content) -> some View {
+    private func section<Content: View>(title: String, subtitle: String? = nil, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.system(size: 15, weight: .light))
-                .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 15, weight: .light))
+                    .foregroundStyle(.primary)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 13, weight: .light))
+                        .foregroundStyle(.secondary)
+                }
+            }
 
-            content
+            content()
                 .padding(.horizontal, 16)
-                .padding(.vertical, 17)
+                .padding(.vertical, 16)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color(nsColor: .windowBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous))
@@ -90,59 +106,291 @@ struct DownloadsSurfaceView: View {
         }
     }
 
-    private var statusSectionContent: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            downloadCommandDeck
-            Rectangle()
-                .fill(Color(nsColor: .separatorColor).opacity(0.80))
-                .frame(height: 1.0)
-                .padding(.horizontal, -16)
-                .padding(.vertical, 16)
-            queueCard
-        }
-    }
+    private var searchSection: some View {
+        section(
+            title: t("Search", "検索"),
+            subtitle: t("Find models on Hugging Face. Use the MLX filter to avoid unrelated repositories.", "Hugging Face上のモデルを検索します。MLXフィルタで無関係な候補を減らします。")
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 10) {
+                    TextField(
+                        t("Repository, model name, or Hugging Face URL", "リポジトリ名、モデル名、Hugging Face URL"),
+                        text: $viewModel.huggingFaceSearchQuery,
+                        prompt: Text(t("Repository, model name, or Hugging Face URL", "リポジトリ名、モデル名、Hugging Face URL")).foregroundStyle(.tertiary)
+                    )
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 14, weight: .light))
+                    .frame(minWidth: 360, maxWidth: .infinity, alignment: .leading)
+                    .onSubmit {
+                        viewModel.performHuggingFaceSearchRequested()
+                    }
 
-    private var downloadCommandDeck: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                downloadStateHero
-                VStack(spacing: 10) {
-                    downloadMetricCard(
-                        title: t("Queue", "キュー"),
-                        value: String(viewModel.huggingFaceDownloadQueue.count),
-                        detail: viewModel.huggingFaceDownloadQueueSummary,
-                        systemImage: "tray.full"
-                    )
-                    downloadMetricCard(
-                        title: "aria2c",
-                        value: viewModel.aria2Availability.displayPath,
-                        detail: t("Downloader availability", "ダウンローダー状態"),
-                        systemImage: "bolt.horizontal.circle"
-                    )
+                    Button {
+                        viewModel.performHuggingFaceSearchRequested()
+                    } label: {
+                        if viewModel.isHuggingFaceSearching {
+                            ProgressView().scaleEffect(0.7)
+                        } else {
+                            Label(strings.text(.search), systemImage: AppSymbol.search)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(viewModel.isHuggingFaceSearching)
                 }
-                .frame(width: 260)
+
+                Toggle(t("Show MLX format only", "MLX形式のみ表示"), isOn: $viewModel.showOnlyMLXLikelySearchResults)
+                    .toggleStyle(.checkbox)
+                    .disabled(viewModel.huggingFaceSearchResults.isEmpty)
+
+                Text(viewModel.huggingFaceSearchMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if !viewModel.visibleHuggingFaceSearchResults.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(viewModel.visibleHuggingFaceSearchResults.prefix(8)) { result in
+                            searchResultRow(result)
+                        }
+                    }
+                }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var downloadStateHero: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(t("Download command center", "ダウンロード操作センター"))
-                        .font(.system(size: 14, weight: .medium))
-                    Text(viewModel.huggingFaceDownloadStatus.phase.localizedTitle(language: viewModel.settings.uiLanguage))
-                        .font(.title3.weight(.semibold))
+    private func searchResultRow(_ result: HuggingFaceSearchResult) -> some View {
+        Button {
+            viewModel.selectHuggingFaceSearchResult(result)
+        } label: {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(result.id)
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                    Spacer()
+                    Text(result.isMLXLikely ? t("MLX", "MLX") : t("Review", "要確認"))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(result.isMLXLikely ? Color.green : Color.orange)
                 }
+                Text(result.qualitySummary)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Text(result.selectionWarning)
+                    .font(.caption2)
+                    .foregroundStyle(result.isMLXLikely ? Color.secondary : Color.orange)
+                    .lineLimit(2)
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                viewModel.selectedHuggingFaceSearchResult?.id == result.id
+                ? Color(nsColor: .controlAccentColor).opacity(0.12)
+                : Color.clear
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var destinationSection: some View {
+        section(
+            title: t("Save Location", "保存先"),
+            subtitle: t("Downloaded models are saved under this folder and can be added to the model list automatically.", "ダウンロードしたモデルはこのフォルダ配下へ保存し、モデル一覧へ自動追加できます。")
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    TextField(
+                        t("Save directory", "保存先フォルダ"),
+                        text: $viewModel.huggingFaceDownloadDraft.saveDirectory,
+                        prompt: Text("~/Models/mlx").foregroundStyle(.tertiary)
+                    )
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 13))
+                    .frame(width: controlWidth, alignment: .leading)
+
+                    Button(t("Choose", "選択")) {
+                        viewModel.chooseHuggingFaceDownloadDirectoryRequested()
+                    }
+                    .disabled(viewModel.isHuggingFaceDownloadRunning)
+                }
+
+                HStack(spacing: 18) {
+                    Toggle(t("Add to model list after download", "完了後にモデル一覧へ追加"), isOn: $viewModel.huggingFaceDownloadDraft.autoAddToModelList)
+                        .toggleStyle(.checkbox)
+                    Toggle(t("Select added model", "追加したモデルを選択"), isOn: $viewModel.huggingFaceDownloadDraft.autoSelectAfterAdd)
+                        .toggleStyle(.checkbox)
+                        .disabled(!viewModel.huggingFaceDownloadDraft.autoAddToModelList)
+                }
+
+                compactRows([
+                    (t("Destination preview", "保存先プレビュー"), viewModel.huggingFaceDownloadPreview.compactDestinationPath),
+                    (t("Status", "状態"), viewModel.huggingFaceDownloadPreview.message)
+                ])
+            }
+        }
+    }
+
+    private var downloadFormSection: some View {
+        section(
+            title: strings.text(.download),
+            subtitle: t("Select a repository, preview files if needed, then start the download.", "リポジトリを選択し、必要に応じてファイル確認後にダウンロードします。")
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 10) {
+                    TextField(
+                        t("Repository ID or URL", "リポジトリIDまたはURL"),
+                        text: $viewModel.huggingFaceDownloadDraft.source,
+                        prompt: Text(t("Repository ID or URL", "リポジトリIDまたはURL")).foregroundStyle(.tertiary)
+                    )
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 13))
+                    .frame(width: controlWidth, alignment: .leading)
+
+                    TextField(
+                        t("Display name", "表示名"),
+                        text: $viewModel.huggingFaceDownloadDraft.displayName,
+                        prompt: Text(t("Display name", "表示名")).foregroundStyle(.tertiary)
+                    )
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 13))
+                    .frame(width: controlWidth, alignment: .leading)
+                }
+
+                HStack(spacing: 10) {
+                    TextField(
+                        t("Revision", "リビジョン"),
+                        text: $viewModel.huggingFaceDownloadDraft.revision,
+                        prompt: Text("main").foregroundStyle(.tertiary)
+                    )
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 13))
+                    .frame(width: 160, alignment: .leading)
+
+                    Button(t("MLX preset", "MLXプリセット")) { viewModel.applyHuggingFaceMLXPreset() }
+                    Button(t("Preview files", "ファイルを確認")) { viewModel.previewHuggingFaceFilesRequested() }
+                        .disabled(viewModel.huggingFaceFilePreview.isLoading || viewModel.isHuggingFaceDownloadRunning)
+                }
+
+                filePreviewSummary
+
+                HStack(spacing: 10) {
+                    Button {
+                        viewModel.startHuggingFaceDownloadRequested()
+                    } label: {
+                        Label(strings.text(.download), systemImage: "arrow.down.circle")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!viewModel.canStartHuggingFaceDownload)
+
+                    Button(strings.text(.retry)) { viewModel.retryHuggingFaceDownloadRequested() }
+                        .disabled(!viewModel.canRetryHuggingFaceDownload)
+
+                    Button(strings.text(.cancel)) { viewModel.cancelHuggingFaceDownloadRequested() }
+                        .disabled(!viewModel.isHuggingFaceDownloadRunning)
+
+                    if viewModel.huggingFaceDownloadStatus.phase == .completed {
+                        Spacer()
+                        Button(t("Open Models", "モデル一覧を開く")) { onOpenModels() }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var filePreviewSummary: some View {
+        if viewModel.huggingFaceFilePreview.isLoading {
+            HStack(spacing: 8) {
+                ProgressView().scaleEffect(0.7)
+                Text(t("Loading file preview...", "ファイル一覧を確認中..."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle(t("Use selected preview files", "選択したファイルだけ使用"), isOn: $viewModel.huggingFaceDownloadDraft.useSelectedPreviewFiles)
+                    .toggleStyle(.checkbox)
+                    .disabled(viewModel.huggingFaceFilePreview.files.isEmpty)
+
+                HStack {
+                    Text(viewModel.huggingFaceSelectedPreviewSummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button(t("Select filtered", "フィルター結果を選択")) { viewModel.selectAllHuggingFacePreviewFiles() }
+                        .disabled(viewModel.filteredHuggingFacePreviewFiles.isEmpty)
+                    Button(t("Clear", "クリア")) { viewModel.clearHuggingFacePreviewSelection() }
+                        .disabled(viewModel.selectedHuggingFacePreviewFileIDs.isEmpty)
+                }
+
+                if !viewModel.filteredHuggingFacePreviewFiles.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(viewModel.filteredHuggingFacePreviewFiles.prefix(10)) { file in
+                            HStack(spacing: 8) {
+                                Button {
+                                    viewModel.toggleHuggingFacePreviewFile(file)
+                                } label: {
+                                    Image(systemName: viewModel.selectedHuggingFacePreviewFileIDs.contains(file.id) ? "checkmark.square" : "square")
+                                }
+                                .buttonStyle(.plain)
+                                Text(file.path)
+                                    .font(.caption2.monospaced())
+                                    .lineLimit(1)
+                                Spacer()
+                                Text(file.compactSize)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var transferSection: some View {
+        section(
+            title: t("Transfer", "転送"),
+            subtitle: t("Track progress and choose how future multi-download jobs should be handled.", "進捗確認と、今後の複数ダウンロード時の扱いを選びます。")
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                Picker(t("Download mode", "ダウンロード方式"), selection: $schedulingMode) {
+                    Text(t("Queue", "順番にダウンロード")).tag(DownloadSchedulingMode.queue)
+                    Text(t("Parallel", "同時にダウンロード")).tag(DownloadSchedulingMode.parallel)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 320)
+
+                Text(
+                    schedulingMode == .queue
+                    ? t("Current backend runs one active download at a time and keeps completed or failed jobs in the queue list.", "現在の内部処理は1件ずつ実行し、完了・失敗したジョブをキュー一覧に残します。")
+                    : t("Parallel mode is shown here as the target UX. Backend parallel execution will be enabled after the single-task downloader is replaced.", "同時ダウンロードは目標UXとして表示しています。内部の単一タスク処理を置き換えた後に有効化します。")
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+                progressPanel
+            }
+        }
+    }
+
+    private var progressPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(viewModel.huggingFaceDownloadStatus.phase.localizedTitle(language: viewModel.settings.uiLanguage))
+                    .font(.system(size: 15, weight: .semibold))
                 Spacer()
                 Text(downloadProgressText)
-                    .font(.system(.title3, design: .monospaced).weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
             }
 
             if let progress = viewModel.huggingFaceDownloadStatus.progress {
                 ProgressView(value: progress)
+                    .progressViewStyle(.linear)
+            } else if viewModel.isHuggingFaceDownloadRunning {
+                ProgressView()
                     .progressViewStyle(.linear)
             } else {
                 ProgressView(value: viewModel.huggingFaceDownloadStatus.phase == .completed ? 1 : 0)
@@ -154,374 +402,56 @@ struct DownloadsSurfaceView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
 
-            HStack {
-                Button(t("Preview files", "ファイルをプレビュー")) { viewModel.previewHuggingFaceFilesRequested() }
-                    .disabled(viewModel.huggingFaceFilePreview.isLoading || viewModel.isHuggingFaceDownloadRunning)
-                Button(strings.text(.download)) { viewModel.startHuggingFaceDownloadRequested() }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!viewModel.canStartHuggingFaceDownload)
-                Button(strings.text(.cancel)) { viewModel.cancelHuggingFaceDownloadRequested() }
-                    .disabled(!viewModel.isHuggingFaceDownloadRunning)
+            if viewModel.huggingFaceDownloadStatus.phase == .completed {
+                Label(t("Download complete. The model has been added when possible.", "ダウンロードが完了しました。可能な場合はモデル一覧へ追加済みです。"), systemImage: "checkmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(.green)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func downloadMetricCard(title: String, value: String, detail: String, systemImage: String) -> some View {
-        LabeledContent {
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(value)
-                    .font(.callout.weight(.semibold))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Text(detail)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-        } label: {
-            Label(title, systemImage: systemImage)
-        }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-    }
-
-    @ViewBuilder
-    private var recoveryCard: some View {
-        if let failed = viewModel.latestFailedHuggingFaceDownloadQueueEntry {
-            VStack(alignment: .leading, spacing: 10) {
-                Label(t("Latest failed download", "直近の失敗したダウンロード"), systemImage: "exclamationmark.triangle")
-                    .font(.headline)
-                    .foregroundStyle(.orange)
-                detailRows([
-                    (t("Repository", "リポジトリ"), failed.repositoryID),
-                    (t("Destination", "保存先"), failed.compactDestinationPath),
-                    (t("Message", "メッセージ"), failed.message)
-                ])
-                HStack {
-                    Button(t("Restore form", "フォームに復元")) {
-                        viewModel.restoreHuggingFaceDownloadForm(from: failed)
+    private var queueSection: some View {
+        section(
+            title: strings.text(.downloadQueue),
+            subtitle: t("Recent downloads and queued jobs are listed here.", "直近のダウンロードとキュー内ジョブを表示します。")
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                if viewModel.huggingFaceDownloadQueue.isEmpty {
+                    Text(t("No downloads in this session.", "このセッションのダウンロードはありません。"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(viewModel.huggingFaceDownloadQueue.prefix(10)) { entry in
+                        queueRow(entry)
                     }
-                    Button(t("Copy URL", "URLをコピー")) {
-                        viewModel.copyHuggingFaceDownloadURL(from: failed)
-                    }
-                    Button(strings.text(.retry)) {
-                        viewModel.retryHuggingFaceDownloadRequested()
-                    }
-                    .disabled(!viewModel.canRetryHuggingFaceDownload)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    private var downloadEnvironmentCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(t("Download tools", "ダウンロードツール確認"))
-                .font(.system(size: 15, weight: .light))
-            Text(t("Checks download prerequisites. Model search is the separate search area below.", "ダウンロードの前提条件を確認します。モデル検索は下の別エリアです。"))
-                .font(.system(size: 14, weight: .ultraLight))
-                .lineSpacing(2.5)
-                .foregroundStyle(.secondary)
-            detailRows([
-                ("aria2c", viewModel.aria2Availability.displayPath),
-                (t("Auto restart", "自動再開"), viewModel.enableDownloadAutoRestart ? t("Enabled below \(viewModel.lowSpeedRestartThresholdText)", "\(viewModel.lowSpeedRestartThresholdText)未満で有効") : t("Disabled", "無効"))
-            ])
-            HStack {
-                Button(t("Check aria2c", "aria2cを確認")) { viewModel.refreshAria2Status() }
-            }
-            Toggle(t("Enable low-speed auto-restart policy", "低速時の自動再開ポリシーを有効にする"), isOn: $viewModel.enableDownloadAutoRestart)
-                .toggleStyle(.checkbox)
-            HStack {
-                Text(t("Low-speed threshold", "低速判定しきい値"))
+    private func queueRow(_ entry: HuggingFaceDownloadQueueEntry) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(entry.repositoryID)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                Spacer()
+                Text(entry.phase.localizedTitle(language: viewModel.settings.uiLanguage))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                TextField("50K", text: $viewModel.lowSpeedRestartThresholdText, prompt: Text("50K").foregroundStyle(.tertiary))
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
-                    .frame(width: controlWidth, alignment: .leading)
             }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var isHuggingFaceSearchActive: Bool {
-        !viewModel.huggingFaceSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private var huggingFaceSearchField: some View {
-        HStack(spacing: 8) {
-            TextField(
-                t("Search by repository or model name", "リポジトリ名またはモデル名で検索"),
-                text: $viewModel.huggingFaceSearchQuery,
-                prompt: Text(t("Search by repository or model name", "リポジトリ名またはモデル名で検索")).foregroundStyle(.tertiary)
-            )
-            .textFieldStyle(.roundedBorder)
-            .font(.system(size: 15, weight: .light))
-            .frame(width: controlWidth, alignment: .leading)
-            .onSubmit {
-                viewModel.performHuggingFaceSearchRequested()
-            }
-
-            if isHuggingFaceSearchActive {
-                Button {
-                    viewModel.huggingFaceSearchQuery = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                }
-                .help(t("Clear search", "検索をクリア"))
-            }
-        }
-        .accessibilityIdentifier("downloads-huggingface-search-field")
-    }
-
-    private var searchCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(t("Hugging Face search", "Hugging Face検索"))
-                .font(.system(size: 15, weight: .light))
-
-            HStack(spacing: 10) {
-                huggingFaceSearchField
-                Button {
-                    viewModel.performHuggingFaceSearchRequested()
-                } label: {
-                    if viewModel.isHuggingFaceSearching {
-                        ProgressView().scaleEffect(0.7)
-                    } else {
-                        Label(strings.text(.search), systemImage: AppSymbol.search)
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(viewModel.isHuggingFaceSearching)
-            }
-
-            Toggle(t("Show MLX-like results only", "MLXらしい候補だけ表示"), isOn: $viewModel.showOnlyMLXLikelySearchResults)
-                .toggleStyle(.checkbox)
-                .disabled(viewModel.huggingFaceSearchResults.isEmpty)
-
-            Text(viewModel.huggingFaceSearchMessage)
-                .font(.caption)
+            Text(entry.compactDestinationPath)
+                .font(.caption2)
                 .foregroundStyle(.secondary)
-
-            if !viewModel.visibleHuggingFaceSearchResults.isEmpty {
-                LazyVStack(alignment: .leading, spacing: 8) {
-                    ForEach(viewModel.visibleHuggingFaceSearchResults.prefix(6)) { result in
-                        Button {
-                            viewModel.selectHuggingFaceSearchResult(result)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(result.id)
-                                        .font(.caption.weight(.semibold))
-                                    Spacer()
-                                    Text(result.isMLXLikely ? t("MLX-like", "MLX系") : t("Review", "要確認"))
-                                        .font(.caption2.weight(.semibold))
-                                }
-                                Text(result.qualitySummary)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                Text(result.selectionWarning)
-                                    .font(.caption2)
-                                    .foregroundStyle(result.isMLXLikely ? Color.secondary : Color.orange)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-
-            if let selected = viewModel.selectedHuggingFaceSearchResult {
-                detailRows([
-                    (t("Selected", "選択中"), selected.id),
-                    (t("Owner", "所有者"), selected.owner),
-                    (t("Stats", "統計"), selected.qualitySummary),
-                    (t("Tags", "タグ"), selected.tagsSummary),
-                    ("URL", selected.webURL)
-                ])
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var downloadFormCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            TextField(t("Repository ID or URL", "リポジトリIDまたはURL"), text: $viewModel.huggingFaceDownloadDraft.source, prompt: Text(t("Repository ID or URL", "リポジトリIDまたはURL")).foregroundStyle(.tertiary))
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: 13))
-                .frame(width: controlWidth, alignment: .leading)
-            HStack {
-                TextField(t("Revision", "リビジョン"), text: $viewModel.huggingFaceDownloadDraft.revision, prompt: Text(t("Revision", "リビジョン")).foregroundStyle(.tertiary))
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
-                    .frame(width: controlWidth, alignment: .leading)
-                TextField(t("Display name", "表示名"), text: $viewModel.huggingFaceDownloadDraft.displayName, prompt: Text(t("Display name", "表示名")).foregroundStyle(.tertiary))
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
-                    .frame(width: controlWidth, alignment: .leading)
-            }
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Button(t("MLX preset", "MLXプリセット")) { viewModel.applyHuggingFaceMLXPreset() }
-                    Button("Safetensors") { viewModel.applyHuggingFaceSafeTensorPreset() }
-                    Button(t("No filters", "フィルターなし")) { viewModel.clearHuggingFaceFileFilters() }
-                    Spacer()
-                }
-                TextField(t("Include patterns", "含めるパターン"), text: $viewModel.huggingFaceDownloadDraft.includePatterns, prompt: Text("*.safetensors, *.json, tokenizer*").foregroundStyle(.tertiary))
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
-                    .frame(width: controlWidth, alignment: .leading)
-                TextField(t("Exclude patterns", "除外するパターン"), text: $viewModel.huggingFaceDownloadDraft.excludePatterns, prompt: Text("*.onnx, *.msgpack, *.bin").foregroundStyle(.tertiary))
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
-                    .frame(width: controlWidth, alignment: .leading)
-                Text(t("Patterns are comma-separated. Preview files first, then download selected or filtered files.", "パターンはカンマ区切りです。先にファイルをプレビューし、選択済みまたはフィルター済みのファイルをダウンロードします。"))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            HStack {
-                TextField(t("Save directory", "保存先フォルダ"), text: $viewModel.huggingFaceDownloadDraft.saveDirectory, prompt: Text("~/Models/mlx").foregroundStyle(.tertiary))
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
-                    .frame(width: controlWidth, alignment: .leading)
-                Button(t("Choose", "選択")) {
-                    viewModel.chooseHuggingFaceDownloadDirectoryRequested()
-                }
-                .disabled(viewModel.isHuggingFaceDownloadRunning)
-            }
-
-            detailRows([
-                (t("Preview", "プレビュー"), viewModel.huggingFaceDownloadPreview.compactDestinationPath),
-                (t("Files", "ファイル"), viewModel.huggingFaceSelectedPreviewSummary),
-                (t("Status", "ステータス"), viewModel.huggingFaceDownloadStatus.phase.localizedTitle(language: viewModel.settings.uiLanguage)),
-                (t("Message", "メッセージ"), viewModel.huggingFaceDownloadStatus.message)
-            ])
-
-            downloadProgressPanel
-
-            filePreviewPanel
-
-            if viewModel.huggingFaceDownloadStatus.phase == .completed {
-                HStack {
-                    Label(t("Download complete. The profile has been added when possible.", "ダウンロードが完了しました。可能な場合はプロファイルを追加済みです。"), systemImage: "checkmark.circle")
-                        .font(.caption)
-                        .foregroundStyle(.green)
-                    Spacer()
-                    Button(t("Open Models", "モデルを開く")) { onOpenModels() }
-                }
-            }
-
-            HStack {
-                Button {
-                    viewModel.previewHuggingFaceFilesRequested()
-                } label: {
-                    Label(t("Preview files", "ファイルをプレビュー"), systemImage: "list.bullet.rectangle")
-                }
-                .disabled(viewModel.huggingFaceFilePreview.isLoading || viewModel.isHuggingFaceDownloadRunning)
-
-                Button {
-                    viewModel.startHuggingFaceDownloadRequested()
-                } label: {
-                    Label(strings.text(.download), systemImage: "arrow.down.circle")
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!viewModel.canStartHuggingFaceDownload)
-
-                Button(strings.text(.retry)) {
-                    viewModel.retryHuggingFaceDownloadRequested()
-                }
-                .disabled(!viewModel.canRetryHuggingFaceDownload)
-
-                Button(strings.text(.cancel)) {
-                    viewModel.cancelHuggingFaceDownloadRequested()
-                }
-                .disabled(!viewModel.isHuggingFaceDownloadRunning)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var downloadProgressPanel: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(t("Download progress", "ダウンロード進捗"))
-                    .font(.caption.weight(.semibold))
+                .lineLimit(1)
+            queueProgressView(for: entry)
+            HStack(spacing: 10) {
+                Button(t("Restore", "復元")) { viewModel.restoreHuggingFaceDownloadForm(from: entry) }
+                Button(t("Copy URL", "URLをコピー")) { viewModel.copyHuggingFaceDownloadURL(from: entry) }
                 Spacer()
-                Text(downloadProgressText)
-                    .font(.caption2.monospaced())
-                    .foregroundStyle(.secondary)
-            }
-            if let progress = viewModel.huggingFaceDownloadStatus.progress {
-                ProgressView(value: progress)
-                    .progressViewStyle(.linear)
-            } else if viewModel.isHuggingFaceDownloadRunning {
-                ProgressView()
-                    .progressViewStyle(.linear)
-            } else {
-                ProgressView(value: 0)
-                    .progressViewStyle(.linear)
-            }
-            if let repositoryID = viewModel.huggingFaceDownloadStatus.repositoryID {
-                Text(repositoryID)
-                    .font(.caption2.monospaced())
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
         }
-        .accessibilityIdentifier("hf-download-progress-panel")
-    }
-
-    private var filePreviewPanel: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(t("File preview", "ファイルプレビュー"))
-                    .font(.caption.weight(.semibold))
-                Spacer()
-                if viewModel.huggingFaceFilePreview.isLoading {
-                    ProgressView().scaleEffect(0.7)
-                }
-            }
-            Toggle(t("Use selected preview files", "選択したプレビューファイルを使用"), isOn: $viewModel.huggingFaceDownloadDraft.useSelectedPreviewFiles)
-                .toggleStyle(.checkbox)
-                .disabled(viewModel.huggingFaceFilePreview.files.isEmpty)
-            HStack {
-                Text(viewModel.huggingFaceFilePreview.summary)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button(t("Select filtered", "フィルター結果を選択")) { viewModel.selectAllHuggingFacePreviewFiles() }
-                    .disabled(viewModel.filteredHuggingFacePreviewFiles.isEmpty)
-                Button(t("Clear", "クリア")) { viewModel.clearHuggingFacePreviewSelection() }
-                    .disabled(viewModel.selectedHuggingFacePreviewFileIDs.isEmpty)
-            }
-            previewFileList
-        }
-    }
-
-    @ViewBuilder
-    private var previewFileList: some View {
-        if !viewModel.filteredHuggingFacePreviewFiles.isEmpty {
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(viewModel.filteredHuggingFacePreviewFiles.prefix(16)) { file in
-                    HStack(spacing: 8) {
-                        Button {
-                            viewModel.toggleHuggingFacePreviewFile(file)
-                        } label: {
-                            Image(systemName: viewModel.selectedHuggingFacePreviewFileIDs.contains(file.id) ? "checkmark.square" : "square")
-                        }
-                        .buttonStyle(.plain)
-                        Text(file.path)
-                            .font(.caption2.monospaced())
-                            .lineLimit(1)
-                        Spacer()
-                        Text(file.compactSize)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }
+        .padding(.vertical, 6)
     }
 
     @ViewBuilder
@@ -541,81 +471,21 @@ struct DownloadsSurfaceView: View {
                 .font(.caption2.monospaced())
                 .foregroundStyle(.secondary)
         }
-        .accessibilityIdentifier("hf-download-queue-progress-\(entry.id.uuidString)")
     }
 
-    private var queueCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(strings.text(.downloadQueue))
-                .font(.system(size: 15, weight: .light))
-            Text(viewModel.huggingFaceDownloadQueueSummary)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            if viewModel.huggingFaceDownloadQueue.isEmpty {
-                Text(t("No downloads in this session.", "このセッションのダウンロードはありません。"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(viewModel.huggingFaceDownloadQueue.prefix(8)) { entry in
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack {
-                            Text(entry.repositoryID)
-                                .font(.caption.weight(.semibold))
-                                .lineLimit(1)
-                            Spacer()
-                            Text(entry.phase.localizedTitle(language: viewModel.settings.uiLanguage))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Text(entry.compactDestinationPath)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                        queueProgressView(for: entry)
-                        HStack {
-                            Button(t("Restore form", "フォームに復元")) {
-                                viewModel.restoreHuggingFaceDownloadForm(from: entry)
-                            }
-                            Button(t("Copy URL", "URLをコピー")) {
-                                viewModel.copyHuggingFaceDownloadURL(from: entry)
-                            }
-                            Spacer()
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func detailRows(_ rows: [(String, String)]) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(rows.enumerated()), id: \.element.0) { index, row in
-                HStack(alignment: .center, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(row.0)
-                            .font(.system(size: 15, weight: .light))
-                        Text(t("Current value for this item.", "この項目の現在値です。"))
-                            .font(.system(size: 14, weight: .ultraLight))
-                            .foregroundStyle(.secondary)
-                            .lineSpacing(2.5)
-                    }
-                    Spacer(minLength: 20)
+    private func compactRows(_ rows: [(String, String)]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                HStack(alignment: .firstTextBaseline, spacing: 18) {
+                    Text(row.0)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 140, alignment: .leading)
                     Text(row.1)
-                        .font(.system(size: 15, weight: .light))
+                        .font(.caption)
                         .textSelection(.enabled)
                         .lineLimit(2)
-                        .frame(width: controlWidth, alignment: .leading)
-                }
-                .padding(.vertical, 14)
-
-                if index < rows.count - 1 {
-                    Rectangle()
-                        .fill(Color(nsColor: .separatorColor).opacity(0.80))
-                        .frame(height: 1.0)
-                        .padding(.horizontal, -16)
+                    Spacer(minLength: 0)
                 }
             }
         }

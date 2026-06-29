@@ -3,17 +3,20 @@ import SwiftUI
 struct LogView: View {
     let entries: [LogEntry]
     let language: AppLanguage
+    let showsHeader: Bool
     let onCopy: () -> Void
     let onClear: () -> Void
 
     init(
         entries: [LogEntry],
         language: AppLanguage = .system,
+        showsHeader: Bool = true,
         onCopy: @escaping () -> Void,
         onClear: @escaping () -> Void
     ) {
         self.entries = entries
         self.language = language
+        self.showsHeader = showsHeader
         self.onCopy = onCopy
         self.onClear = onClear
     }
@@ -28,33 +31,35 @@ struct LogView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(strings.text(.logs))
-                    .font(.headline)
-                    .accessibilityIdentifier("log-view-title")
+            if showsHeader {
+                HStack {
+                    Text(strings.text(.logs))
+                        .font(.headline)
+                        .accessibilityIdentifier("log-view-title")
 
-                Text(t("\(entries.count) entries", "\(entries.count)件"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("log-view-entry-count")
+                    Text(t("\(entries.count) entries", "\(entries.count)件"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("log-view-entry-count")
 
-                Spacer()
+                    Spacer()
 
-                Button {
-                    onCopy()
-                } label: {
-                    Label(t("Copy Logs", "ログをコピー"), systemImage: "doc.on.doc")
+                    Button {
+                        onCopy()
+                    } label: {
+                        Label(t("Copy Logs", "ログをコピー"), systemImage: "doc.on.doc")
+                    }
+                    .accessibilityIdentifier("log-view-copy-button")
+
+                    Button {
+                        onClear()
+                    } label: {
+                        Label(t("Clear Logs", "ログをクリア"), systemImage: "trash")
+                    }
+                    .accessibilityIdentifier("log-view-clear-button")
                 }
-                .accessibilityIdentifier("log-view-copy-button")
-
-                Button {
-                    onClear()
-                } label: {
-                    Label(t("Clear Logs", "ログをクリア"), systemImage: "trash")
-                }
-                .accessibilityIdentifier("log-view-clear-button")
+                .accessibilityIdentifier("log-view-header")
             }
-            .accessibilityIdentifier("log-view-header")
 
             List {
                 if entries.isEmpty {
@@ -72,7 +77,7 @@ struct LogView: View {
             .accessibilityIdentifier("log-view-entry-list")
             .frame(minHeight: 180)
         }
-        .padding(16)
+        .padding(showsHeader ? 16 : 0)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityIdentifier("log-view")
     }
