@@ -321,12 +321,21 @@ struct DownloadsSurfaceView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         ForEach(viewModel.filteredHuggingFacePreviewFiles.prefix(10)) { file in
                             HStack(spacing: 8) {
-                                Button {
-                                    viewModel.toggleHuggingFacePreviewFile(file)
-                                } label: {
-                                    Image(systemName: viewModel.selectedHuggingFacePreviewFileIDs.contains(file.id) ? "checkmark.square" : "square")
-                                }
-                                .buttonStyle(.plain)
+                                Toggle(
+                                    "",
+                                    isOn: Binding(
+                                        get: {
+                                            viewModel.selectedHuggingFacePreviewFileIDs.contains(file.id)
+                                        },
+                                        set: { isSelected in
+                                            if isSelected != viewModel.selectedHuggingFacePreviewFileIDs.contains(file.id) {
+                                                viewModel.toggleHuggingFacePreviewFile(file)
+                                            }
+                                        }
+                                    )
+                                )
+                                .toggleStyle(.checkbox)
+                                .labelsHidden()
                                 Text(file.path)
                                     .font(.caption2.monospaced())
                                     .lineLimit(1)

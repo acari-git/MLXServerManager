@@ -65,11 +65,25 @@ The working interpretation for MLX Server Manager is:
 - Replaced the Test Chat send button's hand-drawn circular styling with a standard bordered prominent icon button.
 - Kept the custom `NSTextView` bridge for Test Chat input because it protects Japanese marked-text composition.
 
+## Sixth-Pass Fixes Applied
+
+- Replaced the Hugging Face file preview's custom checkmark button with a standard SwiftUI checkbox `Toggle`.
+
+## Remaining Exceptions
+
+These are intentionally left as small custom UI areas for now:
+
+- Sidebar selection rows: kept as custom `Button` rows because the sidebar mixes navigation, live system metrics, and a footer settings entry rather than a simple `List`.
+- Sidebar footer settings row: kept aligned with the same sidebar selection treatment as the main navigation rows.
+- Memory usage bar: kept as a custom three-segment visualization because standard `ProgressView` does not represent MLX, other processes, and available memory in one compact control.
+- Test Chat transcript bubbles and composer shell: kept because this is a diagnostic transcript surface, and the custom `NSTextView` bridge is required to avoid Japanese marked-text loss.
+- Model table name cell tap/drop area: kept to preserve row selection and drag/drop reorder behavior inside the native `Table`.
+- Inspector copy rows: kept as compact plain buttons so connection values remain selectable-looking and copyable without adding repeated large controls.
+
 ## Still To Refine
 
-- Replace custom settings/downloads/logs section containers with more native `Form`, `Section`, `Table`, or `List` structure where practical.
-- Remaining custom shapes are limited to sidebar selection hit areas, the memory usage bar, and the Test Chat diagnostic transcript/composer background.
-- Keep the Test Chat bubbles as an exception because they are diagnostic transcript content, but avoid expanding them into full chat UI.
+- Consider a larger sidebar refactor to a native `List(selection:)` if the sidebar structure becomes simpler.
+- Keep the Test Chat bubbles as an exception because they are diagnostic transcript content; avoid expanding them into full chat UI.
 - Continue reducing hard-coded padding and widths where native controls can own their layout.
 - Recheck dark mode, Japanese labels, English labels, and narrow window behavior after each batch.
 
