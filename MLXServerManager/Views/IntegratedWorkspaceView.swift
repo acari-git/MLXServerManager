@@ -98,11 +98,15 @@ struct IntegratedWorkspaceView: View {
 
     private func toggleRightPanelRequested() {
         if isRightPanelVisible {
-            setRightPanelVisible(false, autoHidden: false)
+            isRightPanelAutoHidden = false
+            isRightPanelVisible = false
             return
         }
 
-        setRightPanelVisible(true, autoHidden: false)
+        isRightPanelAutoHidden = false
+        withAnimation(.easeInOut(duration: 0.24)) {
+            isRightPanelVisible = true
+        }
     }
 
     private func toggleBottomPanelRequested() {
@@ -119,20 +123,22 @@ struct IntegratedWorkspaceView: View {
     }
 
     private func applyAutomaticPanelCollapse(for size: CGSize) {
-        let canShowBothSides = size.width >= comfortableWindowWidth(rightVisible: true)
-        let canShowBottom = size.height >= Layout.minimumBottomPanelHeight
-
-        if isRightPanelVisible, !canShowBothSides {
-            setRightPanelVisible(false, autoHidden: true)
-            return
-        }
-
-        if !isRightPanelVisible, isRightPanelAutoHidden, canShowBothSides {
-            setRightPanelVisible(true, autoHidden: false)
-            return
-        }
-
         withAnimation(.easeInOut(duration: 0.24)) {
+            let canShowBothSides = size.width >= comfortableWindowWidth(rightVisible: true)
+            let canShowBottom = size.height >= Layout.minimumBottomPanelHeight
+
+            if isRightPanelVisible, !canShowBothSides {
+                isRightPanelVisible = false
+                isRightPanelAutoHidden = true
+                return
+            }
+
+            if !isRightPanelVisible, isRightPanelAutoHidden, canShowBothSides {
+                isRightPanelVisible = true
+                isRightPanelAutoHidden = false
+                return
+            }
+
             if isBottomPanelVisible, !canShowBottom {
                 isBottomPanelVisible = false
                 isBottomPanelAutoHidden = true
@@ -143,18 +149,9 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
-    private func setRightPanelVisible(_ isVisible: Bool, autoHidden: Bool) {
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            isRightPanelVisible = isVisible
-            isRightPanelAutoHidden = autoHidden
-        }
-    }
-
     private func comfortableWindowWidth(rightVisible: Bool) -> CGFloat {
         Layout.leftPanelWidthWithDivider
-            + Layout.modelListIdealWidth
+            + Layout.centerMinimumWidth
             + (rightVisible ? Layout.rightPanelWidthWithDivider : 0)
     }
 
@@ -164,7 +161,7 @@ struct IntegratedWorkspaceView: View {
         static let dividerWidth: CGFloat = 1
         static let leftPanelWidthWithDivider = leftPanelWidth + dividerWidth
         static let rightPanelWidthWithDivider = rightPanelWidth + dividerWidth
-        static let modelListIdealWidth: CGFloat = 960
+        static let centerMinimumWidth: CGFloat = 1_040
         static let minimumBottomPanelHeight: CGFloat = 720
     }
 
@@ -185,6 +182,7 @@ struct IntegratedWorkspaceView: View {
                 panelToolbarItems
             }
             .toolbarBackground(.hidden, for: .windowToolbar)
+            .animation(.easeInOut(duration: 0.24), value: isRightPanelVisible)
             .animation(.easeInOut(duration: 0.24), value: isBottomPanelVisible)
             .onAppear {
                 applyAutomaticPanelCollapse(for: geometry.size)
@@ -202,7 +200,7 @@ struct IntegratedWorkspaceView: View {
     private var workspaceDetail: some View {
         HStack(spacing: 0) {
             centerColumn
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(minWidth: Layout.centerMinimumWidth, maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
                 .id("center-\(viewModel.settings.uiAppearance)")
                 .background(Color(nsColor: .windowBackgroundColor))
@@ -211,6 +209,7 @@ struct IntegratedWorkspaceView: View {
                 Divider()
                 rightColumn
                     .frame(width: Layout.rightPanelWidth)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
