@@ -60,10 +60,15 @@ The working interpretation for MLX Server Manager is:
 - Removed the custom selected-row rounded rectangle from Hugging Face search results.
 - Kept a lightweight checkmark symbol for the selected search result because the selection updates a form outside the list.
 
+## Fifth-Pass Fixes Applied
+
+- Replaced the Test Chat send button's hand-drawn circular styling with a standard bordered prominent icon button.
+- Kept the custom `NSTextView` bridge for Test Chat input because it protects Japanese marked-text composition.
+
 ## Still To Refine
 
 - Replace custom settings/downloads/logs section containers with more native `Form`, `Section`, `Table`, or `List` structure where practical.
-- Remaining custom shapes are limited to sidebar selection hit areas, the memory usage bar, and the Test Chat diagnostic transcript/composer.
+- Remaining custom shapes are limited to sidebar selection hit areas, the memory usage bar, and the Test Chat diagnostic transcript/composer background.
 - Keep the Test Chat bubbles as an exception because they are diagnostic transcript content, but avoid expanding them into full chat UI.
 - Continue reducing hard-coded padding and widths where native controls can own their layout.
 - Recheck dark mode, Japanese labels, English labels, and narrow window behavior after each batch.

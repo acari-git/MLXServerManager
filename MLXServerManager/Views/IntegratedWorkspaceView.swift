@@ -972,14 +972,13 @@ struct IntegratedWorkspaceView: View {
                 Button {
                     viewModel.sendMiniChatRequested()
                 } label: {
-                    Image(systemName: "arrow.up")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(Color.white)
-                        .frame(width: 28, height: 28)
-                        .background(Color.secondary, in: Circle())
+                    Label(t("Send", "送信"), systemImage: "arrow.up")
+                        .labelStyle(.iconOnly)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
                 .disabled(!viewModel.canSendMiniChat)
+                .help(t("Send test request", "テストリクエストを送信"))
             }
         }
         .padding(.horizontal, 12)
