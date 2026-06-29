@@ -175,21 +175,9 @@ struct IntegratedWorkspaceView: View {
                         max: 360
                     )
             } detail: {
-                centerColumn
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
-                    .id("center-\(viewModel.settings.uiAppearance)")
-                    .background(Color(nsColor: .windowBackgroundColor))
+                workspaceDetail
             }
             .navigationSplitViewStyle(.balanced)
-            .inspector(isPresented: $isRightPanelVisible) {
-                rightColumn
-                    .inspectorColumnWidth(
-                        min: 360,
-                        ideal: Layout.rightPanelWidth,
-                        max: 520
-                    )
-            }
             .toolbar {
                 panelToolbarItems
             }
@@ -207,6 +195,24 @@ struct IntegratedWorkspaceView: View {
         .accentColor(activeAccentColor)
         .preferredColorScheme(preferredColorScheme)
         .accessibilityIdentifier("integrated-workspace")
+    }
+
+    private var workspaceDetail: some View {
+        HStack(spacing: 0) {
+            centerColumn
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+                .id("center-\(viewModel.settings.uiAppearance)")
+                .background(Color(nsColor: .windowBackgroundColor))
+
+            if isRightPanelVisible {
+                Divider()
+                rightColumn
+                    .frame(width: Layout.rightPanelWidth)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ToolbarContentBuilder
@@ -1104,36 +1110,38 @@ struct IntegratedWorkspaceView: View {
     }
 
     private var rightColumn: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                inspectorSection(title: t("Model inspector", "モデル詳細"), systemImage: AppSymbol.modelInspector) {
-                    modelSettingsPanelContent
-                }
-
-                Divider()
-                    .padding(.horizontal, 14)
-
-                inspectorSection(title: t("Connection", "接続"), systemImage: AppSymbol.connection) {
-                    externalServerPanelContent
-                }
-
-                Divider()
-                    .padding(.horizontal, 14)
-
-                inspectorSection(title: t("Hermes Agent connection", "Hermes Agent接続情報"), systemImage: AppSymbol.hermesAgent) {
-                    hermesPanelContent
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 24)
-        }
-        .scrollContentBackground(.hidden)
-        .background(TransparentScrollViewBackground())
-        .background {
+        ZStack {
             SidebarMaterialBackdrop()
                 .ignoresSafeArea()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    inspectorSection(title: t("Model inspector", "モデル詳細"), systemImage: AppSymbol.modelInspector) {
+                        modelSettingsPanelContent
+                    }
+
+                    Divider()
+                        .padding(.horizontal, 14)
+
+                    inspectorSection(title: t("Connection", "接続"), systemImage: AppSymbol.connection) {
+                        externalServerPanelContent
+                    }
+
+                    Divider()
+                        .padding(.horizontal, 14)
+
+                    inspectorSection(title: t("Hermes Agent connection", "Hermes Agent接続情報"), systemImage: AppSymbol.hermesAgent) {
+                        hermesPanelContent
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 24)
+            }
+            .scrollContentBackground(.hidden)
+            .background(TransparentScrollViewBackground())
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var externalServerPanelContent: some View {
