@@ -20,7 +20,7 @@ struct ContentView: View {
 
     var body: some View {
         IntegratedWorkspaceView(viewModel: viewModel)
-            .frame(minWidth: 1040, minHeight: 760)
+            .frame(minWidth: 1180, minHeight: 760)
             .background(WindowTitlebarSeparatorHider())
         .confirmationDialog(
             t("Delete Model Profile?", "モデルプロファイルを削除しますか？"),

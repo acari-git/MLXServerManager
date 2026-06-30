@@ -26,6 +26,9 @@ struct IntegratedWorkspaceView: View {
             rightVisible: isRightPanelVisible
         )
     }
+    private var requiredDetailWidth: CGFloat {
+        Layout.requiredDetailWidth(rightVisible: isRightPanelVisible)
+    }
 
     private var modelRows: [ModelTableRow] {
         viewModel.visibleModels.map { model in
@@ -96,20 +99,6 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
-    private func toggleNavigationSidebarRequested() {
-        if isLeftSidebarVisible {
-            withAnimation(.easeInOut(duration: 0.24)) {
-                navigationSplitVisibility = .detailOnly
-            }
-            return
-        }
-
-        expandWindowIfNeeded(leftVisible: true, rightVisible: isRightPanelVisible)
-        withAnimation(.easeInOut(duration: 0.24)) {
-            navigationSplitVisibility = .all
-        }
-    }
-
     private func toggleRightPanelRequested() {
         if isRightPanelVisible {
             isRightPanelVisible = false
@@ -165,14 +154,18 @@ struct IntegratedWorkspaceView: View {
         static let dividerWidth: CGFloat = 1
         static let rightPanelWidthWithDivider = rightPanelWidth + dividerWidth
         static let leftPanelReservedWidthWithDivider = leftPanelMaximumWidth + dividerWidth
-        static let centerMinimumWidth: CGFloat = 1_040
+        static let centerMinimumWidth: CGFloat = 1_180
         static let windowMinimumHeight: CGFloat = 760
         static let minimumBottomPanelHeight: CGFloat = 720
 
-        static func requiredWindowWidth(leftVisible: Bool, rightVisible: Bool) -> CGFloat {
+        static func requiredDetailWidth(rightVisible: Bool) -> CGFloat {
             centerMinimumWidth
-                + (leftVisible ? leftPanelReservedWidthWithDivider : 0)
                 + (rightVisible ? rightPanelWidthWithDivider : 0)
+        }
+
+        static func requiredWindowWidth(leftVisible: Bool, rightVisible: Bool) -> CGFloat {
+            requiredDetailWidth(rightVisible: rightVisible)
+                + (leftVisible ? leftPanelReservedWidthWithDivider : 0)
         }
     }
 
@@ -192,7 +185,6 @@ struct IntegratedWorkspaceView: View {
             .toolbar {
                 panelToolbarItems
             }
-            .toolbar(removing: .sidebarToggle)
             .toolbarBackground(.hidden, for: .windowToolbar)
             .animation(.easeInOut(duration: 0.24), value: isRightPanelVisible)
             .animation(.easeInOut(duration: 0.24), value: isBottomPanelVisible)
@@ -235,28 +227,18 @@ struct IntegratedWorkspaceView: View {
                         .frame(width: Layout.dividerWidth)
                     rightColumn
                         .frame(width: Layout.rightPanelWidth)
+                        .ignoresSafeArea(.container, edges: .top)
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .leading)
             .clipped()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minWidth: requiredDetailWidth, maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ToolbarContentBuilder
     private var panelToolbarItems: some ToolbarContent {
-        ToolbarItem(placement: .navigation) {
-            panelToggleButton(
-                systemImage: AppSymbol.leftSidebar,
-                isActive: isLeftSidebarVisible,
-                help: isLeftSidebarVisible
-                    ? t("Hide sidebar", "左サイドパネルを隠す")
-                    : t("Show sidebar", "左サイドパネルを表示"),
-                action: toggleNavigationSidebarRequested
-            )
-        }
-
         ToolbarItemGroup(placement: .primaryAction) {
             panelToggleButton(
                 systemImage: AppSymbol.bottomPanel,
@@ -642,40 +624,40 @@ struct IntegratedWorkspaceView: View {
                     moveDroppedModel(providers, before: model)
                 }
             }
-            .width(min: 190, ideal: 230, max: 250)
+            .width(min: 240, ideal: 300, max: 340)
 
             TableColumn(t("Size", "サイズ"), value: \ModelTableRow.sizeSortValue) { row in
                 let model = row.model
                 modelSizeTableText(viewModel.modelSizeText(for: model))
             }
-            .width(min: 62, ideal: 68, max: 72)
+            .width(min: 68, ideal: 78, max: 84)
 
             TableColumn(t("Status", "ステータス"), value: \ModelTableRow.statusSortValue) { row in
                 let model = row.model
                 statusButton(for: model)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            .width(min: 78, ideal: 84, max: 88)
+            .width(min: 84, ideal: 96, max: 104)
 
             TableColumn(t("IP address : port", "IPアドレス : ポート"), value: \ModelTableRow.endpointSortValue) { row in
                 let model = row.model
                 endpointTableText(host: "127.0.0.1", port: model.serverPort)
             }
-            .width(min: 112, ideal: 120, max: 126)
+            .width(min: 120, ideal: 134, max: 144)
 
             TableColumn(t("Memory", "メモリ使用量"), value: \ModelTableRow.memorySortValue) { row in
                 let model = row.model
                 memoryCell(viewModel.integratedMemoryText(for: model))
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            .width(min: 76, ideal: 84, max: 90)
+            .width(min: 86, ideal: 98, max: 108)
 
             TableColumn(t("Auto unload", "自動アンロード"), value: \ModelTableRow.autoUnloadSortValue) { row in
                 let model = row.model
                 autoUnloadCell(for: model)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            .width(min: 106, ideal: 116, max: 124)
+            .width(min: 126, ideal: 142, max: 152)
 
             TableColumn(t("Reasoning", "推論"), value: \ModelTableRow.reasoningSortValue) { row in
                 let model = row.model
@@ -689,14 +671,14 @@ struct IntegratedWorkspaceView: View {
                 .labelsHidden()
                 .frame(maxWidth: .infinity, alignment: .center)
             }
-            .width(min: 54, ideal: 62, max: 66)
+            .width(min: 64, ideal: 72, max: 78)
 
             TableColumn(t("Model management", "モデル管理")) { row in
                 let model = row.model
                 modelActions(for: model)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            .width(min: 118, ideal: 128, max: 136)
+            .width(min: 142, ideal: 156, max: 170)
         }
         .alternatingRowBackgrounds(.disabled)
         .scrollContentBackground(.hidden)
@@ -1434,7 +1416,7 @@ private struct SidebarMaterialBackdrop: NSViewRepresentable {
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
         view.material = .sidebar
-        view.blendingMode = .withinWindow
+        view.blendingMode = .behindWindow
         view.state = .active
         view.isEmphasized = false
         return view
@@ -1442,7 +1424,7 @@ private struct SidebarMaterialBackdrop: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
         nsView.material = .sidebar
-        nsView.blendingMode = .withinWindow
+        nsView.blendingMode = .behindWindow
         nsView.state = .active
         nsView.isEmphasized = false
     }
@@ -1471,6 +1453,7 @@ private struct WindowFrameController: NSViewRepresentable {
     }
 
     private static func apply(to window: NSWindow, minWidth: CGFloat, minHeight: CGFloat) {
+        window.contentMinSize = NSSize(width: minWidth, height: minHeight)
         window.minSize = NSSize(width: minWidth, height: minHeight)
         expand(window, toMinimumWidth: minWidth, minimumHeight: minHeight)
     }
