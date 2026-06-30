@@ -9,17 +9,23 @@ struct IntegratedWorkspaceView: View {
     @State private var isBottomPanelVisible = true
     @State private var isRightPanelVisible = true
     @State private var isBottomPanelAutoHidden = false
-    @State private var isRightPanelAutoHidden = false
     @State private var modelTableSortOrder = [KeyPathComparator<ModelTableRow>]()
     @State private var hoveredStatusModelID: ModelConfig.ID?
     @State private var bottomPanelHeight: CGFloat = 280
     @State private var bottomPanelDragStartHeight: CGFloat?
     @State private var isMiniChatInputFocused = false
     @State private var isSettingsSidebarHovered = false
-    @State private var detailColumnWidth: CGFloat = 0
+    @State private var navigationSplitVisibility: NavigationSplitViewVisibility = .all
 
     private var selectedModel: ModelConfig? { viewModel.selectedModel }
     private var isSelectedRunning: Bool { selectedModel?.id == viewModel.runningModelID }
+    private var isLeftSidebarVisible: Bool { navigationSplitVisibility != .detailOnly }
+    private var requiredWindowWidth: CGFloat {
+        Layout.requiredWindowWidth(
+            leftVisible: isLeftSidebarVisible,
+            rightVisible: isRightPanelVisible
+        )
+    }
 
     private var modelRows: [ModelTableRow] {
         viewModel.visibleModels.map { model in
@@ -91,25 +97,26 @@ struct IntegratedWorkspaceView: View {
     }
 
     private func toggleNavigationSidebarRequested() {
-        NSApp.keyWindow?.firstResponder?.tryToPerform(
-            #selector(NSSplitViewController.toggleSidebar(_:)),
-            with: nil
-        )
+        if isLeftSidebarVisible {
+            withAnimation(.easeInOut(duration: 0.24)) {
+                navigationSplitVisibility = .detailOnly
+            }
+            return
+        }
+
+        expandWindowIfNeeded(leftVisible: true, rightVisible: isRightPanelVisible)
+        withAnimation(.easeInOut(duration: 0.24)) {
+            navigationSplitVisibility = .all
+        }
     }
 
     private func toggleRightPanelRequested() {
         if isRightPanelVisible {
-            isRightPanelAutoHidden = false
             isRightPanelVisible = false
             return
         }
 
-        guard detailColumnWidth <= 0 || canFitRightPanel(in: detailColumnWidth) else {
-            isRightPanelAutoHidden = true
-            return
-        }
-
-        isRightPanelAutoHidden = false
+        expandWindowIfNeeded(leftVisible: isLeftSidebarVisible, rightVisible: true)
         withAnimation(.easeInOut(duration: 0.24)) {
             isRightPanelVisible = true
         }
@@ -142,48 +149,41 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
-    private func canFitRightPanel(in detailWidth: CGFloat) -> Bool {
-        detailWidth >= Layout.minimumDetailWidthForRightPanel
-    }
-
-    private func updateDetailColumnWidth(_ width: CGFloat) {
-        guard width.isFinite else { return }
-        if abs(detailColumnWidth - width) > 0.5 {
-            detailColumnWidth = width
-        }
-
-        let canShowRightPanel = canFitRightPanel(in: width)
-        if isRightPanelVisible, !canShowRightPanel {
-            withAnimation(.easeInOut(duration: 0.24)) {
-                isRightPanelVisible = false
-                isRightPanelAutoHidden = true
-            }
-        } else if !isRightPanelVisible, isRightPanelAutoHidden, canShowRightPanel {
-            withAnimation(.easeInOut(duration: 0.24)) {
-                isRightPanelVisible = true
-                isRightPanelAutoHidden = false
-            }
-        }
+    private func expandWindowIfNeeded(leftVisible: Bool, rightVisible: Bool) {
+        guard let window = NSApp.keyWindow else { return }
+        let requiredWidth = Layout.requiredWindowWidth(
+            leftVisible: leftVisible,
+            rightVisible: rightVisible
+        )
+        WindowFrameController.expand(window, toMinimumWidth: requiredWidth, minimumHeight: Layout.windowMinimumHeight)
     }
 
     private enum Layout {
         static let leftPanelWidth: CGFloat = 320
+        static let leftPanelMaximumWidth: CGFloat = 360
         static let rightPanelWidth: CGFloat = 400
         static let dividerWidth: CGFloat = 1
         static let rightPanelWidthWithDivider = rightPanelWidth + dividerWidth
-        static let centerMinimumWidth: CGFloat = 1_020
-        static let minimumDetailWidthForRightPanel = centerMinimumWidth + rightPanelWidthWithDivider
+        static let leftPanelReservedWidthWithDivider = leftPanelMaximumWidth + dividerWidth
+        static let centerMinimumWidth: CGFloat = 1_040
+        static let windowMinimumHeight: CGFloat = 760
         static let minimumBottomPanelHeight: CGFloat = 720
+
+        static func requiredWindowWidth(leftVisible: Bool, rightVisible: Bool) -> CGFloat {
+            centerMinimumWidth
+                + (leftVisible ? leftPanelReservedWidthWithDivider : 0)
+                + (rightVisible ? rightPanelWidthWithDivider : 0)
+        }
     }
 
     var body: some View {
         GeometryReader { geometry in
-            NavigationSplitView {
+            NavigationSplitView(columnVisibility: $navigationSplitVisibility) {
                 leftColumn
                     .navigationSplitViewColumnWidth(
                         min: 260,
                         ideal: Layout.leftPanelWidth,
-                        max: 360
+                        max: Layout.leftPanelMaximumWidth
                     )
             } detail: {
                 workspaceDetail
@@ -192,6 +192,7 @@ struct IntegratedWorkspaceView: View {
             .toolbar {
                 panelToolbarItems
             }
+            .toolbar(removing: .sidebarToggle)
             .toolbarBackground(.hidden, for: .windowToolbar)
             .animation(.easeInOut(duration: 0.24), value: isRightPanelVisible)
             .animation(.easeInOut(duration: 0.24), value: isBottomPanelVisible)
@@ -201,7 +202,18 @@ struct IntegratedWorkspaceView: View {
             .onChange(of: geometry.size) { _, size in
                 applyAutomaticPanelCollapse(for: size)
             }
+            .onChange(of: navigationSplitVisibility) { oldValue, newValue in
+                if oldValue == .detailOnly, newValue != .detailOnly {
+                    expandWindowIfNeeded(leftVisible: true, rightVisible: isRightPanelVisible)
+                }
+            }
         }
+        .background(
+            WindowFrameController(
+                minWidth: requiredWindowWidth,
+                minHeight: Layout.windowMinimumHeight
+            )
+        )
         .tint(activeAccentColor)
         .accentColor(activeAccentColor)
         .preferredColorScheme(preferredColorScheme)
@@ -210,8 +222,6 @@ struct IntegratedWorkspaceView: View {
 
     private var workspaceDetail: some View {
         GeometryReader { proxy in
-            let canRenderRightPanel = isRightPanelVisible && canFitRightPanel(in: proxy.size.width)
-
             HStack(spacing: 0) {
                 centerColumn
                     .frame(minWidth: Layout.centerMinimumWidth, maxWidth: .infinity, maxHeight: .infinity)
@@ -219,7 +229,7 @@ struct IntegratedWorkspaceView: View {
                     .id("center-\(viewModel.settings.uiAppearance)")
                     .background(Color(nsColor: .windowBackgroundColor))
 
-                if canRenderRightPanel {
+                if isRightPanelVisible {
                     Rectangle()
                         .fill(Color(nsColor: .separatorColor).opacity(0.55))
                         .frame(width: Layout.dividerWidth)
@@ -230,18 +240,23 @@ struct IntegratedWorkspaceView: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .leading)
             .clipped()
-            .onAppear {
-                updateDetailColumnWidth(proxy.size.width)
-            }
-            .onChange(of: proxy.size.width) { _, width in
-                updateDetailColumnWidth(width)
-            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ToolbarContentBuilder
     private var panelToolbarItems: some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            panelToggleButton(
+                systemImage: AppSymbol.leftSidebar,
+                isActive: isLeftSidebarVisible,
+                help: isLeftSidebarVisible
+                    ? t("Hide sidebar", "左サイドパネルを隠す")
+                    : t("Show sidebar", "左サイドパネルを表示"),
+                action: toggleNavigationSidebarRequested
+            )
+        }
+
         ToolbarItemGroup(placement: .primaryAction) {
             panelToggleButton(
                 systemImage: AppSymbol.bottomPanel,
@@ -627,40 +642,40 @@ struct IntegratedWorkspaceView: View {
                     moveDroppedModel(providers, before: model)
                 }
             }
-            .width(min: 220, ideal: 260, max: 420)
+            .width(min: 190, ideal: 230, max: 250)
 
             TableColumn(t("Size", "サイズ"), value: \ModelTableRow.sizeSortValue) { row in
                 let model = row.model
                 modelSizeTableText(viewModel.modelSizeText(for: model))
             }
-            .width(min: 68, ideal: 76, max: 90)
+            .width(min: 62, ideal: 68, max: 72)
 
             TableColumn(t("Status", "ステータス"), value: \ModelTableRow.statusSortValue) { row in
                 let model = row.model
                 statusButton(for: model)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            .width(min: 84, ideal: 94, max: 108)
+            .width(min: 78, ideal: 84, max: 88)
 
             TableColumn(t("IP address : port", "IPアドレス : ポート"), value: \ModelTableRow.endpointSortValue) { row in
                 let model = row.model
                 endpointTableText(host: "127.0.0.1", port: model.serverPort)
             }
-            .width(min: 118, ideal: 130, max: 150)
+            .width(min: 112, ideal: 120, max: 126)
 
             TableColumn(t("Memory", "メモリ使用量"), value: \ModelTableRow.memorySortValue) { row in
                 let model = row.model
                 memoryCell(viewModel.integratedMemoryText(for: model))
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            .width(min: 84, ideal: 96, max: 108)
+            .width(min: 76, ideal: 84, max: 90)
 
             TableColumn(t("Auto unload", "自動アンロード"), value: \ModelTableRow.autoUnloadSortValue) { row in
                 let model = row.model
                 autoUnloadCell(for: model)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            .width(min: 118, ideal: 132, max: 142)
+            .width(min: 106, ideal: 116, max: 124)
 
             TableColumn(t("Reasoning", "推論"), value: \ModelTableRow.reasoningSortValue) { row in
                 let model = row.model
@@ -674,14 +689,14 @@ struct IntegratedWorkspaceView: View {
                 .labelsHidden()
                 .frame(maxWidth: .infinity, alignment: .center)
             }
-            .width(min: 62, ideal: 72, max: 82)
+            .width(min: 54, ideal: 62, max: 66)
 
             TableColumn(t("Model management", "モデル管理")) { row in
                 let model = row.model
                 modelActions(for: model)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            .width(min: 136, ideal: 146, max: 160)
+            .width(min: 118, ideal: 128, max: 136)
         }
         .alternatingRowBackgrounds(.disabled)
         .scrollContentBackground(.hidden)
@@ -1419,7 +1434,7 @@ private struct SidebarMaterialBackdrop: NSViewRepresentable {
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
         view.material = .sidebar
-        view.blendingMode = .behindWindow
+        view.blendingMode = .withinWindow
         view.state = .active
         view.isEmphasized = false
         return view
@@ -1427,9 +1442,60 @@ private struct SidebarMaterialBackdrop: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
         nsView.material = .sidebar
-        nsView.blendingMode = .behindWindow
+        nsView.blendingMode = .withinWindow
         nsView.state = .active
         nsView.isEmphasized = false
+    }
+}
+
+private struct WindowFrameController: NSViewRepresentable {
+    let minWidth: CGFloat
+    let minHeight: CGFloat
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        DispatchQueue.main.async {
+            if let window = view.window {
+                Self.apply(to: window, minWidth: minWidth, minHeight: minHeight)
+            }
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async {
+            if let window = nsView.window {
+                Self.apply(to: window, minWidth: minWidth, minHeight: minHeight)
+            }
+        }
+    }
+
+    private static func apply(to window: NSWindow, minWidth: CGFloat, minHeight: CGFloat) {
+        window.minSize = NSSize(width: minWidth, height: minHeight)
+        expand(window, toMinimumWidth: minWidth, minimumHeight: minHeight)
+    }
+
+    static func expand(_ window: NSWindow, toMinimumWidth minWidth: CGFloat, minimumHeight minHeight: CGFloat) {
+        var frame = window.frame
+        let targetWidth = max(frame.width, minWidth)
+        let targetHeight = max(frame.height, minHeight)
+        guard targetWidth > frame.width + 0.5 || targetHeight > frame.height + 0.5 else { return }
+
+        let screenFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame
+        let originalMaxX = frame.maxX
+        let desiredMaxX = originalMaxX + max(0, targetWidth - frame.width)
+        let boundedMaxX = min(desiredMaxX, screenFrame?.maxX ?? desiredMaxX)
+
+        frame.size.width = targetWidth
+        frame.size.height = targetHeight
+        frame.origin.x = boundedMaxX - targetWidth
+
+        if let screenFrame {
+            frame.origin.y = min(frame.origin.y, screenFrame.maxY - targetHeight)
+            frame.origin.y = max(frame.origin.y, screenFrame.minY)
+        }
+
+        window.setFrame(frame, display: true, animate: true)
     }
 }
 
