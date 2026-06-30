@@ -16,6 +16,7 @@ struct IntegratedWorkspaceView: View {
     @State private var bottomPanelDragStartHeight: CGFloat?
     @State private var isMiniChatInputFocused = false
     @State private var isSettingsSidebarHovered = false
+    @State private var detailColumnWidth: CGFloat = 0
 
     private var selectedModel: ModelConfig? { viewModel.selectedModel }
     private var isSelectedRunning: Bool { selectedModel?.id == viewModel.runningModelID }
@@ -103,6 +104,11 @@ struct IntegratedWorkspaceView: View {
             return
         }
 
+        guard detailColumnWidth <= 0 || canFitRightPanel(in: detailColumnWidth) else {
+            isRightPanelAutoHidden = true
+            return
+        }
+
         isRightPanelAutoHidden = false
         withAnimation(.easeInOut(duration: 0.24)) {
             isRightPanelVisible = true
@@ -124,20 +130,7 @@ struct IntegratedWorkspaceView: View {
 
     private func applyAutomaticPanelCollapse(for size: CGSize) {
         withAnimation(.easeInOut(duration: 0.24)) {
-            let canShowBothSides = size.width >= comfortableWindowWidth(rightVisible: true)
             let canShowBottom = size.height >= Layout.minimumBottomPanelHeight
-
-            if isRightPanelVisible, !canShowBothSides {
-                isRightPanelVisible = false
-                isRightPanelAutoHidden = true
-                return
-            }
-
-            if !isRightPanelVisible, isRightPanelAutoHidden, canShowBothSides {
-                isRightPanelVisible = true
-                isRightPanelAutoHidden = false
-                return
-            }
 
             if isBottomPanelVisible, !canShowBottom {
                 isBottomPanelVisible = false
@@ -149,19 +142,37 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
-    private func comfortableWindowWidth(rightVisible: Bool) -> CGFloat {
-        Layout.leftPanelWidthWithDivider
-            + Layout.centerMinimumWidth
-            + (rightVisible ? Layout.rightPanelWidthWithDivider : 0)
+    private func canFitRightPanel(in detailWidth: CGFloat) -> Bool {
+        detailWidth >= Layout.minimumDetailWidthForRightPanel
+    }
+
+    private func updateDetailColumnWidth(_ width: CGFloat) {
+        guard width.isFinite else { return }
+        if abs(detailColumnWidth - width) > 0.5 {
+            detailColumnWidth = width
+        }
+
+        let canShowRightPanel = canFitRightPanel(in: width)
+        if isRightPanelVisible, !canShowRightPanel {
+            withAnimation(.easeInOut(duration: 0.24)) {
+                isRightPanelVisible = false
+                isRightPanelAutoHidden = true
+            }
+        } else if !isRightPanelVisible, isRightPanelAutoHidden, canShowRightPanel {
+            withAnimation(.easeInOut(duration: 0.24)) {
+                isRightPanelVisible = true
+                isRightPanelAutoHidden = false
+            }
+        }
     }
 
     private enum Layout {
         static let leftPanelWidth: CGFloat = 320
-        static let rightPanelWidth: CGFloat = 430
+        static let rightPanelWidth: CGFloat = 400
         static let dividerWidth: CGFloat = 1
-        static let leftPanelWidthWithDivider = leftPanelWidth + dividerWidth
         static let rightPanelWidthWithDivider = rightPanelWidth + dividerWidth
-        static let centerMinimumWidth: CGFloat = 1_040
+        static let centerMinimumWidth: CGFloat = 1_020
+        static let minimumDetailWidthForRightPanel = centerMinimumWidth + rightPanelWidthWithDivider
         static let minimumBottomPanelHeight: CGFloat = 720
     }
 
@@ -198,18 +209,32 @@ struct IntegratedWorkspaceView: View {
     }
 
     private var workspaceDetail: some View {
-        HStack(spacing: 0) {
-            centerColumn
-                .frame(minWidth: Layout.centerMinimumWidth, maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
-                .id("center-\(viewModel.settings.uiAppearance)")
-                .background(Color(nsColor: .windowBackgroundColor))
+        GeometryReader { proxy in
+            let canRenderRightPanel = isRightPanelVisible && canFitRightPanel(in: proxy.size.width)
 
-            if isRightPanelVisible {
-                Divider()
-                rightColumn
-                    .frame(width: Layout.rightPanelWidth)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            HStack(spacing: 0) {
+                centerColumn
+                    .frame(minWidth: Layout.centerMinimumWidth, maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+                    .id("center-\(viewModel.settings.uiAppearance)")
+                    .background(Color(nsColor: .windowBackgroundColor))
+
+                if canRenderRightPanel {
+                    Rectangle()
+                        .fill(Color(nsColor: .separatorColor).opacity(0.55))
+                        .frame(width: Layout.dividerWidth)
+                    rightColumn
+                        .frame(width: Layout.rightPanelWidth)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .leading)
+            .clipped()
+            .onAppear {
+                updateDetailColumnWidth(proxy.size.width)
+            }
+            .onChange(of: proxy.size.width) { _, width in
+                updateDetailColumnWidth(width)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -602,40 +627,40 @@ struct IntegratedWorkspaceView: View {
                     moveDroppedModel(providers, before: model)
                 }
             }
-            .width(min: 220, ideal: 320, max: 520)
+            .width(min: 220, ideal: 260, max: 420)
 
             TableColumn(t("Size", "サイズ"), value: \ModelTableRow.sizeSortValue) { row in
                 let model = row.model
                 modelSizeTableText(viewModel.modelSizeText(for: model))
             }
-            .width(min: 72, ideal: 90, max: 120)
+            .width(min: 68, ideal: 76, max: 90)
 
             TableColumn(t("Status", "ステータス"), value: \ModelTableRow.statusSortValue) { row in
                 let model = row.model
                 statusButton(for: model)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            .width(min: 86, ideal: 112, max: 140)
+            .width(min: 84, ideal: 94, max: 108)
 
             TableColumn(t("IP address : port", "IPアドレス : ポート"), value: \ModelTableRow.endpointSortValue) { row in
                 let model = row.model
                 endpointTableText(host: "127.0.0.1", port: model.serverPort)
             }
-            .width(min: 120, ideal: 150, max: 200)
+            .width(min: 118, ideal: 130, max: 150)
 
             TableColumn(t("Memory", "メモリ使用量"), value: \ModelTableRow.memorySortValue) { row in
                 let model = row.model
                 memoryCell(viewModel.integratedMemoryText(for: model))
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            .width(min: 90, ideal: 120, max: 150)
+            .width(min: 84, ideal: 96, max: 108)
 
             TableColumn(t("Auto unload", "自動アンロード"), value: \ModelTableRow.autoUnloadSortValue) { row in
                 let model = row.model
                 autoUnloadCell(for: model)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            .width(min: 130, ideal: 160, max: 190)
+            .width(min: 118, ideal: 132, max: 142)
 
             TableColumn(t("Reasoning", "推論"), value: \ModelTableRow.reasoningSortValue) { row in
                 let model = row.model
@@ -649,14 +674,14 @@ struct IntegratedWorkspaceView: View {
                 .labelsHidden()
                 .frame(maxWidth: .infinity, alignment: .center)
             }
-            .width(min: 70, ideal: 90, max: 110)
+            .width(min: 62, ideal: 72, max: 82)
 
             TableColumn(t("Model management", "モデル管理")) { row in
                 let model = row.model
                 modelActions(for: model)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            .width(min: 150, ideal: 170, max: 210)
+            .width(min: 136, ideal: 146, max: 160)
         }
         .alternatingRowBackgrounds(.disabled)
         .scrollContentBackground(.hidden)
