@@ -3,31 +3,49 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct IntegratedWorkspaceView: View {
+    static let baseMinimumWidth = Layout.requiredWindowWidth(
+        leftVisible: true,
+        centerMinimumWidth: Layout.defaultCenterMinimumWidth
+    )
+    static let baseMinimumHeight = Layout.windowMinimumHeight
+
     @ObservedObject var viewModel: AppViewModel
     @State var selectedDestination: IntegratedWorkspaceDestination = .models
     @State private var expandedRightPanelID: String? = "model"
     @State private var isBottomPanelVisible = true
-    @State private var isRightPanelVisible = true
+    @State private var centerPaneWidth = Layout.defaultCenterMinimumWidth
+    @State private var didInitializeCenterPaneWidth = false
+    @State private var isUserLiveResizing = false
     @State private var isBottomPanelAutoHidden = false
     @State private var modelTableSortOrder = [KeyPathComparator<ModelTableRow>]()
+    @State private var modelTableSortColumn: ModelTableSortColumn?
+    @State private var modelTableSortDirection: SortOrder = .forward
+    @State private var modelNameColumnMinimumWidth = ModelTableColumnLayout.model.minimum
+    @State private var modelNameColumnDragStartWidth: CGFloat?
     @State private var hoveredStatusModelID: ModelConfig.ID?
     @State private var bottomPanelHeight: CGFloat = 280
     @State private var bottomPanelDragStartHeight: CGFloat?
     @State private var isMiniChatInputFocused = false
     @State private var isSettingsSidebarHovered = false
     @State private var navigationSplitVisibility: NavigationSplitViewVisibility = .all
+    @State private var modelTableCenterMinimumWidth = Layout.defaultCenterMinimumWidth
 
     private var selectedModel: ModelConfig? { viewModel.selectedModel }
     private var isSelectedRunning: Bool { selectedModel?.id == viewModel.runningModelID }
     private var isLeftSidebarVisible: Bool { navigationSplitVisibility != .detailOnly }
+    private var effectiveCenterPaneWidth: CGFloat {
+        max(centerPaneWidth, modelTableCenterMinimumWidth)
+    }
     private var requiredWindowWidth: CGFloat {
         Layout.requiredWindowWidth(
             leftVisible: isLeftSidebarVisible,
-            rightVisible: isRightPanelVisible
+            centerMinimumWidth: modelTableCenterMinimumWidth
         )
     }
     private var requiredDetailWidth: CGFloat {
-        Layout.requiredDetailWidth(rightVisible: isRightPanelVisible)
+        Layout.requiredDetailWidth(
+            centerMinimumWidth: modelTableCenterMinimumWidth
+        )
     }
 
     private var modelRows: [ModelTableRow] {
@@ -99,18 +117,6 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
-    private func toggleRightPanelRequested() {
-        if isRightPanelVisible {
-            isRightPanelVisible = false
-            return
-        }
-
-        expandWindowIfNeeded(leftVisible: isLeftSidebarVisible, rightVisible: true)
-        withAnimation(.easeInOut(duration: 0.24)) {
-            isRightPanelVisible = true
-        }
-    }
-
     private func toggleBottomPanelRequested() {
         if isBottomPanelVisible {
             isBottomPanelAutoHidden = false
@@ -138,34 +144,182 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
-    private func expandWindowIfNeeded(leftVisible: Bool, rightVisible: Bool) {
-        guard let window = NSApp.keyWindow else { return }
-        let requiredWidth = Layout.requiredWindowWidth(
-            leftVisible: leftVisible,
-            rightVisible: rightVisible
+    private func setWindowWidthForCurrentLayout(
+        leftVisible: Bool? = nil,
+        animate: Bool = true
+    ) {
+        guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return }
+        let resolvedLeftVisible = leftVisible ?? isLeftSidebarVisible
+        let targetWidth = Layout.requiredWindowWidth(
+            leftVisible: resolvedLeftVisible,
+            centerMinimumWidth: effectiveCenterPaneWidth
         )
-        WindowFrameController.expand(window, toMinimumWidth: requiredWidth, minimumHeight: Layout.windowMinimumHeight)
+        let minimumWidth = Layout.requiredWindowWidth(
+            leftVisible: resolvedLeftVisible,
+            centerMinimumWidth: modelTableCenterMinimumWidth
+        )
+        WindowFrameController.setWidth(
+            window,
+            to: targetWidth,
+            minimumWidth: minimumWidth,
+            minimumHeight: Layout.windowMinimumHeight,
+            animate: animate
+        )
+    }
+
+    private func setCenterPaneWidth(_ width: CGFloat) {
+        let nextWidth = max(width, modelTableCenterMinimumWidth)
+        guard abs(centerPaneWidth - nextWidth) > 0.5 else { return }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            centerPaneWidth = nextWidth
+        }
+    }
+
+    private func updateCenterPaneWidthForAvailableWidth(_ availableWidth: CGFloat) {
+        let nextWidth = max(availableWidth, modelTableCenterMinimumWidth)
+        setCenterPaneWidth(nextWidth)
+    }
+
+    private func initializeCenterPaneWidthIfNeeded(availableWidth: CGFloat) {
+        guard !didInitializeCenterPaneWidth else { return }
+        let nextWidth = max(availableWidth, modelTableCenterMinimumWidth)
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            centerPaneWidth = nextWidth
+            didInitializeCenterPaneWidth = true
+        }
+    }
+
+    private func modelTableMinimumWidthChanged(_ tableMinimumWidth: CGFloat) {
+        let nextWidth = max(Layout.defaultCenterMinimumWidth, tableMinimumWidth)
+        guard abs(modelTableCenterMinimumWidth - nextWidth) > 0.5 else { return }
+
+        let isShrinking = nextWidth < modelTableCenterMinimumWidth
+        let targetCenterWidth = isShrinking ? nextWidth : max(centerPaneWidth, nextWidth)
+        let targetWidth = Layout.requiredWindowWidth(
+            leftVisible: isLeftSidebarVisible,
+            centerMinimumWidth: targetCenterWidth
+        )
+        let minimumWidth = Layout.requiredWindowWidth(
+            leftVisible: isLeftSidebarVisible,
+            centerMinimumWidth: nextWidth
+        )
+
+        if let window = NSApp.keyWindow ?? NSApp.mainWindow {
+            WindowFrameController.setWidth(
+                window,
+                to: targetWidth,
+                minimumWidth: minimumWidth,
+                minimumHeight: Layout.windowMinimumHeight,
+                animate: false
+            )
+        }
+
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            modelTableCenterMinimumWidth = nextWidth
+            centerPaneWidth = targetCenterWidth
+        }
     }
 
     private enum Layout {
-        static let leftPanelWidth: CGFloat = 320
-        static let leftPanelMaximumWidth: CGFloat = 360
-        static let rightPanelWidth: CGFloat = 400
+        static let tableChromeWidth: CGFloat = 0
+        static let leftPanelWidth: CGFloat = 280
+        static let rightPanelWidth: CGFloat = 360
         static let dividerWidth: CGFloat = 1
         static let rightPanelWidthWithDivider = rightPanelWidth + dividerWidth
-        static let leftPanelReservedWidthWithDivider = leftPanelMaximumWidth + dividerWidth
-        static let centerMinimumWidth: CGFloat = 1_180
+        static let defaultCenterMinimumWidth = ModelTableColumnLayout.defaultTableWidth + tableChromeWidth
         static let windowMinimumHeight: CGFloat = 760
         static let minimumBottomPanelHeight: CGFloat = 720
 
-        static func requiredDetailWidth(rightVisible: Bool) -> CGFloat {
-            centerMinimumWidth
-                + (rightVisible ? rightPanelWidthWithDivider : 0)
+        static func requiredDetailWidth(centerMinimumWidth: CGFloat) -> CGFloat {
+            centerMinimumWidth + rightPanelWidthWithDivider
         }
 
-        static func requiredWindowWidth(leftVisible: Bool, rightVisible: Bool) -> CGFloat {
-            requiredDetailWidth(rightVisible: rightVisible)
-                + (leftVisible ? leftPanelReservedWidthWithDivider : 0)
+        static func requiredWindowWidth(leftVisible: Bool, centerMinimumWidth: CGFloat) -> CGFloat {
+            requiredDetailWidth(centerMinimumWidth: centerMinimumWidth)
+                + (leftVisible ? leftPanelWidth : 0)
+        }
+    }
+
+    private struct TableColumnSizing {
+        let minimum: CGFloat
+        let defaultWidth: CGFloat
+        let maximum: CGFloat
+    }
+
+    private enum ModelTableSortColumn {
+        case name
+        case size
+        case status
+        case endpoint
+        case memory
+        case autoUnload
+        case reasoning
+
+        func comparator(order: SortOrder) -> KeyPathComparator<ModelTableRow> {
+            switch self {
+            case .name:
+                KeyPathComparator(\.nameSortValue, order: order)
+            case .size:
+                KeyPathComparator(\.sizeSortValue, order: order)
+            case .status:
+                KeyPathComparator(\.statusSortValue, order: order)
+            case .endpoint:
+                KeyPathComparator(\.endpointSortValue, order: order)
+            case .memory:
+                KeyPathComparator(\.memorySortValue, order: order)
+            case .autoUnload:
+                KeyPathComparator(\.autoUnloadSortValue, order: order)
+            case .reasoning:
+                KeyPathComparator(\.reasoningSortValue, order: order)
+            }
+        }
+    }
+
+    private enum ModelTableColumnLayout {
+        static let model = TableColumnSizing(minimum: 230, defaultWidth: 230, maximum: 1_200)
+        static let size = TableColumnSizing(minimum: 66, defaultWidth: 66, maximum: 66)
+        static let status = TableColumnSizing(minimum: 82, defaultWidth: 82, maximum: 82)
+        static let endpoint = TableColumnSizing(minimum: 116, defaultWidth: 116, maximum: 116)
+        static let memory = TableColumnSizing(minimum: 82, defaultWidth: 82, maximum: 82)
+        static let autoUnload = TableColumnSizing(minimum: 112, defaultWidth: 112, maximum: 112)
+        static let reasoning = TableColumnSizing(minimum: 58, defaultWidth: 58, maximum: 58)
+        static let actions = TableColumnSizing(minimum: 124, defaultWidth: 124, maximum: 124)
+
+        static let all = [
+            model,
+            size,
+            status,
+            endpoint,
+            memory,
+            autoUnload,
+            reasoning,
+            actions
+        ]
+
+        static let maximumTotalWidth = all.reduce(CGFloat.zero) { $0 + $1.maximum }
+        static let defaultTotalWidth = all.reduce(CGFloat.zero) { $0 + $1.defaultWidth }
+        static let minimumTotalWidth = all.reduce(CGFloat.zero) { $0 + $1.minimum }
+        static let fixedColumnsWidth = all.dropFirst().reduce(CGFloat.zero) { $0 + $1.defaultWidth }
+        static let defaultTableWidth = defaultTotalWidth
+        static let minimumWidths = all.map(\.minimum)
+
+        static func modelWidth(availableWidth: CGFloat, minimumModelWidth: CGFloat) -> CGFloat {
+            let widthThatFillsAvailableSpace = availableWidth - fixedColumnsWidth
+            return max(widthThatFillsAvailableSpace, minimumModelWidth, model.minimum)
+        }
+
+        static func tableWidth(modelWidth: CGFloat) -> CGFloat {
+            modelWidth + fixedColumnsWidth
+        }
+
+        static func tableWidth(minimumModelWidth: CGFloat) -> CGFloat {
+            tableWidth(modelWidth: max(minimumModelWidth, model.minimum))
         }
     }
 
@@ -174,9 +328,9 @@ struct IntegratedWorkspaceView: View {
             NavigationSplitView(columnVisibility: $navigationSplitVisibility) {
                 leftColumn
                     .navigationSplitViewColumnWidth(
-                        min: 260,
+                        min: Layout.leftPanelWidth,
                         ideal: Layout.leftPanelWidth,
-                        max: Layout.leftPanelMaximumWidth
+                        max: Layout.leftPanelWidth
                     )
             } detail: {
                 workspaceDetail
@@ -186,7 +340,6 @@ struct IntegratedWorkspaceView: View {
                 panelToolbarItems
             }
             .toolbarBackground(.hidden, for: .windowToolbar)
-            .animation(.easeInOut(duration: 0.24), value: isRightPanelVisible)
             .animation(.easeInOut(duration: 0.24), value: isBottomPanelVisible)
             .onAppear {
                 applyAutomaticPanelCollapse(for: geometry.size)
@@ -195,15 +348,18 @@ struct IntegratedWorkspaceView: View {
                 applyAutomaticPanelCollapse(for: size)
             }
             .onChange(of: navigationSplitVisibility) { oldValue, newValue in
-                if oldValue == .detailOnly, newValue != .detailOnly {
-                    expandWindowIfNeeded(leftVisible: true, rightVisible: isRightPanelVisible)
+                let oldLeftVisible = oldValue != .detailOnly
+                let newLeftVisible = newValue != .detailOnly
+                if oldLeftVisible != newLeftVisible {
+                    setWindowWidthForCurrentLayout(leftVisible: newLeftVisible)
                 }
             }
         }
         .background(
             WindowFrameController(
                 minWidth: requiredWindowWidth,
-                minHeight: Layout.windowMinimumHeight
+                minHeight: Layout.windowMinimumHeight,
+                isUserLiveResizing: $isUserLiveResizing
             )
         )
         .tint(activeAccentColor)
@@ -214,27 +370,53 @@ struct IntegratedWorkspaceView: View {
 
     private var workspaceDetail: some View {
         GeometryReader { proxy in
+            let slotWidth = Layout.rightPanelWidthWithDivider
+            let topInset = max(proxy.safeAreaInsets.top, 0)
+            let availableCenterWidth = max(modelTableCenterMinimumWidth, proxy.size.width - slotWidth)
+            let contentWidth = availableCenterWidth + slotWidth
+
             HStack(spacing: 0) {
                 centerColumn
-                    .frame(minWidth: Layout.centerMinimumWidth, maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(width: availableCenterWidth)
+                    .frame(maxHeight: .infinity)
                     .clipped()
                     .id("center-\(viewModel.settings.uiAppearance)")
                     .background(Color(nsColor: .windowBackgroundColor))
 
-                if isRightPanelVisible {
-                    Rectangle()
-                        .fill(Color(nsColor: .separatorColor).opacity(0.55))
-                        .frame(width: Layout.dividerWidth)
-                    rightColumn
-                        .frame(width: Layout.rightPanelWidth)
-                        .ignoresSafeArea(.container, edges: .top)
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
-                }
+                rightPanelSlot(width: slotWidth)
+                    .frame(width: slotWidth, height: proxy.size.height + topInset, alignment: .topLeading)
+                    .offset(y: -topInset)
             }
-            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .leading)
-            .clipped()
+            .frame(width: contentWidth, height: proxy.size.height, alignment: .topLeading)
+            .onAppear {
+                initializeCenterPaneWidthIfNeeded(availableWidth: availableCenterWidth)
+            }
+            .onChange(of: proxy.size.width) { _, _ in
+                updateCenterPaneWidthForAvailableWidth(availableCenterWidth)
+            }
         }
         .frame(minWidth: requiredDetailWidth, maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func rightPanelSlot(width: CGFloat) -> some View {
+        ZStack(alignment: .leading) {
+            SidebarMaterialBackdrop()
+                .ignoresSafeArea()
+
+            HStack(spacing: 0) {
+                Rectangle()
+                    .fill(Color(nsColor: .separatorColor).opacity(0.55))
+                    .frame(width: Layout.dividerWidth)
+                rightColumn
+                    .frame(width: Layout.rightPanelWidth)
+            }
+            .frame(width: Layout.rightPanelWidthWithDivider, alignment: .leading)
+        }
+        .frame(width: width, alignment: .leading)
+        .frame(maxHeight: .infinity)
+        .background(SidebarMaterialBackdrop().ignoresSafeArea())
+        .clipped()
+        .ignoresSafeArea(.container, edges: .top)
     }
 
     @ToolbarContentBuilder
@@ -247,14 +429,6 @@ struct IntegratedWorkspaceView: View {
                     ? t("Hide bottom panel", "下段パネルを隠す")
                     : t("Show bottom panel", "下段パネルを表示"),
                 action: toggleBottomPanelRequested
-            )
-            panelToggleButton(
-                systemImage: AppSymbol.rightInspector,
-                isActive: isRightPanelVisible,
-                help: isRightPanelVisible
-                    ? t("Hide inspector", "インスペクターを隠す")
-                    : t("Show inspector", "インスペクターを表示"),
-                action: toggleRightPanelRequested
             )
         }
     }
@@ -476,9 +650,12 @@ struct IntegratedWorkspaceView: View {
                         .frame(maxHeight: .infinity)
 
                     if isBottomPanelVisible {
-                        Divider()
-                        bottomOperationsPanel
-                            .frame(height: max(180, proxy.size.height / 3))
+                        VStack(spacing: 0) {
+                            Divider()
+                            bottomOperationsPanel
+                                .frame(height: max(180, proxy.size.height / 3))
+                        }
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
                 .background(Color(nsColor: .windowBackgroundColor))
@@ -577,120 +754,249 @@ struct IntegratedWorkspaceView: View {
                 modelEmptyState
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                modelTable
+                GeometryReader { proxy in
+                    modelTable(availableWidth: proxy.size.width)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
-    private var modelTable: some View {
-        Table(sortedModelRows, selection: selectedModelBinding, sortOrder: $modelTableSortOrder) {
-            TableColumn(t("Model / purpose", "モデル名 / 用途"), value: \ModelTableRow.nameSortValue) { row in
-                let model = row.model
-                HStack(spacing: 8) {
-                    Image(systemName: "line.3.horizontal")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .onDrag {
-                            modelDragProvider(for: model)
-                        }
-                        .help(t("Drag to reorder", "ドラッグして並び替え"))
-                        .accessibilityLabel(t("Drag to reorder model", "モデルをドラッグして並び替え"))
+    private func modelTable(availableWidth: CGFloat) -> some View {
+        let modelWidth = ModelTableColumnLayout.modelWidth(
+            availableWidth: availableWidth,
+            minimumModelWidth: modelNameColumnMinimumWidth
+        )
+        let tableWidth = ModelTableColumnLayout.tableWidth(modelWidth: modelWidth)
 
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(model.displayName)
-                            .font(.callout.weight(.semibold))
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-                        Text(model.notes.isEmpty ? model.family : model.notes)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+        return VStack(alignment: .leading, spacing: 0) {
+            modelTableHeader(modelWidth: modelWidth, tableWidth: tableWidth)
+            Divider()
+            ScrollView(.vertical) {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(sortedModelRows) { row in
+                        modelTableRow(row, modelWidth: modelWidth, tableWidth: tableWidth)
                     }
                 }
-                .padding(.vertical, 5)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    viewModel.selectedModelID = model.id
-                }
-                .onDrag {
-                    modelDragProvider(for: model)
-                }
-                .onHover { isHovering in
-                    hoveredStatusModelID = isHovering ? model.id : (hoveredStatusModelID == model.id ? nil : hoveredStatusModelID)
-                }
-                .onDrop(of: [.plainText], isTargeted: nil) { providers in
-                    moveDroppedModel(providers, before: model)
-                }
             }
-            .width(min: 240, ideal: 300, max: 340)
-
-            TableColumn(t("Size", "サイズ"), value: \ModelTableRow.sizeSortValue) { row in
-                let model = row.model
-                modelSizeTableText(viewModel.modelSizeText(for: model))
+            .scrollContentBackground(.hidden)
+            .background(Color(nsColor: .windowBackgroundColor))
+            .onDrop(of: [.plainText], isTargeted: nil) { providers in
+                moveDroppedModelToEnd(providers)
             }
-            .width(min: 68, ideal: 78, max: 84)
-
-            TableColumn(t("Status", "ステータス"), value: \ModelTableRow.statusSortValue) { row in
-                let model = row.model
-                statusButton(for: model)
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
-            .width(min: 84, ideal: 96, max: 104)
-
-            TableColumn(t("IP address : port", "IPアドレス : ポート"), value: \ModelTableRow.endpointSortValue) { row in
-                let model = row.model
-                endpointTableText(host: "127.0.0.1", port: model.serverPort)
-            }
-            .width(min: 120, ideal: 134, max: 144)
-
-            TableColumn(t("Memory", "メモリ使用量"), value: \ModelTableRow.memorySortValue) { row in
-                let model = row.model
-                memoryCell(viewModel.integratedMemoryText(for: model))
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
-            .width(min: 86, ideal: 98, max: 108)
-
-            TableColumn(t("Auto unload", "自動アンロード"), value: \ModelTableRow.autoUnloadSortValue) { row in
-                let model = row.model
-                autoUnloadCell(for: model)
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
-            .width(min: 126, ideal: 142, max: 152)
-
-            TableColumn(t("Reasoning", "推論"), value: \ModelTableRow.reasoningSortValue) { row in
-                let model = row.model
-                Toggle(
-                    "",
-                    isOn: Binding(
-                        get: { model.enableThinking },
-                        set: { viewModel.toggleReasoning(for: model, isEnabled: $0) }
-                    )
-                )
-                .labelsHidden()
-                .frame(maxWidth: .infinity, alignment: .center)
-            }
-            .width(min: 64, ideal: 72, max: 78)
-
-            TableColumn(t("Model management", "モデル管理")) { row in
-                let model = row.model
-                modelActions(for: model)
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
-            .width(min: 142, ideal: 156, max: 170)
         }
-        .alternatingRowBackgrounds(.disabled)
-        .scrollContentBackground(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .clipped()
         .background(Color(nsColor: .windowBackgroundColor))
         .font(.callout)
         .accessibilityIdentifier("integrated-model-table")
+    }
+
+    private func modelTableHeader(modelWidth: CGFloat, tableWidth: CGFloat) -> some View {
+        HStack(spacing: 0) {
+            sortableModelHeaderCell(t("Model / purpose", "モデル名 / 用途"), column: .name)
+                .frame(width: modelWidth, height: 30, alignment: .leading)
+                .overlay(alignment: .trailing) {
+                    modelNameColumnResizeHandle
+                }
+            sortableHeaderCell(t("Size", "サイズ"), column: .size, alignment: .center)
+                .frame(width: ModelTableColumnLayout.size.defaultWidth, height: 30)
+            sortableHeaderCell(t("Status", "ステータス"), column: .status, alignment: .center)
+                .frame(width: ModelTableColumnLayout.status.defaultWidth, height: 30)
+            sortableHeaderCell(t("IP address:port", "IPアドレス:ポート"), column: .endpoint, alignment: .center)
+                .frame(width: ModelTableColumnLayout.endpoint.defaultWidth, height: 30)
+            sortableHeaderCell(t("Memory", "メモリ使用量"), column: .memory, alignment: .center)
+                .frame(width: ModelTableColumnLayout.memory.defaultWidth, height: 30)
+            sortableHeaderCell(t("Auto unload", "自動アンロード"), column: .autoUnload, alignment: .center)
+                .frame(width: ModelTableColumnLayout.autoUnload.defaultWidth, height: 30)
+            sortableHeaderCell(t("Reasoning", "推論"), column: .reasoning, alignment: .center)
+                .frame(width: ModelTableColumnLayout.reasoning.defaultWidth, height: 30)
+            modelHeaderText(t("Model management", "モデル管理"), alignment: .center)
+                .frame(width: ModelTableColumnLayout.actions.defaultWidth, height: 30)
+        }
+        .frame(width: tableWidth, alignment: .leading)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private func modelTableRow(_ row: ModelTableRow, modelWidth: CGFloat, tableWidth: CGFloat) -> some View {
+        let model = row.model
+        let isSelected = viewModel.selectedModelID == model.id
+
+        return HStack(spacing: 0) {
+            modelNameCell(for: model, isSelected: isSelected)
+                .frame(width: modelWidth, alignment: .leading)
+                .frame(minHeight: 48)
+            modelSizeTableText(viewModel.modelSizeText(for: model))
+                .frame(width: ModelTableColumnLayout.size.defaultWidth)
+                .frame(minHeight: 48)
+            statusButton(for: model)
+                .frame(width: ModelTableColumnLayout.status.defaultWidth)
+                .frame(minHeight: 48)
+            endpointTableText(host: "127.0.0.1", port: model.serverPort)
+                .frame(width: ModelTableColumnLayout.endpoint.defaultWidth)
+                .frame(minHeight: 48)
+            memoryCell(viewModel.integratedMemoryText(for: model))
+                .frame(width: ModelTableColumnLayout.memory.defaultWidth)
+                .frame(minHeight: 48)
+            autoUnloadCell(for: model)
+                .frame(width: ModelTableColumnLayout.autoUnload.defaultWidth)
+                .frame(minHeight: 48)
+            Toggle(
+                "",
+                isOn: Binding(
+                    get: { model.enableThinking },
+                    set: { viewModel.toggleReasoning(for: model, isEnabled: $0) }
+                )
+            )
+            .labelsHidden()
+            .controlSize(.small)
+            .frame(width: ModelTableColumnLayout.reasoning.defaultWidth)
+            .frame(minHeight: 48)
+            modelActions(for: model)
+                .frame(width: ModelTableColumnLayout.actions.defaultWidth)
+                .frame(minHeight: 48)
+        }
+        .frame(width: tableWidth, alignment: .leading)
+        .background(isSelected ? Color(nsColor: .selectedContentBackgroundColor) : Color.clear)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            viewModel.selectedModelID = model.id
+        }
+        .onHover { isHovering in
+            hoveredStatusModelID = isHovering ? model.id : (hoveredStatusModelID == model.id ? nil : hoveredStatusModelID)
+        }
+        .onDrag {
+            modelDragProvider(for: model)
+        }
         .onDrop(of: [.plainText], isTargeted: nil) { providers in
-            moveDroppedModelToEnd(providers)
+            moveDroppedModel(providers, before: model)
         }
-        .onChange(of: modelTableSortOrder) { _, _ in
-            viewModel.beginModelReorderRequested()
+        .overlay(alignment: .bottom) {
+            Divider()
         }
+    }
+
+    private func modelNameCell(for model: ModelConfig, isSelected: Bool) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "line.3.horizontal")
+                .font(.caption)
+                .foregroundStyle(isSelected ? .white.opacity(0.8) : .secondary)
+                .onDrag {
+                    modelDragProvider(for: model)
+                }
+                .help(t("Drag to reorder", "ドラッグして並び替え"))
+                .accessibilityLabel(t("Drag to reorder model", "モデルをドラッグして並び替え"))
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(model.displayName)
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(isSelected ? .white : .primary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Text(model.notes.isEmpty ? model.family : model.notes)
+                    .font(.caption)
+                    .foregroundStyle(isSelected ? .white.opacity(0.75) : .secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+    }
+
+    private func sortableModelHeaderCell(_ title: String, column: ModelTableSortColumn) -> some View {
+        sortableHeaderCell(title, column: column, alignment: .leading)
+    }
+
+    private func sortableHeaderCell(_ title: String, column: ModelTableSortColumn, alignment: Alignment) -> some View {
+        Button {
+            toggleModelTableSort(column)
+        } label: {
+            modelHeaderText(title, alignment: alignment, sortColumn: column)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func modelHeaderText(
+        _ title: String,
+        alignment: Alignment,
+        sortColumn: ModelTableSortColumn? = nil
+    ) -> some View {
+        HStack(spacing: 4) {
+            Text(title)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            if let sortColumn, modelTableSortColumn == sortColumn {
+                Image(systemName: modelTableSortDirection == .forward ? "chevron.up" : "chevron.down")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: alignment)
+        .padding(.horizontal, 8)
+        .overlay(alignment: .trailing) {
+            Rectangle()
+                .fill(Color(nsColor: .separatorColor).opacity(0.55))
+                .frame(width: 1, height: 18)
+        }
+    }
+
+    private var modelNameColumnResizeHandle: some View {
+        Rectangle()
+            .fill(Color.clear)
+            .frame(width: 10)
+            .contentShape(Rectangle())
+            .overlay {
+                Rectangle()
+                    .fill(Color(nsColor: .separatorColor).opacity(0.65))
+                    .frame(width: 1, height: 18)
+            }
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { value in
+                        if modelNameColumnDragStartWidth == nil {
+                            modelNameColumnDragStartWidth = modelNameColumnMinimumWidth
+                        }
+                        let startWidth = modelNameColumnDragStartWidth ?? modelNameColumnMinimumWidth
+                        setModelNameColumnMinimumWidth(startWidth + value.translation.width)
+                    }
+                    .onEnded { _ in
+                        modelNameColumnDragStartWidth = nil
+                    }
+            )
+            .onTapGesture(count: 2) {
+                setModelNameColumnMinimumWidth(ModelTableColumnLayout.model.minimum)
+            }
+            .help(t("Drag to resize. Double-click to fit.", "ドラッグで幅を変更。ダブルクリックで最小幅に戻します。"))
+    }
+
+    private func setModelNameColumnMinimumWidth(_ proposedWidth: CGFloat) {
+        let nextWidth = min(
+            max(proposedWidth, ModelTableColumnLayout.model.minimum),
+            ModelTableColumnLayout.model.maximum
+        )
+        guard abs(nextWidth - modelNameColumnMinimumWidth) > 0.5 else { return }
+
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            modelNameColumnMinimumWidth = nextWidth
+        }
+        modelTableMinimumWidthChanged(ModelTableColumnLayout.tableWidth(minimumModelWidth: nextWidth))
+    }
+
+    private func toggleModelTableSort(_ column: ModelTableSortColumn) {
+        let nextDirection: SortOrder = modelTableSortColumn == column && modelTableSortDirection == .forward
+            ? .reverse
+            : .forward
+        modelTableSortColumn = column
+        modelTableSortDirection = nextDirection
+        modelTableSortOrder = [column.comparator(order: nextDirection)]
+        viewModel.beginModelReorderRequested()
     }
 
     private func centeredTableText(
@@ -726,7 +1032,7 @@ struct IntegratedWorkspaceView: View {
 
     private func endpointTableText(host: String, port: Int) -> some View {
         HStack(spacing: 0) {
-            Text("\(host) : ")
+            Text("\(host):")
                 .font(.callout.monospacedDigit())
             Text(String(port))
                 .font(.callout.monospacedDigit().weight(.semibold))
@@ -746,6 +1052,7 @@ struct IntegratedWorkspaceView: View {
 
     private func modelDragProvider(for model: ModelConfig) -> NSItemProvider {
         modelTableSortOrder = []
+        modelTableSortColumn = nil
         viewModel.beginModelReorderRequested()
         return NSItemProvider(object: model.id as NSString)
     }
@@ -763,6 +1070,7 @@ struct IntegratedWorkspaceView: View {
 
             Task { @MainActor in
                 modelTableSortOrder = []
+                modelTableSortColumn = nil
                 viewModel.beginModelReorderRequested()
                 viewModel.moveModel(withID: draggedModelID, before: targetModel.id)
             }
@@ -782,6 +1090,7 @@ struct IntegratedWorkspaceView: View {
 
             Task { @MainActor in
                 modelTableSortOrder = []
+                modelTableSortColumn = nil
                 viewModel.beginModelReorderRequested()
                 viewModel.moveModelToEnd(withID: draggedModelID)
             }
@@ -802,7 +1111,7 @@ struct IntegratedWorkspaceView: View {
         } label: {
             Text(statusText)
                 .font(.caption.weight(.medium))
-                .frame(minWidth: 76)
+                .frame(minWidth: 58)
         }
         .controlSize(.small)
         .disabled(!isInteractive)
@@ -843,7 +1152,8 @@ struct IntegratedWorkspaceView: View {
                 format: .number
             )
             .textFieldStyle(.roundedBorder)
-            .frame(width: 52)
+            .controlSize(.small)
+            .frame(width: 44)
             .disabled(!viewModel.isAutoUnloadEnabled(for: model))
 
             Text(t("min", "分"))
@@ -858,6 +1168,7 @@ struct IntegratedWorkspaceView: View {
                 )
             )
             .labelsHidden()
+            .controlSize(.small)
         }
     }
 
@@ -867,12 +1178,14 @@ struct IntegratedWorkspaceView: View {
                 viewModel.editProfileRequested(for: model)
             }
             .buttonStyle(.bordered)
+            .controlSize(.small)
             .disabled(viewModel.isManagedProcessRunning)
 
             Button(t("Delete", "削除"), role: .destructive) {
                 viewModel.deleteProfileRequested(for: model)
             }
             .buttonStyle(.bordered)
+            .controlSize(.small)
             .tint(.red)
             .foregroundStyle(.red)
             .disabled(viewModel.models.count <= 1 || viewModel.isManagedProcessRunning)
@@ -1156,7 +1469,7 @@ struct IntegratedWorkspaceView: View {
                         hermesPanelContent
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 14)
                 .padding(.top, 8)
                 .padding(.bottom, 24)
             }
@@ -1254,7 +1567,7 @@ struct IntegratedWorkspaceView: View {
             Text(title)
                 .font(.callout)
                 .foregroundStyle(.primary)
-                .frame(width: 132, alignment: .leading)
+                .frame(width: 104, alignment: .leading)
             Text(value)
                 .font(.callout)
                 .foregroundStyle(valueColor)
@@ -1389,7 +1702,7 @@ struct IntegratedWorkspaceView: View {
             Text(title)
                 .font(.callout)
                 .foregroundStyle(.primary)
-                .frame(width: 132, alignment: .leading)
+                .frame(width: 84, alignment: .leading)
             Button(action: action) {
                 Text(value)
                     .font(.callout)
@@ -1430,15 +1743,426 @@ private struct SidebarMaterialBackdrop: NSViewRepresentable {
     }
 }
 
+private final class VerticalOnlyClipView: NSClipView {
+    override func constrainBoundsRect(_ proposedBounds: NSRect) -> NSRect {
+        var constrainedBounds = super.constrainBoundsRect(proposedBounds)
+        constrainedBounds.origin.x = 0
+        return constrainedBounds
+    }
+
+    override func scroll(to newOrigin: NSPoint) {
+        super.scroll(to: NSPoint(x: 0, y: newOrigin.y))
+    }
+
+    override func setBoundsOrigin(_ newOrigin: NSPoint) {
+        super.setBoundsOrigin(NSPoint(x: 0, y: newOrigin.y))
+    }
+
+    override func setBoundsSize(_ newSize: NSSize) {
+        super.setBoundsSize(newSize)
+        if bounds.origin.x != 0 {
+            super.setBoundsOrigin(NSPoint(x: 0, y: bounds.origin.y))
+        }
+    }
+}
+
+private struct ModelTableColumnConfigurator: NSViewRepresentable {
+    let minimumWidths: [CGFloat]
+    let maximumWidths: [CGFloat]
+    let availableTableWidth: CGFloat
+    let tableChromeWidth: CGFloat
+    let onTableMinimumWidthChange: (CGFloat) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        Self.scheduleConfiguration(
+            from: view,
+            minimumWidths: minimumWidths,
+            maximumWidths: maximumWidths,
+            availableTableWidth: availableTableWidth,
+            tableChromeWidth: tableChromeWidth,
+            onTableMinimumWidthChange: onTableMinimumWidthChange,
+            coordinator: context.coordinator
+        )
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        Self.scheduleConfiguration(
+            from: nsView,
+            minimumWidths: minimumWidths,
+            maximumWidths: maximumWidths,
+            availableTableWidth: availableTableWidth,
+            tableChromeWidth: tableChromeWidth,
+            onTableMinimumWidthChange: onTableMinimumWidthChange,
+            coordinator: context.coordinator
+        )
+    }
+
+    final class Coordinator {
+        var generation = 0
+    }
+
+    private static func scheduleConfiguration(
+        from markerView: NSView,
+        minimumWidths: [CGFloat],
+        maximumWidths: [CGFloat],
+        availableTableWidth: CGFloat,
+        tableChromeWidth: CGFloat,
+        onTableMinimumWidthChange: @escaping (CGFloat) -> Void,
+        coordinator: Coordinator
+    ) {
+        coordinator.generation += 1
+        let generation = coordinator.generation
+        let delays: [TimeInterval] = [0, 0.02, 0.08, 0.2]
+        for delay in delays {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                guard coordinator.generation == generation else { return }
+                Self.configureTable(
+                    from: markerView,
+                    minimumWidths: minimumWidths,
+                    maximumWidths: maximumWidths,
+                    availableTableWidth: availableTableWidth,
+                    tableChromeWidth: tableChromeWidth,
+                    onTableMinimumWidthChange: onTableMinimumWidthChange
+                )
+            }
+        }
+    }
+
+    private static func configureTable(
+        from markerView: NSView,
+        minimumWidths: [CGFloat],
+        maximumWidths: [CGFloat],
+        availableTableWidth: CGFloat,
+        tableChromeWidth: CGFloat,
+        onTableMinimumWidthChange: @escaping (CGFloat) -> Void
+    ) {
+        guard let tableView = findTableView(from: markerView, expectedColumnCount: minimumWidths.count) else { return }
+        let state = ModelTableColumnState.state(for: tableView)
+        state.ensureModelMinimumWidth(minimumWidths.first ?? 0)
+
+        for (index, column) in tableView.tableColumns.enumerated() {
+            guard minimumWidths.indices.contains(index), maximumWidths.indices.contains(index) else { continue }
+            let minimumWidth = minimumWidths[index]
+            let maximumWidth = maximumWidths[index]
+            column.minWidth = minimumWidth
+            column.maxWidth = maximumWidth
+            column.resizingMask = index == 0 ? .userResizingMask : []
+        }
+
+        tableView.columnAutoresizingStyle = .noColumnAutoresizing
+
+        if !state.didApplyInitialWidths {
+            state.didApplyInitialWidths = true
+        }
+
+        if let scrollView = tableView.enclosingScrollView {
+            resetHorizontalScrolling(in: scrollView)
+        }
+
+        ModelTableDelegateProxy.install(on: tableView, minimumWidths: minimumWidths)
+        state.applyVisualWidths(
+            to: tableView,
+            availableTableWidth: availableTableWidth,
+            minimumWidths: minimumWidths,
+            maximumWidths: maximumWidths
+        )
+        state.attach(
+            to: tableView,
+            expectedColumnCount: minimumWidths.count,
+            tableChromeWidth: tableChromeWidth,
+            minimumWidths: minimumWidths,
+            maximumWidths: maximumWidths,
+            availableTableWidth: availableTableWidth,
+            onTableMinimumWidthChange: onTableMinimumWidthChange
+        )
+    }
+
+    private static func findTableView(from markerView: NSView, expectedColumnCount: Int) -> NSTableView? {
+        if let windowTable = markerView.window?.contentView.flatMap({
+            firstTableView(in: $0, expectedColumnCount: expectedColumnCount)
+        }) {
+            return windowTable
+        }
+
+        var current: NSView? = markerView
+        while let view = current {
+            if let tableView = view as? NSTableView, tableView.tableColumns.count >= expectedColumnCount {
+                return tableView
+            }
+            if let tableView = firstTableView(in: view, expectedColumnCount: expectedColumnCount) {
+                return tableView
+            }
+            current = view.superview
+        }
+        return nil
+    }
+
+    private static func firstTableView(in view: NSView, expectedColumnCount: Int) -> NSTableView? {
+        if let tableView = view as? NSTableView, tableView.tableColumns.count >= expectedColumnCount {
+            return tableView
+        }
+        for subview in view.subviews {
+            if let tableView = firstTableView(in: subview, expectedColumnCount: expectedColumnCount) {
+                return tableView
+            }
+        }
+        return nil
+    }
+
+    static func resetHorizontalScrolling(in scrollView: NSScrollView) {
+        installVerticalOnlyClipView(in: scrollView)
+        scrollView.hasHorizontalScroller = false
+        scrollView.horizontalScroller = nil
+        scrollView.autohidesScrollers = true
+        scrollView.horizontalScrollElasticity = .none
+        var bounds = scrollView.contentView.bounds
+        guard bounds.origin.x != 0 else { return }
+        bounds.origin.x = 0
+        scrollView.contentView.scroll(to: bounds.origin)
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+    }
+
+    private static func installVerticalOnlyClipView(in scrollView: NSScrollView) {
+        guard !(scrollView.contentView is VerticalOnlyClipView) else { return }
+
+        let previousClipView = scrollView.contentView
+        let documentView = previousClipView.documentView
+        previousClipView.documentView = nil
+
+        let clipView = VerticalOnlyClipView(frame: previousClipView.frame)
+        clipView.autoresizingMask = previousClipView.autoresizingMask
+        clipView.drawsBackground = previousClipView.drawsBackground
+        clipView.backgroundColor = previousClipView.backgroundColor
+        clipView.postsBoundsChangedNotifications = previousClipView.postsBoundsChangedNotifications
+        scrollView.contentView = clipView
+        clipView.documentView = documentView
+    }
+}
+
+private final class ModelTableColumnState: NSObject {
+    var didApplyInitialWidths = false
+    private weak var tableView: NSTableView?
+    private var expectedColumnCount = 0
+    private var tableChromeWidth: CGFloat = 0
+    private var minimumWidths: [CGFloat] = []
+    private var maximumWidths: [CGFloat] = []
+    private var availableTableWidth: CGFloat = 0
+    private var modelMinimumWidth: CGFloat?
+    private var isApplyingVisualWidths = false
+    private var onTableMinimumWidthChange: ((CGFloat) -> Void)?
+    private var columnResizeObserver: NSObjectProtocol?
+
+    private static var associationKey: UInt8 = 0
+
+    deinit {
+        if let columnResizeObserver {
+            NotificationCenter.default.removeObserver(columnResizeObserver)
+        }
+    }
+
+    static func state(for tableView: NSTableView) -> ModelTableColumnState {
+        if let state = objc_getAssociatedObject(tableView, &associationKey) as? ModelTableColumnState {
+            return state
+        }
+
+        let state = ModelTableColumnState()
+        objc_setAssociatedObject(tableView, &associationKey, state, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        return state
+    }
+
+    func ensureModelMinimumWidth(_ fallback: CGFloat) {
+        if modelMinimumWidth == nil {
+            modelMinimumWidth = fallback
+        }
+    }
+
+    func attach(
+        to tableView: NSTableView,
+        expectedColumnCount: Int,
+        tableChromeWidth: CGFloat,
+        minimumWidths: [CGFloat],
+        maximumWidths: [CGFloat],
+        availableTableWidth: CGFloat,
+        onTableMinimumWidthChange: @escaping (CGFloat) -> Void
+    ) {
+        self.expectedColumnCount = expectedColumnCount
+        self.tableChromeWidth = tableChromeWidth
+        self.minimumWidths = minimumWidths
+        self.maximumWidths = maximumWidths
+        self.availableTableWidth = availableTableWidth
+        self.onTableMinimumWidthChange = onTableMinimumWidthChange
+        ensureModelMinimumWidth(minimumWidths.first ?? 0)
+
+        if self.tableView !== tableView {
+            if let columnResizeObserver {
+                NotificationCenter.default.removeObserver(columnResizeObserver)
+            }
+            self.tableView = tableView
+            columnResizeObserver = NotificationCenter.default.addObserver(
+                forName: NSTableView.columnDidResizeNotification,
+                object: tableView,
+                queue: .main
+            ) { [weak self] _ in
+                self?.tableColumnDidResize()
+            }
+        }
+
+        applyVisualWidths(
+            to: tableView,
+            availableTableWidth: availableTableWidth,
+            minimumWidths: minimumWidths,
+            maximumWidths: maximumWidths
+        )
+        publishCurrentMinimumWidth()
+    }
+
+    func applyVisualWidths(
+        to tableView: NSTableView,
+        availableTableWidth: CGFloat,
+        minimumWidths: [CGFloat],
+        maximumWidths: [CGFloat]
+    ) {
+        guard minimumWidths.count == expectedColumnCount || expectedColumnCount == 0 else { return }
+        guard !minimumWidths.isEmpty else { return }
+        let columnCount = min(tableView.tableColumns.count, minimumWidths.count, maximumWidths.count)
+        guard columnCount > 0 else { return }
+
+        ensureModelMinimumWidth(minimumWidths[0])
+        let intercellWidth = tableView.intercellSpacing.width * CGFloat(max(0, columnCount - 1))
+        let fixedColumnsWidth = minimumWidths
+            .prefix(columnCount)
+            .dropFirst()
+            .reduce(CGFloat.zero, +)
+        let requestedModelWidth = availableTableWidth - fixedColumnsWidth - intercellWidth - tableChromeWidth
+        let modelWidth = min(
+            max(requestedModelWidth, modelMinimumWidth ?? minimumWidths[0], minimumWidths[0]),
+            maximumWidths[0]
+        )
+
+        isApplyingVisualWidths = true
+        defer { isApplyingVisualWidths = false }
+
+        for index in 0..<columnCount {
+            let targetWidth = index == 0 ? modelWidth : minimumWidths[index]
+            let column = tableView.tableColumns[index]
+            if abs(column.width - targetWidth) > 0.5 {
+                column.width = targetWidth
+            }
+        }
+
+        if let scrollView = tableView.enclosingScrollView {
+            ModelTableColumnConfigurator.resetHorizontalScrolling(in: scrollView)
+        }
+    }
+
+    private func tableColumnDidResize() {
+        guard !isApplyingVisualWidths, let tableView else { return }
+        guard !minimumWidths.isEmpty, !maximumWidths.isEmpty, tableView.tableColumns.indices.contains(0) else { return }
+
+        let currentModelWidth = tableView.tableColumns[0].width
+        let clampedModelWidth = min(max(currentModelWidth, minimumWidths[0]), maximumWidths[0])
+        if abs((modelMinimumWidth ?? minimumWidths[0]) - clampedModelWidth) > 0.5 {
+            modelMinimumWidth = clampedModelWidth
+            publishCurrentMinimumWidth()
+        }
+
+        applyVisualWidths(
+            to: tableView,
+            availableTableWidth: availableTableWidth,
+            minimumWidths: minimumWidths,
+            maximumWidths: maximumWidths
+        )
+    }
+
+    private func publishCurrentMinimumWidth() {
+        guard let tableView else { return }
+        if let scrollView = tableView.enclosingScrollView {
+            ModelTableColumnConfigurator.resetHorizontalScrolling(in: scrollView)
+        }
+        let columnCount = min(expectedColumnCount, minimumWidths.count)
+        let modelWidth = modelMinimumWidth ?? minimumWidths.first ?? 0
+        let fixedColumnsWidth = minimumWidths
+            .prefix(columnCount)
+            .dropFirst()
+            .reduce(CGFloat.zero, +)
+        let intercellWidth = tableView.intercellSpacing.width * CGFloat(max(0, expectedColumnCount - 1))
+        onTableMinimumWidthChange?(modelWidth + fixedColumnsWidth + intercellWidth + tableChromeWidth)
+    }
+}
+
+private final class ModelTableDelegateProxy: NSObject, NSTableViewDelegate {
+    private static let sizeToFitSelector = NSSelectorFromString("tableView:sizeToFitWidthOfColumn:")
+    private static var associationKey: UInt8 = 0
+
+    private weak var originalDelegate: NSTableViewDelegate?
+    private var minimumWidths: [CGFloat]
+
+    private init(originalDelegate: NSTableViewDelegate?, minimumWidths: [CGFloat]) {
+        self.originalDelegate = originalDelegate
+        self.minimumWidths = minimumWidths
+        super.init()
+    }
+
+    static func install(on tableView: NSTableView, minimumWidths: [CGFloat]) {
+        if let proxy = objc_getAssociatedObject(tableView, &associationKey) as? ModelTableDelegateProxy {
+            proxy.minimumWidths = minimumWidths
+            if tableView.delegate !== proxy {
+                proxy.originalDelegate = tableView.delegate
+                tableView.delegate = proxy
+            }
+            return
+        }
+
+        let proxy = ModelTableDelegateProxy(originalDelegate: tableView.delegate, minimumWidths: minimumWidths)
+        objc_setAssociatedObject(tableView, &associationKey, proxy, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        tableView.delegate = proxy
+    }
+
+    func tableView(_ tableView: NSTableView, sizeToFitWidthOfColumn column: Int) -> CGFloat {
+        guard minimumWidths.indices.contains(column) else {
+            return tableView.tableColumns.indices.contains(column) ? tableView.tableColumns[column].minWidth : 0
+        }
+        return minimumWidths[column]
+    }
+
+    override func responds(to aSelector: Selector!) -> Bool {
+        if aSelector == Self.sizeToFitSelector {
+            return true
+        }
+        if super.responds(to: aSelector) {
+            return true
+        }
+        return originalDelegate?.responds(to: aSelector) ?? false
+    }
+
+    override func forwardingTarget(for aSelector: Selector!) -> Any? {
+        if let originalDelegate, originalDelegate.responds(to: aSelector) {
+            return originalDelegate
+        }
+        return super.forwardingTarget(for: aSelector)
+    }
+}
+
 private struct WindowFrameController: NSViewRepresentable {
     let minWidth: CGFloat
     let minHeight: CGFloat
+    @Binding var isUserLiveResizing: Bool
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(isUserLiveResizing: $isUserLiveResizing)
+    }
 
     func makeNSView(context: Context) -> NSView {
         let view = NSView(frame: .zero)
         DispatchQueue.main.async {
             if let window = view.window {
-                Self.apply(to: window, minWidth: minWidth, minHeight: minHeight)
+                Self.apply(to: window, coordinator: context.coordinator, minWidth: minWidth, minHeight: minHeight)
             }
         }
         return view
@@ -1447,38 +2171,149 @@ private struct WindowFrameController: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {
         DispatchQueue.main.async {
             if let window = nsView.window {
-                Self.apply(to: window, minWidth: minWidth, minHeight: minHeight)
+                Self.apply(to: window, coordinator: context.coordinator, minWidth: minWidth, minHeight: minHeight)
             }
         }
     }
 
-    private static func apply(to window: NSWindow, minWidth: CGFloat, minHeight: CGFloat) {
-        window.contentMinSize = NSSize(width: minWidth, height: minHeight)
-        window.minSize = NSSize(width: minWidth, height: minHeight)
-        expand(window, toMinimumWidth: minWidth, minimumHeight: minHeight)
+    private static func apply(to window: NSWindow, coordinator: Coordinator, minWidth: CGFloat, minHeight: CGFloat) {
+        coordinator.attach(to: window)
+        coordinator.minWidth = minWidth
+        coordinator.minHeight = minHeight
+        let contentMinimumSize = NSSize(width: minWidth, height: minHeight)
+        window.contentMinSize = contentMinimumSize
+        window.minSize = frameSize(for: contentMinimumSize, in: window)
     }
 
-    static func expand(_ window: NSWindow, toMinimumWidth minWidth: CGFloat, minimumHeight minHeight: CGFloat) {
-        var frame = window.frame
-        let targetWidth = max(frame.width, minWidth)
-        let targetHeight = max(frame.height, minHeight)
-        guard targetWidth > frame.width + 0.5 || targetHeight > frame.height + 0.5 else { return }
+    static func setWidth(
+        _ window: NSWindow,
+        to width: CGFloat,
+        minimumWidth minWidth: CGFloat,
+        minimumHeight minHeight: CGFloat,
+        animate: Bool = true
+    ) {
+        let nextMinimumSize = NSSize(width: minWidth, height: minHeight)
+        window.contentMinSize = nextMinimumSize
+        window.minSize = frameSize(for: nextMinimumSize, in: window)
 
-        let screenFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame
-        let originalMaxX = frame.maxX
-        let desiredMaxX = originalMaxX + max(0, targetWidth - frame.width)
-        let boundedMaxX = min(desiredMaxX, screenFrame?.maxX ?? desiredMaxX)
+        let currentFrame = window.frame
+        let currentContentRect = window.contentRect(forFrameRect: currentFrame)
+        let targetWidth = max(width, minWidth)
+        let targetHeight = max(currentContentRect.height, minHeight)
+        var targetContentRect = currentContentRect
+        targetContentRect.size.width = targetWidth
+        targetContentRect.size.height = targetHeight
+        var frame = window.frameRect(forContentRect: targetContentRect)
+        guard abs(frame.width - currentFrame.width) > 0.5 || abs(frame.height - currentFrame.height) > 0.5 else { return }
 
-        frame.size.width = targetWidth
-        frame.size.height = targetHeight
-        frame.origin.x = boundedMaxX - targetWidth
+        frame.origin.x = currentFrame.origin.x
+        frame.origin.y = currentFrame.maxY - frame.height
 
-        if let screenFrame {
-            frame.origin.y = min(frame.origin.y, screenFrame.maxY - targetHeight)
+        if let screenFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame {
+            if frame.maxX > screenFrame.maxX {
+                frame.origin.x = screenFrame.maxX - frame.width
+            }
+            frame.origin.x = max(frame.origin.x, screenFrame.minX)
+            frame.origin.y = min(frame.origin.y, screenFrame.maxY - frame.height)
             frame.origin.y = max(frame.origin.y, screenFrame.minY)
         }
 
-        window.setFrame(frame, display: true, animate: true)
+        window.setFrame(frame, display: true, animate: animate)
+    }
+
+    private static func frameSize(for contentSize: NSSize, in window: NSWindow) -> NSSize {
+        let contentRect = NSRect(origin: .zero, size: contentSize)
+        return window.frameRect(forContentRect: contentRect).size
+    }
+
+    final class Coordinator {
+        var minWidth: CGFloat = 0
+        var minHeight: CGFloat = 0
+        private var isUserLiveResizing: Binding<Bool>
+        private weak var window: NSWindow?
+        private var resizeObserver: NSObjectProtocol?
+        private var liveResizeStartObserver: NSObjectProtocol?
+        private var liveResizeEndObserver: NSObjectProtocol?
+
+        init(isUserLiveResizing: Binding<Bool>) {
+            self.isUserLiveResizing = isUserLiveResizing
+        }
+
+        deinit {
+            if let resizeObserver {
+                NotificationCenter.default.removeObserver(resizeObserver)
+            }
+            if let liveResizeStartObserver {
+                NotificationCenter.default.removeObserver(liveResizeStartObserver)
+            }
+            if let liveResizeEndObserver {
+                NotificationCenter.default.removeObserver(liveResizeEndObserver)
+            }
+        }
+
+        func attach(to window: NSWindow) {
+            guard self.window !== window else { return }
+            if let resizeObserver {
+                NotificationCenter.default.removeObserver(resizeObserver)
+            }
+            if let liveResizeStartObserver {
+                NotificationCenter.default.removeObserver(liveResizeStartObserver)
+            }
+            if let liveResizeEndObserver {
+                NotificationCenter.default.removeObserver(liveResizeEndObserver)
+            }
+            self.window = window
+            resizeObserver = NotificationCenter.default.addObserver(
+                forName: NSWindow.didResizeNotification,
+                object: window,
+                queue: .main
+            ) { [weak self] _ in
+                self?.enforceMinimumSize()
+            }
+            liveResizeStartObserver = NotificationCenter.default.addObserver(
+                forName: NSWindow.willStartLiveResizeNotification,
+                object: window,
+                queue: .main
+            ) { [weak self] _ in
+                self?.isUserLiveResizing.wrappedValue = true
+            }
+            liveResizeEndObserver = NotificationCenter.default.addObserver(
+                forName: NSWindow.didEndLiveResizeNotification,
+                object: window,
+                queue: .main
+            ) { [weak self] _ in
+                DispatchQueue.main.async {
+                    self?.isUserLiveResizing.wrappedValue = false
+                }
+            }
+        }
+
+        private func enforceMinimumSize() {
+            guard let window else { return }
+            let currentFrame = window.frame
+            let currentContentRect = window.contentRect(forFrameRect: currentFrame)
+            let targetWidth = max(currentContentRect.width, minWidth)
+            let targetHeight = max(currentContentRect.height, minHeight)
+            guard targetWidth > currentContentRect.width + 0.5 || targetHeight > currentContentRect.height + 0.5 else { return }
+
+            var targetContentRect = currentContentRect
+            targetContentRect.size.width = targetWidth
+            targetContentRect.size.height = targetHeight
+            var frame = window.frameRect(forContentRect: targetContentRect)
+            frame.origin.x = currentFrame.origin.x
+            frame.origin.y = currentFrame.maxY - frame.height
+
+            if let screenFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame {
+                if frame.maxX > screenFrame.maxX {
+                    frame.origin.x = screenFrame.maxX - frame.width
+                }
+                frame.origin.x = max(frame.origin.x, screenFrame.minX)
+                frame.origin.y = min(frame.origin.y, screenFrame.maxY - frame.height)
+                frame.origin.y = max(frame.origin.y, screenFrame.minY)
+            }
+
+            window.setFrame(frame, display: true, animate: false)
+        }
     }
 }
 
