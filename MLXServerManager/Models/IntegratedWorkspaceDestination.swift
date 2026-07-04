@@ -1,6 +1,6 @@
 import Foundation
 
-enum IntegratedWorkspaceDestination: String, CaseIterable, Identifiable {
+enum IntegratedWorkspaceDestination: String, CaseIterable, Identifiable, Hashable {
     case models
     case downloads
     case settings

@@ -20,7 +20,7 @@ struct ContentView: View {
 
     var body: some View {
         IntegratedWorkspaceView(viewModel: viewModel)
-            .frame(minWidth: IntegratedWorkspaceView.baseMinimumWidth, minHeight: IntegratedWorkspaceView.baseMinimumHeight)
+            .frame(minWidth: 0, minHeight: IntegratedWorkspaceView.baseMinimumHeight)
             .background(WindowTitlebarSeparatorHider())
         .confirmationDialog(
             t("Delete Model Profile?", "モデルプロファイルを削除しますか？"),
@@ -112,18 +112,28 @@ private struct WindowTitlebarSeparatorHider: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async {
-            view.window?.titlebarSeparatorStyle = .none
-            view.window?.isOpaque = true
-            view.window?.backgroundColor = .windowBackgroundColor
+            guard let window = view.window else { return }
+            window.titlebarSeparatorStyle = .none
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
+            window.styleMask.insert(.fullSizeContentView)
+            window.isMovableByWindowBackground = true
+            window.isOpaque = false
+            window.backgroundColor = .clear
         }
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
         DispatchQueue.main.async {
-            nsView.window?.titlebarSeparatorStyle = .none
-            nsView.window?.isOpaque = true
-            nsView.window?.backgroundColor = .windowBackgroundColor
+            guard let window = nsView.window else { return }
+            window.titlebarSeparatorStyle = .none
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
+            window.styleMask.insert(.fullSizeContentView)
+            window.isMovableByWindowBackground = true
+            window.isOpaque = false
+            window.backgroundColor = .clear
         }
     }
 }

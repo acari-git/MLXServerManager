@@ -11,7 +11,6 @@ enum AppSymbol {
     // MARK: - Window and panes
 
     static let leftSidebar = "sidebar.left"
-    static let rightInspector = "sidebar.right"
     static let bottomPanel = "rectangle.bottomthird.inset.filled"
 
     // MARK: - Runtime operations
@@ -31,13 +30,6 @@ enum AppSymbol {
     static let refresh = "arrow.clockwise"
     static let add = "plus"
     static let search = "magnifyingglass"
-
-    // MARK: - Inspector sections
-
-    static let modelInspector = "slider.horizontal.3"
-    static let connection = "network"
-    static let recovery = "wrench.and.screwdriver"
-    static let hermesAgent = "point.3.connected.trianglepath.dotted"
 
     // MARK: - Disclosure
 
