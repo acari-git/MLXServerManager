@@ -3276,6 +3276,28 @@ final class AppViewModel: ObservableObject {
         }
     }
 
+    func copyBaseURL(for model: ModelConfig) {
+        let baseURL = "http://\(model.host):\(model.serverPort)/v1"
+        if copyToPasteboard(baseURL) {
+            appendLog("[profile] copied base URL for \(model.displayName).")
+        } else {
+            appendLog("[profile] failed to copy base URL for \(model.displayName).")
+        }
+    }
+
+    func copyLocalPath(for model: ModelConfig) {
+        guard let localPath = ModelAvailabilityPathFormatter.localPathCandidate(for: model) else {
+            appendLog("[profile] local path is not available for \(model.displayName).")
+            return
+        }
+
+        if copyToPasteboard(localPath) {
+            appendLog("[profile] copied local path for \(model.displayName).")
+        } else {
+            appendLog("[profile] failed to copy local path for \(model.displayName).")
+        }
+    }
+
     func copyLaunchCommandPreview(for model: ModelConfig) {
         let preview = LaunchCommandBuilder.command(
             executablePath: settings.mlxServerExecutablePath,

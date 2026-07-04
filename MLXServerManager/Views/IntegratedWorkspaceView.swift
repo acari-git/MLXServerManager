@@ -14,6 +14,13 @@ struct IntegratedWorkspaceView: View {
     @State private var modelTableSortDirection: SortOrder = .forward
     @State private var hoveredStatusModelID: ModelConfig.ID?
     @State private var isMiniChatInputFocused = false
+    @State private var isModelInspectorVisible = true
+    @State private var isModelInspectorAutoHidden = false
+    @State private var modelInspectorProgress: CGFloat = 1
+    @State private var isModelInspectorAnimating = false
+    @State private var isCenterWidthAnimating = false
+    @State private var centerWidthAnimationGeneration = 0
+    @State private var currentDetailWidth: CGFloat = 0
 
     private var selectedModel: ModelConfig? { viewModel.selectedModel }
     private var isSelectedRunning: Bool { selectedModel?.id == viewModel.runningModelID }
@@ -93,6 +100,31 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
+    private func toggleModelInspectorRequested() {
+        let nextVisible = !isModelInspectorVisible
+        isModelInspectorAutoHidden = false
+
+        guard !nextVisible || canShowModelInspector(forDetailWidth: currentDetailWidth) else {
+            setModelInspectorVisible(false)
+            return
+        }
+
+        setModelInspectorVisible(nextVisible)
+    }
+
+    private func setModelInspectorVisible(_ isVisible: Bool) {
+        isModelInspectorVisible = isVisible
+        isModelInspectorAnimating = true
+
+        withAnimation(.easeInOut(duration: 0.24)) {
+            modelInspectorProgress = isVisible ? 1 : 0
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) {
+            isModelInspectorAnimating = false
+        }
+    }
+
     private func applyAutomaticPanelCollapse(for size: CGSize) {
         withAnimation(.easeInOut(duration: 0.24)) {
             let canShowBottom = size.height >= Layout.minimumBottomPanelHeight
@@ -107,6 +139,52 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
+    private func updateDetailWidth(_ detailWidth: CGFloat) {
+        let didChangeWidth = abs(currentDetailWidth - detailWidth) > 2
+        currentDetailWidth = detailWidth
+
+        if didChangeWidth {
+            centerWidthAnimationGeneration += 1
+            let generation = centerWidthAnimationGeneration
+
+            if !isCenterWidthAnimating {
+                isCenterWidthAnimating = true
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+                if centerWidthAnimationGeneration == generation {
+                    isCenterWidthAnimating = false
+                }
+            }
+        }
+
+        applyAutomaticModelInspectorCollapse(forDetailWidth: detailWidth)
+    }
+
+    private var canToggleModelInspectorOpen: Bool {
+        selectedDestination == .models && canShowModelInspector(forDetailWidth: currentDetailWidth)
+    }
+
+    private var isModelInspectorToggleEnabled: Bool {
+        isModelInspectorVisible || canToggleModelInspectorOpen
+    }
+
+    private func canShowModelInspector(forDetailWidth detailWidth: CGFloat) -> Bool {
+        let inspectorReservedWidth = Layout.modelInspectorWidth + Layout.modelInspectorDividerWidth
+        let minimumFullMetadataOuterWidth = Layout.modelTableFullMetadataWidth + Layout.modelTableHorizontalChrome
+        return detailWidth - inspectorReservedWidth >= minimumFullMetadataOuterWidth
+    }
+
+    private func applyAutomaticModelInspectorCollapse(forDetailWidth detailWidth: CGFloat) {
+        guard selectedDestination == .models else { return }
+        guard isModelInspectorVisible else { return }
+
+        if !canShowModelInspector(forDetailWidth: detailWidth) {
+            isModelInspectorAutoHidden = true
+            setModelInspectorVisible(false)
+        }
+    }
+
     private enum Layout {
         static let tableChromeWidth: CGFloat = 0
         static let leftPanelWidth: CGFloat = 280
@@ -114,6 +192,11 @@ struct IntegratedWorkspaceView: View {
         static let windowMinimumHeight: CGFloat = 760
         static let minimumBottomPanelHeight: CGFloat = 720
         static let modelSortHeaderHeight: CGFloat = 32
+        static let modelTableHorizontalChrome: CGFloat = 28
+        static let modelTableFullMetadataWidth: CGFloat = 840
+        static let modelInspectorWidth: CGFloat = 320
+        static let modelInspectorDividerWidth: CGFloat = 1
+        static let modelInspectorDockThreshold: CGFloat = 1189
         static let sidebarAnimationDuration: TimeInterval = 0.24
     }
 
@@ -148,25 +231,45 @@ struct IntegratedWorkspaceView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            NavigationSplitView {
-                standardSidebar
-            } detail: {
-                GeometryReader { detailProxy in
-                    centerColumn(availableWidth: detailProxy.size.width)
-                        .id("center-\(viewModel.settings.uiAppearance)")
-                        .frame(width: detailProxy.size.width, height: detailProxy.size.height, alignment: .topLeading)
-                        .clipped()
-                        .background(Color(nsColor: .windowBackgroundColor))
+            ZStack(alignment: .trailing) {
+                Color(nsColor: .windowBackgroundColor)
+                    .ignoresSafeArea()
+
+                if selectedDestination == .models {
+                    let inspectorSlotWidth = Layout.modelInspectorWidth + Layout.modelInspectorDividerWidth
+                    rootModelInspectorOverlay(availableHeight: geometry.size.height)
+                        .frame(width: inspectorSlotWidth)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .offset(x: inspectorSlotWidth * (1 - modelInspectorProgress))
+                        .allowsHitTesting(isModelInspectorVisible && modelInspectorProgress > 0.98)
+                        .zIndex(3)
                 }
-                .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
+
+                NavigationSplitView {
+                    standardSidebar
+                } detail: {
+                    GeometryReader { detailProxy in
+                        workspaceDetail(availableWidth: detailProxy.size.width, availableHeight: detailProxy.size.height)
+                            .id("center-\(viewModel.settings.uiAppearance)")
+                            .frame(width: detailProxy.size.width, height: detailProxy.size.height, alignment: .topLeading)
+                            .clipped()
+                            .background(Color(nsColor: .windowBackgroundColor))
+                            .onAppear {
+                                updateDetailWidth(detailProxy.size.width)
+                            }
+                            .onChange(of: detailProxy.size.width) { _, width in
+                                updateDetailWidth(width)
+                            }
+                    }
+                    .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
                     .navigationTitle(selectedDestination.title(language: viewModel.settings.uiLanguage))
-            }
-            .navigationSplitViewStyle(.balanced)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(nsColor: .windowBackgroundColor))
-            .toolbar {
-                ToolbarItemGroup(placement: .primaryAction) {
+                }
+                .navigationSplitViewStyle(.balanced)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.clear)
+                .toolbar {
+                    ToolbarItemGroup(placement: .primaryAction) {
                     panelToggleButton(
                         systemImage: AppSymbol.bottomPanel,
                         isActive: isBottomPanelVisible,
@@ -175,14 +278,23 @@ struct IntegratedWorkspaceView: View {
                             : t("Show bottom panel", "下段パネルを表示"),
                         action: toggleBottomPanelRequested
                     )
+
+                    panelToggleButton(
+                        systemImage: "sidebar.trailing",
+                        isActive: isModelInspectorVisible,
+                        isEnabled: isModelInspectorToggleEnabled,
+                        help: isModelInspectorToggleHelp,
+                        action: toggleModelInspectorRequested
+                    )
+                    }
                 }
-            }
-            .animation(.easeInOut(duration: 0.24), value: isBottomPanelVisible)
-            .onAppear {
-                applyAutomaticPanelCollapse(for: geometry.size)
-            }
-            .onChange(of: geometry.size) { _, size in
-                applyAutomaticPanelCollapse(for: size)
+                .animation(.easeInOut(duration: 0.24), value: isBottomPanelVisible)
+                .onAppear {
+                    applyAutomaticPanelCollapse(for: geometry.size)
+                }
+                .onChange(of: geometry.size) { _, size in
+                    applyAutomaticPanelCollapse(for: size)
+                }
             }
         }
         .tint(activeAccentColor)
@@ -191,9 +303,20 @@ struct IntegratedWorkspaceView: View {
         .accessibilityIdentifier("integrated-workspace")
     }
 
+    private var isModelInspectorToggleHelp: String {
+        if isModelInspectorVisible {
+            return t("Hide model inspector", "モデルInspectorを隠す")
+        }
+        if canToggleModelInspectorOpen {
+            return t("Show model inspector", "モデルInspectorを表示")
+        }
+        return t("Model inspector needs more width", "モデルInspectorを表示するには幅が足りません")
+    }
+
     private func panelToggleButton(
         systemImage: String,
         isActive: Bool,
+        isEnabled: Bool = true,
         help: String,
         action: @escaping () -> Void
     ) -> some View {
@@ -204,6 +327,7 @@ struct IntegratedWorkspaceView: View {
                 .labelStyle(.iconOnly)
                 .symbolVariant(isActive ? .fill : .none)
         }
+        .disabled(!isEnabled)
         .help(help)
         .accessibilityLabel(help)
     }
@@ -403,6 +527,56 @@ struct IntegratedWorkspaceView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private func rootModelInspectorOverlay(availableHeight: CGFloat) -> some View {
+        let inspectorWidth = Layout.modelInspectorWidth
+        let dividerWidth = Layout.modelInspectorDividerWidth
+
+        return HStack(spacing: 0) {
+            Rectangle()
+                .fill(Color(nsColor: .separatorColor).opacity(0.55))
+                .frame(width: dividerWidth, height: availableHeight)
+
+            ZStack(alignment: .top) {
+                InspectorVisualEffectBackground()
+                    .ignoresSafeArea()
+
+                modelInspectorPanel
+                    .frame(width: inspectorWidth, height: availableHeight + 36, alignment: .topLeading)
+                    .offset(y: -36)
+                    .allowsHitTesting(isModelInspectorVisible && modelInspectorProgress > 0.98)
+            }
+            .frame(width: inspectorWidth, height: availableHeight, alignment: .top)
+        }
+        .frame(width: inspectorWidth + dividerWidth, height: availableHeight, alignment: .topTrailing)
+        .background(InspectorVisualEffectBackground().ignoresSafeArea())
+        .animation(.easeInOut(duration: 0.24), value: modelInspectorProgress)
+    }
+
+    @ViewBuilder
+    private func workspaceDetail(availableWidth: CGFloat, availableHeight: CGFloat) -> some View {
+        if selectedDestination == .models, availableWidth >= Layout.modelInspectorDockThreshold || modelInspectorProgress > 0 {
+            let inspectorWidth = Layout.modelInspectorWidth
+            let dividerWidth: CGFloat = 1
+            let reservedWidth = (inspectorWidth + dividerWidth) * modelInspectorProgress
+            let centerWidth = max(0, availableWidth - reservedWidth)
+
+            HStack(spacing: 0) {
+                centerColumn(availableWidth: centerWidth)
+                    .frame(width: centerWidth, height: availableHeight, alignment: .topLeading)
+                    .clipped()
+
+                Color.clear
+                    .frame(width: reservedWidth, height: availableHeight, alignment: .trailing)
+            }
+            .frame(width: availableWidth, height: availableHeight, alignment: .topLeading)
+            .clipped()
+            .animation(.easeInOut(duration: 0.24), value: modelInspectorProgress)
+        } else {
+            centerColumn(availableWidth: availableWidth)
+                .frame(width: availableWidth, height: availableHeight, alignment: .topLeading)
+        }
+    }
+
     @ViewBuilder
     private func centerColumn(availableWidth: CGFloat) -> some View {
         switch selectedDestination {
@@ -494,7 +668,7 @@ struct IntegratedWorkspaceView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 GeometryReader { proxy in
-                    modelTable(availableWidth: proxy.size.width)
+                    modelTable(availableWidth: proxy.size.width, allowsWidthAnimation: isModelInspectorAnimating)
                         .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
                         .clipped()
                 }
@@ -506,7 +680,7 @@ struct IntegratedWorkspaceView: View {
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
-    private func modelTable(availableWidth: CGFloat) -> some View {
+    private func modelTable(availableWidth: CGFloat, allowsWidthAnimation: Bool = false) -> some View {
         ScrollView(.vertical) {
             LazyVStack(alignment: .leading, spacing: 10) {
                 if availableWidth >= 850 {
@@ -529,7 +703,9 @@ struct IntegratedWorkspaceView: View {
         .scrollContentBackground(.hidden)
         .background(Color(nsColor: .windowBackgroundColor))
         .transaction { transaction in
-            transaction.animation = nil
+            if !allowsWidthAnimation {
+                transaction.animation = nil
+            }
         }
         .accessibilityIdentifier("integrated-model-list")
     }
@@ -718,12 +894,12 @@ struct IntegratedWorkspaceView: View {
                 Text(model.displayName)
                     .font(.callout.weight(.semibold))
                     .lineLimit(1)
-                    .truncationMode(.middle)
+                    .truncationMode(.tail)
                 Text(model.notes.isEmpty ? model.family : model.notes)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                    .truncationMode(.middle)
+                    .truncationMode(.tail)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -905,6 +1081,182 @@ struct IntegratedWorkspaceView: View {
         .padding(.vertical, 5)
         .lineLimit(1)
         .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private var modelInspectorPanel: some View {
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: 14) {
+                if let model = selectedModel {
+                    modelInspectorHeader(for: model)
+                    modelInspectorOverview(for: model)
+                    modelInspectorRuntime(for: model)
+                    modelInspectorClientSetup(for: model)
+                    modelInspectorCommandPreview(for: model)
+                    modelInspectorActions(for: model)
+                } else {
+                    ContentUnavailableView {
+                        Label(t("No model selected", "モデル未選択"), systemImage: "sidebar.trailing")
+                    } description: {
+                        Text(t("Select a model to inspect its details.", "詳細を表示するモデルを選択してください。"))
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 260)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 0)
+            .padding(.bottom, 0)
+        }
+        .scrollContentBackground(.hidden)
+        .contentMargins(.top, 0, for: .scrollContent)
+        .contentMargins(.bottom, 0, for: .scrollContent)
+        .background(Color.clear)
+        .accessibilityIdentifier("integrated-model-inspector")
+    }
+
+    private func modelInspectorHeader(for model: ModelConfig) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                modelStatusIndicator(for: model)
+                    .padding(.top, 6)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(model.displayName)
+                        .font(.headline.weight(.semibold))
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                    Text(model.modelID)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                }
+                Spacer(minLength: 0)
+            }
+
+            lightweightStatusActionButton(for: model)
+                .frame(width: 96, alignment: .leading)
+        }
+        .padding(14)
+        .background(inspectorCardBackground)
+    }
+
+    private func modelInspectorOverview(for model: ModelConfig) -> some View {
+        inspectorSection(title: t("Overview", "概要")) {
+            inspectorInfoRow(title: t("Size", "サイズ"), value: viewModel.modelSizeText(for: model))
+            inspectorInfoRow(title: t("Family", "ファミリー"), value: model.family)
+            inspectorInfoRow(title: t("Quantization", "量子化"), value: model.quantization)
+            inspectorInfoRow(title: t("Thinking", "Thinking"), value: model.enableThinking ? t("Enabled", "有効") : t("Disabled", "無効"))
+            if !model.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                inspectorInfoRow(title: t("Notes", "メモ"), value: model.notes)
+            }
+        }
+    }
+
+    private func modelInspectorRuntime(for model: ModelConfig) -> some View {
+        inspectorSection(title: t("Runtime", "ランタイム")) {
+            inspectorInfoRow(title: t("Status", "状態"), value: viewModel.integratedStatusText(for: model))
+            inspectorInfoRow(title: t("Endpoint", "接続先"), value: "\(model.host):\(model.serverPort)")
+            inspectorInfoRow(title: t("Memory", "メモリ"), value: viewModel.integratedMemoryText(for: model))
+            inspectorInfoRow(title: t("Local path", "ローカルパス"), value: ModelAvailabilityPathFormatter.localPathCandidate(for: model).map { ModelAvailabilityPathFormatter.compact(path: $0) } ?? "-")
+        }
+    }
+
+    private func modelInspectorClientSetup(for model: ModelConfig) -> some View {
+        inspectorSection(title: t("Client Setup", "クライアント設定")) {
+            inspectorCopyRow(title: t("Base URL", "Base URL"), value: "http://\(model.host):\(model.serverPort)/v1") {
+                viewModel.copyBaseURL(for: model)
+            }
+            inspectorCopyRow(title: t("Model ID", "モデルID"), value: model.modelID) {
+                viewModel.copyModelID(for: model)
+            }
+            if let localPath = ModelAvailabilityPathFormatter.localPathCandidate(for: model) {
+                inspectorCopyRow(title: t("Local path", "ローカルパス"), value: localPath) {
+                    viewModel.copyLocalPath(for: model)
+                }
+            }
+        }
+    }
+
+    private func modelInspectorCommandPreview(for model: ModelConfig) -> some View {
+        inspectorSection(title: t("Command Preview", "起動コマンド")) {
+            Text(LaunchCommandBuilder.command(executablePath: viewModel.settings.mlxServerExecutablePath, model: model))
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+                .lineLimit(5)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button {
+                viewModel.copyLaunchCommandPreview(for: model)
+            } label: {
+                Label(t("Copy Command", "コマンドをコピー"), systemImage: "doc.on.doc")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+    }
+
+    private func modelInspectorActions(for model: ModelConfig) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                viewModel.editProfileRequested(for: model)
+            } label: {
+                Label(t("Edit Settings", "設定を編集"), systemImage: "gearshape")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .disabled(viewModel.isManagedProcessRunning)
+        }
+        .padding(14)
+        .background(inspectorCardBackground)
+    }
+
+    private func inspectorSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+            content()
+        }
+        .padding(14)
+        .background(inspectorCardBackground)
+    }
+
+    private var inspectorCardBackground: some View {
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .fill(Color(nsColor: .controlBackgroundColor).opacity(0.22))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 1)
+            )
+    }
+
+    private func inspectorInfoRow(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.caption)
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+                .truncationMode(.middle)
+                .textSelection(.enabled)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func inspectorCopyRow(title: String, value: String, action: @escaping () -> Void) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            inspectorInfoRow(title: title, value: value)
+            Button(action: action) {
+                Image(systemName: "doc.on.doc")
+                    .frame(width: 22, height: 22)
+            }
+            .buttonStyle(.borderless)
+            .help(t("Copy", "コピー"))
+        }
     }
 
     private var selectedModelBinding: Binding<ModelConfig.ID?> {
@@ -1211,6 +1563,24 @@ struct IntegratedWorkspaceView: View {
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
+}
+
+private struct InspectorVisualEffectBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .sidebar
+        view.blendingMode = .behindWindow
+        view.state = .active
+        view.isEmphasized = false
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = .sidebar
+        nsView.blendingMode = .behindWindow
+        nsView.state = .active
+        nsView.isEmphasized = false
+    }
 }
 
 private struct ModelTableRow: Identifiable {
