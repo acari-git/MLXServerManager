@@ -3268,6 +3268,22 @@ final class AppViewModel: ObservableObject {
         copyLaunchCommandPreview(selectedLaunchCommandPreview)
     }
 
+    func copyModelID(for model: ModelConfig) {
+        if copyToPasteboard(model.modelID) {
+            appendLog("[profile] copied model id for \(model.displayName).")
+        } else {
+            appendLog("[profile] failed to copy model id for \(model.displayName).")
+        }
+    }
+
+    func copyLaunchCommandPreview(for model: ModelConfig) {
+        let preview = LaunchCommandBuilder.command(
+            executablePath: settings.mlxServerExecutablePath,
+            model: model
+        )
+        copyLaunchCommandPreview(preview)
+    }
+
     func copyLaunchCommandPreview(_ preview: String) {
         if copyToPasteboard(preview) {
             appendLog("[profile] copied launch command preview to clipboard.")

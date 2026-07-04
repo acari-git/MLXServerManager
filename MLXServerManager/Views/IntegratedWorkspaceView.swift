@@ -87,15 +87,9 @@ struct IntegratedWorkspaceView: View {
     }
 
     private func toggleBottomPanelRequested() {
-        if isBottomPanelVisible {
-            isBottomPanelAutoHidden = false
-            isBottomPanelVisible = false
-            return
-        }
-
         isBottomPanelAutoHidden = false
         withAnimation(.easeInOut(duration: 0.24)) {
-            isBottomPanelVisible = true
+            isBottomPanelVisible.toggle()
         }
     }
 
@@ -119,6 +113,7 @@ struct IntegratedWorkspaceView: View {
         static let defaultCenterMinimumWidth: CGFloat = 620
         static let windowMinimumHeight: CGFloat = 760
         static let minimumBottomPanelHeight: CGFloat = 720
+        static let modelSortHeaderHeight: CGFloat = 32
         static let sidebarAnimationDuration: TimeInterval = 0.24
     }
 
@@ -252,8 +247,8 @@ struct IntegratedWorkspaceView: View {
             Divider()
             systemHealthCard
         }
-        .padding(.leading, 20)
-        .padding(.trailing, 14)
+        .padding(.leading, 10)
+        .padding(.trailing, 12)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
@@ -274,7 +269,7 @@ struct IntegratedWorkspaceView: View {
                 }
             }
         }
-        .padding(.leading, 14)
+        .padding(.leading, 4)
         .padding(.vertical, 2)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -371,7 +366,7 @@ struct IntegratedWorkspaceView: View {
                 .frame(width: 82, alignment: .leading)
         }
         .lineLimit(1)
-        .padding(.leading, 14)
+        .padding(.leading, 4)
     }
 
     private var sidebarFooterControls: some View {
@@ -402,8 +397,8 @@ struct IntegratedWorkspaceView: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("integrated-sidebar-footer-settings")
         }
-        .padding(.leading, 12)
-        .padding(.trailing, 14)
+        .padding(.leading, 2)
+        .padding(.trailing, 12)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -425,7 +420,7 @@ struct IntegratedWorkspaceView: View {
                             bottomOperationsPanel(availableWidth: proxy.size.width)
                                 .frame(height: max(180, proxy.size.height / 3))
                         }
-                        .transition(.opacity)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
@@ -514,6 +509,14 @@ struct IntegratedWorkspaceView: View {
     private func modelTable(availableWidth: CGFloat) -> some View {
         ScrollView(.vertical) {
             LazyVStack(alignment: .leading, spacing: 10) {
+                if availableWidth >= 850 {
+                    modelSortHeader(availableWidth: max(0, availableWidth - 28))
+                        .frame(width: max(0, availableWidth - 28), alignment: .leading)
+                } else {
+                    compactSortBar
+                        .frame(width: max(0, availableWidth - 28), alignment: .leading)
+                }
+
                 ForEach(sortedModelRows) { row in
                     lightweightModelRow(for: row.model, availableWidth: max(0, availableWidth - 28))
                         .frame(width: max(0, availableWidth - 28), alignment: .leading)
@@ -531,37 +534,138 @@ struct IntegratedWorkspaceView: View {
         .accessibilityIdentifier("integrated-model-list")
     }
 
-    private func lightweightModelRow(for model: ModelConfig, availableWidth: CGFloat) -> some View {
-        let isSelected = viewModel.selectedModelID == model.id
-        let isNarrow = availableWidth < 650
+    private func modelSortHeader(availableWidth: CGFloat) -> some View {
+        HStack(alignment: .center, spacing: 14) {
+            sortHeaderButton(t("Model", "モデル名"), column: .name, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-        return Group {
-            if isNarrow {
-                narrowModelCard(for: model)
-            } else {
-                compactModelCard(for: model)
-            }
+            sortHeaderButton(t("Size", "サイズ"), column: .size, alignment: .leading)
+                .frame(width: 72, alignment: .leading)
+
+            sortHeaderButton(t("Status", "状態"), column: .status, alignment: .center)
+                .frame(width: 88)
+
+            sortHeaderButton(t("Endpoint", "接続先"), column: .endpoint, alignment: .leading)
+                .frame(width: 132, alignment: .leading)
+
+            sortHeaderButton(t("Memory", "メモリ"), column: .memory, alignment: .leading)
+                .frame(width: 78, alignment: .leading)
+
+            Text(t("Actions", "操作"))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 42)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .frame(width: availableWidth, height: Layout.modelSortHeaderHeight, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.32))
+        )
+        .accessibilityIdentifier("integrated-model-sort-header")
+    }
+
+    private var compactSortBar: some View {
+        HStack(spacing: 8) {
+            Text(sortSummaryText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Spacer()
+            Menu {
+                sortMenuButton(t("Model", "モデル名"), column: .name)
+                sortMenuButton(t("Size", "サイズ"), column: .size)
+                sortMenuButton(t("Status", "状態"), column: .status)
+                sortMenuButton(t("Endpoint", "接続先"), column: .endpoint)
+                sortMenuButton(t("Memory", "メモリ"), column: .memory)
+            } label: {
+                Label(t("Sort", "並び替え"), systemImage: "arrow.up.arrow.down")
+                    .labelStyle(.titleAndIcon)
+            }
+            .menuStyle(.button)
+            .controlSize(.mini)
+        }
+        .padding(.horizontal, 14)
+        .frame(height: Layout.modelSortHeaderHeight)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.32))
+        )
+        .accessibilityIdentifier("integrated-model-compact-sort-bar")
+    }
+
+    private var sortSummaryText: String {
+        guard let column = modelTableSortColumn else {
+            return t("Sorted by profile order", "プロファイル順")
+        }
+        let direction = modelTableSortDirection == .forward ? "↑" : "↓"
+        return "\(sortColumnTitle(column)) \(direction)"
+    }
+
+    private func sortColumnTitle(_ column: ModelTableSortColumn) -> String {
+        switch column {
+        case .name:
+            t("Model", "モデル名")
+        case .size:
+            t("Size", "サイズ")
+        case .status:
+            t("Status", "状態")
+        case .endpoint:
+            t("Endpoint", "接続先")
+        case .memory:
+            t("Memory", "メモリ")
+        case .autoUnload:
+            t("Auto unload", "自動アンロード")
+        case .reasoning:
+            t("Reasoning", "推論")
+        }
+    }
+
+    private func sortHeaderButton(_ title: String, column: ModelTableSortColumn, alignment: Alignment) -> some View {
+        Button {
+            toggleModelTableSort(column)
+        } label: {
+            HStack(spacing: 4) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                if modelTableSortColumn == column {
+                    Image(systemName: modelTableSortDirection == .forward ? "chevron.up" : "chevron.down")
+                        .font(.caption2.weight(.semibold))
+                }
+            }
+            .foregroundStyle(modelTableSortColumn == column ? .primary : .secondary)
+            .frame(maxWidth: .infinity, alignment: alignment)
+        }
+        .buttonStyle(.plain)
+        .help(t("Sort by", "並び替え") + " " + title)
+    }
+
+    private func sortMenuButton(_ title: String, column: ModelTableSortColumn) -> some View {
+        Button {
+            toggleModelTableSort(column)
+        } label: {
+            Label(title, systemImage: modelTableSortColumn == column ? (modelTableSortDirection == .forward ? "chevron.up" : "chevron.down") : "circle")
+        }
+    }
+
+    private func lightweightModelRow(for model: ModelConfig, availableWidth: CGFloat) -> some View {
+        let isSelected = viewModel.selectedModelID == model.id
+        return singleLineModelCard(for: model, availableWidth: availableWidth)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isSelected ? Color(nsColor: .selectedContentBackgroundColor) : Color(nsColor: .controlBackgroundColor).opacity(0.55))
+                .fill(isSelected ? Color.accentColor.opacity(0.16) : Color(nsColor: .controlBackgroundColor).opacity(0.55))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color(nsColor: .separatorColor).opacity(isSelected ? 0.0 : 0.45), lineWidth: 1)
+                .stroke(isSelected ? Color.accentColor.opacity(0.38) : Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 1)
         )
         .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .onTapGesture {
             viewModel.selectedModelID = model.id
-        }
-        .onHover { isHovering in
-            hoveredStatusModelID = isHovering ? model.id : (hoveredStatusModelID == model.id ? nil : hoveredStatusModelID)
-        }
-        .onDrag {
-            modelDragProvider(for: model)
         }
         .onDrop(of: [.plainText], isTargeted: nil) { providers in
             moveDroppedModel(providers, before: model)
@@ -569,102 +673,162 @@ struct IntegratedWorkspaceView: View {
         .accessibilityIdentifier("integrated-model-row-\(model.id)")
     }
 
-    private func compactModelCard(for model: ModelConfig) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 12) {
-                modelCardTitle(for: model)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+    private func singleLineModelCard(for model: ModelConfig, availableWidth: CGFloat) -> some View {
+        let showsFullMetadata = availableWidth >= 840
+        let showsMediumMetadata = availableWidth >= 640
+        let showsStatusAction = availableWidth >= 380
+
+        return HStack(alignment: .center, spacing: 12) {
+            modelCardTitle(for: model)
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(0.7)
+
+            if showsFullMetadata || showsMediumMetadata {
+                compactValueText(viewModel.modelSizeText(for: model))
+                    .frame(width: 72, alignment: .leading)
+            }
+
+            if showsStatusAction {
                 lightweightStatusActionButton(for: model)
-                    .frame(minWidth: 72, idealWidth: 86, maxWidth: 92)
+                    .frame(width: 88)
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top, spacing: 12) {
-                    lightweightMetric(title: t("Size", "サイズ"), value: viewModel.modelSizeText(for: model))
-                    lightweightStatusPill(for: model)
-                        .frame(minWidth: 72, idealWidth: 86, maxWidth: 92)
-                }
-                HStack(alignment: .top, spacing: 12) {
-                    lightweightMetric(title: t("Endpoint", "接続先"), value: "127.0.0.1:\(model.serverPort)")
-                    lightweightMetric(title: t("Memory", "メモリ"), value: viewModel.integratedMemoryText(for: model))
-                }
+            if showsFullMetadata {
+                endpointValueText(host: "127.0.0.1", port: model.serverPort)
+                    .frame(width: 132, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if showsFullMetadata || showsMediumMetadata {
+                compactValueText(viewModel.integratedMemoryText(for: model))
+                    .frame(width: 78, alignment: .leading)
+            }
+
+            modelActionsMenu(for: model)
+                .frame(width: 42)
         }
-    }
-
-    private func narrowModelCard(for model: ModelConfig) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 12) {
-                modelCardTitle(for: model)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                lightweightStatusActionButton(for: model)
-                    .frame(minWidth: 72, idealWidth: 82, maxWidth: 88)
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                lightweightMetric(title: t("Size", "サイズ"), value: viewModel.modelSizeText(for: model))
-                lightweightStatusPill(for: model)
-                    .frame(minWidth: 72, idealWidth: 86, maxWidth: 92, alignment: .leading)
-                lightweightMetric(title: t("Endpoint", "接続先"), value: "127.0.0.1:\(model.serverPort)")
-                lightweightMetric(title: t("Memory", "メモリ"), value: viewModel.integratedMemoryText(for: model))
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
+        .frame(minHeight: 40)
     }
 
     private func modelCardTitle(for model: ModelConfig) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(model.displayName)
-                .font(.callout.weight(.semibold))
-                .lineLimit(1)
-                .truncationMode(.middle)
-            Text(model.notes.isEmpty ? model.family : model.notes)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
+        HStack(alignment: .top, spacing: 8) {
+            modelStatusIndicator(for: model)
+                .padding(.top, 4)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(model.displayName)
+                    .font(.callout.weight(.semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Text(model.notes.isEmpty ? model.family : model.notes)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    private func lightweightMetric(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            Text(value)
-                .font(.caption.monospacedDigit())
+    private func modelStatusIndicator(for model: ModelConfig) -> some View {
+        Circle()
+            .fill(modelStatusIndicatorColor(for: model))
+            .frame(width: 8, height: 8)
+            .accessibilityLabel(viewModel.integratedStatusText(for: model))
+    }
+
+    private func modelStatusIndicatorColor(for model: ModelConfig) -> Color {
+        if viewModel.isModelTransitioning(model) {
+            return .orange
+        }
+        if viewModel.isModelLoaded(model) {
+            return .green
+        }
+        if viewModel.canUseStatusAction(for: model) {
+            return .blue
+        }
+        return .secondary.opacity(0.55)
+    }
+
+    private func modelActionsMenu(for model: ModelConfig) -> some View {
+        Menu {
+            Button {
+                viewModel.editProfileRequested(for: model)
+            } label: {
+                Label(t("Settings", "設定"), systemImage: "gearshape")
+            }
+            .disabled(viewModel.isManagedProcessRunning)
+
+            Button {
+                viewModel.copyModelID(for: model)
+            } label: {
+                Label(t("Copy Model ID", "モデルIDをコピー"), systemImage: "doc.on.doc")
+            }
+
+            Button {
+                viewModel.copyLaunchCommandPreview(for: model)
+            } label: {
+                Label(t("Copy Launch Command", "起動コマンドをコピー"), systemImage: "terminal")
+            }
+
+            Divider()
+
+            Button(role: .destructive) {
+                viewModel.deleteProfileRequested(for: model)
+            } label: {
+                Label(t("Delete", "削除"), systemImage: "trash")
+            }
+            .disabled(viewModel.models.count <= 1 || viewModel.isManagedProcessRunning)
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.body.weight(.semibold))
+                .frame(width: 32, height: 24)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .controlSize(.small)
+        .help(t("Model actions", "モデル操作"))
+        .accessibilityLabel(t("Model actions", "モデル操作"))
+    }
+
+    private func compactValueText(_ value: String) -> some View {
+        let components = value.split(separator: " ", maxSplits: 1).map(String.init)
+        return HStack(alignment: .firstTextBaseline, spacing: 3) {
+            Text(components.first ?? value)
+                .font(.callout.monospacedDigit())
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
+            if components.count > 1 {
+                Text(components[1])
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func lightweightStatusPill(for model: ModelConfig) -> some View {
-        let statusText = viewModel.integratedStatusText(for: model)
-        let isLoaded = viewModel.isModelLoaded(model)
-        let isTransitioning = viewModel.isModelTransitioning(model)
-
-        return Text(statusText)
-            .font(.caption.weight(.medium))
-            .lineLimit(1)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .frame(maxWidth: .infinity)
-            .foregroundStyle(isLoaded ? .white : .accentColor)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(isLoaded ? Color.green : (isTransitioning ? Color.orange.opacity(0.18) : Color.accentColor.opacity(0.10)))
-            )
+    private func endpointValueText(host: String, port: Int) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
+            Text("\(host):")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Text(String(port))
+                .font(.callout.monospacedDigit())
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func lightweightStatusActionButton(for model: ModelConfig) -> some View {
         let isTransitioning = viewModel.isModelTransitioning(model)
         let canUseAction = viewModel.canUseStatusAction(for: model)
         let isInteractive = !isTransitioning && canUseAction
-        let statusText = viewModel.interactiveStatusText(for: model, isHovered: true)
+        let isLoaded = viewModel.isModelLoaded(model)
+        let isHovered = hoveredStatusModelID == model.id
+        let statusText = viewModel.interactiveStatusText(for: model, isHovered: isHovered)
 
         return Button {
             guard isInteractive else { return }
@@ -674,10 +838,19 @@ struct IntegratedWorkspaceView: View {
                 .font(.caption.weight(.medium))
                 .lineLimit(1)
                 .frame(maxWidth: .infinity)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                .foregroundStyle(isLoaded ? .white : .accentColor)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(isLoaded ? Color.green : (isTransitioning ? Color.orange.opacity(0.18) : Color.accentColor.opacity(isHovered ? 0.18 : 0.10)))
+                )
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.small)
+        .buttonStyle(.plain)
         .disabled(!isInteractive)
+        .onHover { isHovering in
+            hoveredStatusModelID = isHovering ? model.id : (hoveredStatusModelID == model.id ? nil : hoveredStatusModelID)
+        }
     }
 
     private func toggleModelTableSort(_ column: ModelTableSortColumn) {
@@ -820,7 +993,7 @@ struct IntegratedWorkspaceView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(t("Test Chat", "テストチャット"))
-                    .font(.headline)
+                    .font(.callout.weight(.semibold))
                     .foregroundStyle(.primary)
                 Spacer()
                 Text(viewModel.miniChatHTTPStatusText)
@@ -835,7 +1008,7 @@ struct IntegratedWorkspaceView: View {
                 .buttonStyle(.bordered)
             }
             .padding(.horizontal, 14)
-            .frame(height: 52)
+            .frame(height: 42)
 
             Divider()
 
@@ -884,7 +1057,7 @@ struct IntegratedWorkspaceView: View {
             ZStack(alignment: .topLeading) {
                 if viewModel.miniChatPrompt.isEmpty && !isMiniChatInputFocused {
                     Text(t("Type a test chat", "テストチャットを入力"))
-                        .font(.callout)
+                        .font(.caption)
                         .foregroundStyle(.secondary.opacity(0.45))
                         .padding(.top, 7)
                         .padding(.leading, 8)
@@ -928,7 +1101,7 @@ struct IntegratedWorkspaceView: View {
         return HStack {
             if isUser { Spacer(minLength: 40) }
             Text(message.content)
-                .font(.callout)
+                .font(.caption)
                 .textSelection(.enabled)
                 .foregroundStyle(isSystem ? Color.secondary : Color.primary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -968,7 +1141,7 @@ struct IntegratedWorkspaceView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(strings.text(.logs))
-                    .font(.headline)
+                    .font(.callout.weight(.semibold))
                     .foregroundStyle(.primary)
                 Spacer()
                 Picker(t("Category", "カテゴリ"), selection: $viewModel.logCategoryFilter) {
@@ -990,7 +1163,7 @@ struct IntegratedWorkspaceView: View {
             }
             .controlSize(.small)
             .padding(.horizontal, 14)
-            .frame(height: 52)
+            .frame(height: 42)
             .clipped()
 
             Divider()
