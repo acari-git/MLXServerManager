@@ -143,7 +143,11 @@ final class AppViewModel: ObservableObject {
     @Published var autoUnloadMinutesByModelID: [ModelConfig.ID: Int] = [:]
     @Published private(set) var logText: String
     @Published private(set) var logEntries: [LogEntry]
-    @Published var logCategoryFilter = "All"
+    @Published var logCategoryFilter = "All" {
+        didSet {
+            refreshLogDerivedState()
+        }
+    }
     @Published private(set) var diagnosticsResults: [DiagnosticsResult] = []
     @Published private(set) var diagnosticsDidRun = false
     @Published private var selectedModelAvailabilitySummary: ModelAvailabilitySummary = .noSelection
@@ -232,6 +236,9 @@ final class AppViewModel: ObservableObject {
     private var modelSizeGigabytesCache: [String: Double] = [:]
     private var portCheckCache: [String: PortCheckCacheEntry] = [:]
     private var systemInfoRowsCache: [AppLanguage: SystemInfoRowsCacheEntry] = [:]
+    private var logCategoryFilterOptionsCache: [String]
+    private var visibleLogEntriesCache: [LogEntry]
+    private var latestImportantLogEntryCache: LogEntry?
 
     private static let initialLogLines = [
         "[info] MLX Server Manager UI loaded.",
@@ -322,9 +329,14 @@ final class AppViewModel: ObservableObject {
         self.huggingFaceSearchService = huggingFaceSearchService ?? HuggingFaceSearchService()
         self.huggingFaceRepositoryFileService = huggingFaceRepositoryFileService ?? HuggingFaceRepositoryFileService()
         self.hermesAgentConfigService = hermesAgentConfigService ?? HermesAgentConfigService()
-        self.logBuffer = LogBuffer(initialLines: Self.initialLogLines)
-        self.logText = logBuffer.text
-        self.logEntries = logBuffer.entries
+        let initialLogBuffer = LogBuffer(initialLines: Self.initialLogLines)
+        let initialLogEntries = initialLogBuffer.entries
+        self.logBuffer = initialLogBuffer
+        self.logText = initialLogBuffer.text
+        self.logEntries = initialLogEntries
+        self.logCategoryFilterOptionsCache = Self.makeLogCategoryFilterOptions(from: initialLogEntries)
+        self.visibleLogEntriesCache = initialLogEntries
+        self.latestImportantLogEntryCache = Self.findLatestImportantLogEntry(in: initialLogEntries)
         loadSettings()
         refreshDefaultUserFacingMessagesForCurrentLanguage()
         huggingFaceDownloadDraft = .defaults(
@@ -1038,7 +1050,7 @@ final class AppViewModel: ObservableObject {
     }
 
     var logCategoryFilterOptions: [String] {
-        ["All"] + Array(Set(logEntries.map(\.category))).sorted()
+        logCategoryFilterOptionsCache
     }
 
     func logCategoryFilterLabel(_ category: String) -> String {
@@ -1048,17 +1060,11 @@ final class AppViewModel: ObservableObject {
     }
 
     var visibleLogEntries: [LogEntry] {
-        logCategoryFilter == "All"
-            ? logEntries
-            : logEntries.filter { $0.category == logCategoryFilter }
+        visibleLogEntriesCache
     }
 
     var latestImportantLogEntry: LogEntry? {
-        logEntries.reversed().first { entry in
-            entry.message.localizedCaseInsensitiveContains("failed")
-                || entry.message.localizedCaseInsensitiveContains("warning")
-                || entry.category.localizedCaseInsensitiveContains("error")
-        }
+        latestImportantLogEntryCache
     }
 
     var runtimeSelectionWarning: String? {
@@ -4951,8 +4957,37 @@ final class AppViewModel: ObservableObject {
     }
 
     private func syncLogText() {
-        logText = logBuffer.text
-        logEntries = logBuffer.entries
+        let currentText = logBuffer.text
+        let currentEntries = logBuffer.entries
+        refreshLogDerivedState(for: currentEntries)
+        logText = currentText
+        logEntries = currentEntries
+    }
+
+    private func refreshLogDerivedState() {
+        refreshLogDerivedState(for: logEntries)
+    }
+
+    private func refreshLogDerivedState(for entries: [LogEntry]) {
+        logCategoryFilterOptionsCache = Self.makeLogCategoryFilterOptions(from: entries)
+        visibleLogEntriesCache = Self.visibleLogEntries(from: entries, filter: logCategoryFilter)
+        latestImportantLogEntryCache = Self.findLatestImportantLogEntry(in: entries)
+    }
+
+    private static func makeLogCategoryFilterOptions(from entries: [LogEntry]) -> [String] {
+        ["All"] + Array(Set(entries.map(\.category))).sorted()
+    }
+
+    private static func visibleLogEntries(from entries: [LogEntry], filter: String) -> [LogEntry] {
+        filter == "All" ? entries : entries.filter { $0.category == filter }
+    }
+
+    private static func findLatestImportantLogEntry(in entries: [LogEntry]) -> LogEntry? {
+        entries.reversed().first { entry in
+            entry.message.localizedCaseInsensitiveContains("failed")
+                || entry.message.localizedCaseInsensitiveContains("warning")
+                || entry.category.localizedCaseInsensitiveContains("error")
+        }
     }
 
     private func diagnosticsSummaryCopyText() -> String {
