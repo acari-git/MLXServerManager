@@ -1163,50 +1163,6 @@ struct IntegratedWorkspaceView: View {
         modelTableSortOrder = [column.comparator(order: nextDirection)]
     }
 
-    private func centeredTableText(
-        _ value: String,
-        color: Color = .primary,
-        weight: Font.Weight = .regular
-    ) -> some View {
-        Text(value)
-            .font(.callout.weight(weight))
-            .foregroundStyle(color)
-            .padding(.vertical, 5)
-            .lineLimit(1)
-            .truncationMode(.middle)
-            .frame(maxWidth: .infinity, alignment: .center)
-    }
-
-    private func modelSizeTableText(_ value: String) -> some View {
-        let components = value.split(separator: " ", maxSplits: 1).map(String.init)
-        return HStack(alignment: .firstTextBaseline, spacing: 3) {
-            Text(components.first ?? value)
-                .font(.callout.monospacedDigit())
-            if components.count > 1 {
-                Text(components[1])
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .foregroundStyle(.primary)
-        .padding(.vertical, 5)
-        .lineLimit(1)
-        .frame(maxWidth: .infinity, alignment: .center)
-    }
-
-    private func endpointTableText(host: String, port: Int) -> some View {
-        HStack(spacing: 0) {
-            Text("\(host):")
-                .font(.callout.monospacedDigit())
-            Text(String(port))
-                .font(.callout.monospacedDigit().weight(.semibold))
-        }
-        .foregroundStyle(.primary)
-        .padding(.vertical, 5)
-        .lineLimit(1)
-        .frame(maxWidth: .infinity, alignment: .center)
-    }
-
     private var modelInspectorPanel: some View {
         Group {
             if let model = selectedModel {

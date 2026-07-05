@@ -471,24 +471,6 @@ final class AppViewModel: ObservableObject {
         restartRequested()
     }
 
-    func moveModelUp(_ model: ModelConfig) {
-        moveModel(model, offset: -1)
-    }
-
-    func moveModelDown(_ model: ModelConfig) {
-        moveModel(model, offset: 1)
-    }
-
-    func canMoveModelUp(_ model: ModelConfig) -> Bool {
-        guard let index = models.firstIndex(where: { $0.id == model.id }) else { return false }
-        return index > 0
-    }
-
-    func canMoveModelDown(_ model: ModelConfig) -> Bool {
-        guard let index = models.firstIndex(where: { $0.id == model.id }) else { return false }
-        return index < models.index(before: models.endIndex)
-    }
-
     func moveModel(withID draggedModelID: ModelConfig.ID, before targetModelID: ModelConfig.ID) {
         guard draggedModelID != targetModelID,
               let sourceIndex = models.firstIndex(where: { $0.id == draggedModelID }),
@@ -1512,11 +1494,6 @@ final class AppViewModel: ObservableObject {
         return Self.formatMemoryGigabytes(gigabytes)
     }
 
-    func integratedStatusDetail(for model: ModelConfig) -> String {
-        integratedStatusText(for: model)
-    }
-
-
     func integratedMemoryText(for model: ModelConfig) -> String {
         guard model.id == runningModelID,
               let memoryUsageGB else {
@@ -1558,14 +1535,6 @@ final class AppViewModel: ObservableObject {
 
     func reasoningSortValue(for model: ModelConfig) -> Int {
         model.enableThinking ? 1 : 0
-    }
-
-    func integratedLatestUseText(for model: ModelConfig) -> String {
-        guard model.id == runningModelID else { return "-" }
-        if let latestBenchmarkResult {
-            return latestBenchmarkResult.latencyText
-        }
-        return runtimeEvents.first?.category ?? "active"
     }
 
     func integratedStopModeText(for model: ModelConfig) -> String {
@@ -1809,26 +1778,6 @@ final class AppViewModel: ObservableObject {
             "Stopping"
         default:
             "Managed process active"
-        }
-    }
-
-    private func moveModel(_ model: ModelConfig, offset: Int) {
-        guard let currentIndex = models.firstIndex(where: { $0.id == model.id }) else {
-            return
-        }
-
-        let targetIndex = currentIndex + offset
-        guard models.indices.contains(targetIndex) else {
-            return
-        }
-
-        models.swapAt(currentIndex, targetIndex)
-        do {
-            try settingsStore.save(models: models)
-            invalidatePortCheckCache()
-            appendLog("[model] moved \(model.displayName) to row \(targetIndex + 1).")
-        } catch {
-            appendLog("[model] warning: failed to save model order: \(error.localizedDescription)")
         }
     }
 
