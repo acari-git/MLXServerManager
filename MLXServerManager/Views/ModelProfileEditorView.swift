@@ -87,7 +87,7 @@ struct ModelProfileEditorView: View {
                     .foregroundStyle(.red)
             }
 
-            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 10) {
+            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 14) {
                 editorRow(t("Display Name", "表示名")) {
                     TextField(t("Uses Model ID if empty", "空欄の場合はModel IDを使用"), text: $draft.displayName)
                         .textFieldStyle(.roundedBorder)
@@ -117,9 +117,7 @@ struct ModelProfileEditorView: View {
                 }
 
                 editorRow(t("Notes", "メモ")) {
-                    TextEditor(text: $draft.notes)
-                        .font(.callout)
-                        .frame(minHeight: 72)
+                    borderedTextEditor(text: $draft.notes, minHeight: 112)
                 }
             }
 
@@ -133,7 +131,7 @@ struct ModelProfileEditorView: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
 
-                    Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 10) {
+                    Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 14) {
                         advancedRow("Temperature") {
                             TextField("0.0 - 1.0", text: advancedBinding(\.defaultTemperature))
                                 .textFieldStyle(.roundedBorder)
@@ -195,16 +193,20 @@ struct ModelProfileEditorView: View {
                         }
 
                         advancedRow("Chat Template Args") {
-                            TextEditor(text: advancedBinding(\.chatTemplateArgs))
-                                .font(.system(.callout, design: .monospaced))
-                                .frame(minHeight: 60)
+                            borderedTextEditor(
+                                text: advancedBinding(\.chatTemplateArgs),
+                                minHeight: 112,
+                                font: .system(.callout, design: .monospaced)
+                            )
                         }
 
                         advancedRow("Raw Extra Args") {
                             VStack(alignment: .leading, spacing: 6) {
-                                TextEditor(text: advancedBinding(\.rawExtraArgs))
-                                    .font(.system(.callout, design: .monospaced))
-                                    .frame(minHeight: 60)
+                                borderedTextEditor(
+                                    text: advancedBinding(\.rawExtraArgs),
+                                    minHeight: 112,
+                                    font: .system(.callout, design: .monospaced)
+                                )
 
                                 Text(t("Expert only. Raw arguments are appended last and used only when explicitly set.", "上級者向けです。Raw引数は最後に追加され、明示した場合のみ使われます。"))
                                     .font(.caption)
@@ -291,6 +293,26 @@ struct ModelProfileEditorView: View {
         } set: { newValue in
             draft.advancedLaunchOptions[keyPath: keyPath] = newValue
         }
+    }
+
+    private func borderedTextEditor(
+        text: Binding<String>,
+        minHeight: CGFloat,
+        font: Font = .callout
+    ) -> some View {
+        TextEditor(text: text)
+            .font(font)
+            .scrollContentBackground(.hidden)
+            .padding(6)
+            .frame(minHeight: minHeight, alignment: .topLeading)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color(nsColor: .textBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.72), lineWidth: 1)
+            )
     }
 
     private var launchCommandPreview: String {
