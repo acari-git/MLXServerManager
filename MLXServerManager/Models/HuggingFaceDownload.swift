@@ -233,6 +233,7 @@ struct HuggingFaceDownloadQueueEntry: Identifiable, Equatable {
     var phase: HuggingFaceDownloadPhase
     var message: String
     var fileCount: Int?
+    var downloadedFileCount: Int?
     var downloadedBytes: Int64?
     var totalBytes: Int64?
     var speedBytesPerSecond: Int64?
@@ -249,16 +250,29 @@ struct HuggingFaceDownloadQueueEntry: Identifiable, Equatable {
         return min(max(Double(downloaded) / Double(totalBytes), 0), 1)
     }
 
-    var progressText: String {
+    var fileProgressText: String {
+        guard let fileCount, fileCount > 0 else {
+            return "-"
+        }
+        let current = min(max((downloadedFileCount ?? 0) + (phase == .completed ? 0 : 1), 1), fileCount)
+        return "\(current) / \(fileCount)"
+    }
+
+    var capacityProgressText: String {
         guard let progressFraction else {
             if let downloadedBytes {
                 return "\(ByteCountFormatter.string(fromByteCount: downloadedBytes, countStyle: .file)) downloaded"
             }
-            return fileCount.map { "\($0) files" } ?? "Progress unavailable"
+            return "-"
         }
         let downloaded = downloadedBytes ?? 0
         let total = totalBytes ?? 0
         return "\(Int(progressFraction * 100))% • \(ByteCountFormatter.string(fromByteCount: downloaded, countStyle: .file)) / \(ByteCountFormatter.string(fromByteCount: total, countStyle: .file))"
+    }
+
+    var progressText: String {
+        let files = fileCount.map { "\(downloadedFileCount ?? 0) / \($0) files" } ?? "files unknown"
+        return "\(files) • \(capacityProgressText)"
     }
 }
 

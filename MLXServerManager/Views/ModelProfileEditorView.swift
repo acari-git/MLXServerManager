@@ -74,7 +74,7 @@ struct ModelProfileEditorView: View {
 
             if runtimeFieldsLocked {
                 Label(
-                    t("Stop the managed server before changing Model ID, host, port, or advanced launch options.", "Model ID、ホスト、ポート、詳細起動オプションを変更する前に、管理中のサーバーを停止してください。"),
+                    t("Stop the managed server before changing model path, host, port, or advanced launch options.", "モデルパス、ホスト、ポート、詳細起動オプションを変更する前に、管理中のサーバーを停止してください。"),
                     systemImage: "lock.fill"
                 )
                 .font(.callout)
@@ -89,12 +89,12 @@ struct ModelProfileEditorView: View {
 
             Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 14) {
                 editorRow(t("Display Name", "表示名")) {
-                    TextField(t("Uses Model ID if empty", "空欄の場合はModel IDを使用"), text: $draft.displayName)
+                    TextField(t("Uses model path if empty", "空欄の場合はモデルパスを使用"), text: $draft.displayName)
                         .textFieldStyle(.roundedBorder)
                 }
 
-                editorRow("Model ID") {
-                    TextField(t("Required", "必須"), text: $draft.modelID)
+                editorRow(t("Model Path", "モデルパス")) {
+                    TextField(t("Local path or Hugging Face model ID", "ローカルパスまたはHugging FaceモデルID"), text: $draft.modelID)
                         .textFieldStyle(.roundedBorder)
                         .disabled(runtimeFieldsLocked)
                 }
@@ -111,9 +111,14 @@ struct ModelProfileEditorView: View {
                         .disabled(runtimeFieldsLocked)
                 }
 
-                editorRow(t("Thinking", "Thinking")) {
-                    Toggle(t("Enable thinking", "Thinkingを有効にする"), isOn: $draft.enableThinking)
-                        .toggleStyle(.checkbox)
+                editorRow(t("Reasoning Mode", "推論モード")) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle(t("Enable reasoning mode", "推論モードを有効にする"), isOn: $draft.enableThinking)
+                            .toggleStyle(.checkbox)
+                        Text(t("For complex tasks. Responses may be slower.", "複雑なタスク向け。応答は遅くなる場合があります。"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 editorRow(t("Notes", "メモ")) {
@@ -317,7 +322,7 @@ struct ModelProfileEditorView: View {
 
     private var launchCommandPreview: String {
         guard let request = launchCommandPreviewRequest else {
-            return t("Complete Model ID, Host, and Port to preview the launch command.", "起動コマンドをプレビューするには、Model ID、ホスト、ポートを入力してください。")
+            return t("Complete Model Path, Host, and Port to preview the launch command.", "起動コマンドをプレビューするには、モデルパス、ホスト、ポートを入力してください。")
         }
 
         return ModelProcessManager.commandPreview(for: request, executablePath: "mlx_lm.server")

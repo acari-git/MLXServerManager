@@ -206,13 +206,16 @@ struct SetupDiagnostics {
                 message: "Port is available.",
                 detail: "\(host):\(port)"
             )
-        case let .busy(host, port):
+        case let .busy(host, port, pid):
             let message: String
             let detail: String
 
             if let managedProcessIdentifier {
                 message = "Port is busy because the managed server is running."
                 detail = "\(host):\(port), pid \(managedProcessIdentifier)"
+            } else if let pid {
+                message = "Port is busy. Another process may be using this port."
+                detail = "\(host):\(port), pid \(pid)"
             } else {
                 message = "Port is busy. Another process may be using this port."
                 detail = "\(host):\(port)"

@@ -8,6 +8,10 @@ enum IntegratedWorkspaceDestination: String, CaseIterable, Identifiable, Hashabl
 
     var id: String { rawValue }
 
+    static var primarySidebarDestinations: [IntegratedWorkspaceDestination] {
+        [.models, .downloads]
+    }
+
     var title: String {
         title(language: .japanese)
     }
@@ -16,7 +20,7 @@ enum IntegratedWorkspaceDestination: String, CaseIterable, Identifiable, Hashabl
         let strings = AppLocalization(language: language)
         switch self {
         case .models:
-            return strings.text(english: "Models", japanese: "モデル一覧")
+            return strings.text(english: "Dashboard", japanese: "ダッシュボード")
         case .downloads:
             return strings.text(english: "Downloads", japanese: "ダウンロード")
         case .settings:

@@ -3,7 +3,7 @@ import Foundation
 
 enum PortCheckResult: Equatable {
     case available(host: String, port: Int)
-    case busy(host: String, port: Int)
+    case busy(host: String, port: Int, pid: Int?)
     case invalidInput(message: String)
     case failed(host: String, port: Int, message: String)
 }
@@ -54,11 +54,11 @@ struct PortChecker {
         }
 
         guard bindResult == 0 else {
-            return .busy(host: host, port: port)
+            return .busy(host: host, port: port, pid: nil)
         }
 
         guard listen(socketDescriptor, 1) == 0 else {
-            return .busy(host: host, port: port)
+            return .busy(host: host, port: port, pid: nil)
         }
 
         return .available(host: host, port: port)
@@ -81,6 +81,7 @@ struct PortChecker {
 
         return address
     }
+
 
     private func errorMessage(prefix: String) -> String {
         "\(prefix): \(String(cString: strerror(errno)))"

@@ -37,7 +37,7 @@ struct LogsSurfaceView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
+            VStack(alignment: .leading, spacing: 24) {
                 header
                 controlsSection
                 contextSection
@@ -71,7 +71,8 @@ struct LogsSurfaceView: View {
     private func section<Content: View>(title: String, subtitle: String? = nil, @ViewBuilder content: () -> Content) -> some View {
         GroupBox {
             content()
-                .padding(.top, 4)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
         } label: {
             VStack(alignment: .leading, spacing: 4) {
@@ -93,19 +94,24 @@ struct LogsSurfaceView: View {
             title: t("Controls", "操作"),
             subtitle: t("Copy or clear the current in-app log buffer.", "現在のアプリ内ログバッファをコピーまたはクリアします。")
         ) {
-            HStack(alignment: .center, spacing: 14) {
-                Label(t("Log buffer", "ログバッファ"), systemImage: "terminal")
-                    .font(.callout)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .center, spacing: 12) {
+                    Label(t("Log buffer", "ログバッファ"), systemImage: "terminal")
+                        .font(.callout.weight(.medium))
 
-                Spacer()
+                    Spacer()
 
-                metricPill(value: String(entries.count), label: t("entries", "件"))
-                statusPill(targetSummary.targetType)
+                    metricPill(value: String(entries.count), label: t("entries", "件"))
+                    statusPill(targetSummary.targetType)
+                }
 
-                Button(t("Copy logs", "ログをコピー")) { onCopy() }
-                    .disabled(entries.isEmpty)
-                Button(t("Clear logs", "ログをクリア")) { onClear() }
-                    .disabled(entries.isEmpty)
+                HStack(spacing: 10) {
+                    Button(t("Copy logs", "ログをコピー")) { onCopy() }
+                        .disabled(entries.isEmpty)
+                    Button(t("Clear logs", "ログをクリア")) { onClear() }
+                        .disabled(entries.isEmpty)
+                    Spacer(minLength: 0)
+                }
             }
             .accessibilityIdentifier("logs-surface-controls")
         }
@@ -119,6 +125,9 @@ struct LogsSurfaceView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.40), in: Capsule())
     }
 
     private func statusPill(_ text: String) -> some View {
@@ -127,6 +136,9 @@ struct LogsSurfaceView: View {
             .foregroundStyle(.secondary)
             .lineLimit(1)
             .truncationMode(.middle)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color(nsColor: .controlBackgroundColor).opacity(0.40), in: Capsule())
     }
 
     private var contextSection: some View {
@@ -195,11 +207,11 @@ struct LogsSurfaceView: View {
                         .frame(width: controlWidth, alignment: .leading)
                     Spacer(minLength: 0)
                 }
-                .padding(.vertical, 9)
+                .padding(.vertical, 10)
 
                 if index < rows.count - 1 {
                     Rectangle()
-                        .fill(Color(nsColor: .separatorColor).opacity(0.55))
+                        .fill(Color(nsColor: .separatorColor).opacity(0.45))
                         .frame(height: 1.0)
                 }
             }

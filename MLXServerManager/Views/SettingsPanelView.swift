@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct SettingsPanelView: View {
@@ -6,6 +7,11 @@ struct SettingsPanelView: View {
     @Binding var defaultPort: Int
     @Binding var apiKeyPlaceholder: String
     @Binding var hermesConfigPath: String
+    @Binding var downloadSaveDirectory: String
+    @Binding var downloadAutoAddToModelList: Bool
+    @Binding var downloadAutoSelectAfterAdd: Bool
+    @Binding var maxConcurrentModelDownloads: Int
+    @Binding var confirmFilesBeforeDownload: Bool
     @Binding var language: AppLanguage
     @Binding var appearance: String
     let settingsDirectoryPath: String
@@ -13,8 +19,8 @@ struct SettingsPanelView: View {
     let onDiscard: () -> Void
     let onSave: () -> Void
 
-    private let contentWidth: CGFloat = 660
-    private let controlWidth: CGFloat = 248
+    private let contentWidth: CGFloat = 760
+    private let controlWidth: CGFloat = 300
     private let rowHorizontalPadding: CGFloat = 12
     private let rowVerticalPadding: CGFloat = 14
 
@@ -28,6 +34,10 @@ struct SettingsPanelView: View {
             ("light", t("Light", "ライト")),
             ("dark", t("Dark", "ダーク"))
         ]
+    }
+
+    private var concurrentDownloadOptions: [Int] {
+        Array(1...5)
     }
 
     private func t(_ english: String, _ japanese: String) -> String {
@@ -47,14 +57,12 @@ struct SettingsPanelView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
-                Text(strings.text(.settings))
-                    .font(.title3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.bottom, 12)
+            VStack(alignment: .leading, spacing: 24) {
+                header
 
                 settingsSection(
                     title: t("Connection", "接続"),
+                    subtitle: t("Defaults used for managed local endpoints and Hermes Agent integration.", "管理対象のローカルエンドポイントとHermes Agent連携で使う既定値です。"),
                     rows: [
                         AnyView(editableSettingRow(
                             title: t("mlx_lm.server location", "mlx_lm.serverの場所"),
@@ -96,7 +104,17 @@ struct SettingsPanelView: View {
                 )
 
                 settingsSection(
+                    title: t("Downloads", "ダウンロード"),
+                    subtitle: t("Defaults for Hugging Face model downloads. The download screen uses these values automatically.", "Hugging Faceモデルダウンロードの既定値です。ダウンロード画面ではこの値を自動的に使います。"),
+                    rows: [
+                        AnyView(downloadDirectoryRow),
+                        AnyView(concurrentModelDownloadsRow)
+                    ]
+                )
+
+                settingsSection(
                     title: t("General", "一般"),
+                    subtitle: t("Language, appearance, and copy-safe local client values.", "言語、外観、コピー用のローカルクライアント値です。"),
                     rows: [
                         AnyView(languageSettingRow),
                         AnyView(themeSettingRow),
@@ -130,6 +148,21 @@ struct SettingsPanelView: View {
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(strings.text(.settings))
+                .font(.title3)
+            Text(t(
+                "Review local server defaults, download behavior, Hermes Agent config path, language, and appearance.",
+                "ローカルサーバーの既定値、ダウンロード動作、Hermes Agent設定ファイル、言語、外観を確認・変更します。"
+            ))
+            .font(.callout)
+            .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, 4)
+    }
+
     private var settingsSaveFooter: some View {
         GroupBox {
             HStack(alignment: .center, spacing: 16) {
@@ -161,32 +194,46 @@ struct SettingsPanelView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(!hasUnsavedChanges)
             }
-            .padding(.top, 4)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 12)
         } label: {
-            Text(t("Unsaved settings", "未保存の設定"))
-                .font(.headline)
-                .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(t("Unsaved settings", "未保存の設定"))
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text(t("Changes are applied only after saving.", "保存後に変更が反映されます。"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .groupBoxStyle(.automatic)
     }
 
-    private func settingsSection(title: String, rows: [AnyView]) -> some View {
+    private func settingsSection(title: String, subtitle: String, rows: [AnyView]) -> some View {
         GroupBox {
             VStack(spacing: 0) {
                 ForEach(rows.indices, id: \.self) { index in
                     rows[index]
 
                     if index < rows.count - 1 {
-                        Divider()
+                        Rectangle()
+                            .fill(Color(nsColor: .separatorColor).opacity(0.45))
+                            .frame(height: 1)
                     }
                 }
             }
-            .padding(.top, 4)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
         } label: {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .groupBoxStyle(.automatic)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -198,43 +245,97 @@ struct SettingsPanelView: View {
         placeholder: String,
         text: Binding<String>
     ) -> some View {
-        HStack(alignment: .center, spacing: 18) {
+        HStack(alignment: .center, spacing: 22) {
             rowText(title: title, detail: detail)
-
-            Spacer(minLength: 16)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             TextField(placeholder, text: text, prompt: Text(placeholder).foregroundStyle(.tertiary))
                 .textFieldStyle(.roundedBorder)
                 .font(.callout)
                 .lineLimit(1)
-                .frame(width: controlWidth, height: 28, alignment: .leading)
+                .frame(width: controlWidth, height: 30, alignment: .leading)
                 .contentShape(Rectangle())
         }
-        .padding(.horizontal, rowHorizontalPadding + 4)
-        .padding(.vertical, rowVerticalPadding + 3)
+        .padding(.horizontal, rowHorizontalPadding)
+        .padding(.vertical, rowVerticalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func readOnlySettingRow(title: String, detail: String, value: String) -> some View {
-        HStack(alignment: .center, spacing: 18) {
+        HStack(alignment: .center, spacing: 22) {
             rowText(title: title, detail: detail)
-
-            Spacer(minLength: 16)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             TextField(value, text: .constant(value))
                 .textFieldStyle(.roundedBorder)
                 .font(.callout)
                 .lineLimit(1)
-                .frame(width: controlWidth, height: 28, alignment: .leading)
+                .frame(width: controlWidth, height: 30, alignment: .leading)
                 .disabled(true)
         }
-        .padding(.horizontal, rowHorizontalPadding + 4)
-        .padding(.vertical, rowVerticalPadding + 3)
+        .padding(.horizontal, rowHorizontalPadding)
+        .padding(.vertical, rowVerticalPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var downloadDirectoryRow: some View {
+        HStack(alignment: .center, spacing: 22) {
+            rowText(
+                title: t("Save Location", "保存先"),
+                detail: t(
+                    "Downloaded model folders are saved here by default.",
+                    "ダウンロードしたモデルフォルダを既定で保存する場所です。"
+                )
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 8) {
+                TextField("~/Models/mlx", text: $downloadSaveDirectory, prompt: Text("~/Models/mlx").foregroundStyle(.tertiary))
+                    .textFieldStyle(.roundedBorder)
+                    .font(.callout)
+                    .lineLimit(1)
+                    .frame(width: 212, height: 30, alignment: .leading)
+                Button(t("Choose", "選択")) {
+                    chooseDownloadDirectory()
+                }
+                .controlSize(.small)
+            }
+            .frame(width: controlWidth, alignment: .leading)
+        }
+        .padding(.horizontal, rowHorizontalPadding)
+        .padding(.vertical, rowVerticalPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var concurrentModelDownloadsRow: some View {
+        HStack(alignment: .center, spacing: 22) {
+            rowText(
+                title: t("Concurrent model downloads", "同時にダウンロードするモデル数"),
+                detail: t(
+                    "This is the number of model download jobs processed at the same time. Files inside one model are handled internally.",
+                    "同時に処理するモデル単位のダウンロード数です。1つのモデル内の複数ファイルは内部で制御します。"
+                )
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Picker(selection: $maxConcurrentModelDownloads) {
+                ForEach(concurrentDownloadOptions, id: \.self) { count in
+                    Text("\(count)").tag(count)
+                }
+            } label: {
+                EmptyView()
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: controlWidth, height: 30, alignment: .leading)
+        }
+        .padding(.horizontal, rowHorizontalPadding)
+        .padding(.vertical, rowVerticalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var languageSettingRow: some View {
-        HStack(alignment: .center, spacing: 18) {
+        HStack(alignment: .center, spacing: 22) {
             rowText(
                 title: t("Language", "言語"),
                 detail: t(
@@ -242,8 +343,7 @@ struct SettingsPanelView: View {
                     "MLX Server Managerで使用する表示言語を選択します。"
                 )
             )
-
-            Spacer(minLength: 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Picker(selection: $language) {
                 ForEach(AppLanguage.allCases) { option in
@@ -255,15 +355,15 @@ struct SettingsPanelView: View {
             }
             .labelsHidden()
             .pickerStyle(.menu)
-            .frame(width: controlWidth, height: 28, alignment: .leading)
+            .frame(width: controlWidth, height: 30, alignment: .leading)
         }
-        .padding(.horizontal, rowHorizontalPadding + 4)
-        .padding(.vertical, rowVerticalPadding + 3)
+        .padding(.horizontal, rowHorizontalPadding)
+        .padding(.vertical, rowVerticalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var themeSettingRow: some View {
-        HStack(alignment: .center, spacing: 18) {
+        HStack(alignment: .center, spacing: 22) {
             rowText(
                 title: t("Theme", "テーマ"),
                 detail: t(
@@ -271,8 +371,7 @@ struct SettingsPanelView: View {
                     "システム外観に合わせるか、ライトまたはダークテーマを固定します。"
                 )
             )
-
-            Spacer(minLength: 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Picker(selection: $appearance) {
                 ForEach(themeOptions, id: \.value) { option in
@@ -284,11 +383,23 @@ struct SettingsPanelView: View {
             }
             .labelsHidden()
             .pickerStyle(.menu)
-            .frame(width: controlWidth, height: 28, alignment: .leading)
+            .frame(width: controlWidth, height: 30, alignment: .leading)
         }
-        .padding(.horizontal, rowHorizontalPadding + 4)
-        .padding(.vertical, rowVerticalPadding + 3)
+        .padding(.horizontal, rowHorizontalPadding)
+        .padding(.vertical, rowVerticalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func chooseDownloadDirectory() {
+        let panel = NSOpenPanel()
+        panel.title = t("Choose Hugging Face download save directory", "Hugging Faceダウンロード保存先を選択")
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+        downloadSaveDirectory = url.path
     }
 
     private func languageDisplayName(_ option: AppLanguage) -> String {

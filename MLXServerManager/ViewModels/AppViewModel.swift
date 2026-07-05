@@ -86,6 +86,16 @@ private struct MiniChatRequestPayload: Encodable {
     }
 }
 
+private struct QueuedHuggingFaceDownload {
+    let id: UUID
+    let reference: HuggingFaceModelReference
+    let destinationPath: String
+    let displayName: String
+    let draft: HuggingFaceDownloadDraft
+    let expectedFiles: [HuggingFaceDownloadPreviewFile]
+    let expectedBytes: Int64?
+}
+
 private struct MiniChatResponsePayload: Decodable {
     struct Choice: Decodable {
         struct Message: Decodable {
@@ -148,6 +158,8 @@ final class AppViewModel: ObservableObject {
     )
     @Published private(set) var huggingFaceDownloadStatus: HuggingFaceDownloadStatus = .waiting
     @Published private(set) var huggingFaceDownloadQueue: [HuggingFaceDownloadQueueEntry] = []
+    @Published private(set) var lastAddedDownloadedModelID: ModelConfig.ID?
+    @Published private(set) var downloadCompletionMarkerDate: Date?
     @Published private(set) var huggingFaceFilePreview: HuggingFaceDownloadFilePreviewState = .waiting
     @Published var selectedHuggingFacePreviewFileIDs: Set<String> = []
     @Published private(set) var isHuggingFaceCLIAvailable = false
@@ -202,6 +214,11 @@ final class AppViewModel: ObservableObject {
     private var autoUnloadTask: Task<Void, Never>?
     private var huggingFaceDownloadTask: Task<Void, Never>?
     private var huggingFaceDownloadProgressTask: Task<Void, Never>?
+    private var queuedHuggingFaceDownloads: [UUID: QueuedHuggingFaceDownload] = [:]
+    private var activeHuggingFaceDownloadTasks: [UUID: Task<Void, Never>] = [:]
+    private var activeHuggingFaceDownloadManagers: [UUID: HuggingFaceDownloadManager] = [:]
+    private var activeHuggingFaceProgressTasks: [UUID: Task<Void, Never>] = [:]
+    private var cancelledHuggingFaceDownloadIDs: Set<UUID> = []
     private var miniChatTask: Task<Void, Never>?
     private var huggingFaceDownloadCancellationRequested = false
     private var pendingDeleteModelID: ModelConfig.ID?
@@ -302,6 +319,7 @@ final class AppViewModel: ObservableObject {
             defaultHost: settings.defaultHost,
             defaultPort: settings.defaultPort
         )
+        applyDownloadSettingsToDraft()
         refreshHuggingFaceCLIStatus(logResult: false)
         refreshAria2Status()
         localModelPortText = String(settings.defaultPort)
@@ -321,6 +339,48 @@ final class AppViewModel: ObservableObject {
         let longestDisplayNameCount = models.map { $0.displayName.count }.max() ?? 0
         let estimatedWidth = CGFloat(longestDisplayNameCount * 8 + 28)
         return min(max(estimatedWidth, 210), 420)
+    }
+
+    var activeHuggingFaceDownloadEntry: HuggingFaceDownloadQueueEntry? {
+        huggingFaceDownloadQueue.first { entry in
+            entry.phase == .preparing || entry.phase == .downloading || entry.phase == .finalizing
+        }
+    }
+
+    var latestHuggingFaceDownloadEntry: HuggingFaceDownloadQueueEntry? {
+        activeHuggingFaceDownloadEntry ?? huggingFaceDownloadQueue.first
+    }
+
+    var hasCompletedHuggingFaceDownloadMarker: Bool {
+        guard let entry = huggingFaceDownloadQueue.first else {
+            return false
+        }
+        return entry.phase == .completed
+    }
+
+    var isHuggingFaceDownloadActive: Bool {
+        activeHuggingFaceDownloadEntry != nil
+    }
+
+    var downloadSidebarProgressFraction: Double? {
+        activeHuggingFaceDownloadEntry?.progressFraction
+    }
+
+    var downloadProgressSummaryText: String {
+        guard let entry = latestHuggingFaceDownloadEntry else {
+            return Self.localizedText(language: settings.uiLanguage, english: "No download", japanese: "ダウンロードなし")
+        }
+        let percentText = entry.progressFraction.map { "\(Int($0 * 100))%" } ?? "-"
+        let filesText = entry.fileCount.map { "\(entry.downloadedFileCount ?? 0)/\($0)" } ?? "-"
+        return Self.localizedText(
+            language: settings.uiLanguage,
+            english: "\(percentText) • file \(filesText)",
+            japanese: "\(percentText)・ファイル \(filesText)"
+        )
+    }
+
+    func isLastAddedDownloadedModel(_ model: ModelConfig) -> Bool {
+        lastAddedDownloadedModelID == model.id
     }
 
     var systemInfoRows: [(String, String)] {
@@ -530,11 +590,14 @@ final class AppViewModel: ObservableObject {
     }
 
     var isHuggingFaceDownloadRunning: Bool {
-        huggingFaceDownloadTask != nil
+        !activeHuggingFaceDownloadTasks.isEmpty || huggingFaceDownloadTask != nil
     }
 
     var canStartHuggingFaceDownload: Bool {
-        huggingFaceDownloadPreview.canDownload && isHuggingFaceCLIAvailable && !isHuggingFaceDownloadRunning
+        huggingFaceDownloadPreview.canDownload
+            && isHuggingFaceCLIAvailable
+            && selectedHuggingFaceSearchResult?.isSupportedForDownload == true
+            && selectedHuggingFaceSearchResult?.id == huggingFaceDownloadDraft.source.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     var filteredHuggingFacePreviewFiles: [HuggingFaceDownloadPreviewFile] {
@@ -562,7 +625,7 @@ final class AppViewModel: ObservableObject {
 
     var visibleHuggingFaceSearchResults: [HuggingFaceSearchResult] {
         showOnlyMLXLikelySearchResults
-            ? huggingFaceSearchResults.filter(\.isMLXLikely)
+            ? huggingFaceSearchResults.filter(\.isSupportedForDownload)
             : huggingFaceSearchResults
     }
 
@@ -665,6 +728,10 @@ final class AppViewModel: ObservableObject {
         return portSafetyText(for: selectedModel)
     }
 
+    func integratedPortStatusText(for model: ModelConfig) -> String {
+        portSafetyText(for: model)
+    }
+
 
     var selectedModelIdentityDetailText: String {
         guard let selectedModel else { return Self.localizedText(language: settings.uiLanguage, english: "No model selected", japanese: "モデル未選択") }
@@ -757,7 +824,10 @@ final class AppViewModel: ObservableObject {
         switch portChecker.check(host: host, port: port) {
         case .available:
             return Self.localizedText(language: settings.uiLanguage, english: "Port available", japanese: "利用可能")
-        case .busy:
+        case let .busy(_, _, pid):
+            if let pid {
+                return Self.localizedText(language: settings.uiLanguage, english: "Busy (PID: \(pid))", japanese: "使用中（PID: \(pid)）")
+            }
             return Self.localizedText(language: settings.uiLanguage, english: "Busy", japanese: "使用中")
         case let .invalidInput(message):
             return Self.localizedText(language: settings.uiLanguage, english: "Invalid: \(message)", japanese: "無効: \(message)")
@@ -1055,14 +1125,16 @@ final class AppViewModel: ObservableObject {
         guard !huggingFaceDownloadQueue.isEmpty else {
             return Self.localizedText(language: settings.uiLanguage, english: "No downloads in this session.", japanese: "このセッションにはダウンロードがありません。")
         }
+        let active = huggingFaceDownloadQueue.filter { $0.phase == .preparing || $0.phase == .downloading || $0.phase == .finalizing }.count
+        let waiting = huggingFaceDownloadQueue.filter { $0.phase == .waiting }.count
         let completed = huggingFaceDownloadQueue.filter { $0.phase == .completed }.count
         let failed = huggingFaceDownloadQueue.filter { $0.phase == .failed }.count
         let cancelled = huggingFaceDownloadQueue.filter { $0.phase == .cancelled }.count
-        return Self.localizedText(language: settings.uiLanguage, english: "Session downloads: \(huggingFaceDownloadQueue.count), completed \(completed), failed \(failed), cancelled \(cancelled)", japanese: "セッションダウンロード: \(huggingFaceDownloadQueue.count)件、完了 \(completed)、失敗 \(failed)、キャンセル \(cancelled)")
+        return Self.localizedText(language: settings.uiLanguage, english: "Session downloads: \(huggingFaceDownloadQueue.count), active \(active), waiting \(waiting), completed \(completed), failed \(failed), cancelled \(cancelled)", japanese: "セッションダウンロード: \(huggingFaceDownloadQueue.count)件、実行中 \(active)、待機中 \(waiting)、完了 \(completed)、失敗 \(failed)、キャンセル \(cancelled)")
     }
 
     var canRetryHuggingFaceDownload: Bool {
-        !isHuggingFaceDownloadRunning && (huggingFaceDownloadStatus.phase == .failed || huggingFaceDownloadStatus.phase == .cancelled)
+        huggingFaceDownloadStatus.phase == .failed || huggingFaceDownloadStatus.phase == .cancelled
     }
 
     var huggingFaceDownloadProgressText: String {
@@ -1407,6 +1479,9 @@ final class AppViewModel: ObservableObject {
                     return isHovered ? "Unload" : "Loaded"
                 }
             }
+            if isModelPortBusy(for: model) {
+                return "Port Busy"
+            }
             return isHovered ? "Load" : "Ready"
         }
         if model.id == runningModelID {
@@ -1420,7 +1495,18 @@ final class AppViewModel: ObservableObject {
             }
         }
 
+        if isModelPortBusy(for: model) {
+            return "ポート使用中"
+        }
         return isHovered ? "ロード" : "準備完了"
+    }
+
+    func isModelPortBusy(for model: ModelConfig) -> Bool {
+        guard model.id != runningModelID else { return false }
+        if case .busy = portChecker.check(host: model.host, port: model.serverPort) {
+            return true
+        }
+        return false
     }
 
     func isModelLoaded(_ model: ModelConfig) -> Bool {
@@ -1487,7 +1573,10 @@ final class AppViewModel: ObservableObject {
         if isModelLoaded(model) {
             return 1
         }
-        return 2
+        if isModelPortBusy(for: model) {
+            return 2
+        }
+        return 3
     }
 
     func endpointSortValue(for model: ModelConfig) -> String {
@@ -1766,6 +1855,14 @@ final class AppViewModel: ObservableObject {
         selectedModel != nil && !hermesAgentConfigPathText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    var hermesAgentTargetModelText: String {
+        selectedModelIdentifier
+    }
+
+    var hermesAgentTargetBaseURLText: String {
+        baseURL
+    }
+
     var settingsDirectoryPath: String {
         do {
             return try settingsStore.settingsDirectoryURL.path
@@ -1902,9 +1999,13 @@ final class AppViewModel: ObservableObject {
         case let .available(host, port):
             runtimeState = .portAvailable(host: host, port: port)
             appendLog("[port] port available: \(host):\(port)")
-        case let .busy(host, port):
+        case let .busy(host, port, pid):
             runtimeState = .portBusy(host: host, port: port)
-            appendLog("[port] port busy: \(host):\(port)")
+            if let pid {
+                appendLog("[port] port busy: \(host):\(port) PID=\(pid)")
+            } else {
+                appendLog("[port] port busy: \(host):\(port)")
+            }
         case let .invalidInput(message):
             runtimeState = .portCheckFailed(host: host, port: port, message: message)
             appendLog("[port] port check failed: \(message)")
@@ -2151,8 +2252,16 @@ final class AppViewModel: ObservableObject {
         }
     }
 
+    private func applyDownloadSettingsToDraft() {
+        huggingFaceDownloadDraft.saveDirectory = settings.downloadSaveDirectory
+        huggingFaceDownloadDraft.autoAddToModelList = true
+        huggingFaceDownloadDraft.autoSelectAfterAdd = true
+        huggingFaceDownloadDraft.useSelectedPreviewFiles = false
+    }
+
     func saveSettingsRequested() {
         refreshDefaultUserFacingMessagesForCurrentLanguage()
+        applyDownloadSettingsToDraft()
         do {
             try settingsStore.save(settings: settings, models: models)
             appendLog("[settings] Saved settings.json and models.json to \(settingsDirectoryPath).")
@@ -2174,6 +2283,61 @@ final class AppViewModel: ObservableObject {
         settings.mlxServerExecutablePath = url.path
         saveSettingsRequested()
         appendLog("[settings] executable path set to \(ModelAvailabilityPathFormatter.compact(path: url.path)).")
+    }
+
+    func chooseHermesAgentConfigRequested() {
+        let panel = NSOpenPanel()
+        panel.title = Self.localizedText(language: settings.uiLanguage, english: "Choose Hermes Agent config file", japanese: "Hermes Agent設定ファイルを選択")
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.text, .data]
+        guard panel.runModal() == .OK, let url = panel.url else {
+            appendLog("[hermes] config picker cancelled.")
+            return
+        }
+        settings.hermesConfigPath = url.path
+        saveSettingsRequested()
+        hermesAgentConfigMessage = Self.localizedText(
+            language: settings.uiLanguage,
+            english: "Hermes Agent config file selected.",
+            japanese: "Hermes Agent設定ファイルを選択しました。"
+        )
+        appendLog("[hermes] config path set to \(ModelAvailabilityPathFormatter.compact(path: url.path)).")
+    }
+
+    func openHermesAgentConfigRequested() {
+        let url = hermesAgentConfigService.expandedConfigURL(from: hermesAgentConfigPathText)
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            hermesAgentConfigMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Hermes Agent config file was not found.",
+                japanese: "Hermes Agent設定ファイルが見つかりません。"
+            )
+            appendLog("[hermes] open failed: config file not found at \(ModelAvailabilityPathFormatter.compact(path: url.path)).")
+            return
+        }
+        NSWorkspace.shared.open(url)
+        appendLog("[hermes] opened config file: \(ModelAvailabilityPathFormatter.compact(path: url.path)).")
+    }
+
+    func restoreHermesAgentConfigBackupRequested() {
+        do {
+            let restoredBackupURL = try hermesAgentConfigService.restoreLatestBackup(configPath: hermesAgentConfigPathText)
+            hermesAgentConfigMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Restored latest Hermes Agent backup: \(ModelAvailabilityPathFormatter.compact(path: restoredBackupURL.path))",
+                japanese: "最新のHermes Agentバックアップを復元しました: \(ModelAvailabilityPathFormatter.compact(path: restoredBackupURL.path))"
+            )
+            appendLog("[hermes] restored latest backup: \(ModelAvailabilityPathFormatter.compact(path: restoredBackupURL.path)).")
+        } catch {
+            hermesAgentConfigMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Could not restore Hermes Agent backup: \(error.localizedDescription)",
+                japanese: "Hermes Agentバックアップを復元できませんでした: \(error.localizedDescription)"
+            )
+            appendLog("[hermes] restore failed: \(error.localizedDescription)")
+        }
     }
 
     func chooseLocalModelFolderRequested() {
@@ -2273,7 +2437,9 @@ final class AppViewModel: ObservableObject {
             appendLog("[hf] download directory picker cancelled.")
             return
         }
+        settings.downloadSaveDirectory = url.path
         huggingFaceDownloadDraft.saveDirectory = url.path
+        saveSettingsRequested()
         appendLog("[hf] download save directory selected: \(ModelAvailabilityPathFormatter.compact(path: url.path)).")
     }
 
@@ -2292,12 +2458,13 @@ final class AppViewModel: ObservableObject {
             return
         }
 
+        applyDownloadSettingsToDraft()
         let preview = huggingFaceDownloadPreview
         guard let reference = preview.reference,
               let destinationPath = preview.destinationPath else {
             huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
                 phase: .failed,
-                message: preview.message,
+                message: downloadReadinessMessage(previewMessage: preview.message),
                 repositoryID: nil,
                 destinationPath: nil,
                 progress: nil,
@@ -2307,8 +2474,20 @@ final class AppViewModel: ObservableObject {
             return
         }
 
-        guard huggingFaceDownloadTask == nil else {
-            appendLog("[hf] download already running.")
+        guard canStartHuggingFaceDownload else {
+            huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
+                phase: .failed,
+                message: downloadReadinessMessage(previewMessage: preview.message),
+                repositoryID: reference.repositoryID,
+                destinationPath: destinationPath,
+                progress: nil,
+                outputLines: []
+            )
+            appendLog("[hf] download blocked: missing required tag for \(reference.repositoryID).")
+            return
+        }
+
+        guard prepareHuggingFaceFileListForDownload(reference: reference, destinationPath: destinationPath) else {
             return
         }
 
@@ -2317,46 +2496,165 @@ final class AppViewModel: ObservableObject {
         let expectedDownloadFiles = huggingFaceExpectedDownloadFiles()
         let expectedDownloadBytes = totalBytes(for: expectedDownloadFiles)
         let queueEntryID = UUID()
+        let entryPhase: HuggingFaceDownloadPhase = activeHuggingFaceDownloadTasks.count < settings.maxConcurrentModelDownloads ? .preparing : .waiting
         huggingFaceDownloadQueue.insert(
             HuggingFaceDownloadQueueEntry(
                 id: queueEntryID,
                 repositoryID: reference.repositoryID,
                 destinationPath: destinationPath,
-                phase: .preparing,
-                message: "Preparing",
+                phase: entryPhase,
+                message: entryPhase == .waiting ? "Waiting for an available download slot." : "Preparing",
                 fileCount: expectedDownloadFiles.isEmpty ? nil : expectedDownloadFiles.count,
+                downloadedFileCount: nil,
                 downloadedBytes: nil,
                 totalBytes: expectedDownloadBytes,
                 speedBytesPerSecond: nil
             ),
             at: 0
         )
-        huggingFaceDownloadCancellationRequested = false
+        queuedHuggingFaceDownloads[queueEntryID] = QueuedHuggingFaceDownload(
+            id: queueEntryID,
+            reference: reference,
+            destinationPath: destinationPath,
+            displayName: displayName,
+            draft: draft,
+            expectedFiles: expectedDownloadFiles,
+            expectedBytes: expectedDownloadBytes
+        )
+        downloadCompletionMarkerDate = nil
         huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
-            phase: .preparing,
-            message: "Preparing destination: \(ModelAvailabilityPathFormatter.compact(path: destinationPath))",
+            phase: entryPhase,
+            message: entryPhase == .waiting ? "Waiting for an available download slot." : "Preparing destination: \(ModelAvailabilityPathFormatter.compact(path: destinationPath))",
             repositoryID: reference.repositoryID,
             destinationPath: destinationPath,
             progress: nil,
             outputLines: []
         )
-        appendLog("[hf] starting Hugging Face download for \(reference.repositoryID).")
+        appendLog("[hf] queued Hugging Face download for \(reference.repositoryID).")
         appendLog("[hf] destination: \(ModelAvailabilityPathFormatter.compact(path: destinationPath))")
-        startHuggingFaceProgressPolling(
-            destinationPath: destinationPath,
-            totalBytes: expectedDownloadBytes,
-            queueEntryID: queueEntryID
-        )
+        drainHuggingFaceDownloadQueue()
+    }
 
-        huggingFaceDownloadTask = Task { [weak self] in
-            await self?.runHuggingFaceDownload(
-                reference: reference,
+    private func prepareHuggingFaceFileListForDownload(
+        reference: HuggingFaceModelReference,
+        destinationPath: String
+    ) -> Bool {
+        if !filteredHuggingFacePreviewFiles.isEmpty || !selectedHuggingFacePreviewFiles.isEmpty {
+            return true
+        }
+
+        if huggingFaceFilePreview.isLoading {
+            huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
+                phase: .preparing,
+                message: Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "Preparing file list before download...",
+                    japanese: "ダウンロード前にファイル一覧を取得しています..."
+                ),
+                repositoryID: reference.repositoryID,
                 destinationPath: destinationPath,
-                displayName: displayName,
-                draft: draft,
-                queueEntryID: queueEntryID
+                progress: nil,
+                outputLines: []
+            )
+            return false
+        }
+
+        huggingFaceFilePreview = HuggingFaceDownloadFilePreviewState(
+            isLoading: true,
+            message: Self.localizedText(language: settings.uiLanguage, english: "Preparing file list...", japanese: "ファイル一覧を取得しています..."),
+            files: []
+        )
+        huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
+            phase: .preparing,
+            message: Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Preparing file list before download...",
+                japanese: "ダウンロード前にファイル一覧を取得しています..."
+            ),
+            repositoryID: reference.repositoryID,
+            destinationPath: destinationPath,
+            progress: nil,
+            outputLines: []
+        )
+        appendLog("[hf] preparing file list before download for \(reference.repositoryID).")
+        let revision = normalizedHuggingFaceRevision
+
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let files = try await self.huggingFaceRepositoryFileService.fetchFiles(
+                    repositoryID: reference.repositoryID,
+                    revision: revision,
+                    token: nil
+                )
+
+                self.huggingFaceFilePreview = HuggingFaceDownloadFilePreviewState(
+                    isLoading: false,
+                    message: files.isEmpty ? "No downloadable files found." : "Preview ready. Starting download with precise progress.",
+                    files: files
+                )
+                self.selectedHuggingFacePreviewFileIDs = Set(files.map(\.id))
+                self.appendLog("[hf] preview fetched \(files.count) files for \(reference.repositoryID) before download.")
+
+                guard !files.isEmpty else {
+                    self.huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
+                        phase: .failed,
+                        message: Self.localizedText(
+                            language: self.settings.uiLanguage,
+                            english: "No downloadable files were found. Choose another model or check the repository.",
+                            japanese: "ダウンロード対象ファイルが見つかりません。別のモデルを選ぶか、リポジトリを確認してください。"
+                        ),
+                        repositoryID: reference.repositoryID,
+                        destinationPath: destinationPath,
+                        progress: nil,
+                        outputLines: []
+                    )
+                    return
+                }
+
+                self.startHuggingFaceDownloadRequested()
+            } catch {
+                self.huggingFaceFilePreview = HuggingFaceDownloadFilePreviewState(isLoading: false, message: error.localizedDescription, files: [])
+                self.huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
+                    phase: .failed,
+                    message: Self.localizedText(
+                        language: self.settings.uiLanguage,
+                        english: "Could not prepare file list, so precise progress cannot be shown: \(error.localizedDescription)",
+                        japanese: "ファイル一覧を取得できないため、正確な進捗を表示できません: \(error.localizedDescription)"
+                    ),
+                    repositoryID: reference.repositoryID,
+                    destinationPath: destinationPath,
+                    progress: nil,
+                    outputLines: []
+                )
+                self.appendLog("[hf] preview fetch failed before download: \(error.localizedDescription)")
+            }
+        }
+
+        return false
+    }
+
+    private func downloadReadinessMessage(previewMessage: String) -> String {
+        let trimmedSource = huggingFaceDownloadDraft.source.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedSource.isEmpty else {
+            return previewMessage
+        }
+        guard let selectedHuggingFaceSearchResult,
+              selectedHuggingFaceSearchResult.id == trimmedSource else {
+            return Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Search the model first to verify the required MLX tag.",
+                japanese: "必要なMLXタグを確認するため、先にモデルを検索してください。"
             )
         }
+        guard selectedHuggingFaceSearchResult.isSupportedForDownload else {
+            return Self.localizedText(
+                language: settings.uiLanguage,
+                english: "This model does not have the required MLX tag and cannot be downloaded.",
+                japanese: "このモデルには必要なMLXタグがないため、ダウンロードできません。"
+            )
+        }
+        return previewMessage
     }
 
     func restoreHuggingFaceDownloadForm(from entry: HuggingFaceDownloadQueueEntry) {
@@ -2390,22 +2688,28 @@ final class AppViewModel: ObservableObject {
     }
 
     func cancelHuggingFaceDownloadRequested() {
-        guard huggingFaceDownloadTask != nil else {
+        guard isHuggingFaceDownloadRunning || huggingFaceDownloadQueue.contains(where: { $0.phase == .waiting }) else {
             appendLog("[hf] no active download to cancel.")
             return
         }
 
-        huggingFaceDownloadCancellationRequested = true
+        let cancellableIDs = Set(huggingFaceDownloadQueue.filter { entry in
+            entry.phase == .waiting || entry.phase == .preparing || entry.phase == .downloading || entry.phase == .finalizing
+        }.map(\.id))
+        cancelledHuggingFaceDownloadIDs.formUnion(cancellableIDs)
         huggingFaceDownloadStatus.phase = .cancelled
-        huggingFaceDownloadStatus.message = "Cancelling download. The model will not be added."
-        stopHuggingFaceProgressPolling()
-        huggingFaceDownloadManager.cancel()
-        huggingFaceDownloadTask?.cancel()
-        appendLog("[hf] cancel requested.")
+        huggingFaceDownloadStatus.message = "Cancelling downloads. Models will not be added."
+        for id in cancellableIDs where activeHuggingFaceDownloadTasks[id] == nil {
+            updateHuggingFaceQueueEntry(id, phase: .cancelled, message: "Cancelled")
+            queuedHuggingFaceDownloads[id] = nil
+        }
+        activeHuggingFaceDownloadManagers.values.forEach { $0.cancel() }
+        activeHuggingFaceDownloadTasks.values.forEach { $0.cancel() }
+        appendLog("[hf] cancel requested for \(cancellableIDs.count) download(s).")
     }
 
     func resetHuggingFaceDownloadStatus() {
-        guard huggingFaceDownloadTask == nil else {
+        guard !isHuggingFaceDownloadRunning else {
             return
         }
 
@@ -2469,10 +2773,21 @@ final class AppViewModel: ObservableObject {
             do {
                 let results = try await huggingFaceSearchService.search(query: query, limit: 10)
                 huggingFaceSearchResults = results
-                selectedHuggingFaceSearchResult = nil
-                huggingFaceSearchMessage = results.isEmpty
-                    ? "No matching models found. Try another query or paste an exact ID / URL."
-                    : "Found \(results.count) models. Choose one to fill the download form."
+                if let exactResult = results.first(where: { $0.id.caseInsensitiveCompare(query) == .orderedSame }) ?? results.first {
+                    selectHuggingFaceSearchResult(exactResult)
+                    huggingFaceSearchMessage = Self.localizedText(
+                        language: settings.uiLanguage,
+                        english: "Selected search result. Review the details, then press Download.",
+                        japanese: "検索結果を選択しました。内容を確認してからダウンロードしてください。"
+                    )
+                } else {
+                    selectedHuggingFaceSearchResult = nil
+                    huggingFaceSearchMessage = Self.localizedText(
+                        language: settings.uiLanguage,
+                        english: "No matching models found. Try another query or paste an exact ID / URL.",
+                        japanese: "一致するモデルが見つかりません。別の語句で検索するか、正確なModel ID / URLを貼り付けてください。"
+                    )
+                }
                 appendLog("[hf] search completed with \(results.count) results.")
             } catch {
                 huggingFaceSearchResults = []
@@ -2490,7 +2805,7 @@ final class AppViewModel: ObservableObject {
         if huggingFaceDownloadDraft.displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             huggingFaceDownloadDraft.displayName = result.name
         }
-        huggingFaceSearchMessage = result.selectionWarning
+        huggingFaceSearchMessage = result.selectionMessage(language: settings.uiLanguage)
         appendLog("[hf] search result selected for download: \(result.id) — \(result.qualitySummary)")
     }
 
@@ -3384,88 +3699,133 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    private func runHuggingFaceDownload(
-        reference: HuggingFaceModelReference,
-        destinationPath: String,
-        displayName: String,
-        draft: HuggingFaceDownloadDraft,
-        queueEntryID: UUID
-    ) async {
+    private func drainHuggingFaceDownloadQueue() {
+        let maxActiveDownloads = min(max(settings.maxConcurrentModelDownloads, 1), 5)
+        while activeHuggingFaceDownloadTasks.count < maxActiveDownloads {
+            guard let nextEntry = huggingFaceDownloadQueue.reversed().first(where: { entry in
+                queuedHuggingFaceDownloads[entry.id] != nil
+                    && activeHuggingFaceDownloadTasks[entry.id] == nil
+                    && (entry.phase == .waiting || entry.phase == .preparing)
+            }), let job = queuedHuggingFaceDownloads[nextEntry.id] else {
+                return
+            }
+            startQueuedHuggingFaceDownload(job)
+        }
+    }
+
+    private func startQueuedHuggingFaceDownload(_ job: QueuedHuggingFaceDownload) {
+        updateHuggingFaceQueueEntry(job.id, phase: .preparing, message: "Preparing")
+        huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
+            phase: .preparing,
+            message: "Preparing destination: \(ModelAvailabilityPathFormatter.compact(path: job.destinationPath))",
+            repositoryID: job.reference.repositoryID,
+            destinationPath: job.destinationPath,
+            progress: nil,
+            outputLines: []
+        )
+        appendLog("[hf] starting Hugging Face download for \(job.reference.repositoryID).")
+        let manager = HuggingFaceDownloadManager()
+        activeHuggingFaceDownloadManagers[job.id] = manager
+        startHuggingFaceProgressPolling(
+            destinationPath: job.destinationPath,
+            totalBytes: job.expectedBytes,
+            queueEntryID: job.id
+        )
+
+        activeHuggingFaceDownloadTasks[job.id] = Task { [weak self] in
+            await self?.runHuggingFaceDownload(job: job, manager: manager)
+        }
+    }
+
+    private func runHuggingFaceDownload(job: QueuedHuggingFaceDownload, manager: HuggingFaceDownloadManager) async {
         do {
             huggingFaceDownloadStatus.phase = .downloading
-            huggingFaceDownloadStatus.message = "Downloading \(reference.repositoryID)..."
-            updateHuggingFaceQueueEntry(queueEntryID, phase: .downloading, message: "Downloading")
+            huggingFaceDownloadStatus.message = "Downloading \(job.reference.repositoryID)..."
+            updateHuggingFaceQueueEntry(job.id, phase: .downloading, message: "Downloading")
 
-            let result = try await huggingFaceDownloadManager.download(
+            let result = try await manager.download(
                 request: HuggingFaceDownloadRequest(
-                    repositoryID: reference.repositoryID,
-                    destinationPath: destinationPath,
-                    revision: normalizedHuggingFaceRevision,
-                    includePatterns: huggingFaceIncludePatternsForDownload(),
-                    excludePatterns: Self.patternList(from: draft.excludePatterns),
+                    repositoryID: job.reference.repositoryID,
+                    destinationPath: job.destinationPath,
+                    revision: job.draft.revision.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "main" : job.draft.revision.trimmingCharacters(in: .whitespacesAndNewlines),
+                    includePatterns: job.draft.useSelectedPreviewFiles ? job.expectedFiles.map(\.path) : Self.patternList(from: job.draft.includePatterns),
+                    excludePatterns: Self.patternList(from: job.draft.excludePatterns),
                     authorizationValue: nil
                 ),
                 outputHandler: { [weak self] line in
                     Task { @MainActor in
-                        self?.appendHuggingFaceOutputLine(line, queueEntryID: queueEntryID)
+                        self?.appendHuggingFaceOutputLine(line, queueEntryID: job.id)
                     }
                 }
             )
 
-            guard !huggingFaceDownloadCancellationRequested else {
-                huggingFaceDownloadStatus.phase = .cancelled
-                huggingFaceDownloadStatus.message = "Download cancelled. The model was not added."
-                stopHuggingFaceProgressPolling()
-                updateHuggingFaceQueueEntry(queueEntryID, phase: .cancelled, message: "Cancelled")
-                appendLog("[hf] download cancelled for \(reference.repositoryID).")
-                huggingFaceDownloadTask = nil
+            guard !cancelledHuggingFaceDownloadIDs.contains(job.id) else {
+                finishHuggingFaceDownload(job.id)
+                updateHuggingFaceQueueEntry(job.id, phase: .cancelled, message: "Cancelled")
+                appendLog("[hf] download cancelled for \(job.reference.repositoryID).")
+                drainHuggingFaceDownloadQueue()
                 return
             }
 
             huggingFaceDownloadStatus.phase = .finalizing
             huggingFaceDownloadStatus.message = "Finalizing downloaded model profile..."
             huggingFaceDownloadStatus.progress = 1
-            stopHuggingFaceProgressPolling()
+            stopHuggingFaceProgressPolling(queueEntryID: job.id)
 
-            if draft.autoAddToModelList {
+            if job.draft.autoAddToModelList {
                 let didAddProfile = addDownloadedHuggingFaceModelProfile(
-                    reference: reference,
+                    reference: job.reference,
                     destinationPath: result.destinationPath,
-                    displayName: displayName,
-                    draft: draft
+                    displayName: job.displayName,
+                    draft: job.draft
                 )
 
                 guard didAddProfile else {
-                    huggingFaceDownloadTask = nil
+                    finishHuggingFaceDownload(job.id)
+                    drainHuggingFaceDownloadQueue()
                     return
                 }
             }
 
             huggingFaceDownloadStatus.phase = .completed
-            huggingFaceDownloadStatus.message = draft.autoAddToModelList
+            huggingFaceDownloadStatus.message = job.draft.autoAddToModelList
                 ? "Download completed. Added to model list and selected. Ready to start."
                 : "Download completed. Auto-add was disabled."
             huggingFaceDownloadStatus.progress = 1
-            updateHuggingFaceQueueEntry(queueEntryID, phase: .completed, message: "Completed", progress: 1)
-            appendLog("[hf] download completed for \(reference.repositoryID).")
+            downloadCompletionMarkerDate = Date()
+            updateHuggingFaceQueueEntry(job.id, phase: .completed, message: "Completed", progress: 1)
+            appendLog("[hf] download completed for \(job.reference.repositoryID).")
             appendLog("[hf] saved to \(ModelAvailabilityPathFormatter.compact(path: result.destinationPath)).")
-            huggingFaceDownloadTask = nil
+            finishHuggingFaceDownload(job.id)
+            drainHuggingFaceDownloadQueue()
         } catch {
-            if huggingFaceDownloadCancellationRequested {
+            if cancelledHuggingFaceDownloadIDs.contains(job.id) {
                 huggingFaceDownloadStatus.phase = .cancelled
                 huggingFaceDownloadStatus.message = "Download cancelled. The model was not added."
-                stopHuggingFaceProgressPolling()
-                updateHuggingFaceQueueEntry(queueEntryID, phase: .cancelled, message: "Cancelled")
-                appendLog("[hf] download cancelled.")
+                updateHuggingFaceQueueEntry(job.id, phase: .cancelled, message: "Cancelled")
+                appendLog("[hf] download cancelled for \(job.reference.repositoryID).")
             } else {
                 let guidance = huggingFaceDownloadFailureGuidance(from: error)
                 huggingFaceDownloadStatus.phase = .failed
                 huggingFaceDownloadStatus.message = guidance
-                stopHuggingFaceProgressPolling()
-                updateHuggingFaceQueueEntry(queueEntryID, phase: .failed, message: guidance)
-                appendLog("[hf] download failed: \(guidance)")
+                updateHuggingFaceQueueEntry(job.id, phase: .failed, message: guidance)
+                appendLog("[hf] download failed for \(job.reference.repositoryID): \(guidance)")
             }
-            huggingFaceDownloadTask = nil
+            finishHuggingFaceDownload(job.id)
+            drainHuggingFaceDownloadQueue()
+        }
+    }
+
+    private func finishHuggingFaceDownload(_ id: UUID) {
+        stopHuggingFaceProgressPolling(queueEntryID: id)
+        activeHuggingFaceDownloadTasks[id] = nil
+        activeHuggingFaceDownloadManagers[id] = nil
+        queuedHuggingFaceDownloads[id] = nil
+        cancelledHuggingFaceDownloadIDs.remove(id)
+        huggingFaceDownloadTask = nil
+        if activeHuggingFaceDownloadTasks.isEmpty,
+           !huggingFaceDownloadQueue.contains(where: { $0.phase == .waiting || $0.phase == .preparing }) {
+            stopHuggingFaceProgressPolling()
         }
     }
 
@@ -3555,16 +3915,15 @@ final class AppViewModel: ObservableObject {
         }
         huggingFaceDownloadQueue[index].phase = phase
         huggingFaceDownloadQueue[index].message = message
-        if let progress {
-            let totalBytes = huggingFaceDownloadQueue[index].totalBytes ?? 10_000
+        if let progress, let totalBytes = huggingFaceDownloadQueue[index].totalBytes, totalBytes > 0 {
             huggingFaceDownloadQueue[index].downloadedBytes = Int64(progress * Double(totalBytes))
-            huggingFaceDownloadQueue[index].totalBytes = totalBytes
         }
     }
 
     private func updateMeasuredHuggingFaceProgress(
         queueEntryID: UUID,
         downloadedBytes: Int64,
+        downloadedFileCount: Int,
         totalBytes: Int64?,
         speedBytesPerSecond: Int64?
     ) {
@@ -3584,6 +3943,7 @@ final class AppViewModel: ObservableObject {
             }
             huggingFaceDownloadQueue[index].phase = .downloading
             huggingFaceDownloadQueue[index].message = "Downloading... \(downloadedText)"
+            huggingFaceDownloadQueue[index].downloadedFileCount = downloadedFileCount
             huggingFaceDownloadQueue[index].downloadedBytes = max(downloadedBytes, 0)
             huggingFaceDownloadQueue[index].speedBytesPerSecond = speedBytesPerSecond
             return
@@ -3591,8 +3951,7 @@ final class AppViewModel: ObservableObject {
 
         let clampedDownloadedBytes = min(max(downloadedBytes, 0), totalBytes)
         let measuredProgress = min(max(Double(clampedDownloadedBytes) / Double(totalBytes), 0), 1)
-        let currentProgress = huggingFaceDownloadStatus.progress ?? 0
-        let progress = max(currentProgress, measuredProgress)
+        let progress = measuredProgress
         let percent = Int(progress * 100)
 
         if case .downloading = huggingFaceDownloadStatus.phase {
@@ -3605,6 +3964,7 @@ final class AppViewModel: ObservableObject {
         }
         huggingFaceDownloadQueue[index].phase = .downloading
         huggingFaceDownloadQueue[index].message = "Downloading... \(percent)%"
+        huggingFaceDownloadQueue[index].downloadedFileCount = downloadedFileCount
         huggingFaceDownloadQueue[index].downloadedBytes = Int64(progress * Double(totalBytes))
         huggingFaceDownloadQueue[index].totalBytes = totalBytes
         huggingFaceDownloadQueue[index].speedBytesPerSecond = speedBytesPerSecond
@@ -3615,16 +3975,17 @@ final class AppViewModel: ObservableObject {
         totalBytes: Int64?,
         queueEntryID: UUID
     ) {
-        stopHuggingFaceProgressPolling()
+        stopHuggingFaceProgressPolling(queueEntryID: queueEntryID)
 
-        huggingFaceDownloadProgressTask = Task { [weak self] in
+        let task = Task { [weak self] in
             var lastBytes: Int64 = 0
             var lastDate = Date()
 
             while !Task.isCancelled {
-                let downloadedBytes = await Task.detached(priority: .utility) {
-                    Self.directorySizeBytes(atPath: destinationPath)
+                let snapshot = await Task.detached(priority: .utility) {
+                    Self.directoryDownloadSnapshot(atPath: destinationPath)
                 }.value
+                let downloadedBytes = snapshot.bytes
                 let now = Date()
                 let elapsed = max(now.timeIntervalSince(lastDate), 0.001)
                 let speed = Int64(max(Double(downloadedBytes - lastBytes) / elapsed, 0))
@@ -3634,6 +3995,7 @@ final class AppViewModel: ObservableObject {
                 self?.updateMeasuredHuggingFaceProgress(
                     queueEntryID: queueEntryID,
                     downloadedBytes: downloadedBytes,
+                    downloadedFileCount: snapshot.fileCount,
                     totalBytes: totalBytes,
                     speedBytesPerSecond: speed
                 )
@@ -3641,20 +4003,32 @@ final class AppViewModel: ObservableObject {
                 try? await Task.sleep(nanoseconds: 700_000_000)
             }
         }
+        activeHuggingFaceProgressTasks[queueEntryID] = task
+        huggingFaceDownloadProgressTask = task
+    }
+
+    private func stopHuggingFaceProgressPolling(queueEntryID: UUID) {
+        activeHuggingFaceProgressTasks[queueEntryID]?.cancel()
+        activeHuggingFaceProgressTasks[queueEntryID] = nil
+        if activeHuggingFaceProgressTasks.isEmpty {
+            huggingFaceDownloadProgressTask = nil
+        }
     }
 
     private func stopHuggingFaceProgressPolling() {
         huggingFaceDownloadProgressTask?.cancel()
         huggingFaceDownloadProgressTask = nil
+        activeHuggingFaceProgressTasks.values.forEach { $0.cancel() }
+        activeHuggingFaceProgressTasks.removeAll()
     }
 
-    nonisolated private static func directorySizeBytes(atPath path: String) -> Int64 {
+    nonisolated private static func directoryDownloadSnapshot(atPath path: String) -> (bytes: Int64, fileCount: Int) {
         let url = URL(fileURLWithPath: path, isDirectory: true)
         let keys: Set<URLResourceKey> = [.isRegularFileKey, .fileSizeKey]
 
         if let values = try? url.resourceValues(forKeys: keys),
            values.isRegularFile == true {
-            return Int64(values.fileSize ?? 0)
+            return (Int64(values.fileSize ?? 0), 1)
         }
 
         guard let enumerator = FileManager.default.enumerator(
@@ -3662,18 +4036,20 @@ final class AppViewModel: ObservableObject {
             includingPropertiesForKeys: Array(keys),
             options: [.skipsPackageDescendants]
         ) else {
-            return 0
+            return (0, 0)
         }
 
         var total: Int64 = 0
+        var fileCount = 0
         for case let fileURL as URL in enumerator {
             guard let values = try? fileURL.resourceValues(forKeys: keys),
                   values.isRegularFile == true else {
                 continue
             }
+            fileCount += 1
             total += Int64(values.fileSize ?? 0)
         }
-        return total
+        return (total, fileCount)
     }
 
     private func appendHuggingFaceOutputLine(_ line: String, queueEntryID: UUID? = nil) {
@@ -3689,12 +4065,9 @@ final class AppViewModel: ObservableObject {
         }
         huggingFaceDownloadStatus.outputLines = outputLines
 
-        if let progress = HuggingFaceDownloadPlanner.progressFraction(from: sanitizedLine) {
-            huggingFaceDownloadStatus.progress = progress
-            huggingFaceDownloadStatus.message = "Downloading... \(Int(progress * 100))%"
-            if let queueEntryID {
-                updateHuggingFaceQueueEntry(queueEntryID, phase: .downloading, message: "Downloading... \(Int(progress * 100))%", progress: progress)
-            }
+        if HuggingFaceDownloadPlanner.progressFraction(from: sanitizedLine) != nil,
+           let queueEntryID {
+            updateHuggingFaceQueueEntry(queueEntryID, phase: .downloading, message: "Downloading")
         }
 
         appendLog(sanitizedLine)
@@ -3708,6 +4081,7 @@ final class AppViewModel: ObservableObject {
     ) -> Bool {
         if models.contains(where: { $0.modelID == destinationPath }) {
             selectedModelID = destinationPath
+            lastAddedDownloadedModelID = destinationPath
             appendLog("[hf] existing profile selected for \(ModelAvailabilityPathFormatter.compact(path: destinationPath)).")
             return true
         }
@@ -3734,6 +4108,7 @@ final class AppViewModel: ObservableObject {
         do {
             try settingsStore.save(models: nextModels)
             models = nextModels
+            lastAddedDownloadedModelID = model.id
             if draft.autoSelectAfterAdd {
                 selectedModelID = model.id
             }
@@ -3814,8 +4189,12 @@ final class AppViewModel: ObservableObject {
         switch portChecker.check(host: host, port: port) {
         case .available:
             appendLog("[\(logPrefix)] port available: \(host):\(port)")
-        case .busy:
-            appendLog("[\(logPrefix)] port occupied: \(host):\(port)")
+        case let .busy(_, _, pid):
+            if let pid {
+                appendLog("[\(logPrefix)] port occupied: \(host):\(port) PID=\(pid)")
+            } else {
+                appendLog("[\(logPrefix)] port occupied: \(host):\(port)")
+            }
             if await detectExternalServer(host: host, port: port, logPrefix: logPrefix) {
                 return false
             }

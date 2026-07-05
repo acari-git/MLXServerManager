@@ -21,6 +21,7 @@ enum HermesAgentConfigServiceError: LocalizedError, Equatable {
     case configFileNotFound(String)
     case configPathIsDirectory(String)
     case unreadableConfig(String)
+    case backupNotFound(String)
 
     var errorDescription: String? {
         switch self {
@@ -32,6 +33,8 @@ enum HermesAgentConfigServiceError: LocalizedError, Equatable {
             "Hermes Agent config path is a directory: \(path)"
         case let .unreadableConfig(path):
             "Hermes Agent config file could not be read as UTF-8 text: \(path)"
+        case let .backupNotFound(path):
+            "Hermes Agent backup file was not found for: \(path)"
         }
     }
 }
@@ -108,19 +111,19 @@ struct HermesAgentConfigService {
 
         let modelValues = [
             ("default", connection.modelID),
-            ("provider", "custom"),
             ("base_url", connection.baseURL),
             ("api_key", connection.apiKey)
         ]
+        let providerValue = ("provider", "openai-compatible")
 
         guard let modelIndex = lines.firstIndex(where: { line in
             line.trimmingCharacters(in: .whitespaces) == "model:"
         }) else {
-            let modelBlock = modelValues.map { key, value in
+            let modelBlock = ([providerValue] + modelValues).map { key, value in
                 "  \(key): \(yamlScalar(value))"
             }
             lines = ["model:"] + modelBlock + [""] + lines
-            return (joinedLines(lines, hadFinalNewline: hadFinalNewline), modelValues.map(\.0))
+            return (joinedLines(lines, hadFinalNewline: hadFinalNewline), ([providerValue] + modelValues).map(\.0))
         }
 
         let modelIndent = leadingSpaceCount(lines[modelIndex])
@@ -140,12 +143,18 @@ struct HermesAgentConfigService {
 
         var foundKeys = Set<String>()
         var changedKeys: [String] = []
+        var foundProvider = false
         let valuesByKey = Dictionary(uniqueKeysWithValues: modelValues)
 
         if modelIndex + 1 < blockEnd {
             for index in (modelIndex + 1)..<blockEnd {
                 let line = lines[index]
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("provider:") {
+                    foundProvider = true
+                    continue
+                }
+
                 guard let key = modelValues.map(\.0).first(where: { trimmed.hasPrefix("\($0):") }),
                       let value = valuesByKey[key] else {
                     continue
@@ -162,6 +171,11 @@ struct HermesAgentConfigService {
         }
 
         var insertionIndex = modelIndex + 1
+        if !foundProvider {
+            lines.insert("\(childIndent)\(providerValue.0): \(yamlScalar(providerValue.1))", at: insertionIndex)
+            insertionIndex += 1
+            changedKeys.append(providerValue.0)
+        }
         for (key, value) in modelValues where !foundKeys.contains(key) {
             lines.insert("\(childIndent)\(key): \(yamlScalar(value))", at: insertionIndex)
             insertionIndex += 1
@@ -169,6 +183,41 @@ struct HermesAgentConfigService {
         }
 
         return (joinedLines(lines, hadFinalNewline: hadFinalNewline), changedKeys)
+    }
+
+    func restoreLatestBackup(configPath: String) throws -> URL {
+        let trimmedPath = configPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPath.isEmpty else {
+            throw HermesAgentConfigServiceError.configPathMissing
+        }
+        let configURL = expandedConfigURL(from: trimmedPath)
+        let directoryURL = configURL.deletingLastPathComponent()
+        let prefix = "\(configURL.lastPathComponent).mlxservermanager-backup-"
+        let backupURLs = try fileManager.contentsOfDirectory(
+            at: directoryURL,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        )
+            .filter { $0.lastPathComponent.hasPrefix(prefix) }
+            .sorted { left, right in
+                let leftDate = (try? left.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+                let rightDate = (try? right.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+                return leftDate > rightDate
+            }
+
+        guard let latestBackupURL = backupURLs.first else {
+            throw HermesAgentConfigServiceError.backupNotFound(configURL.path)
+        }
+
+        if fileManager.fileExists(atPath: configURL.path) {
+            let safetyBackupURL = try makeBackupURL(for: configURL)
+            try fileManager.copyItem(at: configURL, to: safetyBackupURL)
+        }
+        if fileManager.fileExists(atPath: configURL.path) {
+            try fileManager.removeItem(at: configURL)
+        }
+        try fileManager.copyItem(at: latestBackupURL, to: configURL)
+        return latestBackupURL
     }
 
     private func makeBackupURL(for configURL: URL) throws -> URL {

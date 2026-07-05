@@ -83,7 +83,7 @@ struct LogView: View {
     }
 }
 
-private struct LogEntryRow: View {
+struct LogEntryRow: View {
     let entry: LogEntry
 
     var body: some View {
