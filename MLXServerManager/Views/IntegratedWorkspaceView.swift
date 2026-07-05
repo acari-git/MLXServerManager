@@ -25,8 +25,8 @@ struct IntegratedWorkspaceView: View {
 
     private var selectedModel: ModelConfig? { viewModel.selectedModel }
     private var isSelectedRunning: Bool { selectedModel?.id == viewModel.runningModelID }
-    private var modelRows: [ModelTableRow] {
-        viewModel.visibleModels.map { model in
+    private func modelRows(from models: [ModelConfig]) -> [ModelTableRow] {
+        models.map { model in
             ModelTableRow(
                 model: model,
                 nameSortValue: model.displayName,
@@ -40,8 +40,7 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
-    private var sortedModelRows: [ModelTableRow] {
-        let rows = modelRows
+    private func sortedModelRows(from rows: [ModelTableRow]) -> [ModelTableRow] {
         if modelTableSortOrder.isEmpty {
             return rows
         }
@@ -683,12 +682,13 @@ struct IntegratedWorkspaceView: View {
 
             Divider()
 
-            if viewModel.visibleModels.isEmpty {
+            let rows = sortedModelRows(from: modelRows(from: viewModel.visibleModels))
+            if rows.isEmpty {
                 modelEmptyState
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 GeometryReader { proxy in
-                    modelTable(availableWidth: proxy.size.width, allowsWidthAnimation: isModelInspectorAnimating)
+                    modelTable(rows: rows, availableWidth: proxy.size.width, allowsWidthAnimation: isModelInspectorAnimating)
                         .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
                         .clipped()
                 }
@@ -700,7 +700,7 @@ struct IntegratedWorkspaceView: View {
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
-    private func modelTable(availableWidth: CGFloat, allowsWidthAnimation: Bool = false) -> some View {
+    private func modelTable(rows: [ModelTableRow], availableWidth: CGFloat, allowsWidthAnimation: Bool = false) -> some View {
         ScrollView(.vertical) {
             LazyVStack(alignment: .leading, spacing: 10) {
                 if availableWidth >= 850 {
@@ -711,7 +711,7 @@ struct IntegratedWorkspaceView: View {
                         .frame(width: max(0, availableWidth - 28), alignment: .leading)
                 }
 
-                ForEach(sortedModelRows) { row in
+                ForEach(rows) { row in
                     lightweightModelRow(for: row.model, availableWidth: max(0, availableWidth - 28))
                         .frame(width: max(0, availableWidth - 28), alignment: .leading)
                 }
@@ -944,10 +944,11 @@ struct IntegratedWorkspaceView: View {
     }
 
     private func modelStatusIndicatorColor(for model: ModelConfig) -> Color {
-        if viewModel.isModelTransitioning(model) {
+        let isTransitioning = viewModel.isModelTransitioning(model)
+        if isTransitioning {
             return .orange
         }
-        if viewModel.isModelLoaded(model) {
+        if model.id == viewModel.runningModelID {
             return .green
         }
         if viewModel.isModelPortBusy(for: model) {
@@ -1039,7 +1040,7 @@ struct IntegratedWorkspaceView: View {
         let isLoaded = viewModel.isModelLoaded(model)
         let isPortBusy = viewModel.isModelPortBusy(for: model)
         let isHovered = hoveredStatusModelID == model.id
-        let statusText = viewModel.interactiveStatusText(for: model, isHovered: isHovered)
+        let statusText = viewModel.interactiveStatusText(for: model, isHovered: isHovered, isPortBusy: isPortBusy)
 
         return Button {
             guard isInteractive else { return }
@@ -1076,7 +1077,6 @@ struct IntegratedWorkspaceView: View {
         modelTableSortColumn = column
         modelTableSortDirection = nextDirection
         modelTableSortOrder = [column.comparator(order: nextDirection)]
-        viewModel.beginModelReorderRequested()
     }
 
     private func centeredTableText(
@@ -1211,21 +1211,23 @@ struct IntegratedWorkspaceView: View {
     }
 
     private func modelInspectorOverview(for model: ModelConfig) -> some View {
-        inspectorSection(title: t("Overview", "概要")) {
+        let isPortBusy = viewModel.isModelPortBusy(for: model)
+        let memoryText = viewModel.integratedMemoryText(for: model)
+
+        return inspectorSection(title: t("Overview", "概要")) {
             LazyVGrid(columns: inspectorOverviewColumns, alignment: .leading, spacing: 10) {
                 inspectorInfoRow(title: t("Size", "サイズ"), value: viewModel.modelSizeText(for: model))
                 inspectorInfoRow(
                     title: t("Port Status", "ポート状態"),
                     value: viewModel.integratedPortStatusText(for: model),
-                    valueColor: viewModel.isModelPortBusy(for: model) ? .red : .primary,
-                    valueWeight: viewModel.isModelPortBusy(for: model) ? .semibold : .regular
+                    valueColor: isPortBusy ? .red : .primary,
+                    valueWeight: isPortBusy ? .semibold : .regular
                 )
                 inspectorInfoRow(title: t("Endpoint", "接続先"), value: "\(model.host):\(model.serverPort)")
                 inspectorInfoRow(
                     title: t("Reasoning Mode", "推論モード"),
                     value: model.enableThinking ? t("Enabled", "有効") : t("Disabled", "無効")
                 )
-                let memoryText = viewModel.integratedMemoryText(for: model)
                 if memoryText != "-" {
                     inspectorInfoRow(title: t("Memory", "メモリ"), value: memoryText)
                 }
@@ -1504,20 +1506,6 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
-    private var selectedModelBinding: Binding<ModelConfig.ID?> {
-        Binding(
-            get: { viewModel.selectedModelID },
-            set: { viewModel.selectedModelID = $0 }
-        )
-    }
-
-    private func modelDragProvider(for model: ModelConfig) -> NSItemProvider {
-        modelTableSortOrder = []
-        modelTableSortColumn = nil
-        viewModel.beginModelReorderRequested()
-        return NSItemProvider(object: model.id as NSString)
-    }
-
     private func moveDroppedModel(_ providers: [NSItemProvider], before targetModel: ModelConfig) -> Bool {
         guard let provider = providers.first(where: { $0.canLoadObject(ofClass: NSString.self) }) else {
             return false
@@ -1532,7 +1520,6 @@ struct IntegratedWorkspaceView: View {
             Task { @MainActor in
                 modelTableSortOrder = []
                 modelTableSortColumn = nil
-                viewModel.beginModelReorderRequested()
                 viewModel.moveModel(withID: draggedModelID, before: targetModel.id)
             }
         }
@@ -1552,7 +1539,6 @@ struct IntegratedWorkspaceView: View {
             Task { @MainActor in
                 modelTableSortOrder = []
                 modelTableSortColumn = nil
-                viewModel.beginModelReorderRequested()
                 viewModel.moveModelToEnd(withID: draggedModelID)
             }
         }

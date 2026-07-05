@@ -110,6 +110,11 @@ private struct MiniChatResponsePayload: Decodable {
     let error: ErrorPayload?
 }
 
+private struct PortCheckCacheEntry {
+    let result: PortCheckResult
+    let checkedAt: Date
+}
+
 @MainActor
 final class AppViewModel: ObservableObject {
     @Published var settings: AppSettings = .defaults
@@ -131,8 +136,6 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var systemUsageHistory: [SystemUsageHistorySample] = []
     @Published var autoUnloadEnabledByModelID: [ModelConfig.ID: Bool] = [:]
     @Published var autoUnloadMinutesByModelID: [ModelConfig.ID: Int] = [:]
-    @Published private(set) var modelSortKey: String?
-    @Published private(set) var isModelSortAscending = true
     @Published private(set) var logText: String
     @Published private(set) var logEntries: [LogEntry]
     @Published var logCategoryFilter = "All"
@@ -149,7 +152,6 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var profileDeletionMessage: String?
     @Published private(set) var modelProfileExportMessage: String?
     @Published private(set) var modelProfileImportMessage: String?
-    @Published var modelListSourceFilter = "All"
     @Published var isImportPreviewPresented = false
     @Published private(set) var importPreviewResult: ImportPreviewResult?
     @Published var huggingFaceDownloadDraft: HuggingFaceDownloadDraft = .defaults(
@@ -222,6 +224,8 @@ final class AppViewModel: ObservableObject {
     private var miniChatTask: Task<Void, Never>?
     private var huggingFaceDownloadCancellationRequested = false
     private var pendingDeleteModelID: ModelConfig.ID?
+    private var modelSizeGigabytesCache: [String: Double] = [:]
+    private var portCheckCache: [String: PortCheckCacheEntry] = [:]
 
     private static let initialLogLines = [
         "[info] MLX Server Manager UI loaded.",
@@ -229,6 +233,7 @@ final class AppViewModel: ObservableObject {
         "[info] Start, Stop, and Restart are available.",
         "[info] Memory monitoring starts after managed process launch."
     ]
+    private static let portCheckCacheLifetime: TimeInterval = 1.0
 
     private static func localizedText(language: AppLanguage, english: String, japanese: String) -> String {
         AppLocalization(language: language).text(english: english, japanese: japanese)
@@ -335,12 +340,6 @@ final class AppViewModel: ObservableObject {
         models.first { $0.id == selectedModelID } ?? models.first
     }
 
-    var initialModelNameColumnWidth: CGFloat {
-        let longestDisplayNameCount = models.map { $0.displayName.count }.max() ?? 0
-        let estimatedWidth = CGFloat(longestDisplayNameCount * 8 + 28)
-        return min(max(estimatedWidth, 210), 420)
-    }
-
     var activeHuggingFaceDownloadEntry: HuggingFaceDownloadQueueEntry? {
         huggingFaceDownloadQueue.first { entry in
             entry.phase == .preparing || entry.phase == .downloading || entry.phase == .finalizing
@@ -409,16 +408,8 @@ final class AppViewModel: ObservableObject {
         ]
     }
 
-    var modelListSourceFilterOptions: [String] {
-        ["All", "Downloaded", "Local", "HF ID", "Advanced"]
-    }
-
     var visibleModels: [ModelConfig] {
-        let sourceFiltered = modelListSourceFilter == "All"
-            ? models
-            : models.filter { sourceLabel(for: $0) == modelListSourceFilter }
-
-        return sortedModels(sourceFiltered)
+        models
     }
 
     private func refreshDefaultUserFacingMessagesForCurrentLanguage() {
@@ -429,58 +420,6 @@ final class AppViewModel: ObservableObject {
         huggingFaceSearchMessage = Self.defaultHuggingFaceSearchMessage(language: language)
         latestSpeedTestMessage = Self.defaultSpeedTestMessage(language: language)
         hermesAgentConfigMessage = Self.defaultHermesAgentConfigMessage(language: language)
-    }
-
-    func sourceLabel(for model: ModelConfig) -> String {
-        if ModelAvailabilityPathFormatter.localPathCandidate(for: model) != nil {
-            return model.notes.localizedCaseInsensitiveContains("downloaded") ? "Downloaded" : "Local"
-        }
-        return model.modelID.contains("/") ? "HF ID" : "Advanced"
-    }
-
-    func modelListSourceFilterLabel(_ source: String) -> String {
-        sourceDisplayLabel(source)
-    }
-
-    func sourceDisplayLabel(for model: ModelConfig) -> String {
-        sourceDisplayLabel(sourceLabel(for: model))
-    }
-
-    private func sourceDisplayLabel(_ source: String) -> String {
-        switch source {
-        case "All":
-            return Self.localizedText(language: settings.uiLanguage, english: "All", japanese: "すべて")
-        case "Downloaded":
-            return Self.localizedText(language: settings.uiLanguage, english: "Downloaded", japanese: "ダウンロード済み")
-        case "Local":
-            return Self.localizedText(language: settings.uiLanguage, english: "Local", japanese: "ローカル")
-        case "HF ID":
-            return "HF ID"
-        case "Advanced":
-            return Self.localizedText(language: settings.uiLanguage, english: "Advanced", japanese: "詳細")
-        default:
-            return source
-        }
-    }
-
-    func sortModelsRequested(by key: String) {
-        if modelSortKey == key {
-            isModelSortAscending.toggle()
-        } else {
-            modelSortKey = key
-            isModelSortAscending = true
-        }
-    }
-
-    func beginModelReorderRequested() {
-        modelSortKey = nil
-        isModelSortAscending = true
-        modelListSourceFilter = "All"
-    }
-
-    func sortIndicator(for key: String) -> String {
-        guard modelSortKey == key else { return "" }
-        return isModelSortAscending ? " ▲" : " ▼"
     }
 
     func toggleReasoning(for model: ModelConfig, isEnabled: Bool) {
@@ -538,6 +477,7 @@ final class AppViewModel: ObservableObject {
         models.insert(movedModel, at: adjustedTargetIndex)
         do {
             try settingsStore.save(models: models)
+            invalidatePortCheckCache()
             appendLog("[model] reordered \(movedModel.displayName).")
         } catch {
             appendLog("[model] warning: failed to save model order: \(error.localizedDescription)")
@@ -554,6 +494,7 @@ final class AppViewModel: ObservableObject {
         models.append(movedModel)
         do {
             try settingsStore.save(models: models)
+            invalidatePortCheckCache()
             appendLog("[model] reordered \(movedModel.displayName).")
         } catch {
             appendLog("[model] warning: failed to save model order: \(error.localizedDescription)")
@@ -664,7 +605,7 @@ final class AppViewModel: ObservableObject {
             return modelSafety
         }
 
-        switch portChecker.check(host: model.host, port: model.serverPort) {
+        switch cachedPortCheck(host: model.host, port: model.serverPort) {
         case .available:
             return nil
         default:
@@ -821,7 +762,7 @@ final class AppViewModel: ObservableObject {
     }
 
     private func portSafetyText(host: String, port: Int) -> String {
-        switch portChecker.check(host: host, port: port) {
+        switch cachedPortCheck(host: host, port: port) {
         case .available:
             return Self.localizedText(language: settings.uiLanguage, english: "Port available", japanese: "利用可能")
         case let .busy(_, _, pid):
@@ -1467,7 +1408,7 @@ final class AppViewModel: ObservableObject {
         interactiveStatusText(for: model, isHovered: false)
     }
 
-    func interactiveStatusText(for model: ModelConfig, isHovered: Bool) -> String {
+    func interactiveStatusText(for model: ModelConfig, isHovered: Bool, isPortBusy knownPortBusy: Bool? = nil) -> String {
         if settings.uiLanguage.resolved == .english {
             if model.id == runningModelID {
                 switch runtimeState {
@@ -1479,7 +1420,7 @@ final class AppViewModel: ObservableObject {
                     return isHovered ? "Unload" : "Loaded"
                 }
             }
-            if isModelPortBusy(for: model) {
+            if knownPortBusy ?? isModelPortBusy(for: model) {
                 return "Port Busy"
             }
             return isHovered ? "Load" : "Ready"
@@ -1495,7 +1436,7 @@ final class AppViewModel: ObservableObject {
             }
         }
 
-        if isModelPortBusy(for: model) {
+        if knownPortBusy ?? isModelPortBusy(for: model) {
             return "ポート使用中"
         }
         return isHovered ? "ロード" : "準備完了"
@@ -1503,7 +1444,7 @@ final class AppViewModel: ObservableObject {
 
     func isModelPortBusy(for model: ModelConfig) -> Bool {
         guard model.id != runningModelID else { return false }
-        if case .busy = portChecker.check(host: model.host, port: model.serverPort) {
+        if case .busy = cachedPortCheck(host: model.host, port: model.serverPort) {
             return true
         }
         return false
@@ -1540,8 +1481,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func modelSizeText(for model: ModelConfig) -> String {
-        guard let modelDirectoryPath = ModelAvailabilityPathFormatter.localPathCandidate(for: model),
-              let gigabytes = memoryMonitor.estimatedModelStorageGigabytes(modelDirectoryPath: modelDirectoryPath) else {
+        guard let gigabytes = modelSizeGigabytes(for: model) else {
             return "-"
         }
 
@@ -1567,10 +1507,11 @@ final class AppViewModel: ObservableObject {
     }
 
     func integratedStatusSortValue(for model: ModelConfig) -> Int {
-        if isModelTransitioning(model) {
+        let isTransitioning = isModelTransitioning(model)
+        if isTransitioning {
             return 0
         }
-        if isModelLoaded(model) {
+        if model.id == runningModelID {
             return 1
         }
         if isModelPortBusy(for: model) {
@@ -1608,39 +1549,79 @@ final class AppViewModel: ObservableObject {
         return Self.localizedText(language: settings.uiLanguage, english: "ON / \(autoUnloadMinutes(for: model)) min", japanese: "ON / \(autoUnloadMinutes(for: model))分")
     }
 
-    private func sortedModels(_ input: [ModelConfig]) -> [ModelConfig] {
-        guard let modelSortKey else { return input }
-
-        let sorted = input.sorted { lhs, rhs in
-            switch modelSortKey {
-            case "name":
-                return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
-            case "size":
-                return (modelSizeGigabytes(for: lhs) ?? -1) < (modelSizeGigabytes(for: rhs) ?? -1)
-            case "status":
-                return integratedStatusText(for: lhs) < integratedStatusText(for: rhs)
-            case "port":
-                return lhs.serverPort < rhs.serverPort
-            case "memory":
-                return memoryValueForSort(lhs) < memoryValueForSort(rhs)
-            case "autoUnload":
-                return autoUnloadSortValue(lhs) < autoUnloadSortValue(rhs)
-            case "reasoning":
-                return reasoningText(for: lhs) < reasoningText(for: rhs)
-            default:
-                return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
-            }
-        }
-
-        return isModelSortAscending ? sorted : sorted.reversed()
-    }
-
     private func modelSizeGigabytes(for model: ModelConfig) -> Double? {
         guard let modelDirectoryPath = ModelAvailabilityPathFormatter.localPathCandidate(for: model) else {
             return nil
         }
 
-        return memoryMonitor.estimatedModelStorageGigabytes(modelDirectoryPath: modelDirectoryPath)
+        return modelSizeGigabytes(modelDirectoryPath: modelDirectoryPath)
+    }
+
+    private func modelSizeGigabytes(modelDirectoryPath: String?) -> Double? {
+        guard let modelDirectoryPath,
+              !modelDirectoryPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+
+        let cacheKey = Self.modelSizeCacheKey(forDirectoryPath: modelDirectoryPath)
+        if let cached = modelSizeGigabytesCache[cacheKey] {
+            return cached
+        }
+
+        let gigabytes = memoryMonitor.estimatedModelStorageGigabytes(modelDirectoryPath: modelDirectoryPath)
+        if let gigabytes {
+            modelSizeGigabytesCache[cacheKey] = gigabytes
+        }
+        return gigabytes
+    }
+
+    private func invalidateModelSizeCache(for model: ModelConfig) {
+        invalidateModelSizeCache(forDirectoryPath: ModelAvailabilityPathFormatter.localPathCandidate(for: model))
+    }
+
+    private func invalidateModelSizeCache(forDirectoryPath modelDirectoryPath: String?) {
+        guard let modelDirectoryPath,
+              !modelDirectoryPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+
+        modelSizeGigabytesCache.removeValue(forKey: Self.modelSizeCacheKey(forDirectoryPath: modelDirectoryPath))
+    }
+
+    private func invalidateModelSizeCache() {
+        modelSizeGigabytesCache.removeAll()
+    }
+
+    private static func modelSizeCacheKey(forDirectoryPath modelDirectoryPath: String) -> String {
+        URL(fileURLWithPath: modelDirectoryPath).standardizedFileURL.path
+    }
+
+    private func cachedPortCheck(host: String, port: Int) -> PortCheckResult {
+        let cacheKey = Self.portCheckCacheKey(host: host, port: port)
+        if let cached = portCheckCache[cacheKey],
+           Date().timeIntervalSince(cached.checkedAt) <= Self.portCheckCacheLifetime {
+            return cached.result
+        }
+
+        return freshPortCheck(host: host, port: port)
+    }
+
+    private func freshPortCheck(host: String, port: Int) -> PortCheckResult {
+        let result = portChecker.check(host: host, port: port)
+        portCheckCache[Self.portCheckCacheKey(host: host, port: port)] = PortCheckCacheEntry(
+            result: result,
+            checkedAt: Date()
+        )
+        return result
+    }
+
+    private func invalidatePortCheckCache() {
+        portCheckCache.removeAll()
+    }
+
+    private static func portCheckCacheKey(host: String, port: Int) -> String {
+        let normalizedHost = host.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return "\(normalizedHost == "localhost" ? "127.0.0.1" : normalizedHost):\(port)"
     }
 
     private func memoryValueForSort(_ model: ModelConfig) -> Double {
@@ -1820,6 +1801,7 @@ final class AppViewModel: ObservableObject {
         models.swapAt(currentIndex, targetIndex)
         do {
             try settingsStore.save(models: models)
+            invalidatePortCheckCache()
             appendLog("[model] moved \(model.displayName) to row \(targetIndex + 1).")
         } catch {
             appendLog("[model] warning: failed to save model order: \(error.localizedDescription)")
@@ -1995,7 +1977,7 @@ final class AppViewModel: ObservableObject {
         let port = selectedModel?.serverPort ?? settings.defaultPort
         runtimeState = .checkingPort(host: host, port: port)
 
-        switch portChecker.check(host: host, port: port) {
+        switch freshPortCheck(host: host, port: port) {
         case let .available(host, port):
             runtimeState = .portAvailable(host: host, port: port)
             appendLog("[port] port available: \(host):\(port)")
@@ -2209,20 +2191,6 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    nonisolated private static var miniChatStopSequences: [String] {
-        ["USER:", "ASSISTANT:", "\nUSER:", "\nASSISTANT:"]
-    }
-
-    nonisolated private static func miniChatMessagesPayload(for prompt: String) -> [MiniChatMessagePayload] {
-        [
-            MiniChatMessagePayload(
-                role: "system",
-                content: "日本語で自然に簡潔に返答してください。会話ロール名やテンプレート文字列は出力しないでください。ユーザー入力をそのまま反復するだけの返答は避けてください。"
-            ),
-            MiniChatMessagePayload(role: "user", content: prompt)
-        ]
-    }
-
     nonisolated private static func chatCompletionsURL(from baseURL: String) -> URL? {
         let trimmed = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         return URL(string: "\(trimmed)/chat/completions")
@@ -2264,6 +2232,7 @@ final class AppViewModel: ObservableObject {
         applyDownloadSettingsToDraft()
         do {
             try settingsStore.save(settings: settings, models: models)
+            invalidatePortCheckCache()
             appendLog("[settings] Saved settings.json and models.json to \(settingsDirectoryPath).")
         } catch {
             appendLog("[settings] Failed to save settings: \(error.localizedDescription)")
@@ -2860,6 +2829,8 @@ final class AppViewModel: ObservableObject {
         let nextModels = models + [model]
         do {
             try settingsStore.save(models: nextModels)
+            invalidateModelSizeCache(for: model)
+            invalidatePortCheckCache()
             models = nextModels
             selectedModelID = model.id
             selectedModelAvailabilitySummary = ModelAvailabilitySummary.checked(
@@ -3088,6 +3059,8 @@ final class AppViewModel: ObservableObject {
 
         do {
             try settingsStore.save(models: nextModels)
+            invalidateModelSizeCache()
+            invalidatePortCheckCache()
             models = nextModels
 
             let selectionUpdate = ModelProfileImportSelectionUpdate.preservingSelection(
@@ -3132,6 +3105,8 @@ final class AppViewModel: ObservableObject {
 
             do {
                 try settingsStore.save(models: nextModels)
+                invalidateModelSizeCache(for: newModel)
+                invalidatePortCheckCache()
                 models = nextModels
                 addProfileDraft = .empty
                 addProfileMessage = nil
@@ -3243,6 +3218,8 @@ final class AppViewModel: ObservableObject {
 
         do {
             try settingsStore.save(models: nextModels)
+            invalidateModelSizeCache(for: deletedModel)
+            invalidatePortCheckCache()
             models = nextModels
 
             let shouldSelectFallback = selectedModelID == deletedModel.id
@@ -3397,11 +3374,14 @@ final class AppViewModel: ObservableObject {
 
         switch validatedProfileDraft(profileEditorDraft, existingModel: existingModel) {
         case let .valid(updatedModel):
+            invalidateModelSizeCache(for: existingModel)
+            invalidateModelSizeCache(for: updatedModel)
             models[index] = updatedModel
             selectedModelID = updatedModel.id
 
             do {
                 try settingsStore.save(models: models)
+                invalidatePortCheckCache()
                 profileEditorDraft = ModelProfileDraft(model: updatedModel)
                 profileEditorMessage = nil
                 isProfileEditorPresented = false
@@ -4080,6 +4060,7 @@ final class AppViewModel: ObservableObject {
         draft: HuggingFaceDownloadDraft
     ) -> Bool {
         if models.contains(where: { $0.modelID == destinationPath }) {
+            invalidateModelSizeCache(forDirectoryPath: destinationPath)
             selectedModelID = destinationPath
             lastAddedDownloadedModelID = destinationPath
             appendLog("[hf] existing profile selected for \(ModelAvailabilityPathFormatter.compact(path: destinationPath)).")
@@ -4107,6 +4088,8 @@ final class AppViewModel: ObservableObject {
         let nextModels = models + [model]
         do {
             try settingsStore.save(models: nextModels)
+            invalidateModelSizeCache(for: model)
+            invalidatePortCheckCache()
             models = nextModels
             lastAddedDownloadedModelID = model.id
             if draft.autoSelectAfterAdd {
@@ -4186,7 +4169,7 @@ final class AppViewModel: ObservableObject {
         appendLog("[\(logPrefix)] checking port before launch: \(host):\(port)")
         runtimeState = .checkingPort(host: host, port: port)
 
-        switch portChecker.check(host: host, port: port) {
+        switch freshPortCheck(host: host, port: port) {
         case .available:
             appendLog("[\(logPrefix)] port available: \(host):\(port)")
         case let .busy(_, _, pid):
@@ -4271,6 +4254,8 @@ final class AppViewModel: ObservableObject {
         do {
             let snapshot = try settingsStore.load()
             settings = snapshot.settings
+            invalidateModelSizeCache()
+            invalidatePortCheckCache()
             models = snapshot.models
 
             if snapshot.usedDefaults {
@@ -4280,6 +4265,8 @@ final class AppViewModel: ObservableObject {
             }
         } catch {
             settings = .defaults
+            invalidateModelSizeCache()
+            invalidatePortCheckCache()
             models = ModelConfig.defaults
             appendLog("[settings] Failed to load settings. Using defaults: \(error.localizedDescription)")
         }
@@ -4457,7 +4444,7 @@ final class AppViewModel: ObservableObject {
         appendLog("[\(logPrefix)] waiting for port release: \(host):\(port)")
 
         for _ in 1...20 {
-            switch portChecker.check(host: host, port: port) {
+            switch freshPortCheck(host: host, port: port) {
             case .available:
                 appendLog("[\(logPrefix)] port released: \(host):\(port)")
                 return true
@@ -4479,7 +4466,7 @@ final class AppViewModel: ObservableObject {
             }
         }
 
-        switch portChecker.check(host: host, port: port) {
+        switch freshPortCheck(host: host, port: port) {
         case .available:
             appendLog("[\(logPrefix)] port released: \(host):\(port)")
             return true
@@ -4524,6 +4511,8 @@ final class AppViewModel: ObservableObject {
         guard oldValue != selectedModelID else {
             return
         }
+
+        invalidatePortCheckCache()
 
         guard let selectedModel else {
             appendLog("[model] selected model cleared.")
@@ -4588,6 +4577,7 @@ final class AppViewModel: ObservableObject {
     private func setRunningModelID(_ modelID: ModelConfig.ID, logPrefix: String) {
         runningModelID = modelID
         managedServerStartedAt = Date()
+        invalidatePortCheckCache()
         appendLog("[\(logPrefix)] running modelID: \(modelID)")
         logRestartRequiredIfNeeded()
     }
@@ -4599,6 +4589,7 @@ final class AppViewModel: ObservableObject {
 
         runningModelID = nil
         managedServerStartedAt = nil
+        invalidatePortCheckCache()
         appendLog("[\(logPrefix)] running model cleared.")
     }
 
@@ -4618,7 +4609,7 @@ final class AppViewModel: ObservableObject {
         appendLog("[memory] monitoring managed pid \(processIdentifier) every 1 second.")
         let monitor = memoryMonitor
         let modelDirectoryPath = ModelAvailabilityPathFormatter.localPathCandidate(for: model)
-        let modelEstimateGigabytes = monitor.estimatedModelStorageGigabytes(modelDirectoryPath: modelDirectoryPath)
+        let modelEstimateGigabytes = modelSizeGigabytes(modelDirectoryPath: modelDirectoryPath)
         let modelEstimateSource = modelDirectoryPath.map { ModelAvailabilityPathFormatter.compact(path: $0) }
 
         if let modelEstimateGigabytes, let modelEstimateSource {
@@ -4882,11 +4873,12 @@ final class AppViewModel: ObservableObject {
 
     private func startSystemUsageMonitoring() {
         systemUsageMonitorTask?.cancel()
-        systemUsageMonitorTask = Task.detached { [weak self] in
+        let monitor = memoryMonitor
+        systemUsageMonitorTask = Task.detached { [weak self, monitor] in
             var cpuUsageSampler = CPUUsageSampler()
             while !Task.isCancelled {
                 let cpuPercent = cpuUsageSampler.samplePercent()
-                let systemMemorySnapshot = MemoryMonitor().currentSystemSnapshot()
+                let systemMemorySnapshot = monitor.currentSystemSnapshot()
                 guard let self else {
                     return
                 }
