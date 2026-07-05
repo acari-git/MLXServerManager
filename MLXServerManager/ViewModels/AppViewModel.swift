@@ -115,6 +115,11 @@ private struct PortCheckCacheEntry {
     let checkedAt: Date
 }
 
+private struct SystemInfoRowsCacheEntry {
+    let rows: [(String, String)]
+    let measuredAt: Date
+}
+
 @MainActor
 final class AppViewModel: ObservableObject {
     @Published var settings: AppSettings = .defaults
@@ -226,6 +231,7 @@ final class AppViewModel: ObservableObject {
     private var pendingDeleteModelID: ModelConfig.ID?
     private var modelSizeGigabytesCache: [String: Double] = [:]
     private var portCheckCache: [String: PortCheckCacheEntry] = [:]
+    private var systemInfoRowsCache: [AppLanguage: SystemInfoRowsCacheEntry] = [:]
 
     private static let initialLogLines = [
         "[info] MLX Server Manager UI loaded.",
@@ -234,6 +240,7 @@ final class AppViewModel: ObservableObject {
         "[info] Memory monitoring starts after managed process launch."
     ]
     private static let portCheckCacheLifetime: TimeInterval = 1.0
+    private static let systemInfoRowsCacheLifetime: TimeInterval = 5.0
 
     private static func localizedText(language: AppLanguage, english: String, japanese: String) -> String {
         AppLocalization(language: language).text(english: english, japanese: japanese)
@@ -383,27 +390,44 @@ final class AppViewModel: ObservableObject {
     }
 
     var systemInfoRows: [(String, String)] {
+        cachedSystemInfoRows(language: settings.uiLanguage)
+    }
+
+    private func cachedSystemInfoRows(language: AppLanguage) -> [(String, String)] {
+        let cacheKey = language.resolved
+        let now = Date()
+        if let cached = systemInfoRowsCache[cacheKey],
+           now.timeIntervalSince(cached.measuredAt) <= Self.systemInfoRowsCacheLifetime {
+            return cached.rows
+        }
+
+        let rows = makeSystemInfoRows(language: language)
+        systemInfoRowsCache[cacheKey] = SystemInfoRowsCacheEntry(rows: rows, measuredAt: now)
+        return rows
+    }
+
+    private func makeSystemInfoRows(language: AppLanguage) -> [(String, String)] {
         [
             (
-                Self.localizedText(language: settings.uiLanguage, english: "Model", japanese: "機種"),
-                systemProfilerHardwareInfo["Model Name"] ?? Self.sysctlString("hw.model") ?? Self.localizedText(language: settings.uiLanguage, english: "Unknown", japanese: "不明")
+                Self.localizedText(language: language, english: "Model", japanese: "機種"),
+                systemProfilerHardwareInfo["Model Name"] ?? Self.sysctlString("hw.model") ?? Self.localizedText(language: language, english: "Unknown", japanese: "不明")
             ),
             ("macOS", Self.macOSVersionNumberText),
             (
-                Self.localizedText(language: settings.uiLanguage, english: "Chip", japanese: "チップ"),
+                Self.localizedText(language: language, english: "Chip", japanese: "チップ"),
                 systemProfilerHardwareInfo["Chip"] ?? Self.sysctlString("machdep.cpu.brand_string") ?? "Apple Silicon"
             ),
             (
-                Self.localizedText(language: settings.uiLanguage, english: "Processing", japanese: "処理能力"),
+                Self.localizedText(language: language, english: "Processing", japanese: "処理能力"),
                 Self.processingCapabilityText(from: systemProfilerHardwareInfo)
             ),
             (
-                Self.localizedText(language: settings.uiLanguage, english: "Memory", japanese: "メモリ"),
+                Self.localizedText(language: language, english: "Memory", japanese: "メモリ"),
                 systemProfilerHardwareInfo["Memory"] ?? Self.formatMemoryGigabytes(Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824)
             ),
             (
-                Self.localizedText(language: settings.uiLanguage, english: "Storage", japanese: "ストレージ"),
-                Self.storageUsageText(language: settings.uiLanguage)
+                Self.localizedText(language: language, english: "Storage", japanese: "ストレージ"),
+                Self.storageUsageText(language: language)
             )
         ]
     }
