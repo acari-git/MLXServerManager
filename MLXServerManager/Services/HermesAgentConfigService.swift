@@ -114,16 +114,22 @@ struct HermesAgentConfigService {
             ("base_url", connection.baseURL),
             ("api_key", connection.apiKey)
         ]
-        let providerValue = ("provider", "openai-compatible")
+        let providerValue = ("provider", "custom")
+        let insertedModelValues = [
+            modelValues[0],
+            providerValue,
+            modelValues[1],
+            modelValues[2]
+        ]
 
         guard let modelIndex = lines.firstIndex(where: { line in
             line.trimmingCharacters(in: .whitespaces) == "model:"
         }) else {
-            let modelBlock = ([providerValue] + modelValues).map { key, value in
+            let modelBlock = insertedModelValues.map { key, value in
                 "  \(key): \(yamlScalar(value))"
             }
             lines = ["model:"] + modelBlock + [""] + lines
-            return (joinedLines(lines, hadFinalNewline: hadFinalNewline), ([providerValue] + modelValues).map(\.0))
+            return (joinedLines(lines, hadFinalNewline: hadFinalNewline), insertedModelValues.map(\.0))
         }
 
         let modelIndent = leadingSpaceCount(lines[modelIndex])
@@ -144,7 +150,7 @@ struct HermesAgentConfigService {
         var foundKeys = Set<String>()
         var changedKeys: [String] = []
         var foundProvider = false
-        let valuesByKey = Dictionary(uniqueKeysWithValues: modelValues)
+        let valuesByKey = Dictionary(uniqueKeysWithValues: insertedModelValues)
 
         if modelIndex + 1 < blockEnd {
             for index in (modelIndex + 1)..<blockEnd {
@@ -152,6 +158,12 @@ struct HermesAgentConfigService {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if trimmed.hasPrefix("provider:") {
                     foundProvider = true
+                    let indent = String(line.prefix(while: { $0 == " " }))
+                    let replacement = "\(indent)\(providerValue.0): \(yamlScalar(providerValue.1))"
+                    if line != replacement {
+                        lines[index] = replacement
+                        changedKeys.append(providerValue.0)
+                    }
                     continue
                 }
 

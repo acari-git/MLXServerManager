@@ -196,6 +196,11 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var latestSpeedTestDurationMS: Double?
     @Published private(set) var latestBenchmarkResult: BenchmarkResult?
     @Published private(set) var benchmarkHistory: [BenchmarkResult] = []
+    @Published private(set) var benchmarkResultsByProfileID: [ModelConfig.ID: BenchmarkResult] = [:]
+    @Published private(set) var isAgenticBenchmarkRunning = false
+    @Published private(set) var latestAgenticBenchmarkResult: AgenticBenchmarkResult?
+    @Published private(set) var agenticBenchmarkHistory: [AgenticBenchmarkResult] = []
+    @Published private(set) var agenticBenchmarkResultsByProfileID: [ModelConfig.ID: AgenticBenchmarkResult] = [:]
     @Published var miniChatPrompt = ""
     @Published private(set) var miniChatMessages: [MiniChatTranscriptMessage] = []
     @Published private(set) var miniChatResponse = ""
@@ -219,6 +224,8 @@ final class AppViewModel: ObservableObject {
     private let huggingFaceSearchService: HuggingFaceModelSearching
     private let huggingFaceRepositoryFileService: HuggingFaceRepositoryFileListing
     private let hermesAgentConfigService: HermesAgentConfigService
+    private let benchmarkService: BenchmarkService
+    private let agenticBenchmarkService: AgenticBenchmarkService
     private var logBuffer: LogBuffer
     private var memoryMonitorTask: Task<Void, Never>?
     private var systemUsageMonitorTask: Task<Void, Never>?
@@ -280,8 +287,8 @@ final class AppViewModel: ObservableObject {
     private static func defaultSpeedTestMessage(language: AppLanguage) -> String {
         localizedText(
             language: language,
-            english: "Speed Test has not run yet.",
-            japanese: "スピードテストはまだ実行されていません。"
+            english: "Benchmark has not run yet.",
+            japanese: "ベンチマークはまだ実行されていません。"
         )
     }
 
@@ -310,7 +317,9 @@ final class AppViewModel: ObservableObject {
         huggingFaceDownloadManager: HuggingFaceModelDownloading? = nil,
         huggingFaceSearchService: HuggingFaceModelSearching? = nil,
         huggingFaceRepositoryFileService: HuggingFaceRepositoryFileListing? = nil,
-        hermesAgentConfigService: HermesAgentConfigService? = nil
+        hermesAgentConfigService: HermesAgentConfigService? = nil,
+        benchmarkService: BenchmarkService? = nil,
+        agenticBenchmarkService: AgenticBenchmarkService? = nil
     ) {
         self.settingsStore = settingsStore ?? SettingsStore()
         self.portChecker = portChecker ?? PortChecker()
@@ -329,6 +338,8 @@ final class AppViewModel: ObservableObject {
         self.huggingFaceSearchService = huggingFaceSearchService ?? HuggingFaceSearchService()
         self.huggingFaceRepositoryFileService = huggingFaceRepositoryFileService ?? HuggingFaceRepositoryFileService()
         self.hermesAgentConfigService = hermesAgentConfigService ?? HermesAgentConfigService()
+        self.benchmarkService = benchmarkService ?? BenchmarkService()
+        self.agenticBenchmarkService = agenticBenchmarkService ?? AgenticBenchmarkService()
         let initialLogBuffer = LogBuffer(initialLines: Self.initialLogLines)
         let initialLogEntries = initialLogBuffer.entries
         self.logBuffer = initialLogBuffer
@@ -589,13 +600,25 @@ final class AppViewModel: ObservableObject {
     }
 
     var canRunSpeedTest: Bool {
-        connectionTargetSummary.isActiveTarget && !isSpeedTestRunning
+        connectionTargetSummary.isActiveTarget && !isSpeedTestRunning && !isAgenticBenchmarkRunning
     }
 
     var speedTestDisabledReason: String {
-        if isSpeedTestRunning { return Self.localizedText(language: settings.uiLanguage, english: "Speed Test is already running.", japanese: "スピードテストはすでに実行中です。") }
-        if !connectionTargetSummary.isActiveTarget { return Self.localizedText(language: settings.uiLanguage, english: "Start or adopt a server before running Speed Test.", japanese: "スピードテスト前にサーバーを起動するか採用してください。") }
+        if isSpeedTestRunning { return Self.localizedText(language: settings.uiLanguage, english: "Benchmark is already running.", japanese: "ベンチマークはすでに実行中です。") }
+        if isAgenticBenchmarkRunning { return Self.localizedText(language: settings.uiLanguage, english: "Agent Readiness is already running.", japanese: "Agent Readinessはすでに実行中です。") }
+        if !connectionTargetSummary.isActiveTarget { return Self.localizedText(language: settings.uiLanguage, english: "Start or adopt a server before running Benchmark.", japanese: "ベンチマーク前にサーバーを起動するか採用してください。") }
         return Self.localizedText(language: settings.uiLanguage, english: "Ready.", japanese: "準備完了。")
+    }
+
+    var canRunAgenticBenchmark: Bool {
+        connectionTargetSummary.isActiveTarget && !isSpeedTestRunning && !isAgenticBenchmarkRunning
+    }
+
+    var agenticBenchmarkDisabledReason: String {
+        if isAgenticBenchmarkRunning { return Self.localizedText(language: settings.uiLanguage, english: "Agent Readiness is already running.", japanese: "Agent Readinessはすでに実行中です。") }
+        if isSpeedTestRunning { return Self.localizedText(language: settings.uiLanguage, english: "Benchmark v1 is already running.", japanese: "Benchmark v1はすでに実行中です。") }
+        if !connectionTargetSummary.isActiveTarget { return Self.localizedText(language: settings.uiLanguage, english: "Start or adopt a server before running Agent Readiness.", japanese: "Agent Readiness前にサーバーを起動するか採用してください。") }
+        return Self.localizedText(language: settings.uiLanguage, english: "Runs virtual tool tasks without external dependencies.", japanese: "外部依存なしで仮想ツールタスクを実行します。")
     }
 
     var stopDisabledReason: String {
@@ -648,7 +671,7 @@ final class AppViewModel: ObservableObject {
             "Start: \(startActionReason)",
             "Stop: \(stopDisabledReason)",
             "Restart: \(restartDisabledReason)",
-            "Speed Test: \(speedTestDisabledReason)"
+            "Benchmark: \(speedTestDisabledReason)"
         ].joined(separator: "  ")
     }
 
@@ -824,6 +847,42 @@ final class AppViewModel: ObservableObject {
         latestBenchmarkResult?.summary ?? latestSpeedTestMessage
     }
 
+    var latestAgenticBenchmarkSummary: String {
+        latestAgenticBenchmarkResult?.summary
+            ?? Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Optional Agent Readiness has not run yet.",
+                japanese: "任意のAgent Readinessはまだ実行されていません。"
+            )
+    }
+
+    func benchmarkResult(for model: ModelConfig) -> BenchmarkResult? {
+        if latestBenchmarkResult?.profileID == model.id {
+            return latestBenchmarkResult
+        }
+        return benchmarkResultsByProfileID[model.id]
+    }
+
+    func agenticBenchmarkResult(for model: ModelConfig) -> AgenticBenchmarkResult? {
+        if latestAgenticBenchmarkResult?.profileID == model.id {
+            return latestAgenticBenchmarkResult
+        }
+        return agenticBenchmarkResultsByProfileID[model.id]
+    }
+
+    func benchmarkSummary(for model: ModelConfig) -> String {
+        benchmarkResult(for: model)?.localizedSummary(language: settings.uiLanguage) ?? latestSpeedTestMessage
+    }
+
+    func agenticBenchmarkSummary(for model: ModelConfig) -> String {
+        agenticBenchmarkResult(for: model)?.localizedSummary(language: settings.uiLanguage)
+            ?? Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Optional Agent Readiness has not run yet.",
+                japanese: "任意のAgent Readinessはまだ実行されていません。"
+            )
+    }
+
     var benchmarkSummaryText: String {
         let successfulLatencies = benchmarkHistory.compactMap { result in
             result.phase == .success ? result.readinessLatencyMS : nil
@@ -887,7 +946,7 @@ final class AppViewModel: ObservableObject {
         }
         let message = latestBenchmarkResult.message.lowercased()
         if !connectionTargetSummary.isActiveTarget {
-            return Self.localizedText(language: settings.uiLanguage, english: "Server is not running. Press Start before Speed Test.", japanese: "サーバーは実行されていません。スピードテスト前に起動してください。")
+            return Self.localizedText(language: settings.uiLanguage, english: "Server is not running. Press Start before Benchmark.", japanese: "サーバーは実行されていません。ベンチマーク前に起動してください。")
         }
         if runtimeSelectionWarning != nil {
             return Self.localizedText(language: settings.uiLanguage, english: "Selected profile differs from the running profile. Stop → Start or Restart before measuring.", japanese: "選択プロファイルが実行中プロファイルと異なります。測定前に停止→起動、または再起動してください。")
@@ -898,7 +957,7 @@ final class AppViewModel: ObservableObject {
         if message.contains("http") {
             return Self.localizedText(language: settings.uiLanguage, english: "The endpoint responded but was not ready. Confirm the port and run Ready Check again.", japanese: "エンドポイントは応答しましたがReadyではありません。ポートを確認し、Ready確認を再実行してください。")
         }
-        return Self.localizedText(language: settings.uiLanguage, english: "Check runtime diagnostics and logs, then retry Speed Test.", japanese: "ランタイム診断とログを確認してから、スピードテストを再試行してください。")
+        return Self.localizedText(language: settings.uiLanguage, english: "Check runtime diagnostics and logs, then retry Benchmark.", japanese: "ランタイム診断とログを確認してから、ベンチマークを再試行してください。")
     }
 
     var latestFailedHuggingFaceDownloadQueueEntry: HuggingFaceDownloadQueueEntry? {
@@ -1023,8 +1082,9 @@ final class AppViewModel: ObservableObject {
         guard !benchmarkHistory.isEmpty else {
             return Self.localizedText(language: settings.uiLanguage, english: "No benchmark results in this session.", japanese: "このセッションにはベンチマーク結果がありません。")
         }
-        return (["Benchmark Summary", benchmarkSummaryText] + benchmarkHistory.prefix(10).map { result in
-            "- \(result.timestamp): \(result.modelID) @ \(result.baseURL): \(result.summary)"
+        let title = Self.localizedText(language: settings.uiLanguage, english: "Benchmark Summary", japanese: "ベンチマーク概要")
+        return ([title, benchmarkSummaryText] + benchmarkHistory.prefix(10).map { result in
+            "- \(result.timestamp): \(result.modelID) @ \(result.baseURL): \(result.localizedUseCaseScoreSummary(language: settings.uiLanguage)) — \(result.localizedSummary(language: settings.uiLanguage))"
         }).joined(separator: "\n")
     }
 
@@ -1032,7 +1092,16 @@ final class AppViewModel: ObservableObject {
         guard let latestBenchmarkResult else {
             return Self.localizedText(language: settings.uiLanguage, english: "No benchmark result in this session.", japanese: "このセッションにはベンチマーク結果がありません。")
         }
-        return "Latest Benchmark\nModel: \(latestBenchmarkResult.modelID)\nEndpoint: \(latestBenchmarkResult.baseURL)\nSelected: \(latestBenchmarkResult.selectedProfileName)\nRunning: \(latestBenchmarkResult.runningProfileText)\nStatus: \(latestBenchmarkResult.phase.rawValue)\nLatency: \(latestBenchmarkResult.latencyText)\nHTTP: \(latestBenchmarkResult.httpStatusText)\nMessage: \(latestBenchmarkResult.message)"
+        let title = Self.localizedText(language: settings.uiLanguage, english: "Latest Benchmark", japanese: "最新ベンチマーク")
+        return "\(title)\n\(latestBenchmarkResult.localizedDetailedText(language: settings.uiLanguage))"
+    }
+
+    var latestAgenticBenchmarkCopyText: String {
+        guard let latestAgenticBenchmarkResult else {
+            return Self.localizedText(language: settings.uiLanguage, english: "No Agent Readiness result in this session.", japanese: "このセッションにはAgent Readiness結果がありません。")
+        }
+        let title = Self.localizedText(language: settings.uiLanguage, english: "Latest Agent Readiness", japanese: "最新Agent Readiness")
+        return "\(title)\n\(latestAgenticBenchmarkResult.localizedDetailedText(language: settings.uiLanguage))"
     }
 
     var benchmarkTroubleshootingCopyText: String {
@@ -1978,7 +2047,7 @@ final class AppViewModel: ObservableObject {
 
     func runSpeedTestRequested() {
         guard canRunSpeedTest else {
-            latestSpeedTestMessage = Self.localizedText(language: settings.uiLanguage, english: "Start the server before running Speed Test.", japanese: "スピードテスト前にサーバーを起動してください。")
+            latestSpeedTestMessage = Self.localizedText(language: settings.uiLanguage, english: "Start the server before running Benchmark.", japanese: "ベンチマーク前にサーバーを起動してください。")
             appendLog("[benchmark] speed test skipped: no active connection target.")
             return
         }
@@ -1990,64 +2059,82 @@ final class AppViewModel: ObservableObject {
         let runningProfileID = runningModelID
         let modelID = selectedModelIdentifier
         let targetBaseURL = baseURL
+        let managedProcessID = processManager.managedProcessIdentifier
+        let chipName = systemProfilerHardwareInfo["Chip"] ?? "Apple Silicon"
+        let memoryText = systemProfilerHardwareInfo["Memory"] ?? Self.formatMemoryGigabytes(Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824)
+        let service = benchmarkService
         isSpeedTestRunning = true
-        latestSpeedTestMessage = Self.localizedText(language: settings.uiLanguage, english: "Running /v1/models readiness latency test...", japanese: "/v1/models のReadyレイテンシーテストを実行中...")
+        latestSpeedTestMessage = Self.localizedText(language: settings.uiLanguage, english: "Running Benchmark v1...", japanese: "Benchmark v1 を実行中...")
         latestSpeedTestDurationMS = nil
-        appendRuntimeEvent(category: "Benchmark", message: "Speed Test started for \(host):\(port)")
-        appendLog("[benchmark] speed test started: http://\(host):\(port)/v1/models")
+        appendRuntimeEvent(category: "Benchmark", message: "Benchmark v1 started for \(host):\(port)")
+        appendLog("[benchmark] Benchmark v1 started: \(targetBaseURL)")
 
         Task {
             let startedAt = Date()
-            let result = await readyChecker.check(host: host, port: port)
+            let configuration = BenchmarkRunConfiguration(
+                host: host,
+                port: port,
+                baseURL: targetBaseURL,
+                profileID: profileID,
+                modelID: modelID,
+                selectedProfileName: selectedProfileName,
+                runningProfileID: runningProfileID,
+                managedProcessID: managedProcessID,
+                chipName: chipName,
+                memoryText: memoryText,
+                mlxServerExecutablePath: settings.mlxServerExecutablePath
+            )
+            let benchmarkResult = await service.run(configuration: configuration)
             let elapsedMS = Date().timeIntervalSince(startedAt) * 1000
             latestSpeedTestDurationMS = elapsedMS
-            let benchmarkResult: BenchmarkResult
-            switch result {
-            case let .ready(url, statusCode):
-                latestSpeedTestMessage = Self.localizedText(language: settings.uiLanguage, english: "Success: \(url.absoluteString) returned HTTP \(statusCode).", japanese: "成功: \(url.absoluteString) が HTTP \(statusCode) を返しました。")
-                benchmarkResult = BenchmarkResult(
-                    profileID: profileID,
-                    modelID: modelID,
-                    baseURL: targetBaseURL,
-                    phase: .success,
-                    readinessLatencyMS: elapsedMS,
-                    statusCode: statusCode,
-                    selectedProfileName: selectedProfileName,
-                    runningProfileID: runningProfileID,
-                    message: "HTTP \(statusCode) from /v1/models"
-                )
-                appendLog("[benchmark] speed test succeeded in \(Int(elapsedMS)) ms.")
-            case let .notReady(_, statusCode):
-                latestSpeedTestMessage = Self.localizedText(language: settings.uiLanguage, english: "Failed: /v1/models returned HTTP \(statusCode).", japanese: "失敗: /v1/models が HTTP \(statusCode) を返しました。")
-                benchmarkResult = BenchmarkResult(
-                    profileID: profileID,
-                    modelID: modelID,
-                    baseURL: targetBaseURL,
-                    phase: .failed,
-                    readinessLatencyMS: elapsedMS,
-                    statusCode: statusCode,
-                    selectedProfileName: selectedProfileName,
-                    runningProfileID: runningProfileID,
-                    message: "HTTP \(statusCode) from /v1/models"
-                )
-                appendLog("[benchmark] speed test failed in \(Int(elapsedMS)) ms: HTTP \(statusCode).")
-            case let .invalidInput(message):
-                latestSpeedTestMessage = "Failed: \(message)"
-                benchmarkResult = BenchmarkResult(profileID: profileID, modelID: modelID, baseURL: targetBaseURL, phase: .failed, readinessLatencyMS: nil, selectedProfileName: selectedProfileName, runningProfileID: runningProfileID, message: message)
-                appendLog("[benchmark] speed test failed: \(message)")
-            case let .failed(_, message):
-                latestSpeedTestMessage = "Failed: \(message)"
-                benchmarkResult = BenchmarkResult(profileID: profileID, modelID: modelID, baseURL: targetBaseURL, phase: .failed, readinessLatencyMS: elapsedMS, selectedProfileName: selectedProfileName, runningProfileID: runningProfileID, message: message)
-                appendLog("[benchmark] speed test failed in \(Int(elapsedMS)) ms: \(message)")
-            case .timedOut:
-                latestSpeedTestMessage = Self.localizedText(language: settings.uiLanguage, english: "Failed: request timed out.", japanese: "失敗: リクエストがタイムアウトしました。")
-                benchmarkResult = BenchmarkResult(profileID: profileID, modelID: modelID, baseURL: targetBaseURL, phase: .failed, readinessLatencyMS: elapsedMS, selectedProfileName: selectedProfileName, runningProfileID: runningProfileID, message: "Request timed out")
-                appendLog("[benchmark] speed test timed out after \(Int(elapsedMS)) ms.")
-            }
+            latestSpeedTestMessage = benchmarkResult.summary
             latestBenchmarkResult = benchmarkResult
             benchmarkHistory.insert(benchmarkResult, at: 0)
+            benchmarkResultsByProfileID[benchmarkResult.profileID] = benchmarkResult
+            savePersistedBenchmarkResults()
             appendRuntimeEvent(category: "Benchmark", message: benchmarkResult.summary)
+            appendLog("[benchmark] Benchmark v1 \(benchmarkResult.phase.rawValue.lowercased()) in \(Int(elapsedMS)) ms: \(benchmarkResult.message)")
             isSpeedTestRunning = false
+        }
+    }
+
+    func runAgenticBenchmarkRequested() {
+        guard canRunAgenticBenchmark else {
+            appendLog("[agent-readiness] skipped: \(agenticBenchmarkDisabledReason)")
+            return
+        }
+
+        let host = selectedModel?.host ?? settings.defaultHost
+        let port = selectedModel?.serverPort ?? settings.defaultPort
+        let profileID = selectedModel?.id ?? selectedModelIdentifier
+        let selectedProfileName = selectedModel?.displayName ?? selectedModelIdentifier
+        let modelID = selectedModelIdentifier
+        let targetBaseURL = baseURL
+        let service = agenticBenchmarkService
+
+        isAgenticBenchmarkRunning = true
+        appendRuntimeEvent(category: "Benchmark", message: "Agent Readiness started for \(host):\(port)")
+        appendLog("[agent-readiness] started: \(targetBaseURL)")
+
+        Task {
+            let startedAt = Date()
+            let configuration = AgenticBenchmarkRunConfiguration(
+                host: host,
+                port: port,
+                baseURL: targetBaseURL,
+                profileID: profileID,
+                modelID: modelID,
+                selectedProfileName: selectedProfileName
+            )
+            let result = await service.run(configuration: configuration)
+            let elapsedMS = Date().timeIntervalSince(startedAt) * 1000
+            latestAgenticBenchmarkResult = result
+            agenticBenchmarkHistory.insert(result, at: 0)
+            agenticBenchmarkResultsByProfileID[result.profileID] = result
+            savePersistedBenchmarkResults()
+            appendRuntimeEvent(category: "Benchmark", message: result.summary)
+            appendLog("[agent-readiness] \(result.phase.rawValue.lowercased()) in \(Int(elapsedMS)) ms: \(result.message)")
+            isAgenticBenchmarkRunning = false
         }
     }
 
@@ -3468,6 +3555,32 @@ final class AppViewModel: ObservableObject {
         appendLog("[benchmark] copied latest benchmark.")
     }
 
+    func copyBenchmark(for model: ModelConfig) {
+        guard let result = benchmarkResult(for: model) else {
+            copyToPasteboard(Self.localizedText(language: settings.uiLanguage, english: "No benchmark result for this model.", japanese: "このモデルのベンチマーク結果はありません。"))
+            appendLog("[benchmark] no benchmark result to copy for \(model.id).")
+            return
+        }
+        let title = Self.localizedText(language: settings.uiLanguage, english: "Benchmark", japanese: "ベンチマーク")
+        copyToPasteboard("\(title)\n\(result.localizedDetailedText(language: settings.uiLanguage))")
+        appendLog("[benchmark] copied benchmark for \(model.id).")
+    }
+
+    func copyLatestAgenticBenchmark() {
+        copyToPasteboard(latestAgenticBenchmarkCopyText)
+        appendLog("[agent-readiness] copied latest agent readiness.")
+    }
+
+    func copyAgenticBenchmark(for model: ModelConfig) {
+        guard let result = agenticBenchmarkResult(for: model) else {
+            copyToPasteboard(Self.localizedText(language: settings.uiLanguage, english: "No Agent Readiness result for this model.", japanese: "このモデルのAgent Readiness結果はありません。"))
+            appendLog("[agent-readiness] no result to copy for \(model.id).")
+            return
+        }
+        copyToPasteboard("Agent Readiness\n\(result.localizedDetailedText(language: settings.uiLanguage))")
+        appendLog("[agent-readiness] copied result for \(model.id).")
+    }
+
     func copyBenchmarkTroubleshooting() {
         copyToPasteboard(benchmarkTroubleshootingCopyText)
         appendLog("[benchmark] copied troubleshooting context.")
@@ -4242,12 +4355,43 @@ final class AppViewModel: ObservableObject {
             } else {
                 appendLog("[settings] Loaded settings.json and models.json from \(settingsDirectoryPath).")
             }
+            loadPersistedBenchmarkResults()
         } catch {
             settings = .defaults
             invalidateModelSizeCache()
             invalidatePortCheckCache()
             models = ModelConfig.defaults
             appendLog("[settings] Failed to load settings. Using defaults: \(error.localizedDescription)")
+            loadPersistedBenchmarkResults()
+        }
+    }
+
+    private func loadPersistedBenchmarkResults() {
+        do {
+            let snapshot = try settingsStore.loadBenchmarkResults()
+            benchmarkResultsByProfileID = snapshot.value.benchmarkResultsByProfileID
+            agenticBenchmarkResultsByProfileID = snapshot.value.agenticBenchmarkResultsByProfileID
+            if snapshot.usedDefault {
+                appendLog("[benchmark] benchmark-results.json not found. Model benchmark results will be saved after the next run.")
+            } else {
+                appendLog("[benchmark] Loaded benchmark-results.json from \(settingsDirectoryPath).")
+            }
+        } catch {
+            benchmarkResultsByProfileID = [:]
+            agenticBenchmarkResultsByProfileID = [:]
+            appendLog("[benchmark] Failed to load benchmark-results.json: \(error.localizedDescription)")
+        }
+    }
+
+    private func savePersistedBenchmarkResults() {
+        let snapshot = BenchmarkResultsSnapshot(
+            benchmarkResultsByProfileID: benchmarkResultsByProfileID,
+            agenticBenchmarkResultsByProfileID: agenticBenchmarkResultsByProfileID
+        )
+        do {
+            try settingsStore.save(benchmarkResults: snapshot)
+        } catch {
+            appendLog("[benchmark] Failed to save benchmark-results.json: \(error.localizedDescription)")
         }
     }
 

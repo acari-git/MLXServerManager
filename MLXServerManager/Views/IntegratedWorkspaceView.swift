@@ -1173,6 +1173,7 @@ struct IntegratedWorkspaceView: View {
                             modelInspectorOverview(for: model)
                             modelInspectorClientSetup(for: model)
                             modelInspectorHermesAgent(for: model)
+                            modelInspectorBenchmark(for: model)
                             modelInspectorCommandPreview(for: model)
                         }
                         .padding(.horizontal, 12)
@@ -1415,6 +1416,359 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
+    private func modelInspectorBenchmark(for model: ModelConfig) -> some View {
+        inspectorSection(title: t("Benchmark", "ベンチマーク")) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Button {
+                        viewModel.runSpeedTestRequested()
+                    } label: {
+                        Label(t("Run Benchmark", "ベンチマーク実行"), systemImage: "speedometer")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(!viewModel.canRunSpeedTest)
+                    .help(viewModel.speedTestDisabledReason)
+
+                    Button {
+                        viewModel.copyBenchmark(for: model)
+                        showInspectorCopyToast(title: t("Benchmark", "ベンチマーク"))
+                    } label: {
+                        Label(t("Copy", "コピー"), systemImage: AppSymbol.copy)
+                            .labelStyle(.iconOnly)
+                            .frame(width: 30)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(viewModel.benchmarkResult(for: model) == nil)
+                    .help(t("Copy benchmark for this model", "このモデルのベンチマークをコピー"))
+                }
+
+                HStack(spacing: 8) {
+                    Button {
+                        viewModel.runAgenticBenchmarkRequested()
+                    } label: {
+                        Label(t("Run Readiness", "Readiness実行"), systemImage: "checklist")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(!viewModel.canRunAgenticBenchmark)
+                    .help(viewModel.agenticBenchmarkDisabledReason)
+
+                    Button {
+                        viewModel.copyAgenticBenchmark(for: model)
+                        showInspectorCopyToast(title: t("Agent Readiness", "Agent Readiness"))
+                    } label: {
+                        Label(t("Copy", "コピー"), systemImage: AppSymbol.copy)
+                            .labelStyle(.iconOnly)
+                            .frame(width: 30)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(viewModel.agenticBenchmarkResult(for: model) == nil)
+                    .help(t("Copy Agent Readiness for this model", "このモデルのAgent Readinessをコピー"))
+                }
+
+                if viewModel.isSpeedTestRunning || viewModel.isAgenticBenchmarkRunning {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+
+                Text(viewModel.benchmarkSummary(for: model))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let result = viewModel.benchmarkResult(for: model) {
+                    benchmarkScoreGrid(result)
+                    benchmarkMetricSummary(result)
+                } else {
+                    Text(t("Run Benchmark v1 to score this model for this Mac.", "Benchmark v1を実行すると、このMacでの用途別スコアを表示します。"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Divider()
+                    .opacity(0.45)
+
+                Text(viewModel.agenticBenchmarkSummary(for: model))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let result = viewModel.agenticBenchmarkResult(for: model) {
+                    agenticBenchmarkSummary(result)
+                } else {
+                    Text(t("Agent Readiness is optional. It uses virtual tool tasks and does not require external dependencies.", "Agent Readinessは任意です。仮想ツールタスクを使うため、外部依存は不要です。"))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    private func benchmarkScoreGrid(_ result: BenchmarkResult) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if result.useCaseScores.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label(t("Not scored", "スコア未算出"), systemImage: "exclamationmark.triangle")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.orange)
+                    Text(result.message)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } else {
+                ForEach(result.useCaseScores, id: \.useCase) { score in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(score.useCase.localizedTitle(language: viewModel.settings.uiLanguage))
+                                .font(.caption.weight(.semibold))
+                            Spacer()
+                            Text("\(score.score)/10")
+                                .font(.caption.monospacedDigit().weight(.semibold))
+                                .foregroundStyle(benchmarkScoreColor(score.score))
+                        }
+                        if let reason = score.reasons.first {
+                            Text(score.localizedReason(reason, language: viewModel.settings.uiLanguage))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(10)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.22), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func benchmarkMetricSummary(_ result: BenchmarkResult) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let speed = result.speedMetrics {
+                LazyVGrid(columns: inspectorOverviewColumns, alignment: .leading, spacing: 8) {
+                    inspectorInfoRow(
+                        title: "TTFT",
+                        value: speed.ttftText,
+                        helpText: t(
+                            "Time To First Token: time until the first generated token arrives. Lower feels more responsive.",
+                            "Time To First Token（最初のトークンまでの時間）です。短いほど応答が速く感じます。"
+                        )
+                    )
+                    inspectorInfoRow(
+                        title: t("Output", "出力速度"),
+                        value: speed.outputSpeedText,
+                        helpText: t(
+                            "Generated tokens per second after output starts. Higher means faster generation.",
+                            "出力開始後に1秒あたり生成できたトークン数です。大きいほど生成が速いことを示します。"
+                        )
+                    )
+                    inspectorInfoRow(
+                        title: t("Latency", "合計時間"),
+                        value: speed.totalLatencyText,
+                        helpText: t(
+                            "Total time from sending the request until the benchmark response completed.",
+                            "リクエスト送信からベンチマーク応答が完了するまでの合計時間です。"
+                        )
+                    )
+                    inspectorInfoRow(
+                        title: t("Tokens", "トークン"),
+                        value: speed.outputTokenText,
+                        helpText: t(
+                            "Number of output tokens generated during the benchmark response.",
+                            "ベンチマーク応答で生成された出力トークン数です。"
+                        )
+                    )
+                    inspectorInfoRow(
+                        title: t("Finish", "終了理由"),
+                        value: speed.localizedFinishReasonText(language: viewModel.settings.uiLanguage),
+                        helpText: t(
+                            "Reason reported by the endpoint when generation stopped, such as stop or length.",
+                            "生成停止時にエンドポイントが返した理由です。例: stop、length。"
+                        )
+                    )
+                    inspectorInfoRow(
+                        title: t("Memory", "メモリ"),
+                        value: speed.localizedMemoryText(language: viewModel.settings.uiLanguage),
+                        helpText: t(
+                            "Managed server memory and available system memory observed during the benchmark.",
+                            "ベンチマーク時に観測した管理サーバーのメモリ使用量とシステム空きメモリです。"
+                        )
+                    )
+                }
+            }
+
+            if let agent = result.agentReadiness {
+                LazyVGrid(columns: inspectorOverviewColumns, alignment: .leading, spacing: 8) {
+                    inspectorInfoRow(
+                        title: t("Agent JSON", "Agent JSON"),
+                        value: agent.jsonValidityText,
+                        helpText: t(
+                            "How many agent probe responses were valid JSON.",
+                            "Agentテストの応答のうち、有効なJSONとして解釈できた件数です。"
+                        )
+                    )
+                    inspectorInfoRow(
+                        title: t("Instructions", "指示追従"),
+                        value: agent.instructionFollowingText,
+                        helpText: t(
+                            "How often the model followed the benchmark instructions.",
+                            "ベンチマーク指示にどれだけ正しく従えたかを示します。"
+                        )
+                    )
+                    inspectorInfoRow(
+                        title: t("Tool choice", "ツール判断"),
+                        value: agent.toolSelectionText,
+                        helpText: t(
+                            "How often the model selected the expected virtual tool action.",
+                            "期待された仮想ツール操作を選べた割合です。"
+                        )
+                    )
+                    inspectorInfoRow(
+                        title: t("Timeouts", "タイムアウト"),
+                        value: "\(agent.timeoutCount)",
+                        helpText: t(
+                            "Number of repeated agent probes that timed out.",
+                            "繰り返しAgentテスト中にタイムアウトした回数です。"
+                        )
+                    )
+                }
+            }
+
+            if let host = result.hostSnapshot {
+                Text("\(result.suiteVersion) • \(host.chipName) • \(host.memoryText) • mlx-lm \(host.mlxLMVersion)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+                    .truncationMode(.middle)
+            }
+        }
+    }
+
+    private func agenticBenchmarkSummary(_ result: AgenticBenchmarkResult) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(t("Readiness Score", "Readinessスコア"))
+                    .font(.caption.weight(.semibold))
+                Spacer()
+                Text(result.scoreText)
+                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(result.passedTaskCount == result.taskCount && result.taskCount > 0 ? .green : .orange)
+            }
+            .contentShape(Rectangle())
+            .optionalInspectorHelp(agenticReadinessScoreHelpText)
+
+            ForEach(result.tasks) { task in
+                VStack(alignment: .leading, spacing: 3) {
+                    let helpText = agenticBenchmarkTaskHelpText(task)
+                    HStack {
+                        Text(task.localizedTitle(language: viewModel.settings.uiLanguage))
+                            .font(.caption.weight(.semibold))
+                        Spacer()
+                        Text(task.localizedScoreText(language: viewModel.settings.uiLanguage))
+                            .font(.caption.monospacedDigit().weight(.semibold))
+                            .foregroundStyle(task.passed ? .green : .red)
+                    }
+                    .contentShape(Rectangle())
+                    .optionalInspectorHelp(helpText)
+                    Text(task.localizedNotes(language: viewModel.settings.uiLanguage))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+
+                    if !task.diagnostics.isEmpty {
+                        DisclosureGroup {
+                            VStack(alignment: .leading, spacing: 6) {
+                                ForEach(task.localizedDiagnostics(language: viewModel.settings.uiLanguage)) { diagnostic in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(diagnostic.title)
+                                            .font(.caption2.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+                                        Text(diagnostic.text)
+                                            .font(.caption2.monospaced())
+                                            .foregroundStyle(.secondary)
+                                            .textSelection(.enabled)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+                            }
+                            .padding(.top, 4)
+                        } label: {
+                            Text(t("Diagnostics", "診断"))
+                                .font(.caption2.weight(.semibold))
+                        }
+                        .controlSize(.small)
+                    }
+                }
+            }
+
+            Text("\(result.suiteVersion) • \(t("Virtual tools", "仮想ツール"))")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(3)
+        }
+        .padding(10)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.22), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private var agenticReadinessScoreHelpText: String {
+        t(
+            "Overall pass count for Docker-free virtual tool tasks. It estimates whether the model can produce stable JSON, follow instructions, handle paths, and plan simple edits for agent workflows.",
+            "Docker不要の仮想ツールタスク全体の合格数です。モデルがAgent用途で安定したJSONを返し、指示追従、パス処理、簡単な編集計画を行えるかを見ます。"
+        )
+    }
+
+    private func agenticBenchmarkTaskHelpText(_ task: AgenticBenchmarkTaskResult) -> String {
+        switch task.id {
+        case "virtual_file_lookup":
+            t(
+                "Checks whether the model can plan a small virtual filesystem lookup and return the discovered value as JSON.",
+                "仮想ファイルシステムをたどる手順を組み立て、見つけた値をJSONで返せるかを確認します。"
+            )
+        case "missing_field_honesty":
+            t(
+                "Checks whether the model admits that a requested field is missing instead of inventing a value.",
+                "要求された項目が存在しない時に、値を捏造せず「存在しない」と正直に返せるかを確認します。"
+            )
+        case "patch_planning":
+            t(
+                "Checks whether the model can read a virtual config file and propose a targeted patch without changing unrelated settings.",
+                "仮想設定ファイルを読み、関係ない設定を変えずに目的の箇所だけを変更するパッチを計画できるかを確認します。"
+            )
+        case "path_handling":
+            t(
+                "Checks whether the model can preserve an exact path, including spaces, and extract the requested connection value.",
+                "スペースを含むパスを正確に扱い、必要な接続情報を取り出せるかを確認します。"
+            )
+        case "skill_discovery":
+            t(
+                "Checks whether the model can discover a virtual instruction file, apply the instruction, and return the decoded result.",
+                "仮想の手順ファイルを見つけ、その指示を適用し、変換した結果を返せるかを確認します。"
+            )
+        default:
+            t(
+                "Checks one part of agent readiness using a Docker-free virtual tool task.",
+                "Docker不要の仮想ツールタスクで、Agent適性の一部を確認します。"
+            )
+        }
+    }
+
+    private func benchmarkScoreColor(_ score: Int) -> Color {
+        switch score {
+        case 8...10:
+            .green
+        case 5...7:
+            .orange
+        default:
+            .red
+        }
+    }
+
     private func modelInspectorCommandPreview(for model: ModelConfig) -> some View {
         let command = LaunchCommandBuilder.command(executablePath: viewModel.settings.mlxServerExecutablePath, model: model)
         return inspectorSection(title: t("Launch Command", "起動コマンド")) {
@@ -1471,7 +1825,8 @@ struct IntegratedWorkspaceView: View {
         title: String,
         value: String,
         valueColor: Color = .primary,
-        valueWeight: Font.Weight = .regular
+        valueWeight: Font.Weight = .regular,
+        helpText: String? = nil
     ) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
@@ -1485,6 +1840,8 @@ struct IntegratedWorkspaceView: View {
                 .textSelection(.enabled)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .optionalInspectorHelp(helpText)
     }
 
     private func inspectorCopyRow(title: String, value: String, action: @escaping () -> Void) -> some View {
@@ -1829,6 +2186,100 @@ struct IntegratedWorkspaceView: View {
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
+}
+
+private struct OptionalInspectorHelp: ViewModifier {
+    let helpText: String?
+    @State private var isHovering = false
+    @State private var isPresented = false
+    @State private var hoverGeneration = 0
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if let helpText = helpText?.trimmingCharacters(in: .whitespacesAndNewlines), !helpText.isEmpty {
+            content
+                .zIndex(isPresented ? 100 : 0)
+                .onHover { hovering in
+                    hoverGeneration += 1
+                    isHovering = hovering
+                    if hovering {
+                        let generation = hoverGeneration
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            guard isHovering, generation == hoverGeneration else {
+                                return
+                            }
+                            isPresented = true
+                        }
+                    } else {
+                        isPresented = false
+                    }
+                }
+                .overlay(alignment: .topLeading) {
+                    if isPresented {
+                        InspectorHelpPopover(text: helpText)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .offset(x: 0, y: 22)
+                            .transition(.opacity)
+                            .allowsHitTesting(false)
+                            .zIndex(1000)
+                    }
+                }
+                .accessibilityHint(helpText)
+        } else {
+            content
+        }
+    }
+}
+
+private extension View {
+    func optionalInspectorHelp(_ helpText: String?) -> some View {
+        modifier(OptionalInspectorHelp(helpText: helpText))
+    }
+}
+
+private struct InspectorHelpPopover: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(.primary)
+            .lineSpacing(2)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: 280, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background {
+                InspectorTooltipVisualEffectBackground()
+                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .fill(Color(nsColor: .controlBackgroundColor).opacity(0.18))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.24), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.16), radius: 12, y: 6)
+            .padding(4)
+    }
+}
+
+private struct InspectorTooltipVisualEffectBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .popover
+        view.blendingMode = .withinWindow
+        view.state = .active
+        view.isEmphasized = false
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = .popover
+        nsView.blendingMode = .withinWindow
+        nsView.state = .active
+        nsView.isEmphasized = false
+    }
 }
 
 private struct InspectorVisualEffectBackground: NSViewRepresentable {

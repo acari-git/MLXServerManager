@@ -54,6 +54,12 @@ struct SettingsStore {
         }
     }
 
+    var benchmarkResultsFileURL: URL {
+        get throws {
+            try settingsDirectoryURL.appendingPathComponent("benchmark-results.json", isDirectory: false)
+        }
+    }
+
     func load() throws -> SettingsSnapshot {
         let settings = try loadSettings()
         let models = try loadModels()
@@ -74,6 +80,21 @@ struct SettingsStore {
     func save(models: [ModelConfig]) throws {
         try ensureSettingsDirectoryExists()
         try save(models, to: try modelsFileURL)
+    }
+
+    func loadBenchmarkResults() throws -> (value: BenchmarkResultsSnapshot, usedDefault: Bool) {
+        let url = try benchmarkResultsFileURL
+        guard fileManager.fileExists(atPath: url.path) else {
+            return (.empty, true)
+        }
+
+        let data = try Data(contentsOf: url)
+        return (try decoder.decode(BenchmarkResultsSnapshot.self, from: data), false)
+    }
+
+    func save(benchmarkResults: BenchmarkResultsSnapshot) throws {
+        try ensureSettingsDirectoryExists()
+        try save(benchmarkResults, to: try benchmarkResultsFileURL)
     }
 
     private func loadSettings() throws -> (value: AppSettings, usedDefault: Bool) {

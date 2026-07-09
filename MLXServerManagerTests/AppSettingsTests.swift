@@ -45,4 +45,33 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(decoded.uiAppearance, "dark")
         XCTAssertEqual(decoded.hermesConfigPath, "/tmp/hermes/config.yaml")
     }
+
+    func testSettingsStorePersistsBenchmarkResultsSeparately() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
+        defer {
+            if let url = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        let result = BenchmarkResult(
+            profileID: "model-a",
+            modelID: "local/model-a",
+            baseURL: "http://127.0.0.1:8000/v1",
+            phase: .success,
+            readinessLatencyMS: 100,
+            selectedProfileName: "Model A",
+            message: "ok"
+        )
+        let snapshot = BenchmarkResultsSnapshot(
+            benchmarkResultsByProfileID: ["model-a": result],
+            agenticBenchmarkResultsByProfileID: [:]
+        )
+
+        try store.save(benchmarkResults: snapshot)
+        let loaded = try store.loadBenchmarkResults()
+
+        XCTAssertFalse(loaded.usedDefault)
+        XCTAssertEqual(loaded.value.benchmarkResultsByProfileID["model-a"]?.modelID, "local/model-a")
+    }
 }
