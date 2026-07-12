@@ -50,10 +50,246 @@ enum BenchmarkUseCase: String, Codable, CaseIterable, Equatable, Hashable {
     }
 }
 
+enum BenchmarkScoreReasonCode: String, Codable, CaseIterable, Equatable, Hashable {
+    case ttftSlowInteractive = "ttft_slow_interactive"
+    case ttftDelayed = "ttft_delayed"
+    case ttftAcceptable = "ttft_acceptable"
+    case ttftResponsive = "ttft_responsive"
+    case ttftUnavailable = "ttft_unavailable"
+    case chatGenerationTooSlow = "chat_generation_too_slow"
+    case generationLimited = "generation_limited"
+    case generationUsable = "generation_usable"
+    case generationPractical = "generation_practical"
+    case generationStrong = "generation_strong"
+    case generationUnavailable = "generation_unavailable"
+    case responseTokenLimit = "response_token_limit"
+    case codeLongResponsesSlow = "code_long_responses_slow"
+    case codeGenerationLimited = "code_generation_limited"
+    case codeGenerationUsable = "code_generation_usable"
+    case codeGenerationPractical = "code_generation_practical"
+    case generationTokenLimit = "generation_token_limit"
+    case instructionProbesUnstable = "instruction_probes_unstable"
+    case instructionProbesMostlyUsable = "instruction_probes_mostly_usable"
+    case instructionProbesStable = "instruction_probes_stable"
+    case agentProbesUnavailable = "agent_probes_unavailable"
+    case jsonUnreliable = "json_unreliable"
+    case jsonSometimesBreaks = "json_sometimes_breaks"
+    case jsonMostlyStable = "json_mostly_stable"
+    case jsonStable = "json_stable"
+    case agentInstructionWeak = "agent_instruction_weak"
+    case agentInstructionCaution = "agent_instruction_caution"
+    case agentInstructionPractical = "agent_instruction_practical"
+    case toolSelectionUnreliable = "tool_selection_unreliable"
+    case toolSelectionMostlyUsable = "tool_selection_mostly_usable"
+    case toolSelectionStable = "tool_selection_stable"
+    case probeTimeouts = "probe_timeouts"
+    case probeTokenLength = "probe_token_length"
+    case repeatedLatencyHigh = "repeated_latency_high"
+    case repeatedLatencyAcceptable = "repeated_latency_acceptable"
+    case memoryTight = "memory_tight"
+    case memoryLimited = "memory_limited"
+    case speedNotRun = "speed_not_run"
+    case speedTimedOut = "speed_timed_out"
+    case reasoningTokenBudget = "reasoning_token_budget"
+    case reasoningOnly = "reasoning_only"
+    case contentTokenLimit = "content_token_limit"
+    case emptyBenchmarkContent = "empty_benchmark_content"
+    case speedIncomplete = "speed_incomplete"
+    case genericResponsive = "generic_responsive"
+
+    var englishText: String {
+        switch self {
+        case .ttftSlowInteractive: "TTFT is slow for interactive chat."
+        case .ttftDelayed: "TTFT may feel delayed."
+        case .ttftAcceptable: "TTFT is acceptable but not instant."
+        case .ttftResponsive: "TTFT is responsive."
+        case .ttftUnavailable: "TTFT could not be measured."
+        case .chatGenerationTooSlow: "Generation speed is too slow for comfortable chat."
+        case .generationLimited: "Generation speed is limited."
+        case .generationUsable: "Generation speed is usable."
+        case .generationPractical: "Generation speed is practical."
+        case .generationStrong: "Generation speed is strong."
+        case .generationUnavailable: "Generation speed could not be measured."
+        case .responseTokenLimit: "The response hit the token limit."
+        case .codeLongResponsesSlow: "Long code responses will be very slow."
+        case .codeGenerationLimited: "Code generation speed is limited."
+        case .codeGenerationUsable: "Code generation speed is usable."
+        case .codeGenerationPractical: "Code generation speed is practical."
+        case .generationTokenLimit: "The model hit the token limit during generation."
+        case .instructionProbesUnstable: "Instruction-following probes were unstable."
+        case .instructionProbesMostlyUsable: "Instruction-following probes were mostly usable."
+        case .instructionProbesStable: "Instruction-following probes were stable."
+        case .agentProbesUnavailable: "Agent readiness probes were not available."
+        case .jsonUnreliable: "JSON output is unreliable."
+        case .jsonSometimesBreaks: "JSON output sometimes breaks."
+        case .jsonMostlyStable: "JSON output is mostly stable."
+        case .jsonStable: "JSON output was stable."
+        case .agentInstructionWeak: "Instruction following is weak for agent loops."
+        case .agentInstructionCaution: "Instruction following needs caution."
+        case .agentInstructionPractical: "Instruction following is practical."
+        case .toolSelectionUnreliable: "Tool-selection probes were unreliable."
+        case .toolSelectionMostlyUsable: "Tool-selection probes were mostly usable."
+        case .toolSelectionStable: "Tool-selection probes were stable."
+        case .probeTimeouts: "Timeouts occurred during repeated probes."
+        case .probeTokenLength: "Some probes stopped because of token length."
+        case .repeatedLatencyHigh: "Repeated short-task latency is high."
+        case .repeatedLatencyAcceptable: "Repeated short-task latency is acceptable."
+        case .memoryTight: "Memory headroom is tight on this Mac."
+        case .memoryLimited: "Memory headroom is limited."
+        case .speedNotRun: "Speed test did not run."
+        case .speedTimedOut: "Endpoint timed out during the speed test."
+        case .reasoningTokenBudget: "Model used the token budget on reasoning before final content."
+        case .reasoningOnly: "Model returned reasoning without final content."
+        case .contentTokenLimit: "Response reached the token limit before content."
+        case .emptyBenchmarkContent: "Endpoint returned no benchmark content."
+        case .speedIncomplete: "Endpoint did not complete the speed test."
+        case .genericResponsive: "responsive"
+        }
+    }
+
+    var japaneseText: String {
+        switch self {
+        case .ttftSlowInteractive: "対話用途ではTTFTが遅めです。"
+        case .ttftDelayed: "TTFTに待ち時間を感じる可能性があります。"
+        case .ttftAcceptable: "TTFTは許容範囲ですが、即応ではありません。"
+        case .ttftResponsive: "TTFTは良好です。"
+        case .ttftUnavailable: "TTFTを測定できませんでした。"
+        case .chatGenerationTooSlow: "快適なチャットには生成速度が遅すぎます。"
+        case .generationLimited: "生成速度は限定的です。"
+        case .generationUsable: "生成速度は実用可能です。"
+        case .generationPractical: "生成速度は実用的です。"
+        case .generationStrong: "生成速度は良好です。"
+        case .generationUnavailable: "生成速度を測定できませんでした。"
+        case .responseTokenLimit: "応答がトークン上限に達しました。"
+        case .codeLongResponsesSlow: "長いコード応答はかなり遅くなります。"
+        case .codeGenerationLimited: "コード生成速度は限定的です。"
+        case .codeGenerationUsable: "コード生成速度は実用可能です。"
+        case .codeGenerationPractical: "コード生成速度は実用的です。"
+        case .generationTokenLimit: "生成中にモデルがトークン上限に達しました。"
+        case .instructionProbesUnstable: "指示追従テストは不安定でした。"
+        case .instructionProbesMostlyUsable: "指示追従テストはおおむね実用可能です。"
+        case .instructionProbesStable: "指示追従テストは安定しています。"
+        case .agentProbesUnavailable: "Agent Readinessテストを利用できませんでした。"
+        case .jsonUnreliable: "JSON出力は不安定です。"
+        case .jsonSometimesBreaks: "JSON出力が崩れることがあります。"
+        case .jsonMostlyStable: "JSON出力はおおむね安定しています。"
+        case .jsonStable: "JSON出力は安定しています。"
+        case .agentInstructionWeak: "エージェント処理では指示追従が弱めです。"
+        case .agentInstructionCaution: "指示追従には注意が必要です。"
+        case .agentInstructionPractical: "指示追従は実用的です。"
+        case .toolSelectionUnreliable: "ツール選択テストは不安定です。"
+        case .toolSelectionMostlyUsable: "ツール選択テストはおおむね実用可能です。"
+        case .toolSelectionStable: "ツール選択テストは安定しています。"
+        case .probeTimeouts: "繰り返しテスト中にタイムアウトが発生しました。"
+        case .probeTokenLength: "一部のテストがトークン長により停止しました。"
+        case .repeatedLatencyHigh: "短いタスクの繰り返しで遅延が大きめです。"
+        case .repeatedLatencyAcceptable: "短いタスクの繰り返し遅延は許容範囲です。"
+        case .memoryTight: "このMacではメモリ余裕がかなり少ないです。"
+        case .memoryLimited: "メモリ余裕は限定的です。"
+        case .speedNotRun: "速度テストは実行されませんでした。"
+        case .speedTimedOut: "速度テスト中にエンドポイントがタイムアウトしました。"
+        case .reasoningTokenBudget: "モデルが最終回答の前に推論でトークン予算を使い切りました。"
+        case .reasoningOnly: "モデルは推論のみを返し、最終回答を返しませんでした。"
+        case .contentTokenLimit: "本文生成前に応答がトークン上限に達しました。"
+        case .emptyBenchmarkContent: "エンドポイントがベンチマーク本文を返しませんでした。"
+        case .speedIncomplete: "エンドポイントが速度テストを完了しませんでした。"
+        case .genericResponsive: "応答は良好です。"
+        }
+    }
+
+    init?(legacyText: String) {
+        guard let match = Self.allCases.first(where: { $0.englishText == legacyText }) else {
+            return nil
+        }
+        self = match
+    }
+}
+
+struct BenchmarkScoreReason: Codable, Equatable, Hashable {
+    let code: BenchmarkScoreReasonCode?
+    let legacyText: String?
+
+    init(code: BenchmarkScoreReasonCode) {
+        self.code = code
+        legacyText = nil
+    }
+
+    init(legacyText: String) {
+        code = BenchmarkScoreReasonCode(legacyText: legacyText)
+        self.legacyText = code == nil ? legacyText : nil
+    }
+
+    var englishText: String {
+        code?.englishText ?? legacyText ?? ""
+    }
+
+    func localizedText(language: AppLanguage) -> String {
+        guard language.resolved == .japanese else {
+            return englishText
+        }
+        return code?.japaneseText ?? englishText
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let value = try container.decode(String.self)
+        if let code = BenchmarkScoreReasonCode(rawValue: value) {
+            self.init(code: code)
+        } else {
+            self.init(legacyText: value)
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(code?.rawValue ?? legacyText ?? "")
+    }
+}
+
 struct BenchmarkUseCaseScore: Codable, Equatable {
     let useCase: BenchmarkUseCase
     let score: Int
-    let reasons: [String]
+    private let reasonValues: [BenchmarkScoreReason]
+
+    var reasons: [String] {
+        reasonValues.map(\.englishText)
+    }
+
+    var reasonCodes: [BenchmarkScoreReasonCode] {
+        reasonValues.compactMap(\.code)
+    }
+
+    init(useCase: BenchmarkUseCase, score: Int, reasons: [String]) {
+        self.useCase = useCase
+        self.score = score
+        reasonValues = reasons.map(BenchmarkScoreReason.init(legacyText:))
+    }
+
+    init(useCase: BenchmarkUseCase, score: Int, reasonCodes: [BenchmarkScoreReasonCode]) {
+        self.useCase = useCase
+        self.score = score
+        reasonValues = reasonCodes.map(BenchmarkScoreReason.init(code:))
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case useCase
+        case score
+        case reasons
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        useCase = try container.decode(BenchmarkUseCase.self, forKey: .useCase)
+        score = try container.decode(Int.self, forKey: .score)
+        reasonValues = try container.decodeIfPresent([BenchmarkScoreReason].self, forKey: .reasons) ?? []
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(useCase, forKey: .useCase)
+        try container.encode(score, forKey: .score)
+        try container.encode(reasonValues, forKey: .reasons)
+    }
 
     var compactText: String {
         "\(useCase.title): \(score)/10"
@@ -64,63 +300,12 @@ struct BenchmarkUseCaseScore: Codable, Equatable {
     }
 
     func localizedReason(_ reason: String, language: AppLanguage) -> String {
-        guard language.resolved == .japanese else {
-            return reason
-        }
-        return Self.japaneseReasons[reason] ?? reason
+        BenchmarkScoreReason(legacyText: reason).localizedText(language: language)
     }
 
     func localizedReasons(language: AppLanguage) -> [String] {
-        reasons.map { localizedReason($0, language: language) }
+        reasonValues.map { $0.localizedText(language: language) }
     }
-
-    private static let japaneseReasons: [String: String] = [
-        "TTFT is slow for interactive chat.": "対話用途ではTTFTが遅めです。",
-        "TTFT may feel delayed.": "TTFTに待ち時間を感じる可能性があります。",
-        "TTFT is acceptable but not instant.": "TTFTは許容範囲ですが、即応ではありません。",
-        "TTFT is responsive.": "TTFTは良好です。",
-        "TTFT could not be measured.": "TTFTを測定できませんでした。",
-        "Generation speed is too slow for comfortable chat.": "快適なチャットには生成速度が遅すぎます。",
-        "Generation speed is limited.": "生成速度は限定的です。",
-        "Generation speed is usable.": "生成速度は実用可能です。",
-        "Generation speed is practical.": "生成速度は実用的です。",
-        "Generation speed is strong.": "生成速度は良好です。",
-        "Generation speed could not be measured.": "生成速度を測定できませんでした。",
-        "The response hit the token limit.": "応答がトークン上限に達しました。",
-        "Long code responses will be very slow.": "長いコード応答はかなり遅くなります。",
-        "Code generation speed is limited.": "コード生成速度は限定的です。",
-        "Code generation speed is usable.": "コード生成速度は実用可能です。",
-        "Code generation speed is practical.": "コード生成速度は実用的です。",
-        "The model hit the token limit during generation.": "生成中にモデルがトークン上限に達しました。",
-        "Instruction-following probes were unstable.": "指示追従テストは不安定でした。",
-        "Instruction-following probes were mostly usable.": "指示追従テストはおおむね実用可能です。",
-        "Instruction-following probes were stable.": "指示追従テストは安定しています。",
-        "Agent readiness probes were not available.": "Agent Readinessテストを利用できませんでした。",
-        "JSON output is unreliable.": "JSON出力は不安定です。",
-        "JSON output sometimes breaks.": "JSON出力が崩れることがあります。",
-        "JSON output is mostly stable.": "JSON出力はおおむね安定しています。",
-        "JSON output was stable.": "JSON出力は安定しています。",
-        "Instruction following is weak for agent loops.": "エージェント処理では指示追従が弱めです。",
-        "Instruction following needs caution.": "指示追従には注意が必要です。",
-        "Instruction following is practical.": "指示追従は実用的です。",
-        "Tool-selection probes were unreliable.": "ツール選択テストは不安定です。",
-        "Tool-selection probes were mostly usable.": "ツール選択テストはおおむね実用可能です。",
-        "Tool-selection probes were stable.": "ツール選択テストは安定しています。",
-        "Timeouts occurred during repeated probes.": "繰り返しテスト中にタイムアウトが発生しました。",
-        "Some probes stopped because of token length.": "一部のテストがトークン長により停止しました。",
-        "Repeated short-task latency is high.": "短いタスクの繰り返しで遅延が大きめです。",
-        "Repeated short-task latency is acceptable.": "短いタスクの繰り返し遅延は許容範囲です。",
-        "Memory headroom is tight on this Mac.": "このMacではメモリ余裕がかなり少ないです。",
-        "Memory headroom is limited.": "メモリ余裕は限定的です。",
-        "Speed test did not run.": "速度テストは実行されませんでした。",
-        "Endpoint timed out during the speed test.": "速度テスト中にエンドポイントがタイムアウトしました。",
-        "Model used the token budget on reasoning before final content.": "モデルが最終回答の前に推論でトークン予算を使い切りました。",
-        "Model returned reasoning without final content.": "モデルは推論のみを返し、最終回答を返しませんでした。",
-        "Response reached the token limit before content.": "本文生成前に応答がトークン上限に達しました。",
-        "Endpoint returned no benchmark content.": "エンドポイントがベンチマーク本文を返しませんでした。",
-        "Endpoint did not complete the speed test.": "エンドポイントが速度テストを完了しませんでした。",
-        "responsive": "応答は良好です。"
-    ]
 }
 
 struct BenchmarkHostSnapshot: Codable, Equatable {

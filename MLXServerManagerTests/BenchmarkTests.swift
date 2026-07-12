@@ -482,6 +482,58 @@ final class BenchmarkTests: XCTestCase {
         XCTAssertEqual(decoded.agenticBenchmarkResultsByProfileID["model-a"]?.scoreText, "1/1")
     }
 
+    func testBenchmarkReasonCodesDecodeLegacyTextAndEncodeStableIdentifiers() throws {
+        let legacyData = #"{"useCase":"chat","score":10,"reasons":["TTFT is responsive.","Custom legacy reason."]}"#
+            .data(using: .utf8)!
+
+        let score = try JSONDecoder().decode(BenchmarkUseCaseScore.self, from: legacyData)
+
+        XCTAssertEqual(score.reasonCodes, [.ttftResponsive])
+        XCTAssertEqual(score.reasons, ["TTFT is responsive.", "Custom legacy reason."])
+        XCTAssertEqual(score.localizedReasons(language: .japanese), ["TTFTは良好です。", "Custom legacy reason."])
+
+        let encoded = try JSONEncoder().encode(score)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        let reasons = try XCTUnwrap(object["reasons"] as? [String])
+
+        XCTAssertEqual(reasons, ["ttft_responsive", "Custom legacy reason."])
+    }
+
+    func testAgentScoreUsesRecordedToolSelectionProbeCount() {
+        let speed = BenchmarkSpeedMetrics(
+            readinessLatencyMS: 100,
+            ttftMS: 500,
+            totalLatencyMS: 1_500,
+            outputTokensPerSecond: 30,
+            outputTokenCount: 45,
+            finishReason: "stop",
+            httpStatusCode: 200,
+            timedOut: false,
+            errorMessage: nil,
+            managedMemoryGigabytes: 12,
+            availableMemoryGigabytes: 20
+        )
+        let agent = BenchmarkAgentReadiness(
+            totalRuns: 5,
+            successfulRuns: 5,
+            jsonValidResponses: 5,
+            instructionFollowingPasses: 5,
+            toolSelectionPasses: 1,
+            toolSelectionProbeCount: 1,
+            timeoutCount: 0,
+            lengthFinishCount: 0,
+            averageTTFTMS: 500,
+            averageTotalLatencyMS: 1_000
+        )
+
+        let score = BenchmarkScoreCalculator.scores(speed: speed, agent: agent)
+            .first(where: { $0.useCase == .agent })
+
+        XCTAssertEqual(score?.score, 10)
+        XCTAssertTrue(score?.reasonCodes.contains(.toolSelectionStable) == true)
+        XCTAssertFalse(score?.reasonCodes.contains(.toolSelectionUnreliable) == true)
+    }
+
     func testBenchmarkUseCaseReasonsLocalizeForJapaneseUI() {
         let score = BenchmarkUseCaseScore(
             useCase: .chat,

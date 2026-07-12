@@ -5,7 +5,7 @@ struct BenchmarkScoreCalculator {
         speed: BenchmarkSpeedMetrics?,
         agent: BenchmarkAgentReadiness?
     ) -> [BenchmarkUseCaseScore] {
-        return [
+        [
             chatScore(speed: speed),
             codingScore(speed: speed, agent: agent),
             agentScore(speed: speed, agent: agent)
@@ -17,60 +17,64 @@ struct BenchmarkScoreCalculator {
             return BenchmarkUseCaseScore(
                 useCase: .chat,
                 score: 1,
-                reasons: [incompleteSpeedReason(speed)]
+                reasonCodes: [incompleteSpeedReason(speed)]
             )
         }
 
         var score = 10
-        var reasons: [String] = []
+        var reasons: [BenchmarkScoreReasonCode] = []
 
         if let ttftMS = speed.ttftMS {
             if ttftMS > 10_000 {
                 score -= 3
-                reasons.append("TTFT is slow for interactive chat.")
+                reasons.append(.ttftSlowInteractive)
             } else if ttftMS > 5_000 {
                 score -= 2
-                reasons.append("TTFT may feel delayed.")
+                reasons.append(.ttftDelayed)
             } else if ttftMS > 2_500 {
                 score -= 1
-                reasons.append("TTFT is acceptable but not instant.")
+                reasons.append(.ttftAcceptable)
             } else {
-                reasons.append("TTFT is responsive.")
+                reasons.append(.ttftResponsive)
             }
         } else {
             score -= 2
-            reasons.append("TTFT could not be measured.")
+            reasons.append(.ttftUnavailable)
         }
 
         if let tokensPerSecond = speed.outputTokensPerSecond {
             if tokensPerSecond < 4 {
                 score -= 4
-                reasons.append("Generation speed is too slow for comfortable chat.")
+                reasons.append(.chatGenerationTooSlow)
             } else if tokensPerSecond < 8 {
                 score -= 3
-                reasons.append("Generation speed is limited.")
+                reasons.append(.generationLimited)
             } else if tokensPerSecond < 15 {
                 score -= 2
-                reasons.append("Generation speed is usable.")
+                reasons.append(.generationUsable)
             } else if tokensPerSecond < 25 {
                 score -= 1
-                reasons.append("Generation speed is practical.")
+                reasons.append(.generationPractical)
             } else {
-                reasons.append("Generation speed is strong.")
+                reasons.append(.generationStrong)
             }
         } else {
             score -= 2
-            reasons.append("Generation speed could not be measured.")
+            reasons.append(.generationUnavailable)
         }
 
         if speed.finishReason == "length" {
             score -= 1
-            reasons.append("The response hit the token limit.")
+            reasons.append(.responseTokenLimit)
         }
 
         applyMemoryPenalty(speed: speed, score: &score, reasons: &reasons)
 
-        return BenchmarkUseCaseScore(useCase: .chat, score: clamp(score), reasons: trimmedReasons(reasons))
+        return BenchmarkUseCaseScore(
+            useCase: .chat,
+            score: clamp(score),
+            reasonCodes: trimmedReasons(reasons)
+        )
     }
 
     nonisolated private static func codingScore(
@@ -81,52 +85,56 @@ struct BenchmarkScoreCalculator {
             return BenchmarkUseCaseScore(
                 useCase: .coding,
                 score: 1,
-                reasons: [incompleteSpeedReason(speed)]
+                reasonCodes: [incompleteSpeedReason(speed)]
             )
         }
 
         var score = 10
-        var reasons: [String] = []
+        var reasons: [BenchmarkScoreReasonCode] = []
 
         if let tokensPerSecond = speed.outputTokensPerSecond {
             if tokensPerSecond < 4 {
                 score -= 4
-                reasons.append("Long code responses will be very slow.")
+                reasons.append(.codeLongResponsesSlow)
             } else if tokensPerSecond < 8 {
                 score -= 3
-                reasons.append("Code generation speed is limited.")
+                reasons.append(.codeGenerationLimited)
             } else if tokensPerSecond < 14 {
                 score -= 2
-                reasons.append("Code generation speed is usable.")
+                reasons.append(.codeGenerationUsable)
             } else {
-                reasons.append("Code generation speed is practical.")
+                reasons.append(.codeGenerationPractical)
             }
         } else {
             score -= 2
-            reasons.append("Generation speed could not be measured.")
+            reasons.append(.generationUnavailable)
         }
 
         if speed.finishReason == "length" {
             score -= 2
-            reasons.append("The model hit the token limit during generation.")
+            reasons.append(.generationTokenLimit)
         }
 
         if let agent {
             let instructionRate = ratio(agent.instructionFollowingPasses, agent.totalRuns)
             if instructionRate < 0.6 {
                 score -= 3
-                reasons.append("Instruction-following probes were unstable.")
+                reasons.append(.instructionProbesUnstable)
             } else if instructionRate < 0.85 {
                 score -= 1
-                reasons.append("Instruction-following probes were mostly usable.")
+                reasons.append(.instructionProbesMostlyUsable)
             } else {
-                reasons.append("Instruction-following probes were stable.")
+                reasons.append(.instructionProbesStable)
             }
         }
 
         applyMemoryPenalty(speed: speed, score: &score, reasons: &reasons)
 
-        return BenchmarkUseCaseScore(useCase: .coding, score: clamp(score), reasons: trimmedReasons(reasons))
+        return BenchmarkUseCaseScore(
+            useCase: .coding,
+            score: clamp(score),
+            reasonCodes: trimmedReasons(reasons)
+        )
     }
 
     nonisolated private static func agentScore(
@@ -137,7 +145,7 @@ struct BenchmarkScoreCalculator {
             return BenchmarkUseCaseScore(
                 useCase: .agent,
                 score: 1,
-                reasons: [incompleteSpeedReason(speed)]
+                reasonCodes: [incompleteSpeedReason(speed)]
             )
         }
 
@@ -145,89 +153,93 @@ struct BenchmarkScoreCalculator {
             return BenchmarkUseCaseScore(
                 useCase: .agent,
                 score: 3,
-                reasons: ["Agent readiness probes were not available."]
+                reasonCodes: [.agentProbesUnavailable]
             )
         }
 
         var score = 10
-        var reasons: [String] = []
+        var reasons: [BenchmarkScoreReasonCode] = []
 
         let jsonRate = ratio(agent.jsonValidResponses, agent.totalRuns)
         if jsonRate < 0.5 {
             score -= 5
-            reasons.append("JSON output is unreliable.")
+            reasons.append(.jsonUnreliable)
         } else if jsonRate < 0.8 {
             score -= 3
-            reasons.append("JSON output sometimes breaks.")
+            reasons.append(.jsonSometimesBreaks)
         } else if jsonRate < 1.0 {
             score -= 1
-            reasons.append("JSON output is mostly stable.")
+            reasons.append(.jsonMostlyStable)
         } else {
-            reasons.append("JSON output was stable.")
+            reasons.append(.jsonStable)
         }
 
         let instructionRate = ratio(agent.instructionFollowingPasses, agent.totalRuns)
         if instructionRate < 0.6 {
             score -= 3
-            reasons.append("Instruction following is weak for agent loops.")
+            reasons.append(.agentInstructionWeak)
         } else if instructionRate < 0.85 {
             score -= 2
-            reasons.append("Instruction following needs caution.")
+            reasons.append(.agentInstructionCaution)
         } else {
-            reasons.append("Instruction following is practical.")
+            reasons.append(.agentInstructionPractical)
         }
 
-        let expectedToolProbeCount = max(agent.totalRuns - 2, 1)
+        let expectedToolProbeCount = max(agent.toolSelectionProbeCount, 1)
         let toolRate = ratio(agent.toolSelectionPasses, expectedToolProbeCount)
         if toolRate < 0.6 {
             score -= 3
-            reasons.append("Tool-selection probes were unreliable.")
+            reasons.append(.toolSelectionUnreliable)
         } else if toolRate < 0.85 {
             score -= 1
-            reasons.append("Tool-selection probes were mostly usable.")
+            reasons.append(.toolSelectionMostlyUsable)
         } else {
-            reasons.append("Tool-selection probes were stable.")
+            reasons.append(.toolSelectionStable)
         }
 
         if agent.timeoutCount > 0 {
             score -= min(agent.timeoutCount * 2, 4)
-            reasons.append("Timeouts occurred during repeated probes.")
+            reasons.append(.probeTimeouts)
         }
 
         if agent.lengthFinishCount > 0 {
             score -= min(agent.lengthFinishCount, 3)
-            reasons.append("Some probes stopped because of token length.")
+            reasons.append(.probeTokenLength)
         }
 
         if let ttftMS = agent.averageTTFTMS ?? speed.ttftMS {
             if ttftMS > 6_000 {
                 score -= 2
-                reasons.append("Repeated short-task latency is high.")
+                reasons.append(.repeatedLatencyHigh)
             } else if ttftMS > 3_000 {
                 score -= 1
-                reasons.append("Repeated short-task latency is acceptable.")
+                reasons.append(.repeatedLatencyAcceptable)
             }
         }
 
         applyMemoryPenalty(speed: speed, score: &score, reasons: &reasons)
 
-        return BenchmarkUseCaseScore(useCase: .agent, score: clamp(score), reasons: trimmedReasons(reasons))
+        return BenchmarkUseCaseScore(
+            useCase: .agent,
+            score: clamp(score),
+            reasonCodes: trimmedReasons(reasons)
+        )
     }
 
     nonisolated private static func applyMemoryPenalty(
         speed: BenchmarkSpeedMetrics,
         score: inout Int,
-        reasons: inout [String]
+        reasons: inout [BenchmarkScoreReasonCode]
     ) {
         guard let available = speed.availableMemoryGigabytes else {
             return
         }
         if available < 4 {
             score -= 2
-            reasons.append("Memory headroom is tight on this Mac.")
+            reasons.append(.memoryTight)
         } else if available < 8 {
             score -= 1
-            reasons.append("Memory headroom is limited.")
+            reasons.append(.memoryLimited)
         }
     }
 
@@ -242,31 +254,35 @@ struct BenchmarkScoreCalculator {
         min(max(score, 1), 10)
     }
 
-    nonisolated private static func trimmedReasons(_ reasons: [String]) -> [String] {
+    nonisolated private static func trimmedReasons(
+        _ reasons: [BenchmarkScoreReasonCode]
+    ) -> [BenchmarkScoreReasonCode] {
         Array(reasons.prefix(3))
     }
 
-    nonisolated private static func incompleteSpeedReason(_ speed: BenchmarkSpeedMetrics?) -> String {
+    nonisolated private static func incompleteSpeedReason(
+        _ speed: BenchmarkSpeedMetrics?
+    ) -> BenchmarkScoreReasonCode {
         guard let speed else {
-            return "Speed test did not run."
+            return .speedNotRun
         }
         if speed.timedOut {
-            return "Endpoint timed out during the speed test."
+            return .speedTimedOut
         }
 
         let message = speed.errorMessage?.lowercased() ?? ""
         if message.contains("reasoning") && message.contains("token limit") {
-            return "Model used the token budget on reasoning before final content."
+            return .reasoningTokenBudget
         }
         if message.contains("reasoning") {
-            return "Model returned reasoning without final content."
+            return .reasoningOnly
         }
         if message.contains("token limit") {
-            return "Response reached the token limit before content."
+            return .contentTokenLimit
         }
         if message.contains("empty response") {
-            return "Endpoint returned no benchmark content."
+            return .emptyBenchmarkContent
         }
-        return "Endpoint did not complete the speed test."
+        return .speedIncomplete
     }
 }
