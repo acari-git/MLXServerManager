@@ -2756,26 +2756,52 @@ final class AppViewModel: ObservableObject {
     }
 
     func cancelHuggingFaceDownloadRequested() {
-        guard isHuggingFaceDownloadRunning || huggingFaceDownloadQueue.contains(where: { $0.phase == .waiting }) else {
+        let cancellableIDs = HuggingFaceDownloadQueueScheduler.cancellableIDs(
+            entries: huggingFaceDownloadQueue
+        )
+        guard !cancellableIDs.isEmpty else {
             appendLog("[hf] no active download to cancel.")
             return
         }
 
-        let cancellableIDs = Set(huggingFaceDownloadQueue.filter { entry in
-            entry.phase == .waiting || entry.phase == .preparing || entry.phase == .downloading || entry.phase == .finalizing
-        }.map(\.id))
-        cancelledHuggingFaceDownloadIDs.formUnion(cancellableIDs)
-        for id in cancellableIDs where activeHuggingFaceDownloadTasks[id] == nil {
-            updateHuggingFaceQueueEntry(
-                id,
-                phase: .cancelled,
-                message: "Download cancelled. The model was not added."
-            )
-            queuedHuggingFaceDownloads[id] = nil
-        }
-        activeHuggingFaceDownloadManagers.values.forEach { $0.cancel() }
-        activeHuggingFaceDownloadTasks.values.forEach { $0.cancel() }
+        cancelHuggingFaceDownloads(ids: cancellableIDs)
         appendLog("[hf] cancel requested for \(cancellableIDs.count) download(s).")
+    }
+
+    func cancelHuggingFaceDownload(id: UUID) {
+        let cancellableIDs = HuggingFaceDownloadQueueScheduler.cancellableIDs(
+            entries: huggingFaceDownloadQueue,
+            requestedID: id
+        )
+        guard !cancellableIDs.isEmpty else {
+            appendLog("[hf] cancel skipped: queue entry is not cancellable.")
+            return
+        }
+
+        cancelHuggingFaceDownloads(ids: cancellableIDs)
+        appendLog("[hf] cancel requested for queue entry \(id.uuidString).")
+    }
+
+    private func cancelHuggingFaceDownloads(ids: Set<UUID>) {
+        cancelledHuggingFaceDownloadIDs.formUnion(ids)
+
+        for id in ids {
+            if activeHuggingFaceDownloadTasks[id] == nil {
+                updateHuggingFaceQueueEntry(
+                    id,
+                    phase: .cancelled,
+                    message: "Download cancelled. The model was not added."
+                )
+                queuedHuggingFaceDownloads[id] = nil
+                continue
+            }
+
+            activeHuggingFaceDownloadManagers[id]?.cancel()
+            activeHuggingFaceDownloadTasks[id]?.cancel()
+        }
+
+        refreshAggregateHuggingFaceDownloadStatus()
+        drainHuggingFaceDownloadQueue()
     }
 
     func resetHuggingFaceDownloadStatus() {
@@ -3853,14 +3879,16 @@ final class AppViewModel: ObservableObject {
     }
 
     private func drainHuggingFaceDownloadQueue() {
-        let maxActiveDownloads = min(max(settings.maxConcurrentModelDownloads, 1), 5)
-        while activeHuggingFaceDownloadTasks.count < maxActiveDownloads {
-            guard let nextEntry = huggingFaceDownloadQueue.reversed().first(where: { entry in
-                queuedHuggingFaceDownloads[entry.id] != nil
-                    && activeHuggingFaceDownloadTasks[entry.id] == nil
-                    && (entry.phase == .waiting || entry.phase == .preparing)
-            }), let job = queuedHuggingFaceDownloads[nextEntry.id] else {
-                return
+        let startableIDs = HuggingFaceDownloadQueueScheduler.startableIDs(
+            entries: huggingFaceDownloadQueue,
+            queuedIDs: Set(queuedHuggingFaceDownloads.keys),
+            activeIDs: Set(activeHuggingFaceDownloadTasks.keys),
+            maximumConcurrentDownloads: settings.maxConcurrentModelDownloads
+        )
+
+        for id in startableIDs {
+            guard let job = queuedHuggingFaceDownloads[id] else {
+                continue
             }
             startQueuedHuggingFaceDownload(job)
         }

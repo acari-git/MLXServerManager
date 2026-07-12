@@ -73,6 +73,90 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(decoded.autoUnloadMinutesByModelID["model-b"], 1)
     }
 
+    func testSettingsStoreLoadsAuthoritativeCombinedSnapshot() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
+        defer {
+            if let url = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        var authoritativeSettings = AppSettings.defaults
+        authoritativeSettings.defaultPort = 8123
+        let authoritativeModel = ModelConfig.defaults[0]
+        try store.save(settings: authoritativeSettings, models: [authoritativeModel])
+
+        var staleSettings = AppSettings.defaults
+        staleSettings.defaultPort = 9999
+        let staleModel = ModelConfig(
+            modelID: "stale/model",
+            displayName: "Stale",
+            family: "Stale",
+            quantization: "Unknown",
+            localName: "stale-model",
+            host: "127.0.0.1",
+            serverPort: 9999,
+            enableThinking: false,
+            notes: "",
+            advancedLaunchOptions: nil
+        )
+        try JSONEncoder().encode(staleSettings).write(to: store.settingsFileURL, options: [.atomic])
+        try JSONEncoder().encode([staleModel]).write(to: store.modelsFileURL, options: [.atomic])
+
+        let loaded = try store.load()
+        XCTAssertEqual(loaded.settings.defaultPort, 8123)
+        XCTAssertEqual(loaded.models.map(\.modelID), [authoritativeModel.modelID])
+    }
+
+    func testModelsOnlySavePreservesSettingsInCombinedSnapshot() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
+        defer {
+            if let url = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        var settings = AppSettings.defaults
+        settings.defaultPort = 8777
+        try store.save(settings: settings, models: ModelConfig.defaults)
+
+        let replacement = ModelConfig(
+            modelID: "owner/replacement",
+            displayName: "Replacement",
+            family: "Custom",
+            quantization: "4-bit",
+            localName: "replacement",
+            host: "127.0.0.1",
+            serverPort: 8778,
+            enableThinking: false,
+            notes: "",
+            advancedLaunchOptions: nil
+        )
+        try store.save(models: [replacement])
+
+        let loaded = try store.load()
+        XCTAssertEqual(loaded.settings.defaultPort, 8777)
+        XCTAssertEqual(loaded.models.map(\.modelID), [replacement.modelID])
+    }
+
+    func testCorruptedCombinedSnapshotFallsBackToLegacyFiles() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
+        defer {
+            if let url = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        var settings = AppSettings.defaults
+        settings.defaultPort = 8444
+        try store.save(settings: settings, models: ModelConfig.defaults)
+        try Data("not-json".utf8).write(to: store.stateSnapshotFileURL, options: [.atomic])
+
+        let loaded = try store.load()
+        XCTAssertEqual(loaded.settings.defaultPort, 8444)
+        XCTAssertEqual(loaded.models.map(\.modelID), ModelConfig.defaults.map(\.modelID))
+    }
+
     func testSettingsStorePersistsBenchmarkResultsSeparately() throws {
         let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
         defer {

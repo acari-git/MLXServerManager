@@ -111,6 +111,106 @@ final class DownloadAndReadyInternalTests: XCTestCase {
         XCTAssertEqual(snapshot.expectedFileCount, 2)
     }
 
+    func testQueueSchedulerHonorsConcurrencyAndFIFOOrder() {
+        let oldestID = UUID()
+        let middleID = UUID()
+        let newestID = UUID()
+        let entries = [
+            makeQueueEntry(id: newestID, phase: .waiting),
+            makeQueueEntry(id: middleID, phase: .waiting),
+            makeQueueEntry(id: oldestID, phase: .waiting)
+        ]
+        let queuedIDs = Set([oldestID, middleID, newestID])
+
+        XCTAssertEqual(
+            HuggingFaceDownloadQueueScheduler.startableIDs(
+                entries: entries,
+                queuedIDs: queuedIDs,
+                activeIDs: [],
+                maximumConcurrentDownloads: 2
+            ),
+            [oldestID, middleID]
+        )
+
+        XCTAssertEqual(
+            HuggingFaceDownloadQueueScheduler.startableIDs(
+                entries: entries,
+                queuedIDs: queuedIDs,
+                activeIDs: [oldestID],
+                maximumConcurrentDownloads: 2
+            ),
+            [middleID]
+        )
+
+        XCTAssertEqual(
+            HuggingFaceDownloadQueueScheduler.startableIDs(
+                entries: entries,
+                queuedIDs: queuedIDs,
+                activeIDs: [oldestID, middleID],
+                maximumConcurrentDownloads: 2
+            ),
+            []
+        )
+    }
+
+    func testQueueSchedulerPromotesWaitingEntryAfterSlotOpens() {
+        let activeID = UUID()
+        let waitingID = UUID()
+        let entries = [
+            makeQueueEntry(id: waitingID, phase: .waiting),
+            makeQueueEntry(id: activeID, phase: .downloading)
+        ]
+        let queuedIDs = Set([activeID, waitingID])
+
+        XCTAssertEqual(
+            HuggingFaceDownloadQueueScheduler.startableIDs(
+                entries: entries,
+                queuedIDs: queuedIDs,
+                activeIDs: [activeID],
+                maximumConcurrentDownloads: 1
+            ),
+            []
+        )
+        XCTAssertEqual(
+            HuggingFaceDownloadQueueScheduler.startableIDs(
+                entries: entries,
+                queuedIDs: queuedIDs,
+                activeIDs: [],
+                maximumConcurrentDownloads: 1
+            ),
+            [waitingID]
+        )
+    }
+
+    func testQueueSchedulerSupportsIndividualCancellation() {
+        let waitingID = UUID()
+        let activeID = UUID()
+        let completedID = UUID()
+        let entries = [
+            makeQueueEntry(id: completedID, phase: .completed),
+            makeQueueEntry(id: activeID, phase: .downloading),
+            makeQueueEntry(id: waitingID, phase: .waiting)
+        ]
+
+        XCTAssertEqual(
+            HuggingFaceDownloadQueueScheduler.cancellableIDs(
+                entries: entries,
+                requestedID: waitingID
+            ),
+            [waitingID]
+        )
+        XCTAssertEqual(
+            HuggingFaceDownloadQueueScheduler.cancellableIDs(entries: entries),
+            Set([waitingID, activeID])
+        )
+        XCTAssertTrue(
+            HuggingFaceDownloadQueueScheduler.cancellableIDs(
+                entries: entries,
+                requestedID: completedID
+            ).isEmpty
+        )
+    }
+
     func testQueueFileProgressDoesNotInventCurrentFile() {
         var entry = HuggingFaceDownloadQueueEntry(
             id: UUID(),
@@ -169,6 +269,21 @@ final class DownloadAndReadyInternalTests: XCTestCase {
             return XCTFail("Expected mismatched model to fail: \(wrongModel)")
         }
         XCTAssertTrue(message.contains("expected model"))
+    }
+
+    private func makeQueueEntry(id: UUID, phase: HuggingFaceDownloadPhase) -> HuggingFaceDownloadQueueEntry {
+        HuggingFaceDownloadQueueEntry(
+            id: id,
+            repositoryID: "owner/model-\(id.uuidString)",
+            destinationPath: "/tmp/model-\(id.uuidString)",
+            phase: phase,
+            message: "test",
+            fileCount: nil,
+            downloadedFileCount: nil,
+            downloadedBytes: nil,
+            totalBytes: nil,
+            speedBytesPerSecond: nil
+        )
     }
 
     private func makeSession() -> URLSession {

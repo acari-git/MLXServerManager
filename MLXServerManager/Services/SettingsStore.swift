@@ -6,6 +6,20 @@ struct SettingsSnapshot {
     var usedDefaults: Bool
 }
 
+private struct PersistedSettingsSnapshot: Codable {
+    static let currentSchemaVersion = 1
+
+    let schemaVersion: Int
+    let settings: AppSettings
+    let models: [ModelConfig]
+
+    init(settings: AppSettings, models: [ModelConfig]) {
+        self.schemaVersion = Self.currentSchemaVersion
+        self.settings = settings
+        self.models = models
+    }
+}
+
 enum SettingsStoreError: LocalizedError {
     case applicationSupportDirectoryUnavailable
 
@@ -60,7 +74,22 @@ struct SettingsStore {
         }
     }
 
+    var stateSnapshotFileURL: URL {
+        get throws {
+            try settingsDirectoryURL.appendingPathComponent("settings-state.json", isDirectory: false)
+        }
+    }
+
     func load() throws -> SettingsSnapshot {
+        if let persistedSnapshot = try loadPersistedSnapshot() {
+            let models = persistedSnapshot.models.isEmpty ? ModelConfig.defaults : persistedSnapshot.models
+            return SettingsSnapshot(
+                settings: persistedSnapshot.settings,
+                models: models,
+                usedDefaults: persistedSnapshot.models.isEmpty
+            )
+        }
+
         let settings = try loadSettings()
         let models = try loadModels()
 
@@ -73,13 +102,18 @@ struct SettingsStore {
 
     func save(settings: AppSettings, models: [ModelConfig]) throws {
         try ensureSettingsDirectoryExists()
+        let snapshot = PersistedSettingsSnapshot(settings: settings, models: models)
+
+        // The combined snapshot is the authoritative atomic state. The two legacy
+        // files remain as human-readable compatibility mirrors.
+        try save(snapshot, to: try stateSnapshotFileURL)
         try save(settings, to: try settingsFileURL)
         try save(models, to: try modelsFileURL)
     }
 
     func save(models: [ModelConfig]) throws {
-        try ensureSettingsDirectoryExists()
-        try save(models, to: try modelsFileURL)
+        let currentSettings = try load().settings
+        try save(settings: currentSettings, models: models)
     }
 
     func loadBenchmarkResults() throws -> (value: BenchmarkResultsSnapshot, usedDefault: Bool) {
@@ -95,6 +129,22 @@ struct SettingsStore {
     func save(benchmarkResults: BenchmarkResultsSnapshot) throws {
         try ensureSettingsDirectoryExists()
         try save(benchmarkResults, to: try benchmarkResultsFileURL)
+    }
+
+    private func loadPersistedSnapshot() throws -> PersistedSettingsSnapshot? {
+        let url = try stateSnapshotFileURL
+        guard fileManager.fileExists(atPath: url.path) else {
+            return nil
+        }
+
+        do {
+            let data = try Data(contentsOf: url)
+            return try decoder.decode(PersistedSettingsSnapshot.self, from: data)
+        } catch {
+            // Recover from an interrupted or externally edited snapshot by using
+            // the legacy mirrors. The next successful save recreates the snapshot.
+            return nil
+        }
     }
 
     private func loadSettings() throws -> (value: AppSettings, usedDefault: Bool) {
