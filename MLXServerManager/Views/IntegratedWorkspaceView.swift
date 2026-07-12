@@ -22,6 +22,12 @@ struct IntegratedWorkspaceView: View {
     @State private var centerWidthAnimationGeneration = 0
     @State private var currentDetailWidth: CGFloat = 0
     @State private var inspectorCopyToast: String?
+    @State private var hermesActionPhase: KineticActionPhase = .idle
+    @State private var benchmarkCompletionPhase: KineticActionPhase = .idle
+    @State private var readinessCompletionPhase: KineticActionPhase = .idle
+    @State private var hermesFeedbackGeneration = 0
+    @State private var benchmarkFeedbackGeneration = 0
+    @State private var readinessFeedbackGeneration = 0
 
     private var selectedModel: ModelConfig? { viewModel.selectedModel }
     private var isSelectedRunning: Bool { selectedModel?.id == viewModel.runningModelID }
@@ -78,6 +84,89 @@ struct IntegratedWorkspaceView: View {
 
     private func t(_ english: String, _ japanese: String) -> String {
         strings.text(english: english, japanese: japanese)
+    }
+
+    private var benchmarkActionPhase: KineticActionPhase {
+        viewModel.isSpeedTestRunning ? .working : benchmarkCompletionPhase
+    }
+
+    private var readinessActionPhase: KineticActionPhase {
+        viewModel.isAgenticBenchmarkRunning ? .working : readinessCompletionPhase
+    }
+
+    private func applyHermesAgentConfigWithFeedback() {
+        hermesFeedbackGeneration += 1
+        let generation = hermesFeedbackGeneration
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+            hermesActionPhase = .working
+        }
+
+        DispatchQueue.main.async {
+            let succeeded = viewModel.applyHermesAgentConfigRequested()
+            guard generation == hermesFeedbackGeneration else { return }
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                hermesActionPhase = succeeded ? .success : .failure
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+                guard generation == hermesFeedbackGeneration else { return }
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    hermesActionPhase = .idle
+                }
+            }
+        }
+    }
+
+    private func runBenchmarkWithFeedback() {
+        benchmarkFeedbackGeneration += 1
+        benchmarkCompletionPhase = .idle
+        viewModel.runSpeedTestRequested()
+    }
+
+    private func runReadinessWithFeedback() {
+        readinessFeedbackGeneration += 1
+        readinessCompletionPhase = .idle
+        viewModel.runAgenticBenchmarkRequested()
+    }
+
+    private func handleBenchmarkRunningChange(wasRunning: Bool, isRunning: Bool) {
+        guard wasRunning, !isRunning else { return }
+        let phase: KineticActionPhase = viewModel.latestBenchmarkResult?.phase == .success ? .success : .failure
+        showBenchmarkFeedback(phase)
+    }
+
+    private func handleReadinessRunningChange(wasRunning: Bool, isRunning: Bool) {
+        guard wasRunning, !isRunning else { return }
+        let phase: KineticActionPhase = viewModel.latestAgenticBenchmarkResult?.phase == .success ? .success : .failure
+        showReadinessFeedback(phase)
+    }
+
+    private func showBenchmarkFeedback(_ phase: KineticActionPhase) {
+        benchmarkFeedbackGeneration += 1
+        let generation = benchmarkFeedbackGeneration
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+            benchmarkCompletionPhase = phase
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+            guard generation == benchmarkFeedbackGeneration else { return }
+            withAnimation(.easeInOut(duration: 0.18)) {
+                benchmarkCompletionPhase = .idle
+            }
+        }
+    }
+
+    private func showReadinessFeedback(_ phase: KineticActionPhase) {
+        readinessFeedbackGeneration += 1
+        let generation = readinessFeedbackGeneration
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+            readinessCompletionPhase = phase
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+            guard generation == readinessFeedbackGeneration else { return }
+            withAnimation(.easeInOut(duration: 0.18)) {
+                readinessCompletionPhase = .idle
+            }
+        }
     }
 
     private var preferredColorScheme: ColorScheme? {
@@ -325,6 +414,12 @@ struct IntegratedWorkspaceView: View {
         .tint(activeAccentColor)
         .accentColor(activeAccentColor)
         .preferredColorScheme(preferredColorScheme)
+        .onChange(of: viewModel.isSpeedTestRunning) { wasRunning, isRunning in
+            handleBenchmarkRunningChange(wasRunning: wasRunning, isRunning: isRunning)
+        }
+        .onChange(of: viewModel.isAgenticBenchmarkRunning) { wasRunning, isRunning in
+            handleReadinessRunningChange(wasRunning: wasRunning, isRunning: isRunning)
+        }
         .accessibilityIdentifier("integrated-workspace")
     }
 
@@ -1088,30 +1183,33 @@ struct IntegratedWorkspaceView: View {
         let isInteractive = !row.isTransitioning && row.canUseStatusAction
         let isHovered = hoveredStatusModelID == model.id
         let statusText = isHovered ? row.hoveredStatusText : row.normalStatusText
+        let foregroundColor: Color = row.isLoaded || row.isPortBusy
+            ? .white
+            : (row.isTransitioning ? .orange : .accentColor)
+        let backgroundColor: Color = row.isLoaded
+            ? .green
+            : (row.isPortBusy
+               ? .red
+               : (row.isTransitioning ? Color.orange.opacity(0.18) : Color.accentColor.opacity(isHovered ? 0.18 : 0.10)))
+        let systemImage = row.isLoaded
+            ? (isHovered ? "stop.fill" : "checkmark")
+            : (row.isPortBusy ? "exclamationmark" : (isHovered ? "play.fill" : "power"))
 
         return Button {
             guard isInteractive else { return }
             viewModel.statusActionRequested(for: model)
         } label: {
-            Text(statusText)
-                .font(.caption.weight(.medium))
-                .lineLimit(1)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
-                .foregroundStyle(row.isLoaded || row.isPortBusy ? .white : .accentColor)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(
-                            row.isLoaded
-                            ? Color.green
-                            : (row.isPortBusy
-                               ? Color.red
-                               : (row.isTransitioning ? Color.orange.opacity(0.18) : Color.accentColor.opacity(isHovered ? 0.18 : 0.10)))
-                        )
-                )
+            KineticStatusPillLabel(
+                title: statusText,
+                systemImage: systemImage,
+                isBusy: row.isTransitioning,
+                foregroundColor: foregroundColor,
+                backgroundColor: backgroundColor,
+                borderColor: foregroundColor.opacity(row.isLoaded || row.isPortBusy ? 0.20 : 0.28)
+            )
         }
         .buttonStyle(.plain)
+        .disabled(!isInteractive)
         .onHover { isHovering in
             hoveredStatusModelID = isHovering ? model.id : (hoveredStatusModelID == model.id ? nil : hoveredStatusModelID)
         }
@@ -1125,30 +1223,33 @@ struct IntegratedWorkspaceView: View {
         let isPortBusy = viewModel.isModelPortBusy(for: model)
         let isHovered = hoveredStatusModelID == model.id
         let statusText = viewModel.interactiveStatusText(for: model, isHovered: isHovered, isPortBusy: isPortBusy)
+        let foregroundColor: Color = isLoaded || isPortBusy
+            ? .white
+            : (isTransitioning ? .orange : .accentColor)
+        let backgroundColor: Color = isLoaded
+            ? .green
+            : (isPortBusy
+               ? .red
+               : (isTransitioning ? Color.orange.opacity(0.18) : Color.accentColor.opacity(isHovered ? 0.18 : 0.10)))
+        let systemImage = isLoaded
+            ? (isHovered ? "stop.fill" : "checkmark")
+            : (isPortBusy ? "exclamationmark" : (isHovered ? "play.fill" : "power"))
 
         return Button {
             guard isInteractive else { return }
             viewModel.statusActionRequested(for: model)
         } label: {
-            Text(statusText)
-                .font(.caption.weight(.medium))
-                .lineLimit(1)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
-                .foregroundStyle(isLoaded || isPortBusy ? .white : .accentColor)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(
-                            isLoaded
-                            ? Color.green
-                            : (isPortBusy
-                               ? Color.red
-                               : (isTransitioning ? Color.orange.opacity(0.18) : Color.accentColor.opacity(isHovered ? 0.18 : 0.10)))
-                        )
-                )
+            KineticStatusPillLabel(
+                title: statusText,
+                systemImage: systemImage,
+                isBusy: isTransitioning,
+                foregroundColor: foregroundColor,
+                backgroundColor: backgroundColor,
+                borderColor: foregroundColor.opacity(isLoaded || isPortBusy ? 0.20 : 0.28)
+            )
         }
         .buttonStyle(.plain)
+        .disabled(!isInteractive)
         .onHover { isHovering in
             hoveredStatusModelID = isHovering ? model.id : (hoveredStatusModelID == model.id ? nil : hoveredStatusModelID)
         }
@@ -1376,14 +1477,20 @@ struct IntegratedWorkspaceView: View {
     private var hermesAgentActionArea: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button {
-                viewModel.applyHermesAgentConfigRequested()
+                applyHermesAgentConfigWithFeedback()
             } label: {
-                Label(t("Update Hermes Config", "Hermes設定を更新"), systemImage: "arrow.down.doc")
-                    .frame(maxWidth: .infinity)
+                KineticActionLabel(
+                    title: t("Update Hermes Config", "Hermes設定を更新"),
+                    workingTitle: t("Updating", "更新中"),
+                    successTitle: t("Updated", "更新済み"),
+                    failureTitle: t("Failed", "失敗"),
+                    systemImage: "arrow.down.doc",
+                    phase: hermesActionPhase
+                )
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
-            .disabled(!viewModel.canApplyHermesAgentConfig)
+            .disabled(!viewModel.canApplyHermesAgentConfig || hermesActionPhase == .working)
 
             HStack(spacing: 8) {
                 Button {
@@ -1421,10 +1528,16 @@ struct IntegratedWorkspaceView: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
                     Button {
-                        viewModel.runSpeedTestRequested()
+                        runBenchmarkWithFeedback()
                     } label: {
-                        Label(t("Run Benchmark", "ベンチマーク実行"), systemImage: "speedometer")
-                            .frame(maxWidth: .infinity)
+                        KineticActionLabel(
+                            title: t("Run Benchmark", "ベンチマーク実行"),
+                            workingTitle: t("Running", "実行中"),
+                            successTitle: t("Completed", "完了"),
+                            failureTitle: t("Failed", "失敗"),
+                            systemImage: "speedometer",
+                            phase: benchmarkActionPhase
+                        )
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
@@ -1447,10 +1560,16 @@ struct IntegratedWorkspaceView: View {
 
                 HStack(spacing: 8) {
                     Button {
-                        viewModel.runAgenticBenchmarkRequested()
+                        runReadinessWithFeedback()
                     } label: {
-                        Label(t("Run Readiness", "Readiness実行"), systemImage: "checklist")
-                            .frame(maxWidth: .infinity)
+                        KineticActionLabel(
+                            title: t("Run Readiness", "Readiness実行"),
+                            workingTitle: t("Running", "実行中"),
+                            successTitle: t("Completed", "完了"),
+                            failureTitle: t("Failed", "失敗"),
+                            systemImage: "checklist",
+                            phase: readinessActionPhase
+                        )
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
@@ -1472,8 +1591,8 @@ struct IntegratedWorkspaceView: View {
                 }
 
                 if viewModel.isSpeedTestRunning || viewModel.isAgenticBenchmarkRunning {
-                    ProgressView()
-                        .controlSize(.small)
+                    KineticIndeterminateBar()
+                        .transition(.opacity)
                 }
 
                 Text(viewModel.benchmarkSummary(for: model))

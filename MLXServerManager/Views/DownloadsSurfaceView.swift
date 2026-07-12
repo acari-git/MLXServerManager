@@ -121,11 +121,15 @@ struct DownloadsSurfaceView: View {
                         viewModel.huggingFaceSearchQuery = viewModel.huggingFaceDownloadDraft.source
                         viewModel.performHuggingFaceSearchRequested()
                     } label: {
-                        if viewModel.isHuggingFaceSearching {
-                            ProgressView().scaleEffect(0.7)
-                        } else {
-                            Label(strings.text(.search), systemImage: AppSymbol.search)
-                        }
+                        KineticActionLabel(
+                            title: strings.text(.search),
+                            workingTitle: t("Searching", "検索中"),
+                            successTitle: strings.text(.search),
+                            failureTitle: strings.text(.search),
+                            systemImage: AppSymbol.search,
+                            phase: viewModel.isHuggingFaceSearching ? .working : .idle,
+                            expandsHorizontally: false
+                        )
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(viewModel.isHuggingFaceSearching || viewModel.huggingFaceDownloadDraft.source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -225,7 +229,8 @@ struct DownloadsSurfaceView: View {
     private var filePreviewSummary: some View {
         if viewModel.huggingFaceFilePreview.isLoading {
             HStack(spacing: 8) {
-                ProgressView().scaleEffect(0.7)
+                KineticIndeterminateBar()
+                    .frame(width: 72)
                 Text(t("Loading file preview...", "ファイル一覧を確認中..."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -340,8 +345,7 @@ struct DownloadsSurfaceView: View {
             ProgressView(value: fraction)
                 .progressViewStyle(.linear)
         } else if viewModel.isHuggingFaceDownloadRunning || viewModel.huggingFaceDownloadStatus.phase == .preparing {
-            ProgressView()
-                .progressViewStyle(.linear)
+            KineticIndeterminateBar()
         } else {
             ProgressView(value: viewModel.huggingFaceDownloadStatus.phase == .completed ? 1 : 0)
                 .progressViewStyle(.linear)
@@ -427,8 +431,7 @@ struct DownloadsSurfaceView: View {
                 ProgressView(value: fraction)
                     .progressViewStyle(.linear)
             } else if entry.phase == .downloading || entry.phase == .preparing || entry.phase == .finalizing {
-                ProgressView()
-                    .progressViewStyle(.linear)
+                KineticIndeterminateBar()
             } else {
                 ProgressView(value: entry.phase == .completed ? 1 : 0)
                     .progressViewStyle(.linear)

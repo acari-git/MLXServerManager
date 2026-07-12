@@ -3611,7 +3611,8 @@ final class AppViewModel: ObservableObject {
         appendLog("[ui] Copied Hermes Agent connection config.")
     }
 
-    func applyHermesAgentConfigRequested() {
+    @discardableResult
+    func applyHermesAgentConfigRequested() -> Bool {
         guard canApplyHermesAgentConfig else {
             hermesAgentConfigMessage = Self.localizedText(
                 language: settings.uiLanguage,
@@ -3619,7 +3620,7 @@ final class AppViewModel: ObservableObject {
                 japanese: "先にモデルを選択し、Hermes Agent設定ファイルのパスを設定してください。"
             )
             appendLog("[hermes] apply skipped: missing selected model or config path.")
-            return
+            return false
         }
 
         let connection = HermesAgentConnectionSettings(
@@ -3649,6 +3650,7 @@ final class AppViewModel: ObservableObject {
                 )
                 appendLog("[hermes] config already matched selected model connection.")
             }
+            return true
         } catch {
             hermesAgentConfigMessage = Self.localizedText(
                 language: settings.uiLanguage,
@@ -3656,6 +3658,7 @@ final class AppViewModel: ObservableObject {
                 japanese: "Hermes Agent設定を反映できませんでした: \(error.localizedDescription)"
             )
             appendLog("[hermes] apply failed: \(error.localizedDescription)")
+            return false
         }
     }
 
