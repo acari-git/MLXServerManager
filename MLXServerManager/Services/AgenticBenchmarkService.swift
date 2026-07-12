@@ -22,7 +22,11 @@ struct AgenticBenchmarkService {
     }
 
     func run(configuration: AgenticBenchmarkRunConfiguration) async -> AgenticBenchmarkResult {
-        let readyResult = await readyChecker.check(host: configuration.host, port: configuration.port)
+        let readyResult = await readyChecker.check(
+            host: configuration.host,
+            port: configuration.port,
+            expectedModelID: configuration.modelID
+        )
         guard case .ready = readyResult else {
             return makeResult(
                 configuration: configuration,

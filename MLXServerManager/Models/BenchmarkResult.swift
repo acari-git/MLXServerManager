@@ -214,10 +214,65 @@ struct BenchmarkAgentReadiness: Codable, Equatable {
     let jsonValidResponses: Int
     let instructionFollowingPasses: Int
     let toolSelectionPasses: Int
+    let toolSelectionProbeCount: Int
     let timeoutCount: Int
     let lengthFinishCount: Int
     let averageTTFTMS: Double?
     let averageTotalLatencyMS: Double?
+
+    init(
+        totalRuns: Int,
+        successfulRuns: Int,
+        jsonValidResponses: Int,
+        instructionFollowingPasses: Int,
+        toolSelectionPasses: Int,
+        toolSelectionProbeCount: Int? = nil,
+        timeoutCount: Int,
+        lengthFinishCount: Int,
+        averageTTFTMS: Double?,
+        averageTotalLatencyMS: Double?
+    ) {
+        self.totalRuns = totalRuns
+        self.successfulRuns = successfulRuns
+        self.jsonValidResponses = jsonValidResponses
+        self.instructionFollowingPasses = instructionFollowingPasses
+        self.toolSelectionPasses = toolSelectionPasses
+        self.toolSelectionProbeCount = max(toolSelectionProbeCount ?? (totalRuns - 2), 0)
+        self.timeoutCount = timeoutCount
+        self.lengthFinishCount = lengthFinishCount
+        self.averageTTFTMS = averageTTFTMS
+        self.averageTotalLatencyMS = averageTotalLatencyMS
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case totalRuns
+        case successfulRuns
+        case jsonValidResponses
+        case instructionFollowingPasses
+        case toolSelectionPasses
+        case toolSelectionProbeCount
+        case timeoutCount
+        case lengthFinishCount
+        case averageTTFTMS
+        case averageTotalLatencyMS
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let totalRuns = try container.decode(Int.self, forKey: .totalRuns)
+        self.init(
+            totalRuns: totalRuns,
+            successfulRuns: try container.decode(Int.self, forKey: .successfulRuns),
+            jsonValidResponses: try container.decode(Int.self, forKey: .jsonValidResponses),
+            instructionFollowingPasses: try container.decode(Int.self, forKey: .instructionFollowingPasses),
+            toolSelectionPasses: try container.decode(Int.self, forKey: .toolSelectionPasses),
+            toolSelectionProbeCount: try container.decodeIfPresent(Int.self, forKey: .toolSelectionProbeCount),
+            timeoutCount: try container.decode(Int.self, forKey: .timeoutCount),
+            lengthFinishCount: try container.decode(Int.self, forKey: .lengthFinishCount),
+            averageTTFTMS: try container.decodeIfPresent(Double.self, forKey: .averageTTFTMS),
+            averageTotalLatencyMS: try container.decodeIfPresent(Double.self, forKey: .averageTotalLatencyMS)
+        )
+    }
 
     var jsonValidityText: String {
         "\(jsonValidResponses)/\(totalRuns)"
@@ -228,7 +283,7 @@ struct BenchmarkAgentReadiness: Codable, Equatable {
     }
 
     var toolSelectionText: String {
-        "\(toolSelectionPasses)/\(max(totalRuns - 2, 1))"
+        "\(toolSelectionPasses)/\(toolSelectionProbeCount)"
     }
 }
 
@@ -460,8 +515,40 @@ struct BenchmarkResult: Codable, Identifiable, Equatable {
 }
 
 struct BenchmarkResultsSnapshot: Codable, Equatable {
+    static let currentSchemaVersion = 1
+
+    var schemaVersion: Int
     var benchmarkResultsByProfileID: [String: BenchmarkResult]
     var agenticBenchmarkResultsByProfileID: [String: AgenticBenchmarkResult]
+
+    init(
+        schemaVersion: Int = currentSchemaVersion,
+        benchmarkResultsByProfileID: [String: BenchmarkResult],
+        agenticBenchmarkResultsByProfileID: [String: AgenticBenchmarkResult]
+    ) {
+        self.schemaVersion = schemaVersion
+        self.benchmarkResultsByProfileID = benchmarkResultsByProfileID
+        self.agenticBenchmarkResultsByProfileID = agenticBenchmarkResultsByProfileID
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case benchmarkResultsByProfileID
+        case agenticBenchmarkResultsByProfileID
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 0
+        benchmarkResultsByProfileID = try container.decodeIfPresent(
+            [String: BenchmarkResult].self,
+            forKey: .benchmarkResultsByProfileID
+        ) ?? [:]
+        agenticBenchmarkResultsByProfileID = try container.decodeIfPresent(
+            [String: AgenticBenchmarkResult].self,
+            forKey: .agenticBenchmarkResultsByProfileID
+        ) ?? [:]
+    }
 
     static let empty = BenchmarkResultsSnapshot(
         benchmarkResultsByProfileID: [:],

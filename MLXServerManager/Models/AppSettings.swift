@@ -7,10 +7,9 @@ struct AppSettings: Codable, Hashable {
     var apiKeyPlaceholder: String
     var hermesConfigPath: String
     var downloadSaveDirectory: String
-    var downloadAutoAddToModelList: Bool
-    var downloadAutoSelectAfterAdd: Bool
     var maxConcurrentModelDownloads: Int
-    var confirmFilesBeforeDownload: Bool
+    var autoUnloadEnabledByModelID: [String: Bool]
+    var autoUnloadMinutesByModelID: [String: Int]
     var uiLanguage: AppLanguage
     var uiAppearance: String
 
@@ -21,10 +20,9 @@ struct AppSettings: Codable, Hashable {
         apiKeyPlaceholder: "not-required-local",
         hermesConfigPath: "~/.hermes/config.yaml",
         downloadSaveDirectory: "~/Models/mlx",
-        downloadAutoAddToModelList: true,
-        downloadAutoSelectAfterAdd: true,
         maxConcurrentModelDownloads: 2,
-        confirmFilesBeforeDownload: false,
+        autoUnloadEnabledByModelID: [:],
+        autoUnloadMinutesByModelID: [:],
         uiLanguage: .system,
         uiAppearance: "system"
     )
@@ -36,10 +34,9 @@ struct AppSettings: Codable, Hashable {
         apiKeyPlaceholder: String,
         hermesConfigPath: String = "~/.hermes/config.yaml",
         downloadSaveDirectory: String = "~/Models/mlx",
-        downloadAutoAddToModelList: Bool = true,
-        downloadAutoSelectAfterAdd: Bool = true,
         maxConcurrentModelDownloads: Int = 2,
-        confirmFilesBeforeDownload: Bool = false,
+        autoUnloadEnabledByModelID: [String: Bool] = [:],
+        autoUnloadMinutesByModelID: [String: Int] = [:],
         uiLanguage: AppLanguage = .system,
         uiAppearance: String = "system"
     ) {
@@ -49,10 +46,9 @@ struct AppSettings: Codable, Hashable {
         self.apiKeyPlaceholder = apiKeyPlaceholder
         self.hermesConfigPath = hermesConfigPath
         self.downloadSaveDirectory = downloadSaveDirectory
-        self.downloadAutoAddToModelList = downloadAutoAddToModelList
-        self.downloadAutoSelectAfterAdd = downloadAutoSelectAfterAdd
         self.maxConcurrentModelDownloads = min(max(maxConcurrentModelDownloads, 1), 5)
-        self.confirmFilesBeforeDownload = confirmFilesBeforeDownload
+        self.autoUnloadEnabledByModelID = autoUnloadEnabledByModelID
+        self.autoUnloadMinutesByModelID = autoUnloadMinutesByModelID.mapValues { min(max($0, 1), 999) }
         self.uiLanguage = uiLanguage
         self.uiAppearance = uiAppearance
     }
@@ -64,10 +60,9 @@ struct AppSettings: Codable, Hashable {
         case apiKeyPlaceholder
         case hermesConfigPath
         case downloadSaveDirectory
-        case downloadAutoAddToModelList
-        case downloadAutoSelectAfterAdd
         case maxConcurrentModelDownloads
-        case confirmFilesBeforeDownload
+        case autoUnloadEnabledByModelID
+        case autoUnloadMinutesByModelID
         case uiLanguage
         case uiAppearance
     }
@@ -80,11 +75,11 @@ struct AppSettings: Codable, Hashable {
         apiKeyPlaceholder = try container.decode(String.self, forKey: .apiKeyPlaceholder)
         hermesConfigPath = try container.decodeIfPresent(String.self, forKey: .hermesConfigPath) ?? "~/.hermes/config.yaml"
         downloadSaveDirectory = try container.decodeIfPresent(String.self, forKey: .downloadSaveDirectory) ?? "~/Models/mlx"
-        downloadAutoAddToModelList = try container.decodeIfPresent(Bool.self, forKey: .downloadAutoAddToModelList) ?? true
-        downloadAutoSelectAfterAdd = try container.decodeIfPresent(Bool.self, forKey: .downloadAutoSelectAfterAdd) ?? true
         let decodedConcurrentDownloads = try container.decodeIfPresent(Int.self, forKey: .maxConcurrentModelDownloads) ?? 2
         maxConcurrentModelDownloads = min(max(decodedConcurrentDownloads, 1), 5)
-        confirmFilesBeforeDownload = try container.decodeIfPresent(Bool.self, forKey: .confirmFilesBeforeDownload) ?? false
+        autoUnloadEnabledByModelID = try container.decodeIfPresent([String: Bool].self, forKey: .autoUnloadEnabledByModelID) ?? [:]
+        let decodedAutoUnloadMinutes = try container.decodeIfPresent([String: Int].self, forKey: .autoUnloadMinutesByModelID) ?? [:]
+        autoUnloadMinutesByModelID = decodedAutoUnloadMinutes.mapValues { min(max($0, 1), 999) }
         uiLanguage = try container.decodeIfPresent(AppLanguage.self, forKey: .uiLanguage) ?? .system
         uiAppearance = try container.decodeIfPresent(String.self, forKey: .uiAppearance) ?? "system"
     }

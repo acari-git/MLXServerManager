@@ -2198,7 +2198,6 @@ private struct OptionalInspectorHelp: ViewModifier {
     func body(content: Content) -> some View {
         if let helpText = helpText?.trimmingCharacters(in: .whitespacesAndNewlines), !helpText.isEmpty {
             content
-                .zIndex(isPresented ? 100 : 0)
                 .onHover { hovering in
                     hoverGeneration += 1
                     isHovering = hovering
@@ -2211,18 +2210,20 @@ private struct OptionalInspectorHelp: ViewModifier {
                             isPresented = true
                         }
                     } else {
-                        isPresented = false
+                        let generation = hoverGeneration
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                            guard !isHovering, generation == hoverGeneration else {
+                                return
+                            }
+                            isPresented = false
+                        }
                     }
                 }
-                .overlay(alignment: .topLeading) {
-                    if isPresented {
-                        InspectorHelpPopover(text: helpText)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .offset(x: 0, y: 22)
-                            .transition(.opacity)
-                            .allowsHitTesting(false)
-                            .zIndex(1000)
-                    }
+                .background {
+                    InspectorHelpPopoverPresenter(
+                        text: helpText,
+                        isPresented: isPresented
+                    )
                 }
                 .accessibilityHint(helpText)
         } else {
@@ -2237,7 +2238,93 @@ private extension View {
     }
 }
 
-private struct InspectorHelpPopover: View {
+private struct InspectorHelpPopoverPresenter: NSViewRepresentable {
+    let text: String
+    let isPresented: Bool
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        NSView()
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.update(
+            text: text,
+            isPresented: isPresented,
+            relativeTo: nsView
+        )
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+        coordinator.close()
+    }
+
+    final class Coordinator: NSObject {
+        private var popover: NSPopover?
+        private var presentedText: String?
+        private var presentationGeneration = 0
+
+        func update(text: String, isPresented: Bool, relativeTo anchorView: NSView) {
+            if isPresented, popover?.isShown == true, presentedText == text {
+                return
+            }
+
+            presentationGeneration += 1
+            let generation = presentationGeneration
+
+            guard isPresented else {
+                close()
+                return
+            }
+
+            DispatchQueue.main.async { [weak self, weak anchorView] in
+                guard let self,
+                      let anchorView,
+                      generation == self.presentationGeneration,
+                      anchorView.window != nil,
+                      !anchorView.bounds.isEmpty else {
+                    return
+                }
+                self.show(text: text, relativeTo: anchorView)
+            }
+        }
+
+        func close() {
+            presentationGeneration += 1
+            popover?.performClose(nil)
+            popover = nil
+            presentedText = nil
+        }
+
+        private func show(text: String, relativeTo anchorView: NSView) {
+            close()
+
+            let contentView = InspectorHelpPopoverContent(text: text)
+            let hostingController = NSHostingController(rootView: contentView)
+            hostingController.view.layoutSubtreeIfNeeded()
+
+            let popover = NSPopover()
+            popover.behavior = .applicationDefined
+            popover.animates = false
+            popover.contentViewController = hostingController
+            popover.contentSize = hostingController.view.fittingSize
+            self.popover = popover
+            presentedText = text
+
+            popover.show(
+                relativeTo: anchorView.bounds,
+                of: anchorView,
+                preferredEdge: .maxY
+            )
+            popover.contentViewController?.view.window?.ignoresMouseEvents = true
+        }
+    }
+}
+
+private struct InspectorHelpPopoverContent: View {
     let text: String
 
     var body: some View {
@@ -2249,36 +2336,6 @@ private struct InspectorHelpPopover: View {
             .frame(maxWidth: 280, alignment: .leading)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background {
-                InspectorTooltipVisualEffectBackground()
-                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .fill(Color(nsColor: .controlBackgroundColor).opacity(0.18))
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .stroke(Color(nsColor: .separatorColor).opacity(0.24), lineWidth: 1)
-            }
-            .shadow(color: .black.opacity(0.16), radius: 12, y: 6)
-            .padding(4)
-    }
-}
-
-private struct InspectorTooltipVisualEffectBackground: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
-        view.material = .popover
-        view.blendingMode = .withinWindow
-        view.state = .active
-        view.isEmphasized = false
-        return view
-    }
-
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
-        nsView.material = .popover
-        nsView.blendingMode = .withinWindow
-        nsView.state = .active
-        nsView.isEmphasized = false
     }
 }
 

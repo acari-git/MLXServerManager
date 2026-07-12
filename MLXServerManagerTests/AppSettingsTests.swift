@@ -46,6 +46,33 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(decoded.hermesConfigPath, "/tmp/hermes/config.yaml")
     }
 
+    func testEncodingOmitsRetiredDownloadBehaviorKeys() throws {
+        let data = try JSONEncoder().encode(AppSettings.defaults)
+        let text = String(decoding: data, as: UTF8.self)
+
+        XCTAssertFalse(text.contains("downloadAutoAddToModelList"))
+        XCTAssertFalse(text.contains("downloadAutoSelectAfterAdd"))
+        XCTAssertFalse(text.contains("confirmFilesBeforeDownload"))
+    }
+
+    func testAutoUnloadSettingsRoundTripAndClampMinutes() throws {
+        let original = AppSettings(
+            mlxServerExecutablePath: "",
+            defaultHost: "127.0.0.1",
+            defaultPort: 8080,
+            apiKeyPlaceholder: "not-required-local",
+            autoUnloadEnabledByModelID: ["model-a": true],
+            autoUnloadMinutesByModelID: ["model-a": 45, "model-b": 0]
+        )
+
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+
+        XCTAssertEqual(decoded.autoUnloadEnabledByModelID["model-a"], true)
+        XCTAssertEqual(decoded.autoUnloadMinutesByModelID["model-a"], 45)
+        XCTAssertEqual(decoded.autoUnloadMinutesByModelID["model-b"], 1)
+    }
+
     func testSettingsStorePersistsBenchmarkResultsSeparately() throws {
         let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
         defer {

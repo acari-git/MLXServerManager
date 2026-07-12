@@ -8,10 +8,7 @@ struct SettingsPanelView: View {
     @Binding var apiKeyPlaceholder: String
     @Binding var hermesConfigPath: String
     @Binding var downloadSaveDirectory: String
-    @Binding var downloadAutoAddToModelList: Bool
-    @Binding var downloadAutoSelectAfterAdd: Bool
     @Binding var maxConcurrentModelDownloads: Int
-    @Binding var confirmFilesBeforeDownload: Bool
     @Binding var language: AppLanguage
     @Binding var appearance: String
     let settingsDirectoryPath: String

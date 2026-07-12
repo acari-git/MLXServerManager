@@ -254,8 +254,8 @@ struct HuggingFaceDownloadQueueEntry: Identifiable, Equatable {
         guard let fileCount, fileCount > 0 else {
             return "-"
         }
-        let current = min(max((downloadedFileCount ?? 0) + (phase == .completed ? 0 : 1), 1), fileCount)
-        return "\(current) / \(fileCount)"
+        let completed = phase == .completed ? fileCount : min(max(downloadedFileCount ?? 0, 0), fileCount)
+        return "\(completed) / \(fileCount)"
     }
 
     var capacityProgressText: String {

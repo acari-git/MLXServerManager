@@ -61,6 +61,7 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
     private var activeProcess: Process?
     private var stdoutPipe: Pipe?
     private var stderrPipe: Pipe?
+    private let lineBuffer = LineStreamBuffer(maximumLinesPerLabel: 1_000)
 
     init(
         fileManager: FileManager = .default,
@@ -123,6 +124,7 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
         let stderrPipe = Pipe()
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
+        lineBuffer.reset()
         activeProcess = process
         self.stdoutPipe = stdoutPipe
         self.stderrPipe = stderrPipe
@@ -132,6 +134,7 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
         return try await withCheckedThrowingContinuation { continuation in
             process.terminationHandler = { [weak self] process in
                 let status = process.terminationStatus
+                self?.flushPendingOutput(outputHandler: outputHandler)
                 if let manager = self {
                     DispatchQueue.main.async {
                         manager.clearIfMatching(process)
@@ -171,21 +174,33 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
     }
 
     private func configurePipe(_ pipe: Pipe, label: String, outputHandler: @escaping (String) -> Void) {
-        pipe.fileHandleForReading.readabilityHandler = { fileHandle in
+        pipe.fileHandleForReading.readabilityHandler = { [weak self] fileHandle in
             let data = fileHandle.availableData
-            guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else {
+            guard let self else { return }
+
+            if data.isEmpty {
+                emit(lineBuffer.flush(label: label), label: label, outputHandler: outputHandler)
                 return
             }
 
-            let lines = chunk.replacingOccurrences(of: "\r", with: "\n")
-                .split(whereSeparator: \.isNewline)
-                .map(String.init)
-                .map(HuggingFaceDownloadPlanner.sanitizedOutputLine)
-                .filter { !$0.isEmpty }
-
-            for line in lines {
-                outputHandler("[hf:\(label)] \(line)")
+            guard let chunk = String(data: data, encoding: .utf8) else {
+                return
             }
+            emit(lineBuffer.consume(chunk, label: label), label: label, outputHandler: outputHandler)
+        }
+    }
+
+    private func flushPendingOutput(outputHandler: @escaping (String) -> Void) {
+        for label in ["stdout", "stderr"] {
+            emit(lineBuffer.flush(label: label), label: label, outputHandler: outputHandler)
+        }
+    }
+
+    private func emit(_ lines: [String], label: String, outputHandler: @escaping (String) -> Void) {
+        for line in lines {
+            let sanitized = HuggingFaceDownloadPlanner.sanitizedOutputLine(line)
+            guard !sanitized.isEmpty else { continue }
+            outputHandler("[hf:\(label)] \(sanitized)")
         }
     }
 

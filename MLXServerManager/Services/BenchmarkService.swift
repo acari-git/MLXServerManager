@@ -42,7 +42,11 @@ struct BenchmarkService {
         )
 
         let readyStartedAt = Date()
-        let readyResult = await readyChecker.check(host: configuration.host, port: configuration.port)
+        let readyResult = await readyChecker.check(
+            host: configuration.host,
+            port: configuration.port,
+            expectedModelID: configuration.modelID
+        )
         let readinessLatencyMS = Date().timeIntervalSince(readyStartedAt) * 1000
 
         guard case let .ready(_, statusCode) = readyResult else {
@@ -268,6 +272,7 @@ struct BenchmarkService {
             jsonValidResponses: jsonValidResponses,
             instructionFollowingPasses: instructionPasses,
             toolSelectionPasses: toolPasses,
+            toolSelectionProbeCount: measurements.filter { $0.0.expectedTool != nil }.count,
             timeoutCount: timeoutCount,
             lengthFinishCount: lengthFinishCount,
             averageTTFTMS: average(ttftValues),

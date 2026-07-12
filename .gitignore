@@ -8,6 +8,7 @@ DerivedData/
 xcuserdata/
 
 # Build / release artifacts
+build/
 dist/
 *.app
 *.dSYM

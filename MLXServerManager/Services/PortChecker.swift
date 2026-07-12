@@ -31,18 +31,6 @@ struct PortChecker {
             close(socketDescriptor)
         }
 
-        var reuseAddress: Int32 = 1
-        let reuseResult = setsockopt(
-            socketDescriptor,
-            SOL_SOCKET,
-            SO_REUSEADDR,
-            &reuseAddress,
-            socklen_t(MemoryLayout.size(ofValue: reuseAddress))
-        )
-        guard reuseResult == 0 else {
-            return .failed(host: host, port: port, message: errorMessage(prefix: "setsockopt SO_REUSEADDR failed"))
-        }
-
         let bindResult = withUnsafePointer(to: &address) { pointer in
             pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { socketPointer in
                 Darwin.bind(

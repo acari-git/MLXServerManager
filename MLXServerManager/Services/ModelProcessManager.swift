@@ -47,9 +47,7 @@ final class ModelProcessManager {
     private var process: Process?
     private var stdoutPipe: Pipe?
     private var stderrPipe: Pipe?
-    private var stdoutLineCount = 0
-    private var stderrLineCount = 0
-    private let maximumCapturedLines = 12
+    private let lineBuffer = LineStreamBuffer(maximumLinesPerLabel: 200)
 
     var managedProcessIdentifier: Int32? {
         guard let process, process.isRunning else {
@@ -89,13 +87,14 @@ final class ModelProcessManager {
         let stderrPipe = Pipe()
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
-        resetPipeCounters()
+        lineBuffer.reset()
         configurePipe(stdoutPipe, label: "stdout", outputHandler: outputHandler)
         configurePipe(stderrPipe, label: "stderr", outputHandler: outputHandler)
 
         process.terminationHandler = { [weak self] process in
             let terminationStatus = process.terminationStatus
             Task { @MainActor in
+                self?.flushPendingOutput(outputHandler: outputHandler)
                 self?.clearManagedProcessIfMatching(process)
                 terminationHandler(terminationStatus)
             }
@@ -149,8 +148,9 @@ final class ModelProcessManager {
         appendValue(advancedOptions.promptCacheSize, flag: "--prompt-cache-size", to: &arguments)
         appendValue(advancedOptions.promptCacheBytes, flag: "--prompt-cache-bytes", to: &arguments)
 
-        if let rawExtraArgs = advancedOptions.rawExtraArgs {
-            arguments.append(contentsOf: rawExtraArgs.split(whereSeparator: \.isWhitespace).map(String.init))
+        if let rawExtraArgs = advancedOptions.rawExtraArgs,
+           let parsedArguments = try? ShellArgumentParser.parse(rawExtraArgs) {
+            arguments.append(contentsOf: parsedArguments)
         }
 
         return arguments
@@ -212,55 +212,30 @@ final class ModelProcessManager {
     ) {
         pipe.fileHandleForReading.readabilityHandler = { [weak self] fileHandle in
             let data = fileHandle.availableData
-            guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else {
+            guard let self else { return }
+
+            if data.isEmpty {
+                for line in lineBuffer.flush(label: label) {
+                    outputHandler("[process:\(label)] \(line)")
+                }
                 return
             }
 
-            self?.emitLines(from: chunk, label: label, outputHandler: outputHandler)
-        }
-    }
-
-    private func emitLines(
-        from chunk: String,
-        label: String,
-        outputHandler: @escaping (String) -> Void
-    ) {
-        let lines = chunk
-            .split(whereSeparator: \.isNewline)
-            .map(String.init)
-            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-
-        for line in lines {
-            guard shouldEmitLine(label: label) else {
+            guard let chunk = String(data: data, encoding: .utf8) else {
                 return
             }
-
-            outputHandler("[process:\(label)] \(line)")
+            for line in lineBuffer.consume(chunk, label: label) {
+                outputHandler("[process:\(label)] \(line)")
+            }
         }
     }
 
-    private func shouldEmitLine(label: String) -> Bool {
-        switch label {
-        case "stdout":
-            guard stdoutLineCount < maximumCapturedLines else {
-                return false
+    private func flushPendingOutput(outputHandler: @escaping (String) -> Void) {
+        for label in ["stdout", "stderr"] {
+            for line in lineBuffer.flush(label: label) {
+                outputHandler("[process:\(label)] \(line)")
             }
-
-            stdoutLineCount += 1
-            return true
-        default:
-            guard stderrLineCount < maximumCapturedLines else {
-                return false
-            }
-
-            stderrLineCount += 1
-            return true
         }
-    }
-
-    private func resetPipeCounters() {
-        stdoutLineCount = 0
-        stderrLineCount = 0
     }
 
     private func waitForExit(_ process: Process, timeout: TimeInterval) async -> Bool {
