@@ -102,6 +102,102 @@ final class ModelOperationsSafetyTests: XCTestCase {
         XCTAssertTrue(viewModel.canStartModel(model))
     }
 
+    func testProfileDeletionCanBeUndoneWithOrderAndSettingsRestored() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerUndoTests-\(UUID().uuidString)")
+        defer {
+            if let directory = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: directory)
+            }
+        }
+
+        let first = ModelConfig(
+            modelID: "owner/model-a",
+            displayName: "Model A",
+            family: "Test",
+            quantization: "4bit",
+            localName: "model-a",
+            host: "127.0.0.1",
+            serverPort: 8101,
+            enableThinking: false,
+            notes: ""
+        )
+        let second = ModelConfig(
+            modelID: "owner/model-b",
+            displayName: "Model B",
+            family: "Test",
+            quantization: "4bit",
+            localName: "model-b",
+            host: "127.0.0.1",
+            serverPort: 8102,
+            enableThinking: false,
+            notes: ""
+        )
+        var settings = AppSettings.defaults
+        settings.autoUnloadEnabledByModelID[first.id] = true
+        settings.autoUnloadMinutesByModelID[first.id] = 45
+        try store.save(settings: settings, models: [first, second])
+
+        let viewModel = AppViewModel(settingsStore: store)
+        viewModel.deleteProfileRequested(for: first)
+        viewModel.confirmDeleteProfile()
+
+        XCTAssertEqual(viewModel.models.map(\.id), [second.id])
+        XCTAssertEqual(viewModel.profileDeletionUndoState?.modelID, first.id)
+        XCTAssertNil(viewModel.settings.autoUnloadEnabledByModelID[first.id])
+
+        viewModel.undoProfileDeletionRequested()
+
+        XCTAssertEqual(viewModel.models.map(\.id), [first.id, second.id])
+        XCTAssertEqual(viewModel.selectedModelID, first.id)
+        XCTAssertEqual(viewModel.settings.autoUnloadEnabledByModelID[first.id], true)
+        XCTAssertEqual(viewModel.settings.autoUnloadMinutesByModelID[first.id], 45)
+        XCTAssertNil(viewModel.profileDeletionUndoState)
+
+        let reloaded = AppViewModel(settingsStore: store)
+        XCTAssertEqual(reloaded.models.map(\.id), [first.id, second.id])
+        XCTAssertEqual(reloaded.settings.autoUnloadMinutesByModelID[first.id], 45)
+    }
+
+    func testCacheDeletionDoesNotOfferUndo() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerPermanentDeleteTests-\(UUID().uuidString)")
+        defer {
+            if let directory = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: directory)
+            }
+        }
+
+        let first = ModelConfig(
+            modelID: "/tmp/non-hugging-face-model",
+            displayName: "Local Model",
+            family: "Test",
+            quantization: "4bit",
+            localName: "local-model",
+            host: "127.0.0.1",
+            serverPort: 8201,
+            enableThinking: false,
+            notes: ""
+        )
+        let second = ModelConfig(
+            modelID: "owner/model-b",
+            displayName: "Model B",
+            family: "Test",
+            quantization: "4bit",
+            localName: "model-b",
+            host: "127.0.0.1",
+            serverPort: 8202,
+            enableThinking: false,
+            notes: ""
+        )
+        try store.save(settings: .defaults, models: [first, second])
+
+        let viewModel = AppViewModel(settingsStore: store)
+        viewModel.deleteProfileRequested(for: first)
+        viewModel.confirmDeleteProfile(deleteHuggingFaceCache: true)
+
+        XCTAssertEqual(viewModel.models.map(\.id), [second.id])
+        XCTAssertNil(viewModel.profileDeletionUndoState)
+    }
+
     func testModelTableSortValuesReflectDisplayedColumns() throws {
         let temporaryDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("MLXServerManagerTests-\(UUID().uuidString)", isDirectory: true)

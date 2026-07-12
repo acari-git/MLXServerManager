@@ -117,6 +117,179 @@ struct KineticStatusPillLabel: View {
     }
 }
 
+enum KineticCopyFeedbackStyle {
+    case replace
+    case trailingOverlay
+}
+
+struct KineticCopyButton<IdleLabel: View>: View {
+    let feedbackTitle: String?
+    let feedbackStyle: KineticCopyFeedbackStyle
+    let action: () -> Void
+    private let idleLabel: IdleLabel
+
+    @State private var isShowingFeedback = false
+    @State private var feedbackGeneration = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(
+        feedbackTitle: String? = nil,
+        feedbackStyle: KineticCopyFeedbackStyle = .replace,
+        action: @escaping () -> Void,
+        @ViewBuilder label: () -> IdleLabel
+    ) {
+        self.feedbackTitle = feedbackTitle
+        self.feedbackStyle = feedbackStyle
+        self.action = action
+        self.idleLabel = label()
+    }
+
+    var body: some View {
+        Button {
+            action()
+            showFeedback()
+        } label: {
+            ZStack(alignment: .trailing) {
+                idleLabel
+                    .opacity(feedbackStyle == .replace && isShowingFeedback ? 0 : 1)
+
+                if isShowingFeedback {
+                    HStack(spacing: 5) {
+                        Image(systemName: "checkmark")
+                            .font(.caption.weight(.bold))
+                        if let feedbackTitle, feedbackStyle == .replace {
+                            Text(feedbackTitle)
+                                .lineLimit(1)
+                        }
+                    }
+                    .foregroundStyle(.green)
+                    .padding(.trailing, feedbackStyle == .trailingOverlay ? 2 : 0)
+                    .transition(.opacity.combined(with: .scale(scale: 0.84)))
+                }
+            }
+            .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.86), value: isShowingFeedback)
+        }
+        .accessibilityValue(isShowingFeedback ? (feedbackTitle ?? "Copied") : "")
+    }
+
+    private func showFeedback() {
+        feedbackGeneration += 1
+        let generation = feedbackGeneration
+        withAnimation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.86)) {
+            isShowingFeedback = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+            guard generation == feedbackGeneration else { return }
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
+                isShowingFeedback = false
+            }
+        }
+    }
+}
+
+struct KineticDisclosureSection<Label: View, Content: View>: View {
+    let spacing: CGFloat
+    let contentTopPadding: CGFloat
+    private let label: Label
+    private let content: Content
+
+    @State private var isExpanded: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(
+        initiallyExpanded: Bool = false,
+        spacing: CGFloat = 8,
+        contentTopPadding: CGFloat = 0,
+        @ViewBuilder label: () -> Label,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.spacing = spacing
+        self.contentTopPadding = contentTopPadding
+        self.label = label()
+        self.content = content()
+        _isExpanded = State(initialValue: initiallyExpanded)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: spacing) {
+            Button {
+                withAnimation(reduceMotion ? nil : .spring(response: 0.30, dampingFraction: 0.88)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    label
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+
+            if isExpanded {
+                content
+                    .padding(.top, contentTopPadding)
+                    .transition(
+                        reduceMotion
+                            ? .opacity
+                            : .opacity.combined(with: .move(edge: .top))
+                    )
+            }
+        }
+        .animation(reduceMotion ? nil : .spring(response: 0.30, dampingFraction: 0.88), value: isExpanded)
+    }
+}
+
+private struct KineticShakeEffect: GeometryEffect {
+    var amount: CGFloat = 3
+    var shakesPerUnit: CGFloat = 3
+    var animatableData: CGFloat
+
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        ProjectionTransform(
+            CGAffineTransform(
+                translationX: amount * sin(animatableData * .pi * shakesPerUnit),
+                y: 0
+            )
+        )
+    }
+}
+
+private struct KineticValidationFeedbackModifier: ViewModifier {
+    let isInvalid: Bool
+    let trigger: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if isInvalid {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(Color.red.opacity(0.82), lineWidth: 1.2)
+                        .allowsHitTesting(false)
+                }
+            }
+            .modifier(
+                KineticShakeEffect(
+                    amount: reduceMotion ? 0 : 3,
+                    shakesPerUnit: 3,
+                    animatableData: CGFloat(trigger)
+                )
+            )
+    }
+}
+
+extension View {
+    func kineticValidationFeedback(isInvalid: Bool, trigger: Int) -> some View {
+        modifier(KineticValidationFeedbackModifier(isInvalid: isInvalid, trigger: trigger))
+    }
+}
+
 struct KineticIndeterminateBar: View {
     @State private var movesToTrailingEdge = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

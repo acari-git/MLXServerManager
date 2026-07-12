@@ -21,7 +21,6 @@ struct IntegratedWorkspaceView: View {
     @State private var isCenterWidthAnimating = false
     @State private var centerWidthAnimationGeneration = 0
     @State private var currentDetailWidth: CGFloat = 0
-    @State private var inspectorCopyToast: String?
     @State private var hermesActionPhase: KineticActionPhase = .idle
     @State private var benchmarkCompletionPhase: KineticActionPhase = .idle
     @State private var readinessCompletionPhase: KineticActionPhase = .idle
@@ -1301,9 +1300,6 @@ struct IntegratedWorkspaceView: View {
             }
         }
         .background(Color.clear)
-        .overlay(alignment: .top) {
-            inspectorCopyToastView
-        }
         .accessibilityIdentifier("integrated-model-inspector")
     }
 
@@ -1544,10 +1540,11 @@ struct IntegratedWorkspaceView: View {
                     .disabled(!viewModel.canRunSpeedTest)
                     .help(viewModel.speedTestDisabledReason)
 
-                    Button {
-                        viewModel.copyBenchmark(for: model)
-                        showInspectorCopyToast(title: t("Benchmark", "ベンチマーク"))
-                    } label: {
+                    KineticCopyButton(
+                        action: {
+                            viewModel.copyBenchmark(for: model)
+                        }
+                    ) {
                         Label(t("Copy", "コピー"), systemImage: AppSymbol.copy)
                             .labelStyle(.iconOnly)
                             .frame(width: 30)
@@ -1576,10 +1573,11 @@ struct IntegratedWorkspaceView: View {
                     .disabled(!viewModel.canRunAgenticBenchmark)
                     .help(viewModel.agenticBenchmarkDisabledReason)
 
-                    Button {
-                        viewModel.copyAgenticBenchmark(for: model)
-                        showInspectorCopyToast(title: t("Agent Readiness", "Agent Readiness"))
-                    } label: {
+                    KineticCopyButton(
+                        action: {
+                            viewModel.copyAgenticBenchmark(for: model)
+                        }
+                    ) {
                         Label(t("Copy", "コピー"), systemImage: AppSymbol.copy)
                             .labelStyle(.iconOnly)
                             .frame(width: 30)
@@ -1801,26 +1799,31 @@ struct IntegratedWorkspaceView: View {
                         .lineLimit(2)
 
                     if !task.diagnostics.isEmpty {
-                        DisclosureGroup {
-                            VStack(alignment: .leading, spacing: 6) {
-                                ForEach(task.localizedDiagnostics(language: viewModel.settings.uiLanguage)) { diagnostic in
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(diagnostic.title)
-                                            .font(.caption2.weight(.semibold))
-                                            .foregroundStyle(.secondary)
-                                        Text(diagnostic.text)
-                                            .font(.caption2.monospaced())
-                                            .foregroundStyle(.secondary)
-                                            .textSelection(.enabled)
-                                            .fixedSize(horizontal: false, vertical: true)
+                        KineticDisclosureSection(
+                            spacing: 4,
+                            contentTopPadding: 0,
+                            label: {
+                                Text(t("Diagnostics", "診断"))
+                                    .font(.caption2.weight(.semibold))
+                            },
+                            content: {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    ForEach(task.localizedDiagnostics(language: viewModel.settings.uiLanguage)) { diagnostic in
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(diagnostic.title)
+                                                .font(.caption2.weight(.semibold))
+                                                .foregroundStyle(.secondary)
+                                            Text(diagnostic.text)
+                                                .font(.caption2.monospaced())
+                                                .foregroundStyle(.secondary)
+                                                .textSelection(.enabled)
+                                                .fixedSize(horizontal: false, vertical: true)
+                                        }
                                     }
                                 }
+                                .padding(.top, 4)
                             }
-                            .padding(.top, 4)
-                        } label: {
-                            Text(t("Diagnostics", "診断"))
-                                .font(.caption2.weight(.semibold))
-                        }
+                        )
                         .controlSize(.small)
                     }
                 }
@@ -1891,10 +1894,12 @@ struct IntegratedWorkspaceView: View {
     private func modelInspectorCommandPreview(for model: ModelConfig) -> some View {
         let command = LaunchCommandBuilder.command(executablePath: viewModel.settings.mlxServerExecutablePath, model: model)
         return inspectorSection(title: t("Launch Command", "起動コマンド")) {
-            Button {
-                viewModel.copyLaunchCommandPreview(for: model)
-                showInspectorCopyToast(title: t("Launch Command", "起動コマンド"))
-            } label: {
+            KineticCopyButton(
+                feedbackStyle: .trailingOverlay,
+                action: {
+                    viewModel.copyLaunchCommandPreview(for: model)
+                }
+            ) {
                 Text(command)
                     .font(.caption.monospaced())
                     .foregroundStyle(.primary)
@@ -1904,6 +1909,7 @@ struct IntegratedWorkspaceView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 7)
+                    .padding(.trailing, 18)
                     .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
@@ -1964,13 +1970,14 @@ struct IntegratedWorkspaceView: View {
     }
 
     private func inspectorCopyRow(title: String, value: String, action: @escaping () -> Void) -> some View {
-        Button {
-            action()
-            showInspectorCopyToast(title: title)
-        } label: {
+        KineticCopyButton(
+            feedbackStyle: .trailingOverlay,
+            action: action
+        ) {
             inspectorInfoRow(title: title, value: value)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
+                .padding(.trailing, 18)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
@@ -1984,42 +1991,6 @@ struct IntegratedWorkspaceView: View {
                 .stroke(Color(nsColor: .separatorColor).opacity(0.18), lineWidth: 1)
         )
         .help(t("Click to copy", "クリックでコピー"))
-    }
-
-    @ViewBuilder
-    private var inspectorCopyToastView: some View {
-        if let inspectorCopyToast {
-            Text(inspectorCopyToast)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.primary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color(nsColor: .controlBackgroundColor).opacity(0.92))
-                        .shadow(radius: 8, y: 4)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Color(nsColor: .separatorColor).opacity(0.35), lineWidth: 1)
-                )
-                .padding(.top, 12)
-                .transition(.move(edge: .top).combined(with: .opacity))
-                .zIndex(10)
-        }
-    }
-
-    private func showInspectorCopyToast(title: String) {
-        let message = t("Copied \(title)", "\(title)をコピーしました")
-        withAnimation(.easeInOut(duration: 0.16)) {
-            inspectorCopyToast = message
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
-            guard inspectorCopyToast == message else { return }
-            withAnimation(.easeInOut(duration: 0.18)) {
-                inspectorCopyToast = nil
-            }
-        }
     }
 
     private func moveDroppedModel(_ providers: [NSItemProvider], before targetModel: ModelConfig) -> Bool {
@@ -2322,20 +2293,14 @@ private struct OptionalInspectorHelp: ViewModifier {
                     isHovering = hovering
                     if hovering {
                         let generation = hoverGeneration
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.40) {
                             guard isHovering, generation == hoverGeneration else {
                                 return
                             }
                             isPresented = true
                         }
                     } else {
-                        let generation = hoverGeneration
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-                            guard !isHovering, generation == hoverGeneration else {
-                                return
-                            }
-                            isPresented = false
-                        }
+                        isPresented = false
                     }
                 }
                 .background {
@@ -2455,6 +2420,16 @@ private struct InspectorHelpPopoverContent: View {
             .frame(maxWidth: 280, alignment: .leading)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color(nsColor: .textBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.82), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.20), radius: 10, y: 4)
+            .padding(4)
     }
 }
 

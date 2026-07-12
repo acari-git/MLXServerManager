@@ -3,6 +3,7 @@ import SwiftUI
 struct ModelProfileEditorView: View {
     @Binding var draft: ModelProfileDraft
     @State private var advancedOptionsStatus: String?
+    @State private var validationShakeTrigger = 0
 
     let title: String
     let saveButtonTitle: String
@@ -10,7 +11,7 @@ struct ModelProfileEditorView: View {
     let message: String?
     let runtimeFieldsLocked: Bool
     let language: AppLanguage
-    let onSave: () -> Void
+    let onSave: () -> Bool
     let onCancel: () -> Void
     let onCopyPreview: (String) -> Void
 
@@ -55,7 +56,10 @@ struct ModelProfileEditorView: View {
                 }
 
                 Button {
-                    onSave()
+                    guard !onSave() else { return }
+                    withAnimation(.linear(duration: 0.32)) {
+                        validationShakeTrigger += 1
+                    }
                 } label: {
                     Label(saveButtonTitle, systemImage: "square.and.arrow.down")
                 }
@@ -96,18 +100,30 @@ struct ModelProfileEditorView: View {
                 editorRow(t("Model Path", "モデルパス")) {
                     TextField(t("Local path or Hugging Face model ID", "ローカルパスまたはHugging FaceモデルID"), text: $draft.modelID)
                         .textFieldStyle(.roundedBorder)
+                        .kineticValidationFeedback(
+                            isInvalid: validationTarget == .modelID,
+                            trigger: validationShakeTrigger
+                        )
                         .disabled(runtimeFieldsLocked)
                 }
 
                 editorRow("Host") {
                     TextField("127.0.0.1", text: $draft.host)
                         .textFieldStyle(.roundedBorder)
+                        .kineticValidationFeedback(
+                            isInvalid: validationTarget == .host,
+                            trigger: validationShakeTrigger
+                        )
                         .disabled(runtimeFieldsLocked)
                 }
 
                 editorRow("Port") {
                     TextField("8080", text: $draft.serverPortText)
                         .textFieldStyle(.roundedBorder)
+                        .kineticValidationFeedback(
+                            isInvalid: validationTarget == .port,
+                            trigger: validationShakeTrigger
+                        )
                         .disabled(runtimeFieldsLocked)
                 }
 
@@ -126,7 +142,12 @@ struct ModelProfileEditorView: View {
                 }
             }
 
-            DisclosureGroup(t("Advanced Launch Options", "詳細起動オプション")) {
+            KineticDisclosureSection(
+                label: {
+                    Text(t("Advanced Launch Options", "詳細起動オプション"))
+                        .font(.callout.weight(.medium))
+                },
+                content: {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(t("Leave empty to use mlx_lm.server defaults.", "空欄の場合はmlx_lm.serverの既定値を使用します。"))
                         .font(.callout)
@@ -227,10 +248,13 @@ struct ModelProfileEditorView: View {
 
                             Spacer()
 
-                            Button {
-                                onCopyPreview(launchCommandPreview)
-                                advancedOptionsStatus = t("Preview copied.", "プレビューをコピーしました。")
-                            } label: {
+                            KineticCopyButton(
+                                feedbackTitle: t("Copied", "コピー済み"),
+                                action: {
+                                    onCopyPreview(launchCommandPreview)
+                                    advancedOptionsStatus = t("Preview copied.", "プレビューをコピーしました。")
+                                }
+                            ) {
                                 Label(t("Copy Preview", "プレビューをコピー"), systemImage: "doc.on.doc")
                             }
                             .disabled(!canCopyLaunchCommandPreview)
@@ -256,7 +280,12 @@ struct ModelProfileEditorView: View {
                     }
                 }
                 .padding(.top, 8)
-            }
+                }
+            )
+            .kineticValidationFeedback(
+                isInvalid: validationTarget == .advanced,
+                trigger: validationShakeTrigger
+            )
             .disabled(runtimeFieldsLocked)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -318,6 +347,45 @@ struct ModelProfileEditorView: View {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .stroke(Color(nsColor: .separatorColor).opacity(0.72), lineWidth: 1)
             )
+    }
+
+    private enum ValidationTarget {
+        case modelID
+        case host
+        case port
+        case advanced
+        case general
+    }
+
+    private var validationTarget: ValidationTarget? {
+        guard let message = message?.lowercased(), !message.isEmpty else {
+            return nil
+        }
+        if message.contains("model id") || message.contains("modelid") {
+            return .modelID
+        }
+        if message.contains("host") {
+            return .host
+        }
+        if message.contains("port") {
+            return .port
+        }
+        if message.contains("temperature")
+            || message.contains("top p")
+            || message.contains("top k")
+            || message.contains("min p")
+            || message.contains("max tokens")
+            || message.contains("concurrency")
+            || message.contains("prefill")
+            || message.contains("prompt cache")
+            || message.contains("chat template")
+            || message.contains("raw")
+            || message.contains("advanced launch")
+            || message.contains("quote")
+            || message.contains("escape") {
+            return .advanced
+        }
+        return .general
     }
 
     private var launchCommandPreview: String {

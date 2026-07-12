@@ -22,6 +22,19 @@ struct ContentView: View {
         IntegratedWorkspaceView(viewModel: viewModel)
             .frame(minWidth: 0, minHeight: IntegratedWorkspaceView.baseMinimumHeight)
             .background(WindowTitlebarSeparatorHider())
+            .overlay(alignment: .bottomTrailing) {
+                if let undoState = viewModel.profileDeletionUndoState {
+                    ProfileDeletionUndoSnackbar(
+                        state: undoState,
+                        language: viewModel.settings.uiLanguage,
+                        onUndo: viewModel.undoProfileDeletionRequested,
+                        onDismiss: viewModel.dismissProfileDeletionUndo
+                    )
+                    .padding(16)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(response: 0.30, dampingFraction: 0.88), value: viewModel.profileDeletionUndoState?.id)
         .confirmationDialog(
             t("Delete Model Profile?", "モデルプロファイルを削除しますか？"),
             isPresented: $viewModel.isDeleteProfileConfirmationPresented,
@@ -105,6 +118,66 @@ struct ContentView: View {
                 .padding(20)
             }
         }
+    }
+}
+
+private struct ProfileDeletionUndoSnackbar: View {
+    let state: ProfileDeletionUndoState
+    let language: AppLanguage
+    let onUndo: () -> Void
+    let onDismiss: () -> Void
+
+    private var strings: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    private func t(_ english: String, _ japanese: String) -> String {
+        strings.text(english: english, japanese: japanese)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Image(systemName: "trash")
+                    .foregroundStyle(.secondary)
+
+                Text(t("Deleted \(state.displayName)", "\(state.displayName)を削除しました"))
+                    .font(.callout.weight(.medium))
+                    .lineLimit(2)
+
+                Spacer(minLength: 12)
+
+                Button(t("Undo", "元に戻す"), action: onUndo)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.borderless)
+                .help(t("Dismiss", "閉じる"))
+            }
+
+            TimelineView(.periodic(from: .now, by: 0.05)) { context in
+                let remaining = max(state.expiresAt.timeIntervalSince(context.date), 0)
+                ProgressView(value: min(max(remaining / 4, 0), 1))
+                    .progressViewStyle(.linear)
+                    .tint(.accentColor)
+            }
+        }
+        .padding(12)
+        .frame(width: 360)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.75), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.22), radius: 14, y: 6)
+        .accessibilityElement(children: .contain)
     }
 }
 

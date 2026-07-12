@@ -57,6 +57,22 @@ struct SystemUsageHistorySample: Equatable, Sendable {
     let timestamp: Date
 }
 
+struct ProfileDeletionUndoState: Identifiable, Equatable {
+    let id: UUID
+    let modelID: ModelConfig.ID
+    let displayName: String
+    let expiresAt: Date
+}
+
+private struct ProfileDeletionUndoPayload {
+    let state: ProfileDeletionUndoState
+    let model: ModelConfig
+    let originalIndex: Int
+    let previousSelectedModelID: ModelConfig.ID?
+    let autoUnloadEnabled: Bool?
+    let autoUnloadMinutes: Int?
+}
+
 struct MiniChatTranscriptMessage: Identifiable, Equatable {
     enum Sender: Equatable {
         case user
@@ -165,6 +181,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var addProfileMessage: String?
     @Published var isDeleteProfileConfirmationPresented = false
     @Published private(set) var profileDeletionMessage: String?
+    @Published private(set) var profileDeletionUndoState: ProfileDeletionUndoState?
     @Published private(set) var modelProfileExportMessage: String?
     @Published private(set) var modelProfileImportMessage: String?
     @Published var isImportPreviewPresented = false
@@ -251,6 +268,8 @@ final class AppViewModel: ObservableObject {
     private var cancelledHuggingFaceDownloadIDs: Set<UUID> = []
     private var miniChatTask: Task<Void, Never>?
     private var pendingDeleteModelID: ModelConfig.ID?
+    private var profileDeletionUndoPayload: ProfileDeletionUndoPayload?
+    private var profileDeletionUndoTask: Task<Void, Never>?
     private var modelSizeGigabytesCache: [String: Double] = [:]
     private var portCheckCache: [String: PortCheckCacheEntry] = [:]
     private var systemInfoRowsCache: [AppLanguage: SystemInfoRowsCacheEntry] = [:]
@@ -3258,9 +3277,10 @@ final class AppViewModel: ObservableObject {
         appendLog("[profile] add cancelled.")
     }
 
-    func saveNewProfile() {
+    @discardableResult
+    func saveNewProfile() -> Bool {
         guard isAddProfilePresented else {
-            return
+            return false
         }
 
         switch validatedNewProfileDraft(addProfileDraft) {
@@ -3283,13 +3303,16 @@ final class AppViewModel: ObservableObject {
                     selectedModelID = newModel.id
                     appendLog("[profile] added and selected \(newModel.modelID).")
                 }
+                return true
             } catch {
                 addProfileMessage = error.localizedDescription
                 appendLog("[profile] add failed: \(error.localizedDescription)")
+                return false
             }
         case let .invalid(message):
             addProfileMessage = message
             appendLog("[profile] add failed: \(message)")
+            return false
         }
     }
 
@@ -3366,9 +3389,9 @@ final class AppViewModel: ObservableObject {
         }
 
         let deletedModel = models[index]
-        let cacheDeletionMessage = deleteHuggingFaceCache
-            ? deleteHuggingFaceCacheIfAvailable(for: deletedModel)
-            : nil
+        let previousSelectedModelID = selectedModelID
+        let previousAutoUnloadEnabled = settings.autoUnloadEnabledByModelID[deletedModel.id]
+        let previousAutoUnloadMinutes = settings.autoUnloadMinutesByModelID[deletedModel.id]
         var nextModels = models
         nextModels.remove(at: index)
 
@@ -3412,7 +3435,21 @@ final class AppViewModel: ObservableObject {
             addProfileDraft = .empty
             addProfileMessage = nil
             isAddProfilePresented = false
-            profileDeletionMessage = cacheDeletionMessage
+
+            if deleteHuggingFaceCache {
+                clearProfileDeletionUndo()
+                profileDeletionMessage = deleteHuggingFaceCacheIfAvailable(for: deletedModel)
+            } else {
+                profileDeletionMessage = nil
+                presentProfileDeletionUndo(
+                    model: deletedModel,
+                    originalIndex: index,
+                    previousSelectedModelID: previousSelectedModelID,
+                    autoUnloadEnabled: previousAutoUnloadEnabled,
+                    autoUnloadMinutes: previousAutoUnloadMinutes
+                )
+            }
+
             self.pendingDeleteModelID = nil
             isDeleteProfileConfirmationPresented = false
         } catch {
@@ -3421,6 +3458,122 @@ final class AppViewModel: ObservableObject {
             isDeleteProfileConfirmationPresented = false
             appendLog("[profile] delete failed: \(error.localizedDescription)")
         }
+    }
+
+    func undoProfileDeletionRequested() {
+        guard let payload = profileDeletionUndoPayload else {
+            return
+        }
+
+        guard !isManagedProcessRunning else {
+            profileDeletionMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Stop the managed server before restoring the deleted profile.",
+                japanese: "削除したプロファイルを復元する前に管理サーバーを停止してください。"
+            )
+            appendLog("[profile] undo delete failed: managed server is running.")
+            clearProfileDeletionUndo()
+            return
+        }
+
+        guard !models.contains(where: { $0.id == payload.model.id }) else {
+            profileDeletionMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "The deleted profile could not be restored because a profile with the same identity already exists.",
+                japanese: "同じ識別子のプロファイルがすでに存在するため、削除したプロファイルを復元できませんでした。"
+            )
+            appendLog("[profile] undo delete failed: profile identity already exists.")
+            clearProfileDeletionUndo()
+            return
+        }
+
+        var restoredModels = models
+        restoredModels.insert(payload.model, at: min(max(payload.originalIndex, 0), restoredModels.count))
+
+        var restoredSettings = settings
+        if let enabled = payload.autoUnloadEnabled {
+            restoredSettings.autoUnloadEnabledByModelID[payload.model.id] = enabled
+        }
+        if let minutes = payload.autoUnloadMinutes {
+            restoredSettings.autoUnloadMinutesByModelID[payload.model.id] = minutes
+        }
+
+        do {
+            try settingsStore.save(settings: restoredSettings, models: restoredModels)
+            settings = restoredSettings
+            autoUnloadEnabledByModelID = restoredSettings.autoUnloadEnabledByModelID
+            autoUnloadMinutesByModelID = restoredSettings.autoUnloadMinutesByModelID
+            models = restoredModels
+            selectedModelID = payload.previousSelectedModelID.flatMap { previousID in
+                restoredModels.contains(where: { $0.id == previousID }) ? previousID : nil
+            } ?? payload.model.id
+            invalidateModelSizeCache(for: payload.model)
+            invalidatePortCheckCache()
+            profileDeletionMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Restored \(payload.model.displayName).",
+                japanese: "\(payload.model.displayName)を復元しました。"
+            )
+            appendLog("[profile] restored deleted profile \(payload.model.modelID).")
+            clearProfileDeletionUndo()
+        } catch {
+            profileDeletionMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Could not restore the deleted profile: \(error.localizedDescription)",
+                japanese: "削除したプロファイルを復元できませんでした: \(error.localizedDescription)"
+            )
+            appendLog("[profile] undo delete failed: \(error.localizedDescription)")
+            clearProfileDeletionUndo()
+        }
+    }
+
+    func dismissProfileDeletionUndo() {
+        clearProfileDeletionUndo()
+    }
+
+    private func presentProfileDeletionUndo(
+        model: ModelConfig,
+        originalIndex: Int,
+        previousSelectedModelID: ModelConfig.ID?,
+        autoUnloadEnabled: Bool?,
+        autoUnloadMinutes: Int?
+    ) {
+        clearProfileDeletionUndo()
+
+        let state = ProfileDeletionUndoState(
+            id: UUID(),
+            modelID: model.id,
+            displayName: model.displayName,
+            expiresAt: Date().addingTimeInterval(4)
+        )
+        profileDeletionUndoPayload = ProfileDeletionUndoPayload(
+            state: state,
+            model: model,
+            originalIndex: originalIndex,
+            previousSelectedModelID: previousSelectedModelID,
+            autoUnloadEnabled: autoUnloadEnabled,
+            autoUnloadMinutes: autoUnloadMinutes
+        )
+        profileDeletionUndoState = state
+        profileDeletionUndoTask = Task { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: 4_000_000_000)
+            } catch {
+                return
+            }
+            guard let self,
+                  self.profileDeletionUndoState?.id == state.id else {
+                return
+            }
+            self.clearProfileDeletionUndo()
+        }
+    }
+
+    private func clearProfileDeletionUndo() {
+        profileDeletionUndoTask?.cancel()
+        profileDeletionUndoTask = nil
+        profileDeletionUndoPayload = nil
+        profileDeletionUndoState = nil
     }
 
     private func deleteHuggingFaceCacheIfAvailable(for model: ModelConfig) -> String {
@@ -3529,16 +3682,17 @@ final class AppViewModel: ObservableObject {
         return validHuggingFaceRepositoryID(String(text[repositoryRange]))
     }
 
-    func saveProfileEditing() {
+    @discardableResult
+    func saveProfileEditing() -> Bool {
         guard isProfileEditorPresented else {
-            return
+            return false
         }
 
         guard let index = models.firstIndex(where: { $0.modelID == profileEditorDraft.originalModelID }) else {
             let message = "Selected model profile no longer exists."
             profileEditorMessage = message
             appendLog("[profile] save failed: \(message)")
-            return
+            return false
         }
 
         let existingModel = models[index]
@@ -3571,13 +3725,16 @@ final class AppViewModel: ObservableObject {
                 profileEditorMessage = nil
                 isProfileEditorPresented = false
                 appendLog("[profile] saved \(updatedModel.modelID) to models.json.")
+                return true
             } catch {
                 profileEditorMessage = error.localizedDescription
                 appendLog("[profile] save failed: \(error.localizedDescription)")
+                return false
             }
         case let .invalid(message):
             profileEditorMessage = message
             appendLog("[profile] save failed: \(message)")
+            return false
         }
     }
 
