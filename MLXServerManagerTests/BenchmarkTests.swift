@@ -163,6 +163,63 @@ final class BenchmarkTests: XCTestCase {
         XCTAssertEqual(responseFormat["type"] as? String, "json_object")
     }
 
+    func testStreamingRequestCanAskForUsageWithoutChangingDefaultPayload() throws {
+        let defaultRequest = BenchmarkChatCompletionRequest(
+            model: "local-model",
+            messages: [BenchmarkChatMessage(role: "user", content: "ping")],
+            stream: true,
+            maxTokens: 64,
+            temperature: 0,
+            chatTemplateKwargs: nil
+        )
+        let usageRequest = BenchmarkChatCompletionRequest(
+            model: "local-model",
+            messages: [BenchmarkChatMessage(role: "user", content: "ping")],
+            stream: true,
+            maxTokens: 64,
+            temperature: 0,
+            chatTemplateKwargs: nil,
+            streamOptions: BenchmarkStreamOptions(includeUsage: true)
+        )
+
+        let defaultObject = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(defaultRequest)) as? [String: Any]
+        )
+        let usageObject = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(usageRequest)) as? [String: Any]
+        )
+        let streamOptions = try XCTUnwrap(usageObject["stream_options"] as? [String: Any])
+
+        XCTAssertNil(defaultObject["stream_options"])
+        XCTAssertEqual(streamOptions["include_usage"] as? Bool, true)
+    }
+
+    func testReportedCompletionTokenCountOverridesEstimator() {
+        XCTAssertEqual(
+            BenchmarkTokenCountResolver.outputTokenCount(reported: 42, output: "short"),
+            42
+        )
+        XCTAssertGreaterThan(
+            BenchmarkTokenCountResolver.outputTokenCount(reported: nil, output: "日本語の応答です。"),
+            0
+        )
+    }
+
+    func testOpenAICompatibleRetryPolicyOnlyRetriesMatchingUnsupportedFields() {
+        XCTAssertTrue(
+            OpenAICompatibleChatSupport.shouldRetryWithoutStreamOptions(
+                statusCode: 422,
+                message: "stream_options is not permitted"
+            )
+        )
+        XCTAssertFalse(
+            OpenAICompatibleChatSupport.shouldRetryWithoutThinkingControl(
+                statusCode: 422,
+                message: "model not found"
+            )
+        )
+    }
+
     func testAgentProbePromptsUseExactJSONShape() {
         for kind in BenchmarkAgentProbeKind.allCases {
             XCTAssertTrue(kind.prompt.contains("Output only this exact JSON:"))
@@ -172,13 +229,14 @@ final class BenchmarkTests: XCTestCase {
         }
     }
 
-    func testStreamingChunkDecodesReasoningContent() throws {
-        let data = #"{"choices":[{"delta":{"reasoning_content":"thinking"},"finish_reason":null}]}"#
+    func testStreamingChunkDecodesReasoningContentAndUsage() throws {
+        let data = #"{"choices":[{"delta":{"reasoning_content":"thinking"},"finish_reason":null}],"usage":{"completion_tokens":17}}"#
             .data(using: .utf8)!
 
         let chunk = try JSONDecoder().decode(BenchmarkStreamingChatChunk.self, from: data)
 
         XCTAssertEqual(chunk.choices?.first?.delta?.reasoningContent, "thinking")
+        XCTAssertEqual(chunk.usage?.completionTokens, 17)
     }
 
     func testCompletionDiagnosticsExplainsReasoningOnlyLengthFinish() {

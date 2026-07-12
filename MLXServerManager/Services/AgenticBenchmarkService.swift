@@ -109,7 +109,7 @@ struct AgenticBenchmarkService {
         requiresJSON: Bool,
         disablesThinking: Bool
     ) async -> AgentReadinessCompletion {
-        guard let url = chatCompletionsURL(from: baseURL) else {
+        guard let url = OpenAICompatibleChatSupport.chatCompletionsURL(from: baseURL) else {
             return .failed(message: "Invalid /chat/completions URL.")
         }
 
@@ -173,34 +173,23 @@ struct AgenticBenchmarkService {
         maxTokens: Int,
         requiresJSON: Bool,
         disablesThinking: Bool
-    ) -> [String: Any] {
-        var body: [String: Any] = [
-            "model": modelID,
-            "messages": [
-                [
-                    "role": "system",
-                    "content": Self.systemPrompt
-                ],
-                [
-                    "role": "user",
-                    "content": prompt
-                ]
+    ) -> BenchmarkChatCompletionRequest {
+        BenchmarkChatCompletionRequest(
+            model: modelID,
+            messages: [
+                BenchmarkChatMessage(role: "system", content: Self.systemPrompt),
+                BenchmarkChatMessage(role: "user", content: prompt)
             ],
-            "stream": false,
-            "max_tokens": maxTokens,
-            "temperature": 0
-        ]
-        if requiresJSON {
-            body["response_format"] = ["type": "json_object"]
-        }
-        if disablesThinking {
-            body["chat_template_kwargs"] = ["enable_thinking": false]
-        }
-        return body
+            stream: false,
+            maxTokens: maxTokens,
+            temperature: 0,
+            chatTemplateKwargs: disablesThinking ? BenchmarkChatTemplateKwargs(enableThinking: false) : nil,
+            responseFormat: requiresJSON ? BenchmarkResponseFormat(type: "json_object") : nil
+        )
     }
 
     private func post(
-        body: [String: Any],
+        body: BenchmarkChatCompletionRequest,
         url: URL,
         timeout: TimeInterval,
         startedAt: Date
@@ -210,7 +199,7 @@ struct AgenticBenchmarkService {
             request.httpMethod = "POST"
             request.timeoutInterval = timeout
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            request.httpBody = try JSONEncoder().encode(body)
 
             let (data, response) = try await session.data(for: request)
             let statusCode = (response as? HTTPURLResponse)?.statusCode
@@ -222,7 +211,7 @@ struct AgenticBenchmarkService {
                     finishReason: nil,
                     httpStatusCode: statusCode,
                     totalLatencyMS: elapsedMS,
-                    errorMessage: "HTTP \(statusCode.map(String.init) ?? "-") from /chat/completions: \(String(data: data, encoding: .utf8) ?? "")",
+                    errorMessage: OpenAICompatibleChatSupport.httpErrorMessage(statusCode: statusCode, data: data),
                     timedOut: false
                 )
             }
@@ -246,10 +235,9 @@ struct AgenticBenchmarkService {
         statusCode: Int,
         totalLatencyMS: Double
     ) -> AgentReadinessCompletion {
-        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let choices = object["choices"] as? [[String: Any]],
-              let firstChoice = choices.first,
-              let message = firstChoice["message"] as? [String: Any] else {
+        guard let response = try? JSONDecoder().decode(OpenAICompatibleChatResponse.self, from: data),
+              let firstChoice = response.choices?.first,
+              let message = firstChoice.message else {
             return AgentReadinessCompletion(
                 outputText: "",
                 reasoningText: "",
@@ -261,42 +249,37 @@ struct AgenticBenchmarkService {
             )
         }
 
-        let output = message["content"] as? String ?? ""
-        let reasoning = [
-            message["reasoning"] as? String,
-            message["reasoning_content"] as? String
-        ]
-        .compactMap { $0 }
-        .joined(separator: "\n")
+        let output = message.content ?? ""
+        let reasoning = [message.reasoning, message.reasoningContent]
+            .compactMap { $0 }
+            .joined(separator: "\n")
+        let responseError = response.error?.message
+        let emptyContentError = output.isEmpty && !reasoning.isEmpty
+            ? "Model returned reasoning without final JSON content."
+            : nil
         return AgentReadinessCompletion(
             outputText: output,
             reasoningText: reasoning,
-            finishReason: firstChoice["finish_reason"] as? String,
+            finishReason: firstChoice.finishReason,
             httpStatusCode: statusCode,
             totalLatencyMS: totalLatencyMS,
-            errorMessage: output.isEmpty && !reasoning.isEmpty ? "Model returned reasoning without final JSON content." : nil,
+            errorMessage: responseError ?? emptyContentError,
             timedOut: false
         )
     }
 
     private func shouldRetryWithoutThinkingControl(_ completion: AgentReadinessCompletion) -> Bool {
-        guard completion.httpStatusCode == 400 || completion.httpStatusCode == 422 else {
-            return false
-        }
-        let message = completion.errorMessage?.lowercased() ?? ""
-        return message.contains("chat_template_kwargs")
-            || message.contains("chat template kwargs")
-            || message.contains("enable_thinking")
-            || message.contains("extra_forbidden")
+        OpenAICompatibleChatSupport.shouldRetryWithoutThinkingControl(
+            statusCode: completion.httpStatusCode,
+            message: completion.errorMessage
+        )
     }
 
     private func shouldRetryWithoutResponseFormat(_ completion: AgentReadinessCompletion) -> Bool {
-        guard completion.httpStatusCode == 400 || completion.httpStatusCode == 422 else {
-            return false
-        }
-        let message = completion.errorMessage?.lowercased() ?? ""
-        return message.contains("response_format")
-            || message.contains("response format")
+        OpenAICompatibleChatSupport.shouldRetryWithoutResponseFormat(
+            statusCode: completion.httpStatusCode,
+            message: completion.errorMessage
+        )
     }
 
     private func makeResult(
@@ -329,11 +312,6 @@ struct AgenticBenchmarkService {
         case .timedOut:
             return "Request timed out"
         }
-    }
-
-    private func chatCompletionsURL(from baseURL: String) -> URL? {
-        let trimmed = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        return URL(string: "\(trimmed)/chat/completions")
     }
 
     private static let systemPrompt = """

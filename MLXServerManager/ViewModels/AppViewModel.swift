@@ -14,6 +14,12 @@ private enum AdvancedLaunchOptionsValidationResult {
     case invalid(String)
 }
 
+private enum PortReleaseCheckOutcome: Equatable {
+    case released
+    case busy
+    case failed
+}
+
 struct ModelProfileImportSelectionUpdate: Equatable {
     let selectedModelID: ModelConfig.ID?
     let preservedThroughReplacement: Bool
@@ -1978,18 +1984,24 @@ final class AppViewModel: ObservableObject {
     }
 
     func stopRequested() {
+        let endpoint = endpointForCurrentRuntimeState()
         guard let processIdentifier = processManager.managedProcessIdentifier else {
             clearRunningModel(logPrefix: "stop")
             if runtimeState.isExternalServerContext {
                 appendLog("[stop] managed process is not running. External servers are not stopped by this app.")
             } else {
-                runtimeState = .stopped
+                _ = applyPostStopPortCheck(
+                    freshPortCheck(host: endpoint.host, port: endpoint.port),
+                    host: endpoint.host,
+                    port: endpoint.port,
+                    logPrefix: "stop",
+                    announceBusy: true
+                )
                 appendLog("[stop] managed process is not running.")
             }
             return
         }
 
-        let endpoint = endpointForCurrentRuntimeState()
         runtimeState = .stopping(processIdentifier: processIdentifier)
         appendLog("[stop] requested for managed pid \(processIdentifier)")
 
@@ -4658,9 +4670,15 @@ final class AppViewModel: ObservableObject {
         case .notRunning:
             stopMemoryMonitoring()
             clearRunningModel(logPrefix: logPrefix)
-            runtimeState = .stopped
+            let outcome = applyPostStopPortCheck(
+                freshPortCheck(host: host, port: port),
+                host: host,
+                port: port,
+                logPrefix: logPrefix,
+                announceBusy: true
+            )
             appendLog("[\(logPrefix)] managed process is not running.")
-            return true
+            return outcome == .released
         case let .stopped(processIdentifier, terminationStatus, usedInterrupt):
             stopMemoryMonitoring()
             clearRunningModel(logPrefix: logPrefix)
@@ -4669,14 +4687,11 @@ final class AppViewModel: ObservableObject {
             }
             appendLog("[\(logPrefix)] stopped managed pid \(processIdentifier) with status \(terminationStatus).")
 
-            if await waitForPortRelease(host: host, port: port, logPrefix: logPrefix) {
-                runtimeState = .stopped
-                return true
-            } else {
-                runtimeState = .portBusy(host: host, port: port)
+            let released = await waitForPortRelease(host: host, port: port, logPrefix: logPrefix)
+            if !released, case .portBusy = runtimeState {
                 appendLog("[\(logPrefix)] warning: port still busy after waiting for release: \(host):\(port)")
-                return false
             }
+            return released
         case let .timedOut(processIdentifier):
             let message = "Stop timed out for managed pid \(processIdentifier)."
             runtimeState = .error(message: message)
@@ -4690,43 +4705,69 @@ final class AppViewModel: ObservableObject {
         port: Int,
         logPrefix: String = "stop"
     ) async -> Bool {
-        appendLog("[\(logPrefix)] waiting for port release: \(host):\(port)")
+        appendLog("[\(logPrefix)] checking port release immediately: \(host):\(port)")
 
-        for _ in 1...20 {
-            switch freshPortCheck(host: host, port: port) {
-            case .available:
-                appendLog("[\(logPrefix)] port released: \(host):\(port)")
+        let maximumAttempts = 40
+        for attempt in 0..<maximumAttempts {
+            let outcome = applyPostStopPortCheck(
+                freshPortCheck(host: host, port: port),
+                host: host,
+                port: port,
+                logPrefix: logPrefix,
+                announceBusy: attempt == 0
+            )
+
+            switch outcome {
+            case .released:
                 return true
+            case .failed:
+                return false
             case .busy:
                 break
-            case let .invalidInput(message):
-                appendLog("[\(logPrefix)] warning: port release check failed: \(message)")
-                return false
-            case let .failed(_, _, message):
-                appendLog("[\(logPrefix)] warning: port release check failed for \(host):\(port): \(message)")
-                return false
             }
 
+            guard attempt < maximumAttempts - 1 else {
+                break
+            }
+
+            let delayNanoseconds: UInt64 = attempt < 20 ? 100_000_000 : 250_000_000
             do {
-                try await Task.sleep(nanoseconds: 500_000_000)
+                try await Task.sleep(nanoseconds: delayNanoseconds)
             } catch {
                 appendLog("[\(logPrefix)] warning: port release wait cancelled.")
                 return false
             }
         }
 
-        switch freshPortCheck(host: host, port: port) {
+        return false
+    }
+
+    private func applyPostStopPortCheck(
+        _ result: PortCheckResult,
+        host: String,
+        port: Int,
+        logPrefix: String,
+        announceBusy: Bool
+    ) -> PortReleaseCheckOutcome {
+        switch result {
         case .available:
+            runtimeState = .stopped
             appendLog("[\(logPrefix)] port released: \(host):\(port)")
-            return true
+            return .released
         case .busy:
-            return false
+            runtimeState = .portBusy(host: host, port: port)
+            if announceBusy {
+                appendLog("[\(logPrefix)] port is still releasing: \(host):\(port)")
+            }
+            return .busy
         case let .invalidInput(message):
-            appendLog("[\(logPrefix)] warning: final port release check failed: \(message)")
-            return false
+            runtimeState = .portCheckFailed(host: host, port: port, message: message)
+            appendLog("[\(logPrefix)] warning: port release check failed: \(message)")
+            return .failed
         case let .failed(_, _, message):
-            appendLog("[\(logPrefix)] warning: final port release check failed for \(host):\(port): \(message)")
-            return false
+            runtimeState = .portCheckFailed(host: host, port: port, message: message)
+            appendLog("[\(logPrefix)] warning: port release check failed for \(host):\(port): \(message)")
+            return .failed
         }
     }
 

@@ -311,7 +311,7 @@ struct BenchmarkService {
         requiresJSON: Bool = false
     ) async -> BenchmarkCompletionMeasurement {
         let responseFormat = requiresJSON ? BenchmarkResponseFormat(type: "json_object") : nil
-        let measurement = await performChatCompletion(
+        let measurement = await performCompatibleChatCompletion(
             baseURL: baseURL,
             modelID: modelID,
             prompt: prompt,
@@ -321,7 +321,7 @@ struct BenchmarkService {
             responseFormat: responseFormat
         )
         if shouldRetryWithoutResponseFormat(measurement), responseFormat != nil {
-            let fallbackMeasurement = await performChatCompletion(
+            let fallbackMeasurement = await performCompatibleChatCompletion(
                 baseURL: baseURL,
                 modelID: modelID,
                 prompt: prompt,
@@ -333,7 +333,7 @@ struct BenchmarkService {
             guard shouldRetryWithoutThinkingControl(fallbackMeasurement) else {
                 return fallbackMeasurement
             }
-            return await performChatCompletion(
+            return await performCompatibleChatCompletion(
                 baseURL: baseURL,
                 modelID: modelID,
                 prompt: prompt,
@@ -346,7 +346,7 @@ struct BenchmarkService {
         guard shouldRetryWithoutThinkingControl(measurement) else {
             return measurement
         }
-        return await performChatCompletion(
+        return await performCompatibleChatCompletion(
             baseURL: baseURL,
             modelID: modelID,
             prompt: prompt,
@@ -357,7 +357,7 @@ struct BenchmarkService {
         )
     }
 
-    private func performChatCompletion(
+    private func performCompatibleChatCompletion(
         baseURL: String,
         modelID: String,
         prompt: String,
@@ -366,7 +366,45 @@ struct BenchmarkService {
         disablesThinking: Bool,
         responseFormat: BenchmarkResponseFormat?
     ) async -> BenchmarkCompletionMeasurement {
-        guard let url = chatCompletionsURL(from: baseURL) else {
+        let measurement = await performChatCompletion(
+            baseURL: baseURL,
+            modelID: modelID,
+            prompt: prompt,
+            maxTokens: maxTokens,
+            timeout: timeout,
+            disablesThinking: disablesThinking,
+            responseFormat: responseFormat,
+            includeUsage: true
+        )
+        guard OpenAICompatibleChatSupport.shouldRetryWithoutStreamOptions(
+            statusCode: measurement.httpStatusCode,
+            message: measurement.errorMessage
+        ) else {
+            return measurement
+        }
+        return await performChatCompletion(
+            baseURL: baseURL,
+            modelID: modelID,
+            prompt: prompt,
+            maxTokens: maxTokens,
+            timeout: timeout,
+            disablesThinking: disablesThinking,
+            responseFormat: responseFormat,
+            includeUsage: false
+        )
+    }
+
+    private func performChatCompletion(
+        baseURL: String,
+        modelID: String,
+        prompt: String,
+        maxTokens: Int,
+        timeout: TimeInterval,
+        disablesThinking: Bool,
+        responseFormat: BenchmarkResponseFormat?,
+        includeUsage: Bool
+    ) async -> BenchmarkCompletionMeasurement {
+        guard let url = OpenAICompatibleChatSupport.chatCompletionsURL(from: baseURL) else {
             return BenchmarkCompletionMeasurement.invalid(message: "Invalid /chat/completions URL.")
         }
 
@@ -385,7 +423,8 @@ struct BenchmarkService {
                 maxTokens: maxTokens,
                 temperature: 0,
                 chatTemplateKwargs: disablesThinking ? BenchmarkChatTemplateKwargs(enableThinking: false) : nil,
-                responseFormat: responseFormat
+                responseFormat: responseFormat,
+                streamOptions: includeUsage ? BenchmarkStreamOptions(includeUsage: true) : nil
             )
             request.httpBody = try JSONEncoder().encode(payload)
 
@@ -403,7 +442,7 @@ struct BenchmarkService {
                     finishReason: nil,
                     systemFingerprint: nil,
                     timedOut: false,
-                    errorMessage: "HTTP \(statusCode.map(String.init) ?? "-") from /chat/completions"
+                    errorMessage: OpenAICompatibleChatSupport.httpErrorMessage(statusCode: statusCode)
                 )
             }
 
@@ -412,6 +451,7 @@ struct BenchmarkService {
             var reasoningOutput = ""
             var finishReason: String?
             var systemFingerprint: String?
+            var reportedCompletionTokenCount: Int?
 
             for try await rawLine in bytes.lines {
                 if Task.isCancelled {
@@ -436,6 +476,9 @@ struct BenchmarkService {
                 if let fingerprint = chunk.systemFingerprint, !fingerprint.isEmpty {
                     systemFingerprint = fingerprint
                 }
+                if let completionTokens = chunk.usage?.completionTokens, completionTokens >= 0 {
+                    reportedCompletionTokenCount = completionTokens
+                }
 
                 if let errorMessage = chunk.error?.message, !errorMessage.isEmpty {
                     return BenchmarkCompletionMeasurement(
@@ -444,7 +487,10 @@ struct BenchmarkService {
                         totalLatencyMS: Date().timeIntervalSince(startedAt) * 1000,
                         outputText: output,
                         reasoningText: reasoningOutput,
-                        outputTokenCount: BenchmarkTokenEstimator.estimatedTokenCount(output),
+                        outputTokenCount: BenchmarkTokenCountResolver.outputTokenCount(
+                            reported: reportedCompletionTokenCount,
+                            output: output
+                        ),
                         outputTokensPerSecond: nil,
                         finishReason: finishReason,
                         systemFingerprint: systemFingerprint,
@@ -472,11 +518,15 @@ struct BenchmarkService {
                 }
             }
 
-            let totalLatencyMS = Date().timeIntervalSince(startedAt) * 1000
-            let outputTokenCount = BenchmarkTokenEstimator.estimatedTokenCount(output)
+            let completedAt = Date()
+            let totalLatencyMS = completedAt.timeIntervalSince(startedAt) * 1000
+            let outputTokenCount = BenchmarkTokenCountResolver.outputTokenCount(
+                reported: reportedCompletionTokenCount,
+                output: output
+            )
             let generationSeconds: Double
             if let firstContentAt {
-                generationSeconds = max(Date().timeIntervalSince(firstContentAt), 0.001)
+                generationSeconds = max(completedAt.timeIntervalSince(firstContentAt), 0.001)
             } else {
                 generationSeconds = max(totalLatencyMS / 1000, 0.001)
             }
@@ -522,23 +572,17 @@ struct BenchmarkService {
     }
 
     private func shouldRetryWithoutThinkingControl(_ measurement: BenchmarkCompletionMeasurement) -> Bool {
-        if measurement.httpStatusCode == 400 || measurement.httpStatusCode == 422 {
-            return true
-        }
-        let message = measurement.errorMessage?.lowercased() ?? ""
-        return message.contains("chat_template_kwargs")
-            || message.contains("chat template kwargs")
-            || message.contains("enable_thinking")
-            || message.contains("extra_forbidden")
+        OpenAICompatibleChatSupport.shouldRetryWithoutThinkingControl(
+            statusCode: measurement.httpStatusCode,
+            message: measurement.errorMessage
+        )
     }
 
     private func shouldRetryWithoutResponseFormat(_ measurement: BenchmarkCompletionMeasurement) -> Bool {
-        guard measurement.httpStatusCode == 400 || measurement.httpStatusCode == 422 else {
-            return false
-        }
-        let message = measurement.errorMessage?.lowercased() ?? ""
-        return message.contains("response_format")
-            || message.contains("response format")
+        OpenAICompatibleChatSupport.shouldRetryWithoutResponseFormat(
+            statusCode: measurement.httpStatusCode,
+            message: measurement.errorMessage
+        )
     }
 
     private func memorySnapshot(processIdentifier: Int32?) async -> Double? {
@@ -612,11 +656,6 @@ struct BenchmarkService {
         return false
     }
 
-    private func chatCompletionsURL(from baseURL: String) -> URL? {
-        let trimmed = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        return URL(string: "\(trimmed)/chat/completions")
-    }
-
     private func average(_ values: [Double]) -> Double? {
         guard !values.isEmpty else {
             return nil
@@ -687,99 +726,6 @@ private struct BenchmarkCompletionMeasurement: Equatable {
             timedOut: false,
             errorMessage: "Cancelled"
         )
-    }
-}
-
-struct BenchmarkChatMessage: Encodable {
-    let role: String
-    let content: String
-}
-
-struct BenchmarkChatTemplateKwargs: Encodable {
-    let enableThinking: Bool
-
-    enum CodingKeys: String, CodingKey {
-        case enableThinking = "enable_thinking"
-    }
-}
-
-struct BenchmarkResponseFormat: Encodable {
-    let type: String
-}
-
-struct BenchmarkChatCompletionRequest: Encodable {
-    let model: String
-    let messages: [BenchmarkChatMessage]
-    let stream: Bool
-    let maxTokens: Int
-    let temperature: Double
-    let chatTemplateKwargs: BenchmarkChatTemplateKwargs?
-    let responseFormat: BenchmarkResponseFormat?
-
-    init(
-        model: String,
-        messages: [BenchmarkChatMessage],
-        stream: Bool,
-        maxTokens: Int,
-        temperature: Double,
-        chatTemplateKwargs: BenchmarkChatTemplateKwargs?,
-        responseFormat: BenchmarkResponseFormat? = nil
-    ) {
-        self.model = model
-        self.messages = messages
-        self.stream = stream
-        self.maxTokens = maxTokens
-        self.temperature = temperature
-        self.chatTemplateKwargs = chatTemplateKwargs
-        self.responseFormat = responseFormat
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case model
-        case messages
-        case stream
-        case maxTokens = "max_tokens"
-        case temperature
-        case chatTemplateKwargs = "chat_template_kwargs"
-        case responseFormat = "response_format"
-    }
-}
-
-struct BenchmarkStreamingChatChunk: Decodable {
-    struct Choice: Decodable {
-        struct Delta: Decodable {
-            let content: String?
-            let reasoning: String?
-            let reasoningContent: String?
-
-            enum CodingKeys: String, CodingKey {
-                case content
-                case reasoning
-                case reasoningContent = "reasoning_content"
-            }
-        }
-
-        let delta: Delta?
-        let finishReason: String?
-
-        enum CodingKeys: String, CodingKey {
-            case delta
-            case finishReason = "finish_reason"
-        }
-    }
-
-    struct ErrorPayload: Decodable {
-        let message: String?
-    }
-
-    let choices: [Choice]?
-    let error: ErrorPayload?
-    let systemFingerprint: String?
-
-    enum CodingKeys: String, CodingKey {
-        case choices
-        case error
-        case systemFingerprint = "system_fingerprint"
     }
 }
 
