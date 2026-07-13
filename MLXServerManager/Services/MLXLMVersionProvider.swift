@@ -18,6 +18,10 @@ struct MLXLMVersionProvider {
         }.value
     }
 
+    func version(executablePath: String, backend: InferenceBackend) async -> String? {
+        await version(executablePath: executablePath)
+    }
+
     nonisolated static func normalizedVersionOutput(_ output: String) -> String? {
         let lines = output
             .components(separatedBy: .newlines)
@@ -32,6 +36,7 @@ struct MLXLMVersionProvider {
                 return false
             }
             return line.range(of: #"(?i)(mlx[-_ ]?lm|mlx_lm).*([0-9]+\.[0-9]+)"#, options: .regularExpression) != nil
+                || line.range(of: #"(?i)rapid[-_ ]?mlx.*([0-9]+\.[0-9]+)"#, options: .regularExpression) != nil
                 || line.range(of: #"^[0-9]+\.[0-9]+(\.[0-9]+)?"#, options: .regularExpression) != nil
         }
     }

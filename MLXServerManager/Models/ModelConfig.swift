@@ -11,13 +11,18 @@ struct ModelConfig: Codable, Identifiable, Hashable {
     var enableThinking: Bool
     var notes: String
     var advancedLaunchOptions: AdvancedLaunchOptions?
+    var backend: InferenceBackend? = nil
 
     var id: String {
         modelID
     }
 
+    var resolvedBackend: InferenceBackend {
+        backend ?? .mlxLM
+    }
+
     var contextWindow: String {
-        "Configured by mlx_lm.server"
+        "Configured by \(resolvedBackend.defaultExecutableName)"
     }
 
     static let defaults: [ModelConfig] = [
@@ -123,6 +128,7 @@ struct ModelProfileDraft: Equatable {
     var enableThinking: Bool
     var notes: String
     var advancedLaunchOptions: AdvancedLaunchOptions
+    var backend: InferenceBackend
 
     static let empty = ModelProfileDraft(
         originalModelID: "",
@@ -132,7 +138,8 @@ struct ModelProfileDraft: Equatable {
         serverPortText: "",
         enableThinking: false,
         notes: "",
-        advancedLaunchOptions: .empty
+        advancedLaunchOptions: .empty,
+        backend: .mlxLM
     )
 
     static func newProfile(defaultHost: String, defaultPort: Int) -> ModelProfileDraft {
@@ -144,7 +151,8 @@ struct ModelProfileDraft: Equatable {
             serverPortText: String(defaultPort),
             enableThinking: false,
             notes: "",
-            advancedLaunchOptions: .empty
+            advancedLaunchOptions: .empty,
+            backend: .mlxLM
         )
     }
 
@@ -157,6 +165,7 @@ struct ModelProfileDraft: Equatable {
         self.enableThinking = model.enableThinking
         self.notes = model.notes
         self.advancedLaunchOptions = model.advancedLaunchOptions ?? .empty
+        self.backend = model.resolvedBackend
     }
 
     private init(
@@ -167,7 +176,8 @@ struct ModelProfileDraft: Equatable {
         serverPortText: String,
         enableThinking: Bool,
         notes: String,
-        advancedLaunchOptions: AdvancedLaunchOptions
+        advancedLaunchOptions: AdvancedLaunchOptions,
+        backend: InferenceBackend
     ) {
         self.originalModelID = originalModelID
         self.displayName = displayName
@@ -177,5 +187,6 @@ struct ModelProfileDraft: Equatable {
         self.enableThinking = enableThinking
         self.notes = notes
         self.advancedLaunchOptions = advancedLaunchOptions
+        self.backend = backend
     }
 }

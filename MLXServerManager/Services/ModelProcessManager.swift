@@ -2,11 +2,30 @@ import Foundation
 
 struct ModelLaunchRequest: Equatable {
     let executablePath: String
+    let backend: InferenceBackend
     let modelID: String
     let host: String
     let port: Int
     let enableThinking: Bool
     let advancedLaunchOptions: AdvancedLaunchOptions?
+
+    init(
+        executablePath: String,
+        backend: InferenceBackend = .mlxLM,
+        modelID: String,
+        host: String,
+        port: Int,
+        enableThinking: Bool,
+        advancedLaunchOptions: AdvancedLaunchOptions?
+    ) {
+        self.executablePath = executablePath
+        self.backend = backend
+        self.modelID = modelID
+        self.host = host
+        self.port = port
+        self.enableThinking = enableThinking
+        self.advancedLaunchOptions = advancedLaunchOptions
+    }
 }
 
 struct ModelLaunchResult: Equatable {
@@ -30,20 +49,35 @@ enum ModelProcessManagerError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .executablePathMissing:
-            "mlx_lm.server executable path is not set."
+            "Server executable path is not set."
         case let .executableNotFound(path):
             "Executable does not exist: \(path)"
         case let .executableNotRunnable(path):
             "Executable is not runnable: \(path)"
         case let .alreadyRunning(processIdentifier):
-            "A managed mlx_lm.server process is already running with pid \(processIdentifier)."
+            "A managed server process is already running with pid \(processIdentifier)."
         case let .launchFailed(message):
             "Launch failed: \(message)"
         }
     }
 }
 
-final class ModelProcessManager {
+protocol ModelProcessManaging: AnyObject {
+    var managedProcessIdentifier: Int32? { get }
+
+    func start(
+        request: ModelLaunchRequest,
+        outputHandler: @escaping (String) -> Void,
+        terminationHandler: @escaping (Int32) -> Void
+    ) throws -> ModelLaunchResult
+
+    func stop(
+        gracefulTimeout: TimeInterval,
+        interruptTimeout: TimeInterval
+    ) async -> ModelStopResult
+}
+
+final class ModelProcessManager: ModelProcessManaging {
     private var process: Process?
     private var stdoutPipe: Pipe?
     private var stderrPipe: Pipe?
@@ -119,6 +153,15 @@ final class ModelProcessManager {
     }
 
     nonisolated static func launchArguments(for request: ModelLaunchRequest) -> [String] {
+        switch request.backend {
+        case .mlxLM:
+            mlxLMLaunchArguments(for: request)
+        case .rapidMLX:
+            rapidMLXLaunchArguments(for: request)
+        }
+    }
+
+    nonisolated private static func mlxLMLaunchArguments(for request: ModelLaunchRequest) -> [String] {
         var arguments = [
             "--model",
             request.modelID,
@@ -149,6 +192,45 @@ final class ModelProcessManager {
         appendValue(advancedOptions.promptCacheBytes, flag: "--prompt-cache-bytes", to: &arguments)
 
         if let rawExtraArgs = advancedOptions.rawExtraArgs,
+           let parsedArguments = try? ShellArgumentParser.parse(rawExtraArgs) {
+            arguments.append(contentsOf: parsedArguments)
+        }
+
+        return arguments
+    }
+
+    nonisolated private static func rapidMLXLaunchArguments(for request: ModelLaunchRequest) -> [String] {
+        var arguments = [
+            "serve",
+            request.modelID,
+            "--host",
+            request.host,
+            "--port",
+            String(request.port)
+        ]
+
+        if !request.enableThinking {
+            arguments.append("--no-thinking")
+        }
+
+        guard let options = request.advancedLaunchOptions?.normalized() else {
+            return arguments
+        }
+
+        appendValue(options.defaultTemperature, flag: "--default-temperature", to: &arguments)
+        appendValue(options.defaultTopP, flag: "--default-top-p", to: &arguments)
+        appendValue(options.defaultTopK, flag: "--default-top-k", to: &arguments)
+        appendValue(options.defaultMinP, flag: "--default-min-p", to: &arguments)
+        appendValue(options.defaultMaxTokens, flag: "--max-tokens", to: &arguments)
+        appendMultipleValues(options.allowedOrigins, flag: "--cors-origins", to: &arguments)
+        appendValue(options.logLevel?.uppercased(), flag: "--log-level", to: &arguments)
+        appendValue(options.decodeConcurrency, flag: "--max-num-seqs", to: &arguments)
+        appendValue(options.promptConcurrency, flag: "--max-concurrent-requests", to: &arguments)
+        appendValue(options.prefillStepSize, flag: "--prefill-step-size", to: &arguments)
+        appendValue(options.promptCacheSize, flag: "--prefix-cache-size", to: &arguments)
+        appendCacheMemoryMegabytes(options.promptCacheBytes, to: &arguments)
+
+        if let rawExtraArgs = options.rawExtraArgs,
            let parsedArguments = try? ShellArgumentParser.parse(rawExtraArgs) {
             arguments.append(contentsOf: parsedArguments)
         }
@@ -276,6 +358,35 @@ final class ModelProcessManager {
 
         arguments.append(flag)
         arguments.append(value)
+    }
+
+    nonisolated private static func appendMultipleValues(_ value: String?, flag: String, to arguments: inout [String]) {
+        guard let value else { return }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        let shellValues = (try? ShellArgumentParser.parse(trimmed)) ?? [trimmed]
+        let parsed = shellValues.flatMap { value in
+            value.split(separator: ",")
+                .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        }
+        guard !parsed.isEmpty else { return }
+
+        arguments.append(flag)
+        arguments.append(contentsOf: parsed)
+    }
+
+    nonisolated private static func appendCacheMemoryMegabytes(_ byteText: String?, to arguments: inout [String]) {
+        guard let byteText,
+              let bytes = Int64(byteText.trimmingCharacters(in: .whitespacesAndNewlines)),
+              bytes > 0 else {
+            return
+        }
+
+        let bytesPerMegabyte: Int64 = 1_048_576
+        let megabytes = max(1, (bytes + bytesPerMegabyte - 1) / bytesPerMegabyte)
+        appendValue(String(megabytes), flag: "--cache-memory-mb", to: &arguments)
     }
 
     nonisolated private static func shellEscaped(_ value: String) -> String {

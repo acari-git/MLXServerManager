@@ -152,10 +152,21 @@ final class AppViewModel: ObservableObject {
         }
     }
     @Published private(set) var runningModelID: ModelConfig.ID?
+    @Published private(set) var runningModelIDs: Set<ModelConfig.ID> = []
     @Published private(set) var managedServerStartedAt: Date?
-    @Published private(set) var runtimeState: ModelRuntimeState = .stopped
+    @Published private(set) var managedServerStartedAtByModelID: [ModelConfig.ID: Date] = [:]
+    @Published private(set) var runtimeState: ModelRuntimeState = .stopped {
+        didSet {
+            guard !isProjectingSelectedRuntime,
+                  let selectedModelID else { return }
+            runtimeStatesByModelID[selectedModelID] = runtimeState
+        }
+    }
+    @Published private(set) var runtimeStatesByModelID: [ModelConfig.ID: ModelRuntimeState] = [:]
     @Published private(set) var memoryUsageGB: Double?
+    @Published private(set) var memoryUsageByModelID: [ModelConfig.ID: Double] = [:]
     @Published private(set) var memoryBreakdown: MemoryBreakdownSnapshot?
+    @Published private(set) var memoryBreakdownByModelID: [ModelConfig.ID: MemoryBreakdownSnapshot] = [:]
     @Published private(set) var systemMemorySnapshot: SystemMemorySnapshot?
     @Published private(set) var memoryHistory: [MemoryHistorySample] = []
     @Published private(set) var cpuUsagePercent: Double?
@@ -221,6 +232,9 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var latestBenchmarkResult: BenchmarkResult?
     @Published private(set) var benchmarkHistory: [BenchmarkResult] = []
     @Published private(set) var benchmarkResultsByProfileID: [ModelConfig.ID: BenchmarkResult] = [:]
+    @Published private(set) var benchmarkSessionsByProfileID: [ModelConfig.ID: BenchmarkSessionResult] = [:]
+    @Published private(set) var benchmarkSampleIndex = 0
+    @Published private(set) var benchmarkSampleCount = 0
     @Published private(set) var isAgenticBenchmarkRunning = false
     @Published private(set) var latestAgenticBenchmarkResult: AgenticBenchmarkResult?
     @Published private(set) var agenticBenchmarkHistory: [AgenticBenchmarkResult] = []
@@ -238,7 +252,7 @@ final class AppViewModel: ObservableObject {
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
     private let readyChecker: ReadyChecker
-    private let processManager: ModelProcessManager
+    private let processRegistry: ModelProcessRegistry
     private let memoryMonitor: MemoryMonitor
     private let setupDiagnostics: SetupDiagnostics
     private let modelProfileExportService: ModelProfileExportService
@@ -252,7 +266,7 @@ final class AppViewModel: ObservableObject {
     private let benchmarkService: BenchmarkService
     private let agenticBenchmarkService: AgenticBenchmarkService
     private var logBuffer: LogBuffer
-    private var memoryMonitorTask: Task<Void, Never>?
+    private var memoryMonitorTasks: [ModelConfig.ID: Task<Void, Never>] = [:]
     private var systemUsageMonitorTask: Task<Void, Never>?
     private var autoUnloadTask: Task<Void, Never>?
     private var huggingFaceSearchTask: Task<Void, Never>?
@@ -276,6 +290,7 @@ final class AppViewModel: ObservableObject {
     private var logCategoryFilterOptionsCache: [String]
     private var visibleLogEntriesCache: [LogEntry]
     private var latestImportantLogEntryCache: LogEntry?
+    private var isProjectingSelectedRuntime = false
 
     private static let initialLogLines = [
         "[info] MLX Server Manager UI loaded.",
@@ -355,7 +370,7 @@ final class AppViewModel: ObservableObject {
         self.settingsStore = settingsStore ?? SettingsStore()
         self.portChecker = portChecker ?? PortChecker()
         self.readyChecker = readyChecker ?? ReadyChecker()
-        self.processManager = processManager ?? ModelProcessManager()
+        self.processRegistry = ModelProcessRegistry(initialManager: processManager)
         self.memoryMonitor = memoryMonitor ?? MemoryMonitor()
         self.setupDiagnostics = setupDiagnostics ?? SetupDiagnostics(
             settingsStore: self.settingsStore,
@@ -518,7 +533,14 @@ final class AppViewModel: ObservableObject {
 
     func startRequested(for model: ModelConfig) {
         selectedModelID = model.id
-        startRequested()
+        Task {
+            _ = await startManagedServer(model: model, logPrefix: "start")
+        }
+    }
+
+    func stopRequested(for model: ModelConfig) {
+        selectedModelID = model.id
+        requestStop(for: model, logPrefix: "stop")
     }
 
     func restartRequested(for model: ModelConfig) {
@@ -683,7 +705,7 @@ final class AppViewModel: ObservableObject {
     }
 
     private func blockingStartIssue(for model: ModelConfig) -> String? {
-        let executablePath = settings.mlxServerExecutablePath.trimmingCharacters(in: .whitespacesAndNewlines)
+        let executablePath = executablePath(for: model).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !executablePath.isEmpty,
               FileManager.default.isExecutableFile(atPath: executablePath) else {
             return executableSafetyText
@@ -711,7 +733,7 @@ final class AppViewModel: ObservableObject {
     }
 
     var integratedActionStateSummary: String {
-        if let selectedModel, selectedModel.id == runningModelID {
+        if let selectedModel, runningModelIDs.contains(selectedModel.id) {
             return Self.localizedText(language: settings.uiLanguage, english: "Loaded. Stop or restart is available.", japanese: "ロード済みです。停止または再起動できます。")
         }
 
@@ -803,12 +825,19 @@ final class AppViewModel: ObservableObject {
     }
 
     private var executableSafetyText: String {
-        let executablePath = settings.mlxServerExecutablePath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let selectedModel else {
+            return Self.localizedText(language: settings.uiLanguage, english: "No model selected", japanese: "モデル未選択")
+        }
+        let executablePath = executablePath(for: selectedModel).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !executablePath.isEmpty else { return Self.localizedText(language: settings.uiLanguage, english: "Missing executable path", japanese: "実行ファイルパスが未設定") }
         if FileManager.default.isExecutableFile(atPath: executablePath) {
             return settings.uiLanguage.resolved == .english ? "Executable OK" : "OK"
         }
         return "Missing or not executable"
+    }
+
+    private func executablePath(for model: ModelConfig) -> String {
+        settings.executablePath(for: model.resolvedBackend)
     }
 
     private func modelIdentitySafetyText(for model: ModelConfig) -> String {
@@ -844,7 +873,7 @@ final class AppViewModel: ObservableObject {
     }
 
     private func portSafetyText(for model: ModelConfig) -> String {
-        if model.id == runningModelID {
+        if runningModelIDs.contains(model.id) {
             return Self.localizedText(language: settings.uiLanguage, english: "OK: in use by loaded model", japanese: "OK: ロード済みモデルが使用中")
         }
         return portSafetyText(host: model.host, port: model.serverPort)
@@ -877,7 +906,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func runtimeEditingSafetyText(for model: ModelConfig) -> String {
-        guard isManagedProcessRunning, model.id == runningModelID else { return Self.localizedText(language: settings.uiLanguage, english: "Edit safe", japanese: "Ready") }
+        guard runningModelIDs.contains(model.id) else { return Self.localizedText(language: settings.uiLanguage, english: "Edit safe", japanese: "Ready") }
         return Self.localizedText(language: settings.uiLanguage, english: "Stop before runtime-critical edits", japanese: "ランタイム重要項目の編集前に停止してください")
     }
 
@@ -909,6 +938,59 @@ final class AppViewModel: ObservableObject {
             return latestBenchmarkResult
         }
         return benchmarkResultsByProfileID[model.id]
+    }
+
+    func benchmarkSession(for model: ModelConfig) -> BenchmarkSessionResult? {
+        benchmarkSessionsByProfileID[model.id]
+    }
+
+    var benchmarkComparisonRows: [BenchmarkComparisonRow] {
+        BenchmarkSessionAnalyzer.comparisonRows(
+            models: models,
+            sessionsByProfileID: benchmarkSessionsByProfileID,
+            currentChipName: systemProfilerHardwareInfo["Chip"]
+        )
+    }
+
+    func rankedBenchmarkRows(for useCase: BenchmarkUseCase) -> [BenchmarkComparisonRow] {
+        BenchmarkSessionAnalyzer.ranked(rows: benchmarkComparisonRows, for: useCase)
+    }
+
+    func setBenchmarkPreset(_ preset: BenchmarkPreset) {
+        guard settings.benchmarkPreset != preset else { return }
+        settings.benchmarkPreset = preset
+        do {
+            try settingsStore.save(settings: settings, models: models)
+            appendLog("[benchmark] preset changed to \(preset.rawValue).")
+        } catch {
+            appendLog("[benchmark] failed to save preset: \(error.localizedDescription)")
+        }
+    }
+
+    var benchmarkProgressText: String {
+        guard isSpeedTestRunning, benchmarkSampleCount > 0 else { return "" }
+        return Self.localizedText(
+            language: settings.uiLanguage,
+            english: "Sample \(benchmarkSampleIndex) of \(benchmarkSampleCount)",
+            japanese: "\(benchmarkSampleIndex)/\(benchmarkSampleCount)回目"
+        )
+    }
+
+    private static func benchmarkSessionSummary(
+        _ session: BenchmarkSessionResult,
+        language: AppLanguage
+    ) -> String {
+        let aggregate = session.aggregate
+        let preset = session.preset.localizedTitle(language: language)
+        let speed = aggregate.medianOutputTokensPerSecond.map { String(format: "%.1f tok/s", $0) } ?? "-"
+        let ttft = aggregate.medianTTFTMS.map { String(format: "%.0f ms", $0) } ?? "-"
+        let stability = aggregate.stabilityPercent.map { "\($0)%" }
+            ?? aggregate.stabilityLevel.localizedTitle(language: language)
+        return localizedText(
+            language: language,
+            english: "\(preset): \(aggregate.successfulSampleCount)/\(aggregate.sampleCount) samples succeeded — Median speed \(speed), TTFT \(ttft), stability \(stability).",
+            japanese: "\(preset): \(aggregate.sampleCount)回中\(aggregate.successfulSampleCount)回成功 — 中央値 速度 \(speed)、TTFT \(ttft)、安定度 \(stability)。"
+        )
     }
 
     func agenticBenchmarkResult(for model: ModelConfig) -> AgenticBenchmarkResult? {
@@ -948,7 +1030,7 @@ final class AppViewModel: ObservableObject {
             return Self.localizedText(language: settings.uiLanguage, english: "Select a profile to preview the launch command.", japanese: "起動コマンドをプレビューするにはプロファイルを選択してください。")
         }
         return LaunchCommandBuilder.command(
-            executablePath: settings.mlxServerExecutablePath,
+            executablePath: executablePath(for: selectedModel),
             model: selectedModel
         )
     }
@@ -1085,7 +1167,7 @@ final class AppViewModel: ObservableObject {
             return []
         case .executableMissing, .executableNotExecutable:
             return [
-                RecoveryAction(kind: .openSettings, title: "Open Settings", detail: "Set mlx_lm.server executable path.", isPrimary: true),
+                RecoveryAction(kind: .openSettings, title: "Open Settings", detail: "Set the selected backend executable path.", isPrimary: true),
                 RecoveryAction(kind: .runDiagnostics, title: "Run Diagnostics", detail: "Check setup readiness.", isPrimary: false)
             ]
         case .modelPathMissing:
@@ -1153,13 +1235,17 @@ final class AppViewModel: ObservableObject {
     }
 
     var benchmarkTroubleshootingCopyText: String {
-        [
+        let runningModels = models
+            .filter { runningModelIDs.contains($0.id) }
+            .map { "\($0.displayName) @ \($0.host):\($0.serverPort)" }
+            .joined(separator: ", ")
+        return [
             "Benchmark Troubleshooting",
             "Runtime: \(runtimeState.title)",
             "Target: \(connectionTargetSummary.targetType)",
             "Base URL: \(baseURL)",
             "Selected model: \(selectedModelIdentifier)",
-            "Running model: \(runningModelID ?? "Not running")",
+            "Running models: \(runningModels.isEmpty ? "Not running" : runningModels)",
             "Restart required: \(restartRequired ? "Yes" : "No")",
             "Latest benchmark: \(latestBenchmarkResult?.summary ?? "Not run")",
             "Guidance: \(benchmarkFailureGuidance ?? "No failure guidance")"
@@ -1185,10 +1271,7 @@ final class AppViewModel: ObservableObject {
     }
 
     var runtimeSelectionWarning: String? {
-        guard let runningModelID, let selectedModelID, runningModelID != selectedModelID else {
-            return nil
-        }
-        return Self.localizedText(language: settings.uiLanguage, english: "Selected model differs from the running model. Stop or restart before expecting runtime changes.", japanese: "選択モデルが実行中モデルと異なります。ランタイム変更を反映するには停止または再起動してください。")
+        nil
     }
 
     var huggingFaceDownloadQueueSummary: String {
@@ -1250,7 +1333,7 @@ final class AppViewModel: ObservableObject {
             readinessSummary = "Ready via /v1/models"
             isActiveTarget = true
         default:
-            if isManagedProcessRunning {
+            if isSelectedModelManagedProcessRunning {
                 targetType = "Managed Server"
                 ownershipNote = "Managed by MLX Server Manager"
                 readinessSummary = managedReadinessSummary
@@ -1276,9 +1359,9 @@ final class AppViewModel: ObservableObject {
     }
 
     var onboardingGuidance: OnboardingGuidance {
-        let executablePathMissing = settings.mlxServerExecutablePath
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .isEmpty
+        let executablePathMissing = selectedModel.map {
+            executablePath(for: $0).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        } ?? true
         let modelIDMissing = selectedModel?.modelID
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .isEmpty ?? true
@@ -1313,7 +1396,7 @@ final class AppViewModel: ObservableObject {
                 ]
             )
         default:
-            if isManagedProcessRunning {
+            if isSelectedModelManagedProcessRunning {
                 return OnboardingGuidance(
                     title: "Managed Server Running",
                     tone: .ready,
@@ -1334,7 +1417,9 @@ final class AppViewModel: ObservableObject {
                 var hints: [String] = []
 
                 if executablePathMissing {
-                    messages.append("Set the mlx_lm.server executable path to start a managed server.")
+                    let backendName = selectedModel?.resolvedBackend.localizedTitle(language: settings.uiLanguage)
+                        ?? InferenceBackend.mlxLM.localizedTitle(language: settings.uiLanguage)
+                    messages.append("Set the \(backendName) executable path to start a managed server.")
                     hints.append("Set executable path")
                 }
 
@@ -1379,21 +1464,24 @@ final class AppViewModel: ObservableObject {
     }
 
     var runningModelText: String {
-        guard let runningModelID else {
+        guard !runningModelIDs.isEmpty else {
             return Self.localizedText(language: settings.uiLanguage, english: "Running Model: Not running", japanese: "実行中モデル: 未実行")
         }
 
-        return Self.localizedText(language: settings.uiLanguage, english: "Running Model: \(runningModelID)", japanese: "実行中モデル: \(runningModelID)")
+        if runningModelIDs.count > 1 {
+            return Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Running Models: \(runningModelIDs.count)",
+                japanese: "実行中モデル: \(runningModelIDs.count)件"
+            )
+        }
+
+        let modelID = runningModelIDs.first ?? "-"
+        return Self.localizedText(language: settings.uiLanguage, english: "Running Model: \(modelID)", japanese: "実行中モデル: \(modelID)")
     }
 
     var restartRequired: Bool {
-        guard isManagedProcessRunning,
-              let runningModelID,
-              let selectedModelID = selectedModel?.id else {
-            return false
-        }
-
-        return selectedModelID != runningModelID
+        false
     }
 
     var apiKeyPlaceholder: String {
@@ -1486,9 +1574,9 @@ final class AppViewModel: ObservableObject {
 
     var memoryBreakdownAccuracyText: String {
         if settings.uiLanguage.resolved == .english {
-            return "mlx-lm is managed process RSS; other/available memory is vm_stat-based"
+            return "Managed server is process RSS; other/available memory is vm_stat-based"
         }
-        return "mlx-lmは管理プロセスRSS、その他/空き容量はvm_statベース"
+        return "管理サーバーはプロセスRSS、その他/空き容量はvm_statベース"
     }
 
     var memoryMLXProcessFraction: Double {
@@ -1518,12 +1606,19 @@ final class AppViewModel: ObservableObject {
     }
 
     var integratedUptimeText: String {
-        guard let managedServerStartedAt,
-              runningModelID != nil else {
-            return "-"
-        }
+        guard let modelID = selectedModelID ?? runningModelID else { return "-" }
+        return integratedUptimeText(forModelID: modelID)
+    }
 
-        let elapsed = max(Int(Date().timeIntervalSince(managedServerStartedAt)), 0)
+    func integratedUptimeText(for model: ModelConfig) -> String {
+        integratedUptimeText(forModelID: model.id)
+    }
+
+    private func integratedUptimeText(forModelID modelID: ModelConfig.ID) -> String {
+        guard runningModelIDs.contains(modelID),
+              let startedAt = managedServerStartedAtByModelID[modelID] else { return "-" }
+
+        let elapsed = max(Int(Date().timeIntervalSince(startedAt)), 0)
         let hours = elapsed / 3600
         let minutes = (elapsed % 3600) / 60
         let seconds = elapsed % 60
@@ -1538,9 +1633,10 @@ final class AppViewModel: ObservableObject {
     }
 
     func interactiveStatusText(for model: ModelConfig, isHovered: Bool, isPortBusy knownPortBusy: Bool? = nil) -> String {
+        let modelRuntimeState = runtimeState(for: model)
         if settings.uiLanguage.resolved == .english {
-            if model.id == runningModelID {
-                switch runtimeState {
+            if runningModelIDs.contains(model.id) {
+                switch modelRuntimeState {
                 case .starting, .loading, .checkingReady:
                     return "Loading"
                 case .stopping:
@@ -1554,8 +1650,8 @@ final class AppViewModel: ObservableObject {
             }
             return isHovered ? "Load" : "Ready"
         }
-        if model.id == runningModelID {
-            switch runtimeState {
+        if runningModelIDs.contains(model.id) {
+            switch modelRuntimeState {
             case .starting, .loading, .checkingReady:
                 return "ロード中"
             case .stopping:
@@ -1572,7 +1668,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func isModelPortBusy(for model: ModelConfig) -> Bool {
-        guard model.id != runningModelID else { return false }
+        guard !runningModelIDs.contains(model.id) else { return false }
         if case .busy = cachedPortCheck(host: model.host, port: model.serverPort) {
             return true
         }
@@ -1580,12 +1676,24 @@ final class AppViewModel: ObservableObject {
     }
 
     func isModelLoaded(_ model: ModelConfig) -> Bool {
-        model.id == runningModelID && !isModelTransitioning(model)
+        runningModelIDs.contains(model.id) && !isModelTransitioning(model)
+    }
+
+    func isModelRunning(_ model: ModelConfig) -> Bool {
+        runningModelIDs.contains(model.id)
+    }
+
+    func canEditProfile(_ model: ModelConfig) -> Bool {
+        !isModelRunning(model)
+    }
+
+    func canDeleteProfile(_ model: ModelConfig) -> Bool {
+        models.count > 1 && !isModelRunning(model)
     }
 
     func isModelTransitioning(_ model: ModelConfig) -> Bool {
-        guard model.id == runningModelID else { return false }
-        switch runtimeState {
+        guard runningModelIDs.contains(model.id) || runtimeStatesByModelID[model.id] != nil else { return false }
+        switch runtimeState(for: model) {
         case .starting, .loading, .checkingReady, .stopping:
             return true
         default:
@@ -1594,16 +1702,16 @@ final class AppViewModel: ObservableObject {
     }
 
     func canUseStatusAction(for model: ModelConfig) -> Bool {
-        if model.id == runningModelID {
-            return canStopManagedServer
+        if runningModelIDs.contains(model.id) {
+            return processRegistry.processIdentifier(for: model.id) != nil
         }
 
         return canStartModel(model)
     }
 
     func statusActionRequested(for model: ModelConfig) {
-        if model.id == runningModelID {
-            stopRequested()
+        if runningModelIDs.contains(model.id) {
+            stopRequested(for: model)
         } else {
             startRequested(for: model)
         }
@@ -1617,9 +1725,29 @@ final class AppViewModel: ObservableObject {
         return Self.formatMemoryGigabytes(gigabytes)
     }
 
+    var profileEditorKVCacheEnvironment: KVCacheEnvironment {
+        let model = models.first { $0.id == profileEditorDraft.originalModelID }
+        return kvCacheEnvironment(for: model)
+    }
+
+    var addProfileKVCacheEnvironment: KVCacheEnvironment {
+        kvCacheEnvironment(for: nil)
+    }
+
+    private func kvCacheEnvironment(for model: ModelConfig?) -> KVCacheEnvironment {
+        let memory = activeSystemMemorySnapshot
+        return KVCacheEnvironment(
+            totalMemoryGigabytes: memory?.totalGigabytes
+                ?? Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824,
+            availableMemoryGigabytes: memory?.availableGigabytes,
+            modelStorageGigabytes: model.flatMap(modelSizeGigabytes(for:)),
+            isModelLoaded: model.map { runningModelIDs.contains($0.id) } ?? false
+        )
+    }
+
     func integratedMemoryText(for model: ModelConfig) -> String {
-        guard model.id == runningModelID,
-              let memoryUsageGB else {
+        guard runningModelIDs.contains(model.id),
+              let memoryUsageGB = memoryUsageByModelID[model.id] else {
             return "-"
         }
 
@@ -1635,7 +1763,7 @@ final class AppViewModel: ObservableObject {
         if isTransitioning {
             return 0
         }
-        if model.id == runningModelID {
+        if runningModelIDs.contains(model.id) {
             return 1
         }
         if isModelPortBusy(for: model) {
@@ -1741,7 +1869,7 @@ final class AppViewModel: ObservableObject {
     }
 
     private func memoryValueForSort(_ model: ModelConfig) -> Double {
-        model.id == runningModelID ? (memoryUsageGB ?? -1) : -1
+        memoryUsageByModelID[model.id] ?? -1
     }
 
     private func autoUnloadSortValue(_ model: ModelConfig) -> Int {
@@ -1969,7 +2097,17 @@ final class AppViewModel: ObservableObject {
     }
 
     var isManagedProcessRunning: Bool {
-        processManager.managedProcessIdentifier != nil
+        processRegistry.isAnyProcessRunning
+    }
+
+    var isSelectedModelManagedProcessRunning: Bool {
+        selectedModelID.map { processRegistry.isRunning($0) } ?? false
+    }
+
+    var isProfileEditorRuntimeLocked: Bool {
+        let originalModelID = profileEditorDraft.originalModelID
+        guard !originalModelID.isEmpty else { return false }
+        return processRegistry.isRunning(originalModelID)
     }
 
     var isExternalServerDetected: Bool {
@@ -1981,11 +2119,11 @@ final class AppViewModel: ObservableObject {
     }
 
     var canStopManagedServer: Bool {
-        processManager.managedProcessIdentifier != nil
+        isSelectedModelManagedProcessRunning
     }
 
     var canRestartManagedServer: Bool {
-        processManager.managedProcessIdentifier != nil && !runtimeState.isExternalServerContext
+        isSelectedModelManagedProcessRunning && !runtimeState.isExternalServerContext
     }
 
     var canAdoptExternalServer: Bool {
@@ -1996,21 +2134,99 @@ final class AppViewModel: ObservableObject {
         runtimeState.isAdoptedExternalServer
     }
 
-    func startRequested() {
-        Task {
-            _ = await startManagedServer(logPrefix: "start")
+    func runtimeState(for model: ModelConfig) -> ModelRuntimeState {
+        runtimeStatesByModelID[model.id] ?? .stopped
+    }
+
+    private func setRuntimeState(_ state: ModelRuntimeState, for modelID: ModelConfig.ID) {
+        runtimeStatesByModelID[modelID] = state
+        if selectedModelID == modelID {
+            isProjectingSelectedRuntime = true
+            runtimeState = state
+            isProjectingSelectedRuntime = false
         }
     }
 
+    private func setRuntimeState(_ state: ModelRuntimeState, forOptionalModelID modelID: ModelConfig.ID?) {
+        if let modelID {
+            setRuntimeState(state, for: modelID)
+        } else {
+            runtimeState = state
+        }
+    }
+
+    private func projectSelectedRuntimeState() {
+        isProjectingSelectedRuntime = true
+        if let selectedModelID {
+            runtimeState = runtimeStatesByModelID[selectedModelID] ?? .stopped
+        } else {
+            runtimeState = .stopped
+        }
+        isProjectingSelectedRuntime = false
+        refreshRunningProjection()
+        refreshAggregateMemoryProjection()
+    }
+
+    private func refreshRunningProjection() {
+        runningModelIDs = processRegistry.runningProfileIDs
+        if let selectedModelID, runningModelIDs.contains(selectedModelID) {
+            runningModelID = selectedModelID
+        } else {
+            runningModelID = models.first(where: { runningModelIDs.contains($0.id) })?.id
+        }
+        managedServerStartedAt = runningModelID.flatMap { managedServerStartedAtByModelID[$0] }
+    }
+
+    private func refreshAggregateMemoryProjection() {
+        memoryUsageGB = memoryUsageByModelID.isEmpty
+            ? nil
+            : memoryUsageByModelID.values.reduce(0, +)
+
+        guard !memoryBreakdownByModelID.isEmpty else {
+            memoryBreakdown = nil
+            return
+        }
+
+        let snapshots = Array(memoryBreakdownByModelID.values)
+        let latestSnapshot = snapshots.max(by: { $0.updatedAt < $1.updatedAt })
+        let rssKilobytes = snapshots.reduce(Int64(0)) { $0 + $1.rssKilobytes }
+        let modelEstimates = snapshots.compactMap(\.modelEstimateGigabytes)
+        memoryBreakdown = latestSnapshot.map { latest in
+            MemoryBreakdownSnapshot(
+                processIdentifier: 0,
+                rssKilobytes: rssKilobytes,
+                system: latest.system,
+                modelEstimateGigabytes: modelEstimates.count == snapshots.count
+                    ? modelEstimates.reduce(0, +)
+                    : nil,
+                modelEstimateSource: modelEstimates.count == snapshots.count
+                    ? "\(snapshots.count) managed model(s)"
+                    : nil,
+                updatedAt: latest.updatedAt
+            )
+        }
+    }
+
+    func startRequested() {
+        guard let selectedModel else {
+            let message = "No model is selected."
+            runtimeState = .error(message: message)
+            appendLog("[start] failed: \(message)")
+            return
+        }
+        startRequested(for: selectedModel)
+    }
+
     func stopRequested() {
-        let endpoint = endpointForCurrentRuntimeState()
-        guard let processIdentifier = processManager.managedProcessIdentifier else {
-            clearRunningModel(logPrefix: "stop")
+        guard let model = selectedModel.flatMap({ runningModelIDs.contains($0.id) ? $0 : nil })
+            ?? models.first(where: { runningModelIDs.contains($0.id) }) else {
+            let endpoint = endpointForCurrentRuntimeState()
             if runtimeState.isExternalServerContext {
                 appendLog("[stop] managed process is not running. External servers are not stopped by this app.")
             } else {
                 _ = applyPostStopPortCheck(
                     freshPortCheck(host: endpoint.host, port: endpoint.port),
+                    modelID: selectedModelID,
                     host: endpoint.host,
                     port: endpoint.port,
                     logPrefix: "stop",
@@ -2021,12 +2237,28 @@ final class AppViewModel: ObservableObject {
             return
         }
 
-        runtimeState = .stopping(processIdentifier: processIdentifier)
-        appendLog("[stop] requested for managed pid \(processIdentifier)")
+        requestStop(for: model, logPrefix: "stop")
+    }
+
+    private func requestStop(for model: ModelConfig, logPrefix: String) {
+        guard let processIdentifier = processRegistry.processIdentifier(for: model.id) else {
+            clearRunningModel(modelID: model.id, logPrefix: logPrefix)
+            appendLog("[\(logPrefix)] managed process is not running for \(model.displayName).")
+            return
+        }
+
+        setRuntimeState(.stopping(processIdentifier: processIdentifier), for: model.id)
+        appendLog("[\(logPrefix)] requested for managed pid \(processIdentifier) (\(model.displayName))")
 
         Task {
-            let result = await processManager.stop()
-            _ = await handleStopResult(result, host: endpoint.host, port: endpoint.port)
+            let result = await processRegistry.stop(profileID: model.id)
+            _ = await handleStopResult(
+                result,
+                modelID: model.id,
+                host: model.host,
+                port: model.serverPort,
+                logPrefix: logPrefix
+            )
         }
     }
 
@@ -2043,19 +2275,19 @@ final class AppViewModel: ObservableObject {
             return
         }
 
-        let endpoint = endpointForCurrentRuntimeState()
         appendLog("[restart] requested for \(selectedModel.modelID) at \(selectedModel.host):\(selectedModel.serverPort)")
 
         Task {
-            if let processIdentifier = processManager.managedProcessIdentifier {
-                runtimeState = .stopping(processIdentifier: processIdentifier)
+            if let processIdentifier = processRegistry.processIdentifier(for: selectedModel.id) {
+                setRuntimeState(.stopping(processIdentifier: processIdentifier), for: selectedModel.id)
                 appendLog("[restart] stopping managed pid \(processIdentifier)")
 
-                let stopResult = await processManager.stop()
+                let stopResult = await processRegistry.stop(profileID: selectedModel.id)
                 let didStop = await handleStopResult(
                     stopResult,
-                    host: endpoint.host,
-                    port: endpoint.port,
+                    modelID: selectedModel.id,
+                    host: selectedModel.host,
+                    port: selectedModel.serverPort,
                     logPrefix: "restart"
                 )
 
@@ -2067,7 +2299,7 @@ final class AppViewModel: ObservableObject {
                 appendLog("[restart] managed process is not running. Starting a new managed server.")
             }
 
-            let didStart = await startManagedServer(logPrefix: "restart")
+            let didStart = await startManagedServer(model: selectedModel, logPrefix: "restart")
             if didStart {
                 appendLog("[restart] completed.")
             }
@@ -2110,44 +2342,89 @@ final class AppViewModel: ObservableObject {
         let port = selectedModel?.serverPort ?? settings.defaultPort
         let profileID = selectedModel?.id ?? selectedModelIdentifier
         let selectedProfileName = selectedModel?.displayName ?? selectedModelIdentifier
-        let runningProfileID = runningModelID
+        let runningProfileID = selectedModel.flatMap { model in
+            runningModelIDs.contains(model.id) ? model.id : nil
+        }
         let modelID = selectedModelIdentifier
         let targetBaseURL = baseURL
-        let managedProcessID = processManager.managedProcessIdentifier
+        let managedProcessID = selectedModel.flatMap { processRegistry.processIdentifier(for: $0.id) }
         let chipName = systemProfilerHardwareInfo["Chip"] ?? "Apple Silicon"
         let memoryText = systemProfilerHardwareInfo["Memory"] ?? Self.formatMemoryGigabytes(Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824)
         let service = benchmarkService
+        let preset = settings.benchmarkPreset
         isSpeedTestRunning = true
-        latestSpeedTestMessage = Self.localizedText(language: settings.uiLanguage, english: "Running Benchmark v1...", japanese: "Benchmark v1 を実行中...")
+        benchmarkSampleIndex = 0
+        benchmarkSampleCount = preset.sampleCount
+        latestSpeedTestMessage = Self.localizedText(
+            language: settings.uiLanguage,
+            english: "Running \(preset.localizedTitle(language: .english)) Benchmark...",
+            japanese: "\(preset.localizedTitle(language: .japanese))ベンチマークを実行中..."
+        )
         latestSpeedTestDurationMS = nil
-        appendRuntimeEvent(category: "Benchmark", message: "Benchmark v1 started for \(host):\(port)")
-        appendLog("[benchmark] Benchmark v1 started: \(targetBaseURL)")
+        appendRuntimeEvent(category: "Benchmark", message: "\(preset.rawValue) benchmark started for \(host):\(port)")
+        appendLog("[benchmark] \(preset.rawValue) benchmark started: \(targetBaseURL), samples=\(preset.sampleCount)")
 
         Task {
             let startedAt = Date()
-            let configuration = BenchmarkRunConfiguration(
-                host: host,
-                port: port,
-                baseURL: targetBaseURL,
+            var samples: [BenchmarkResult] = []
+            for index in 1...preset.sampleCount {
+                guard !Task.isCancelled else { break }
+                benchmarkSampleIndex = index
+                let configuration = BenchmarkRunConfiguration(
+                    host: host,
+                    port: port,
+                    baseURL: targetBaseURL,
+                    profileID: profileID,
+                    modelID: modelID,
+                    selectedProfileName: selectedProfileName,
+                    runningProfileID: runningProfileID,
+                    managedProcessID: managedProcessID,
+                    chipName: chipName,
+                    memoryText: memoryText,
+                    backend: selectedModel?.resolvedBackend ?? .mlxLM,
+                    serverExecutablePath: selectedModel.map(executablePath(for:)) ?? settings.mlxServerExecutablePath,
+                    includesAgentProbes: preset.includesAgentProbes
+                )
+                let result = await service.run(configuration: configuration)
+                samples.append(result)
+                benchmarkHistory.insert(result, at: 0)
+                appendLog("[benchmark] sample \(index)/\(preset.sampleCount) \(result.phase.rawValue.lowercased()): \(result.message)")
+            }
+
+            guard !samples.isEmpty else {
+                latestSpeedTestMessage = Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "Benchmark was cancelled before a sample completed.",
+                    japanese: "測定が完了する前にベンチマークがキャンセルされました。"
+                )
+                benchmarkSampleIndex = 0
+                benchmarkSampleCount = 0
+                isSpeedTestRunning = false
+                return
+            }
+
+            let session = BenchmarkSessionResult(
                 profileID: profileID,
                 modelID: modelID,
                 selectedProfileName: selectedProfileName,
-                runningProfileID: runningProfileID,
-                managedProcessID: managedProcessID,
-                chipName: chipName,
-                memoryText: memoryText,
-                mlxServerExecutablePath: settings.mlxServerExecutablePath
+                preset: preset,
+                samples: samples
             )
-            let benchmarkResult = await service.run(configuration: configuration)
+            let benchmarkResult = session.representativeResult ?? samples[0]
             let elapsedMS = Date().timeIntervalSince(startedAt) * 1000
             latestSpeedTestDurationMS = elapsedMS
-            latestSpeedTestMessage = benchmarkResult.summary
+            latestSpeedTestMessage = Self.benchmarkSessionSummary(
+                session,
+                language: settings.uiLanguage
+            )
             latestBenchmarkResult = benchmarkResult
-            benchmarkHistory.insert(benchmarkResult, at: 0)
             benchmarkResultsByProfileID[benchmarkResult.profileID] = benchmarkResult
+            benchmarkSessionsByProfileID[benchmarkResult.profileID] = session
             savePersistedBenchmarkResults()
-            appendRuntimeEvent(category: "Benchmark", message: benchmarkResult.summary)
-            appendLog("[benchmark] Benchmark v1 \(benchmarkResult.phase.rawValue.lowercased()) in \(Int(elapsedMS)) ms: \(benchmarkResult.message)")
+            appendRuntimeEvent(category: "Benchmark", message: latestSpeedTestMessage)
+            appendLog("[benchmark] \(preset.rawValue) benchmark completed in \(Int(elapsedMS)) ms: \(latestSpeedTestMessage)")
+            benchmarkSampleIndex = 0
+            benchmarkSampleCount = 0
             isSpeedTestRunning = false
         }
     }
@@ -3074,7 +3351,7 @@ final class AppViewModel: ObservableObject {
             let results = await setupDiagnostics.run(
                 settings: settings,
                 selectedModel: selectedModel,
-                managedProcessIdentifier: processManager.managedProcessIdentifier
+                managedProcessIdentifier: selectedModel.flatMap { processRegistry.processIdentifier(for: $0.id) }
             )
 
             diagnosticsResults = results
@@ -3227,6 +3504,17 @@ final class AppViewModel: ObservableObject {
             existingModels: models
         )
 
+        if let runningReplacement = importResult.replacedProfiles.first(where: { runningModelIDs.contains($0.previousModelID) }) {
+            let message = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Stop \(runningReplacement.previousDisplayName) before replacing its profile.",
+                japanese: "\(runningReplacement.previousDisplayName)を停止してからプロファイルを置換してください。"
+            )
+            modelProfileImportMessage = message
+            appendLog("[profile] import failed: \(message)")
+            return
+        }
+
         for message in importResult.messages {
             appendLog("[profile] \(message)")
         }
@@ -3296,13 +3584,8 @@ final class AppViewModel: ObservableObject {
                 addProfileMessage = nil
                 isAddProfilePresented = false
 
-                if isManagedProcessRunning {
-                    appendLog("[profile] added \(newModel.modelID) to models.json.")
-                    appendLog("[profile] Profile added. Stop the managed server before switching runtime profile.")
-                } else {
-                    selectedModelID = newModel.id
-                    appendLog("[profile] added and selected \(newModel.modelID).")
-                }
+                selectedModelID = newModel.id
+                appendLog("[profile] added and selected \(newModel.modelID). Existing managed servers were not changed.")
                 return true
             } catch {
                 addProfileMessage = error.localizedDescription
@@ -3336,10 +3619,10 @@ final class AppViewModel: ObservableObject {
             return
         }
 
-        guard !isManagedProcessRunning else {
-            let message = Self.localizedText(language: settings.uiLanguage, english: "Stop the managed server before deleting profiles.", japanese: "プロファイルを削除する前に管理サーバーを停止してください。")
+        guard !isModelRunning(selectedModel) else {
+            let message = Self.localizedText(language: settings.uiLanguage, english: "Stop this model before deleting its profile.", japanese: "このモデルを停止してからプロファイルを削除してください。")
             profileDeletionMessage = message
-            appendLog("[profile] delete failed: Stop the managed server before deleting profiles.")
+            appendLog("[profile] delete failed: Stop this model before deleting its profile.")
             return
         }
 
@@ -3372,8 +3655,8 @@ final class AppViewModel: ObservableObject {
             return
         }
 
-        guard !isManagedProcessRunning else {
-            let message = "Stop the managed server before deleting profiles."
+        guard !processRegistry.isRunning(pendingDeleteModelID) else {
+            let message = Self.localizedText(language: settings.uiLanguage, english: "Stop this model before deleting its profile.", japanese: "このモデルを停止してからプロファイルを削除してください。")
             profileDeletionMessage = message
             isDeleteProfileConfirmationPresented = false
             appendLog("[profile] delete failed: \(message)")
@@ -3462,17 +3745,6 @@ final class AppViewModel: ObservableObject {
 
     func undoProfileDeletionRequested() {
         guard let payload = profileDeletionUndoPayload else {
-            return
-        }
-
-        guard !isManagedProcessRunning else {
-            profileDeletionMessage = Self.localizedText(
-                language: settings.uiLanguage,
-                english: "Stop the managed server before restoring the deleted profile.",
-                japanese: "削除したプロファイルを復元する前に管理サーバーを停止してください。"
-            )
-            appendLog("[profile] undo delete failed: managed server is running.")
-            clearProfileDeletionUndo()
             return
         }
 
@@ -3841,7 +4113,17 @@ final class AppViewModel: ObservableObject {
             return
         }
         let title = Self.localizedText(language: settings.uiLanguage, english: "Benchmark", japanese: "ベンチマーク")
-        copyToPasteboard("\(title)\n\(result.localizedDetailedText(language: settings.uiLanguage))")
+        if let session = benchmarkSession(for: model) {
+            let sampleTitle = Self.localizedText(language: settings.uiLanguage, english: "Sample", japanese: "測定")
+            let sampleDetails = session.samples.enumerated().map { index, sample in
+                "\(sampleTitle) \(index + 1)/\(session.samples.count)\n\(sample.localizedDetailedText(language: settings.uiLanguage))"
+            }.joined(separator: "\n\n")
+            copyToPasteboard(
+                "\(title)\n\(Self.benchmarkSessionSummary(session, language: settings.uiLanguage))\n\n\(sampleDetails)"
+            )
+        } else {
+            copyToPasteboard("\(title)\n\(result.localizedDetailedText(language: settings.uiLanguage))")
+        }
         appendLog("[benchmark] copied benchmark for \(model.id).")
     }
 
@@ -3965,11 +4247,14 @@ final class AppViewModel: ObservableObject {
     }
 
     func copyLaunchCommandPreview(for model: ModelConfig) {
-        let preview = LaunchCommandBuilder.command(
-            executablePath: settings.mlxServerExecutablePath,
+        copyLaunchCommandPreview(launchCommandPreview(for: model))
+    }
+
+    func launchCommandPreview(for model: ModelConfig) -> String {
+        LaunchCommandBuilder.command(
+            executablePath: executablePath(for: model),
             model: model
         )
-        copyLaunchCommandPreview(preview)
     }
 
     func copyLaunchCommandPreview(_ preview: String) {
@@ -4018,8 +4303,10 @@ final class AppViewModel: ObservableObject {
             return
         }
 
-        stopMemoryMonitoring()
-        clearRunningModel(logPrefix: "external")
+        if let selectedModelID {
+            stopMemoryMonitoring(for: selectedModelID)
+            clearRunningModel(modelID: selectedModelID, logPrefix: "external")
+        }
         runtimeState = .adoptedExternalServer(
             host: host,
             port: port,
@@ -4038,7 +4325,8 @@ final class AppViewModel: ObservableObject {
 
         appendLog("[external] forgot adopted external server. External process was not modified.")
 
-        if let processIdentifier = processManager.managedProcessIdentifier {
+        if let selectedModelID,
+           let processIdentifier = processRegistry.processIdentifier(for: selectedModelID) {
             let endpoint = endpointForCurrentRuntimeState()
             runtimeState = .ready(
                 host: endpoint.host,
@@ -4489,65 +4777,61 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    private func startManagedServer(logPrefix: String) async -> Bool {
-        guard let selectedModel else {
-            let message = "No model is selected."
-            runtimeState = .error(message: message)
-            appendLog("[\(logPrefix)] failed: \(message)")
-            return false
-        }
-
-        let host = selectedModel.host
-        let port = selectedModel.serverPort
-        if let processIdentifier = processManager.managedProcessIdentifier {
-            let message = "A managed mlx_lm.server process is already running with pid \(processIdentifier)."
-            runtimeState = .ready(
+    private func startManagedServer(model: ModelConfig, logPrefix: String) async -> Bool {
+        let host = model.host
+        let port = model.serverPort
+        if let processIdentifier = processRegistry.processIdentifier(for: model.id) {
+            let message = "A managed inference server process is already running with pid \(processIdentifier)."
+            setRuntimeState(.ready(
                 host: host,
                 port: port,
                 processIdentifier: processIdentifier
-            )
+            ), for: model.id)
             appendLog("[\(logPrefix)] failed: \(message)")
             return false
         }
 
-        let advancedValidation = validatedAdvancedLaunchOptions(selectedModel.advancedLaunchOptions ?? .empty)
+        let advancedValidation = validatedAdvancedLaunchOptions(
+            model.advancedLaunchOptions ?? .empty,
+            backend: model.resolvedBackend
+        )
         guard case let .valid(advancedLaunchOptions) = advancedValidation else {
             if case let .invalid(message) = advancedValidation {
-                runtimeState = .error(message: message)
+                setRuntimeState(.error(message: message), for: model.id)
                 appendLog("[\(logPrefix)] failed: \(message)")
             }
             return false
         }
 
-        let executablePath = settings.mlxServerExecutablePath.trimmingCharacters(in: .whitespacesAndNewlines)
+        let executablePath = executablePath(for: model).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !executablePath.isEmpty else {
-            let message = "mlx_lm.server executable path is not configured. Set it in Settings before starting."
-            runtimeState = .error(message: message)
+            let message = "\(model.resolvedBackend.localizedTitle(language: settings.uiLanguage)) executable path is not configured. Set it in Settings before starting."
+            setRuntimeState(.error(message: message), for: model.id)
             appendLog("[\(logPrefix)] preflight failed: \(message)")
             return false
         }
 
         guard FileManager.default.isExecutableFile(atPath: executablePath) else {
-            let message = "mlx_lm.server executable was not found or is not executable: \(ModelAvailabilityPathFormatter.compact(path: executablePath))."
-            runtimeState = .error(message: message)
+            let message = "\(model.resolvedBackend.localizedTitle(language: settings.uiLanguage)) executable was not found or is not executable: \(ModelAvailabilityPathFormatter.compact(path: executablePath))."
+            setRuntimeState(.error(message: message), for: model.id)
             appendLog("[\(logPrefix)] preflight failed: \(message)")
             return false
         }
 
-        if let localPath = ModelAvailabilityPathFormatter.localPathCandidate(for: selectedModel) {
+        if let localPath = ModelAvailabilityPathFormatter.localPathCandidate(for: model) {
             var isDirectory = ObjCBool(false)
             guard FileManager.default.fileExists(atPath: localPath, isDirectory: &isDirectory), isDirectory.boolValue else {
                 let message = "Model path is missing: \(ModelAvailabilityPathFormatter.compact(path: localPath))."
-                runtimeState = .error(message: message)
+                setRuntimeState(.error(message: message), for: model.id)
                 appendLog("[\(logPrefix)] preflight failed: \(message)")
                 return false
             }
         }
 
         appendLog("[\(logPrefix)] preflight passed for selected profile.")
-        appendLog("[\(logPrefix)] starting \(selectedModel.modelID) at \(host):\(port)")
+        appendLog("[\(logPrefix)] starting \(model.modelID) at \(host):\(port)")
         appendLog("[\(logPrefix)] checking port before launch: \(host):\(port)")
-        runtimeState = .checkingPort(host: host, port: port)
+        setRuntimeState(.checkingPort(host: host, port: port), for: model.id)
 
         switch freshPortCheck(host: host, port: port) {
         case .available:
@@ -4558,36 +4842,38 @@ final class AppViewModel: ObservableObject {
             } else {
                 appendLog("[\(logPrefix)] port occupied: \(host):\(port)")
             }
-            if await detectExternalServer(host: host, port: port, logPrefix: logPrefix) {
+            if await detectExternalServer(modelID: model.id, host: host, port: port, logPrefix: logPrefix) {
                 return false
             }
 
-            runtimeState = .portBusy(host: host, port: port)
+            setRuntimeState(.portBusy(host: host, port: port), for: model.id)
             appendLog("[\(logPrefix)] port occupied and no compatible /v1/models endpoint detected.")
             return false
         case let .invalidInput(message):
-            runtimeState = .portCheckFailed(host: host, port: port, message: message)
+            setRuntimeState(.portCheckFailed(host: host, port: port, message: message), for: model.id)
             appendLog("[\(logPrefix)] port check failed: \(message)")
             return false
         case let .failed(_, _, message):
-            runtimeState = .portCheckFailed(host: host, port: port, message: message)
+            setRuntimeState(.portCheckFailed(host: host, port: port, message: message), for: model.id)
             appendLog("[\(logPrefix)] port check failed for \(host):\(port): \(message)")
             return false
         }
 
         let request = ModelLaunchRequest(
-            executablePath: settings.mlxServerExecutablePath,
-            modelID: selectedModel.modelID,
+            executablePath: executablePath,
+            backend: model.resolvedBackend,
+            modelID: model.modelID,
             host: host,
             port: port,
-            enableThinking: selectedModel.enableThinking,
+            enableThinking: model.enableThinking,
             advancedLaunchOptions: advancedLaunchOptions
         )
 
-        runtimeState = .starting(host: host, port: port)
+        setRuntimeState(.starting(host: host, port: port), for: model.id)
 
         do {
-            let launchResult = try processManager.start(
+            let launchResult = try processRegistry.start(
+                profileID: model.id,
                 request: request,
                 outputHandler: { [weak self] line in
                     Task { @MainActor in
@@ -4596,26 +4882,30 @@ final class AppViewModel: ObservableObject {
                 },
                 terminationHandler: { [weak self] status in
                     Task { @MainActor in
-                        self?.appendLog("[process] managed server exited with status \(status)")
+                        self?.handleUnexpectedProcessTermination(
+                            modelID: model.id,
+                            status: status
+                        )
                     }
                 }
             )
 
             appendLog("[\(logPrefix)] command: \(launchResult.commandSummary)")
             appendLog("[\(logPrefix)] pid: \(launchResult.processIdentifier)")
-            startMemoryMonitoring(processIdentifier: launchResult.processIdentifier, model: selectedModel)
-            setRunningModelID(selectedModel.id, logPrefix: logPrefix)
-            runtimeState = .loading(
+            startMemoryMonitoring(processIdentifier: launchResult.processIdentifier, model: model)
+            setRunningModelID(model.id, logPrefix: logPrefix)
+            setRuntimeState(.loading(
                 host: host,
                 port: port,
                 processIdentifier: launchResult.processIdentifier
-            )
+            ), for: model.id)
 
             let ready = await waitForReadyAfterStart(
                 host: host,
                 port: port,
                 processIdentifier: launchResult.processIdentifier,
-                expectedModelID: selectedModel.modelID
+                modelID: model.id,
+                expectedModelID: model.modelID
             )
             if ready {
                 appendLog("[\(logPrefix)] ready check succeeded for pid \(launchResult.processIdentifier).")
@@ -4625,7 +4915,7 @@ final class AppViewModel: ObservableObject {
 
             return ready
         } catch {
-            runtimeState = .error(message: error.localizedDescription)
+            setRuntimeState(.error(message: error.localizedDescription), for: model.id)
             appendLog("[\(logPrefix)] failed: \(error.localizedDescription)")
             return false
         }
@@ -4664,6 +4954,19 @@ final class AppViewModel: ObservableObject {
             let snapshot = try settingsStore.loadBenchmarkResults()
             benchmarkResultsByProfileID = snapshot.value.benchmarkResultsByProfileID
             agenticBenchmarkResultsByProfileID = snapshot.value.agenticBenchmarkResultsByProfileID
+            benchmarkSessionsByProfileID = snapshot.value.benchmarkSessionsByProfileID
+            if benchmarkSessionsByProfileID.isEmpty, !benchmarkResultsByProfileID.isEmpty {
+                benchmarkSessionsByProfileID = benchmarkResultsByProfileID.mapValues { result in
+                    BenchmarkSessionResult(
+                        timestamp: result.timestamp,
+                        profileID: result.profileID,
+                        modelID: result.modelID,
+                        selectedProfileName: result.selectedProfileName,
+                        preset: .standard,
+                        samples: [result]
+                    )
+                }
+            }
             if snapshot.usedDefault {
                 appendLog("[benchmark] benchmark-results.json not found. Model benchmark results will be saved after the next run.")
             } else {
@@ -4672,6 +4975,7 @@ final class AppViewModel: ObservableObject {
         } catch {
             benchmarkResultsByProfileID = [:]
             agenticBenchmarkResultsByProfileID = [:]
+            benchmarkSessionsByProfileID = [:]
             appendLog("[benchmark] Failed to load benchmark-results.json: \(error.localizedDescription)")
         }
     }
@@ -4679,7 +4983,8 @@ final class AppViewModel: ObservableObject {
     private func savePersistedBenchmarkResults() {
         let snapshot = BenchmarkResultsSnapshot(
             benchmarkResultsByProfileID: benchmarkResultsByProfileID,
-            agenticBenchmarkResultsByProfileID: agenticBenchmarkResultsByProfileID
+            agenticBenchmarkResultsByProfileID: agenticBenchmarkResultsByProfileID,
+            benchmarkSessionsByProfileID: benchmarkSessionsByProfileID
         )
         do {
             try settingsStore.save(benchmarkResults: snapshot)
@@ -4713,7 +5018,7 @@ final class AppViewModel: ObservableObject {
                 runtimeState = .ready(
                     host: fallbackHost,
                     port: fallbackPort,
-                    processIdentifier: processManager.managedProcessIdentifier
+                    processIdentifier: selectedModel.flatMap { processRegistry.processIdentifier(for: $0.id) }
                 )
             }
             appendLog("[ready] ready: \(url.absoluteString) returned HTTP \(statusCode)")
@@ -4758,17 +5063,18 @@ final class AppViewModel: ObservableObject {
         host: String,
         port: Int,
         processIdentifier: Int32,
+        modelID: ModelConfig.ID,
         expectedModelID: String
     ) async -> Bool {
         appendLog("[ready] waiting for http://\(host):\(port)/v1/models")
 
         for attempt in 1...10 {
-            guard processManager.managedProcessIdentifier == processIdentifier else {
+            guard processRegistry.processIdentifier(for: modelID) == processIdentifier else {
                 appendLog("[ready] wait ended because managed process is no longer running.")
                 return false
             }
 
-            if case .stopping = runtimeState {
+            if case .stopping = runtimeStatesByModelID[modelID] {
                 appendLog("[ready] wait cancelled because stop was requested.")
                 return false
             }
@@ -4781,22 +5087,22 @@ final class AppViewModel: ObservableObject {
 
             switch result {
             case let .ready(url, statusCode):
-                guard processManager.managedProcessIdentifier == processIdentifier else {
+                guard processRegistry.processIdentifier(for: modelID) == processIdentifier else {
                     appendLog("[ready] ready response ignored because managed process is no longer running.")
                     return false
                 }
 
-                runtimeState = .ready(
+                setRuntimeState(.ready(
                     host: host,
                     port: port,
                     processIdentifier: processIdentifier
-                )
+                ), for: modelID)
                 appendLog("[ready] ready after start: \(url.absoluteString) returned HTTP \(statusCode)")
                 return true
             case let .notReady(url, statusCode):
                 appendLog("[ready] attempt \(attempt) not ready: \(url.absoluteString) returned HTTP \(statusCode)")
             case let .invalidInput(message):
-                runtimeState = .readyCheckFailed(host: host, port: port, message: message)
+                setRuntimeState(.readyCheckFailed(host: host, port: port, message: message), for: modelID)
                 appendLog("[ready] ready check failed: \(message)")
                 return false
             case let .failed(url, message):
@@ -4808,30 +5114,32 @@ final class AppViewModel: ObservableObject {
             do {
                 try await Task.sleep(nanoseconds: 1_000_000_000)
             } catch {
-                runtimeState = .unknown(message: "Ready wait was cancelled.")
+                setRuntimeState(.unknown(message: "Ready wait was cancelled."), for: modelID)
                 appendLog("[ready] wait cancelled.")
                 return false
             }
         }
 
         let message = "Ready check did not succeed after launch."
-        runtimeState = .unknown(message: message)
+        setRuntimeState(.unknown(message: message), for: modelID)
         appendLog("[ready] \(message)")
         return false
     }
 
     private func handleStopResult(
         _ result: ModelStopResult,
+        modelID: ModelConfig.ID,
         host: String,
         port: Int,
         logPrefix: String = "stop"
     ) async -> Bool {
         switch result {
         case .notRunning:
-            stopMemoryMonitoring()
-            clearRunningModel(logPrefix: logPrefix)
+            stopMemoryMonitoring(for: modelID)
+            clearRunningModel(modelID: modelID, logPrefix: logPrefix)
             let outcome = applyPostStopPortCheck(
                 freshPortCheck(host: host, port: port),
+                modelID: modelID,
                 host: host,
                 port: port,
                 logPrefix: logPrefix,
@@ -4840,27 +5148,28 @@ final class AppViewModel: ObservableObject {
             appendLog("[\(logPrefix)] managed process is not running.")
             return outcome == .released
         case let .stopped(processIdentifier, terminationStatus, usedInterrupt):
-            stopMemoryMonitoring()
-            clearRunningModel(logPrefix: logPrefix)
+            stopMemoryMonitoring(for: modelID)
+            clearRunningModel(modelID: modelID, logPrefix: logPrefix)
             if usedInterrupt {
                 appendLog("[\(logPrefix)] interrupt was sent after graceful timeout for pid \(processIdentifier).")
             }
             appendLog("[\(logPrefix)] stopped managed pid \(processIdentifier) with status \(terminationStatus).")
 
-            let released = await waitForPortRelease(host: host, port: port, logPrefix: logPrefix)
-            if !released, case .portBusy = runtimeState {
+            let released = await waitForPortRelease(modelID: modelID, host: host, port: port, logPrefix: logPrefix)
+            if !released, case .portBusy = runtimeStatesByModelID[modelID] {
                 appendLog("[\(logPrefix)] warning: port still busy after waiting for release: \(host):\(port)")
             }
             return released
         case let .timedOut(processIdentifier):
             let message = "Stop timed out for managed pid \(processIdentifier)."
-            runtimeState = .error(message: message)
+            setRuntimeState(.error(message: message), for: modelID)
             appendLog("[\(logPrefix)] \(message)")
             return false
         }
     }
 
     private func waitForPortRelease(
+        modelID: ModelConfig.ID,
         host: String,
         port: Int,
         logPrefix: String = "stop"
@@ -4871,6 +5180,7 @@ final class AppViewModel: ObservableObject {
         for attempt in 0..<maximumAttempts {
             let outcome = applyPostStopPortCheck(
                 freshPortCheck(host: host, port: port),
+                modelID: modelID,
                 host: host,
                 port: port,
                 logPrefix: logPrefix,
@@ -4904,6 +5214,7 @@ final class AppViewModel: ObservableObject {
 
     private func applyPostStopPortCheck(
         _ result: PortCheckResult,
+        modelID: ModelConfig.ID?,
         host: String,
         port: Int,
         logPrefix: String,
@@ -4911,21 +5222,21 @@ final class AppViewModel: ObservableObject {
     ) -> PortReleaseCheckOutcome {
         switch result {
         case .available:
-            runtimeState = .stopped
+            setRuntimeState(.stopped, forOptionalModelID: modelID)
             appendLog("[\(logPrefix)] port released: \(host):\(port)")
             return .released
         case .busy:
-            runtimeState = .portBusy(host: host, port: port)
+            setRuntimeState(.portBusy(host: host, port: port), forOptionalModelID: modelID)
             if announceBusy {
                 appendLog("[\(logPrefix)] port is still releasing: \(host):\(port)")
             }
             return .busy
         case let .invalidInput(message):
-            runtimeState = .portCheckFailed(host: host, port: port, message: message)
+            setRuntimeState(.portCheckFailed(host: host, port: port, message: message), forOptionalModelID: modelID)
             appendLog("[\(logPrefix)] warning: port release check failed: \(message)")
             return .failed
         case let .failed(_, _, message):
-            runtimeState = .portCheckFailed(host: host, port: port, message: message)
+            setRuntimeState(.portCheckFailed(host: host, port: port, message: message), forOptionalModelID: modelID)
             appendLog("[\(logPrefix)] warning: port release check failed for \(host):\(port): \(message)")
             return .failed
         }
@@ -4964,6 +5275,13 @@ final class AppViewModel: ObservableObject {
 
         invalidatePortCheckCache()
 
+        if let oldValue,
+           runtimeStatesByModelID[oldValue]?.isExternalServerContext == true {
+            runtimeStatesByModelID[oldValue] = .stopped
+            appendLog("[model] external server context cleared after model selection changed.")
+        }
+        projectSelectedRuntimeState()
+
         guard let selectedModel else {
             appendLog("[model] selected model cleared.")
             return
@@ -4971,10 +5289,6 @@ final class AppViewModel: ObservableObject {
 
         appendLog("[model] selected modelID: \(selectedModel.modelID)")
         resetModelAvailabilityForCurrentSelection()
-        if runtimeState.isExternalServerContext {
-            runtimeState = .stopped
-            appendLog("[model] external server context cleared after model selection changed.")
-        }
         logRestartRequiredIfNeeded()
     }
 
@@ -4986,6 +5300,7 @@ final class AppViewModel: ObservableObject {
     }
 
     private func detectExternalServer(
+        modelID: ModelConfig.ID,
         host: String,
         port: Int,
         logPrefix: String
@@ -4997,15 +5312,15 @@ final class AppViewModel: ObservableObject {
 
         switch result {
         case let .ready(url, statusCode):
-            stopMemoryMonitoring()
-            clearRunningModel(logPrefix: logPrefix)
+            stopMemoryMonitoring(for: modelID)
+            clearRunningModel(modelID: modelID, logPrefix: logPrefix)
             let message = "An OpenAI-compatible server appears to be running on this host/port."
-            runtimeState = .externalServerDetected(
+            setRuntimeState(.externalServerDetected(
                 host: host,
                 port: port,
                 baseURL: baseURL,
                 message: message
-            )
+            ), for: modelID)
             appendLog("[\(logPrefix)] external server detected: \(url.absoluteString) returned HTTP \(statusCode)")
             appendLog("[\(logPrefix)] not launching managed process.")
             return true
@@ -5025,22 +5340,45 @@ final class AppViewModel: ObservableObject {
     }
 
     private func setRunningModelID(_ modelID: ModelConfig.ID, logPrefix: String) {
-        runningModelID = modelID
-        managedServerStartedAt = Date()
+        runningModelIDs.insert(modelID)
+        managedServerStartedAtByModelID[modelID] = Date()
+        refreshRunningProjection()
         invalidatePortCheckCache()
         appendLog("[\(logPrefix)] running modelID: \(modelID)")
         logRestartRequiredIfNeeded()
     }
 
-    private func clearRunningModel(logPrefix: String) {
-        guard runningModelID != nil else {
+    private func clearRunningModel(modelID: ModelConfig.ID, logPrefix: String) {
+        guard runningModelIDs.contains(modelID)
+            || managedServerStartedAtByModelID[modelID] != nil else {
             return
         }
 
-        runningModelID = nil
-        managedServerStartedAt = nil
+        runningModelIDs.remove(modelID)
+        managedServerStartedAtByModelID[modelID] = nil
+        refreshRunningProjection()
         invalidatePortCheckCache()
-        appendLog("[\(logPrefix)] running model cleared.")
+        appendLog("[\(logPrefix)] running model cleared: \(modelID)")
+    }
+
+    private func handleUnexpectedProcessTermination(modelID: ModelConfig.ID, status: Int32) {
+        let wasStopping: Bool
+        if case .stopping = runtimeStatesByModelID[modelID] {
+            wasStopping = true
+        } else {
+            wasStopping = false
+        }
+
+        stopMemoryMonitoring(for: modelID)
+        clearRunningModel(modelID: modelID, logPrefix: "process")
+        appendLog("[process] managed server for \(modelID) exited with status \(status)")
+
+        guard !wasStopping else { return }
+        if status == 0 {
+            setRuntimeState(.stopped, for: modelID)
+        } else {
+            setRuntimeState(.error(message: "Managed server exited with status \(status)."), for: modelID)
+        }
     }
 
     private func logRestartRequiredIfNeeded() {
@@ -5054,7 +5392,7 @@ final class AppViewModel: ObservableObject {
     }
 
     private func startMemoryMonitoring(processIdentifier: Int32, model: ModelConfig) {
-        stopMemoryMonitoring(resetUsage: true)
+        stopMemoryMonitoring(for: model.id, resetUsage: true)
 
         appendLog("[memory] monitoring managed pid \(processIdentifier) every 1 second.")
         let monitor = memoryMonitor
@@ -5068,7 +5406,7 @@ final class AppViewModel: ObservableObject {
             appendLog("[memory] model estimate unavailable. A local model folder is required for the model segment.")
         }
 
-        memoryMonitorTask = Task { [weak self, monitor, modelEstimateGigabytes, modelEstimateSource] in
+        memoryMonitorTasks[model.id] = Task { [weak self, monitor, modelEstimateGigabytes, modelEstimateSource] in
             while !Task.isCancelled {
                 let result = await monitor.currentBreakdown(
                     processIdentifier: processIdentifier,
@@ -5078,6 +5416,7 @@ final class AppViewModel: ObservableObject {
                 let shouldContinue = await MainActor.run {
                     self?.handleMemoryMonitorResult(
                         result,
+                        modelID: model.id,
                         processIdentifier: processIdentifier
                     ) ?? false
                 }
@@ -5095,42 +5434,47 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    private func stopMemoryMonitoring(resetUsage: Bool = true) {
-        memoryMonitorTask?.cancel()
-        memoryMonitorTask = nil
+    private func stopMemoryMonitoring(for modelID: ModelConfig.ID, resetUsage: Bool = true) {
+        memoryMonitorTasks[modelID]?.cancel()
+        memoryMonitorTasks[modelID] = nil
 
         if resetUsage {
-            memoryUsageGB = nil
-            memoryBreakdown = nil
-            memoryHistory = []
+            memoryUsageByModelID[modelID] = nil
+            memoryBreakdownByModelID[modelID] = nil
+            refreshAggregateMemoryProjection()
         }
     }
 
     private func handleMemoryMonitorResult(
         _ result: MemoryBreakdownMonitorResult,
+        modelID: ModelConfig.ID,
         processIdentifier: Int32
     ) -> Bool {
-        guard processManager.managedProcessIdentifier == processIdentifier else {
-            memoryUsageGB = nil
-            memoryBreakdown = nil
-            appendLog("[memory] monitoring stopped because managed pid changed.")
+        guard processRegistry.processIdentifier(for: modelID) == processIdentifier else {
+            memoryUsageByModelID[modelID] = nil
+            memoryBreakdownByModelID[modelID] = nil
+            refreshAggregateMemoryProjection()
+            appendLog("[memory] monitoring stopped because managed pid changed for \(modelID).")
             return false
         }
 
         switch result {
         case let .usage(snapshot):
-            memoryUsageGB = snapshot.managedProcessGigabytes
-            memoryBreakdown = snapshot
+            memoryUsageByModelID[modelID] = snapshot.managedProcessGigabytes
+            memoryBreakdownByModelID[modelID] = snapshot
+            refreshAggregateMemoryProjection()
             appendMemoryHistorySample(from: snapshot)
             return true
         case let .notRunning(processIdentifier):
-            memoryUsageGB = nil
-            memoryBreakdown = nil
+            memoryUsageByModelID[modelID] = nil
+            memoryBreakdownByModelID[modelID] = nil
+            refreshAggregateMemoryProjection()
             appendLog("[memory] warning: managed pid \(processIdentifier) is no longer reporting RSS.")
             return false
         case let .invalidInput(message):
-            memoryUsageGB = nil
-            memoryBreakdown = nil
+            memoryUsageByModelID[modelID] = nil
+            memoryBreakdownByModelID[modelID] = nil
+            refreshAggregateMemoryProjection()
             appendLog("[memory] warning: \(message)")
             return false
         case let .failed(processIdentifier, message):
@@ -5178,7 +5522,10 @@ final class AppViewModel: ObservableObject {
             return .invalid("Port must be between 1 and 65535.")
         }
 
-        let advancedValidation = validatedAdvancedLaunchOptions(draft.advancedLaunchOptions)
+        let advancedValidation = validatedAdvancedLaunchOptions(
+            draft.advancedLaunchOptions,
+            backend: draft.backend
+        )
         if case let .invalid(message) = advancedValidation {
             return .invalid(message)
         }
@@ -5188,12 +5535,17 @@ final class AppViewModel: ObservableObject {
         }
 
         let changesRuntimeTarget = modelID != existingModel.modelID
+            || draft.backend != existingModel.resolvedBackend
             || host != existingModel.host
             || port != existingModel.serverPort
             || advancedLaunchOptions != existingModel.advancedLaunchOptions?.normalized()
 
-        if isManagedProcessRunning && changesRuntimeTarget {
-            return .invalid("Stop the managed server before changing modelID, host, port, or advanced launch options.")
+        if processRegistry.isRunning(existingModel.id) && changesRuntimeTarget {
+            return .invalid(Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Stop this model before changing its model path, backend, host, port, or advanced launch options.",
+                japanese: "このモデルを停止してから、モデルパス、バックエンド、Host、Port、詳細起動オプションを変更してください。"
+            ))
         }
 
         var updatedModel = existingModel
@@ -5204,6 +5556,7 @@ final class AppViewModel: ObservableObject {
         updatedModel.enableThinking = draft.enableThinking
         updatedModel.notes = draft.notes.trimmingCharacters(in: .whitespacesAndNewlines)
         updatedModel.advancedLaunchOptions = advancedLaunchOptions
+        updatedModel.backend = draft.backend
         return .valid(updatedModel)
     }
 
@@ -5229,7 +5582,10 @@ final class AppViewModel: ObservableObject {
             return .invalid("A model profile with this Model ID already exists.")
         }
 
-        let advancedValidation = validatedAdvancedLaunchOptions(draft.advancedLaunchOptions)
+        let advancedValidation = validatedAdvancedLaunchOptions(
+            draft.advancedLaunchOptions,
+            backend: draft.backend
+        )
         if case let .invalid(message) = advancedValidation {
             return .invalid(message)
         }
@@ -5250,12 +5606,16 @@ final class AppViewModel: ObservableObject {
                 serverPort: port,
                 enableThinking: draft.enableThinking,
                 notes: draft.notes.trimmingCharacters(in: .whitespacesAndNewlines),
-                advancedLaunchOptions: advancedLaunchOptions
+                advancedLaunchOptions: advancedLaunchOptions,
+                backend: draft.backend
             )
         )
     }
 
-    private func validatedAdvancedLaunchOptions(_ options: AdvancedLaunchOptions) -> AdvancedLaunchOptionsValidationResult {
+    private func validatedAdvancedLaunchOptions(
+        _ options: AdvancedLaunchOptions,
+        backend: InferenceBackend
+    ) -> AdvancedLaunchOptionsValidationResult {
         guard let normalizedOptions = options.normalized() else {
             return .valid(nil)
         }
@@ -5297,6 +5657,9 @@ final class AppViewModel: ObservableObject {
         }
 
         if let chatTemplateArgs = normalizedOptions.chatTemplateArgs {
+            guard backend == .mlxLM else {
+                return .invalid("Chat Template Args are supported by mlx-lm profiles only.")
+            }
             guard let data = chatTemplateArgs.data(using: .utf8) else {
                 return .invalid("Chat Template Args must be valid JSON.")
             }
@@ -5306,6 +5669,12 @@ final class AppViewModel: ObservableObject {
             } catch {
                 return .invalid("Chat Template Args must be valid JSON.")
             }
+        }
+
+        if backend == .rapidMLX,
+           let logLevel = normalizedOptions.logLevel,
+           !["DEBUG", "INFO", "WARNING", "ERROR"].contains(logLevel.uppercased()) {
+            return .invalid("Rapid-MLX Log Level must be DEBUG, INFO, WARNING, or ERROR.")
         }
 
         if let rawExtraArgs = normalizedOptions.rawExtraArgs {
@@ -5392,22 +5761,22 @@ final class AppViewModel: ObservableObject {
     }
 
     private func evaluateAutoUnload() async {
-        guard let runningModelID,
-              let runningModel = models.first(where: { $0.id == runningModelID }),
-              isAutoUnloadEnabled(for: runningModel),
-              let managedServerStartedAt,
-              !isModelTransitioning(runningModel) else {
-            return
-        }
+        let now = Date()
+        for modelID in runningModelIDs {
+            guard let runningModel = models.first(where: { $0.id == modelID }),
+                  isAutoUnloadEnabled(for: runningModel),
+                  let startedAt = managedServerStartedAtByModelID[modelID],
+                  !isModelTransitioning(runningModel) else {
+                continue
+            }
 
-        let elapsedSeconds = Date().timeIntervalSince(managedServerStartedAt)
-        let limitSeconds = TimeInterval(autoUnloadMinutes(for: runningModel) * 60)
-        guard elapsedSeconds >= limitSeconds else {
-            return
-        }
+            let elapsedSeconds = now.timeIntervalSince(startedAt)
+            let limitSeconds = TimeInterval(autoUnloadMinutes(for: runningModel) * 60)
+            guard elapsedSeconds >= limitSeconds else { continue }
 
-        appendLog("[auto-unload] elapsed \(Int(elapsedSeconds))s reached \(autoUnloadMinutes(for: runningModel)) minute limit. Unloading \(runningModel.displayName).")
-        stopRequested()
+            appendLog("[auto-unload] elapsed \(Int(elapsedSeconds))s reached \(autoUnloadMinutes(for: runningModel)) minute limit. Unloading \(runningModel.displayName).")
+            stopRequested(for: runningModel)
+        }
     }
 
     private func appendSystemUsageHistory(cpuPercent: Double?, gpuPercent: Double?) {

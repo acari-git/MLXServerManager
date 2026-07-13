@@ -25,6 +25,7 @@ struct ExportedModelProfile: Codable {
     let host: String
     let port: Int
     let advancedLaunchOptions: AdvancedLaunchOptions?
+    let backend: InferenceBackend
 
     @MainActor init(model: ModelConfig) {
         let displayName = model.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -33,6 +34,7 @@ struct ExportedModelProfile: Codable {
         self.host = model.host
         self.port = model.serverPort
         self.advancedLaunchOptions = model.advancedLaunchOptions?.normalized()
+        self.backend = model.resolvedBackend
     }
 }
 

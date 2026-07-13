@@ -241,7 +241,8 @@ final class ModelProfileImportExportTests: XCTestCase {
 
         let profiles = try XCTUnwrap(object["profiles"] as? [[String: Any]])
         let profile = try XCTUnwrap(profiles.first)
-        XCTAssertEqual(Set(profile.keys), ["name", "modelID", "host", "port", "advancedLaunchOptions"])
+        XCTAssertEqual(Set(profile.keys), ["name", "modelID", "host", "port", "advancedLaunchOptions", "backend"])
+        XCTAssertEqual(profile["backend"] as? String, "mlx-lm")
 
         let exportedText = String(decoding: data, as: UTF8.self)
         XCTAssertFalse(exportedText.contains("notes"))
@@ -257,6 +258,58 @@ final class ModelProfileImportExportTests: XCTestCase {
         XCTAssertEqual(preview.totalProfiles, 1)
         XCTAssertEqual(preview.invalidProfilesCount, 0)
         XCTAssertTrue(try XCTUnwrap(preview.profiles.first).isImportable)
+        XCTAssertEqual(try XCTUnwrap(preview.profiles.first).backend, .mlxLM)
+    }
+
+    func testRapidMLXBackendRoundTripsThroughExportAndImport() throws {
+        let rapidModel = model(
+            modelID: "test/rapid-model",
+            displayName: "Rapid Model",
+            host: "127.0.0.1",
+            port: 9080,
+            backend: .rapidMLX
+        )
+        let data = try ModelProfileExportService().exportData(from: [rapidModel])
+        let preview = importService.preview(data: data, sourceFileName: "rapid.json", existingModels: [])
+
+        let imported = importService.importSelectedProfiles(
+            from: preview,
+            requests: [.init(sourceIndex: 1, action: .importProfile)],
+            existingModels: []
+        ).importedModels.first
+
+        XCTAssertEqual(try XCTUnwrap(imported).resolvedBackend, .rapidMLX)
+    }
+
+    func testUnknownBackendIsRejectedDuringImportPreview() throws {
+        let data = Data(#"""
+        {
+          "schemaVersion": 1,
+          "app": "MLXServerManager",
+          "profiles": [
+            {
+              "name": "Unknown Backend",
+              "modelID": "test/model",
+              "host": "127.0.0.1",
+              "port": 8080,
+              "backend": "unknown-server"
+            }
+          ]
+        }
+        """#.utf8)
+
+        let preview = importService.preview(
+            data: data,
+            sourceFileName: "unknown-backend.json",
+            existingModels: []
+        )
+        let profile = try XCTUnwrap(preview.profiles.first)
+
+        XCTAssertEqual(profile.status, .invalid)
+        XCTAssertFalse(profile.isImportable)
+        XCTAssertTrue(profile.messages.contains { message in
+            message.severity == .error && message.message.contains("Backend must be")
+        })
     }
 
     func testSelectionHelperTracksOnlyExplicitReplacedProfile() {
@@ -327,7 +380,8 @@ final class ModelProfileImportExportTests: XCTestCase {
         quantization: String = "Test Quantization",
         enableThinking: Bool = false,
         notes: String = "",
-        advancedLaunchOptions: AdvancedLaunchOptions? = nil
+        advancedLaunchOptions: AdvancedLaunchOptions? = nil,
+        backend: InferenceBackend? = nil
     ) -> ModelConfig {
         ModelConfig(
             modelID: modelID,
@@ -339,7 +393,8 @@ final class ModelProfileImportExportTests: XCTestCase {
             serverPort: port,
             enableThinking: enableThinking,
             notes: notes,
-            advancedLaunchOptions: advancedLaunchOptions
+            advancedLaunchOptions: advancedLaunchOptions,
+            backend: backend
         )
     }
 }

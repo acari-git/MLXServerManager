@@ -27,21 +27,22 @@ struct IntegratedWorkspaceView: View {
     @State private var hermesFeedbackGeneration = 0
     @State private var benchmarkFeedbackGeneration = 0
     @State private var readinessFeedbackGeneration = 0
+    @State private var isBenchmarkComparisonPresented = false
 
     private var selectedModel: ModelConfig? { viewModel.selectedModel }
-    private var isSelectedRunning: Bool { selectedModel?.id == viewModel.runningModelID }
+    private var isSelectedRunning: Bool { selectedModel.map(viewModel.isModelRunning) ?? false }
     private func modelRows(from models: [ModelConfig]) -> [ModelTableRow] {
         models.map { model in
             let sizeText = viewModel.modelSizeText(for: model)
             let memoryText = viewModel.integratedMemoryText(for: model)
             let isTransitioning = viewModel.isModelTransitioning(model)
-            let isLoaded = model.id == viewModel.runningModelID && !isTransitioning
+            let isLoaded = viewModel.isModelLoaded(model)
             let isPortBusy = viewModel.isModelPortBusy(for: model)
             let canUseStatusAction = viewModel.canUseStatusAction(for: model)
             let statusSortValue: Int
             if isTransitioning {
                 statusSortValue = 0
-            } else if model.id == viewModel.runningModelID {
+            } else if viewModel.isModelRunning(model) {
                 statusSortValue = 1
             } else if isPortBusy {
                 statusSortValue = 2
@@ -419,6 +420,12 @@ struct IntegratedWorkspaceView: View {
         .onChange(of: viewModel.isAgenticBenchmarkRunning) { wasRunning, isRunning in
             handleReadinessRunningChange(wasRunning: wasRunning, isRunning: isRunning)
         }
+        .sheet(isPresented: $isBenchmarkComparisonPresented) {
+            BenchmarkComparisonView(
+                viewModel: viewModel,
+                isPresented: $isBenchmarkComparisonPresented
+            )
+        }
         .accessibilityIdentifier("integrated-workspace")
     }
 
@@ -558,7 +565,11 @@ struct IntegratedWorkspaceView: View {
             memoryUsageBar
 
             VStack(alignment: .leading, spacing: 12) {
-                memoryLegendRow(color: .blue, label: "mlx-lm", value: viewModel.memoryMLXProcessText)
+                memoryLegendRow(
+                    color: .blue,
+                    label: t("Managed", "管理中"),
+                    value: viewModel.memoryMLXProcessText
+                )
                 memoryLegendRow(color: .green, label: t("Other", "その他"), value: viewModel.memoryOtherProcessesText)
                 memoryLegendRow(color: .secondary.opacity(0.45), label: t("Available", "空き容量"), value: viewModel.memoryAvailableText)
             }
@@ -793,7 +804,6 @@ struct IntegratedWorkspaceView: View {
                     Label(t("Add Model", "モデル追加"), systemImage: AppSymbol.add)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(viewModel.isManagedProcessRunning)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 14)
@@ -1075,7 +1085,7 @@ struct IntegratedWorkspaceView: View {
         if row.isTransitioning {
             return .orange
         }
-        if row.model.id == viewModel.runningModelID {
+        if row.isLoaded {
             return .green
         }
         if row.isPortBusy {
@@ -1092,7 +1102,7 @@ struct IntegratedWorkspaceView: View {
         if isTransitioning {
             return .orange
         }
-        if model.id == viewModel.runningModelID {
+        if viewModel.isModelLoaded(model) {
             return .green
         }
         if viewModel.isModelPortBusy(for: model) {
@@ -1111,7 +1121,7 @@ struct IntegratedWorkspaceView: View {
             } label: {
                 Label(t("Settings", "設定"), systemImage: "gearshape")
             }
-            .disabled(viewModel.isManagedProcessRunning)
+            .disabled(!viewModel.canEditProfile(model))
 
             Button {
                 viewModel.copyModelID(for: model)
@@ -1132,7 +1142,7 @@ struct IntegratedWorkspaceView: View {
             } label: {
                 Label(t("Delete", "削除"), systemImage: "trash")
             }
-            .disabled(viewModel.models.count <= 1 || viewModel.isManagedProcessRunning)
+            .disabled(!viewModel.canDeleteProfile(model))
         } label: {
             Image(systemName: "ellipsis")
                 .font(.body.weight(.semibold))
@@ -1329,7 +1339,7 @@ struct IntegratedWorkspaceView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.borderless)
-                .disabled(viewModel.isManagedProcessRunning)
+                .disabled(!viewModel.canEditProfile(model))
                 .help(t("Model Settings", "モデル設定"))
             }
 
@@ -1356,6 +1366,10 @@ struct IntegratedWorkspaceView: View {
             LazyVGrid(columns: inspectorOverviewColumns, alignment: .leading, spacing: 10) {
                 inspectorInfoRow(title: t("Size", "サイズ"), value: viewModel.modelSizeText(for: model))
                 inspectorInfoRow(
+                    title: t("Backend", "バックエンド"),
+                    value: model.resolvedBackend.localizedTitle(language: viewModel.settings.uiLanguage)
+                )
+                inspectorInfoRow(
                     title: t("Port Status", "ポート状態"),
                     value: viewModel.integratedPortStatusText(for: model),
                     valueColor: isPortBusy ? .red : .primary,
@@ -1369,8 +1383,8 @@ struct IntegratedWorkspaceView: View {
                 if memoryText != "-" {
                     inspectorInfoRow(title: t("Memory", "メモリ"), value: memoryText)
                 }
-                if model.id == viewModel.runningModelID {
-                    let uptimeText = viewModel.integratedUptimeText
+                if viewModel.isModelRunning(model) {
+                    let uptimeText = viewModel.integratedUptimeText(for: model)
                     if uptimeText != "-" {
                         inspectorInfoRow(title: t("Uptime", "稼働時間"), value: uptimeText)
                     }
@@ -1522,6 +1536,27 @@ struct IntegratedWorkspaceView: View {
     private func modelInspectorBenchmark(for model: ModelConfig) -> some View {
         inspectorSection(title: t("Benchmark", "ベンチマーク")) {
             VStack(alignment: .leading, spacing: 10) {
+                Picker(
+                    t("Measurement", "測定モード"),
+                    selection: Binding(
+                        get: { viewModel.settings.benchmarkPreset },
+                        set: { viewModel.setBenchmarkPreset($0) }
+                    )
+                ) {
+                    ForEach(BenchmarkPreset.allCases) { preset in
+                        Text(preset.localizedTitle(language: viewModel.settings.uiLanguage))
+                            .tag(preset)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .disabled(viewModel.isSpeedTestRunning)
+                .help(viewModel.settings.benchmarkPreset.localizedDescription(language: viewModel.settings.uiLanguage))
+
+                Text(viewModel.settings.benchmarkPreset.localizedDescription(language: viewModel.settings.uiLanguage))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 HStack(spacing: 8) {
                     Button {
                         runBenchmarkWithFeedback()
@@ -1553,6 +1588,18 @@ struct IntegratedWorkspaceView: View {
                     .controlSize(.small)
                     .disabled(viewModel.benchmarkResult(for: model) == nil)
                     .help(t("Copy benchmark for this model", "このモデルのベンチマークをコピー"))
+
+                    Button {
+                        isBenchmarkComparisonPresented = true
+                    } label: {
+                        Label(t("Compare", "比較"), systemImage: "chart.bar.xaxis")
+                            .labelStyle(.iconOnly)
+                            .frame(width: 30)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(viewModel.benchmarkComparisonRows.filter { !$0.isStale }.count < 2)
+                    .help(t("Compare measured models by use case", "測定済みモデルを用途別に比較"))
                 }
 
                 HStack(spacing: 8) {
@@ -1593,12 +1640,21 @@ struct IntegratedWorkspaceView: View {
                         .transition(.opacity)
                 }
 
+                if viewModel.isSpeedTestRunning, !viewModel.benchmarkProgressText.isEmpty {
+                    Text(viewModel.benchmarkProgressText)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+
                 Text(viewModel.benchmarkSummary(for: model))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 if let result = viewModel.benchmarkResult(for: model) {
+                    if let session = viewModel.benchmarkSession(for: model) {
+                        benchmarkAggregateSummary(session)
+                    }
                     benchmarkScoreGrid(result)
                     benchmarkMetricSummary(result)
                 } else {
@@ -1625,6 +1681,37 @@ struct IntegratedWorkspaceView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+        }
+    }
+
+    private func benchmarkAggregateSummary(_ session: BenchmarkSessionResult) -> some View {
+        let aggregate = session.aggregate
+        return LazyVGrid(columns: inspectorOverviewColumns, alignment: .leading, spacing: 8) {
+            inspectorInfoRow(
+                title: t("Successful samples", "成功回数"),
+                value: "\(aggregate.successfulSampleCount)/\(aggregate.sampleCount)",
+                helpText: t(
+                    "Completed samples used to calculate the medians.",
+                    "中央値の算出に使えた完了測定の回数です。"
+                )
+            )
+            inspectorInfoRow(
+                title: t("Stability", "安定度"),
+                value: aggregate.stabilityPercent.map { "\($0)%" }
+                    ?? aggregate.stabilityLevel.localizedTitle(language: viewModel.settings.uiLanguage),
+                helpText: t(
+                    "Consistency of TTFT and output speed across repeated samples. Higher is more stable.",
+                    "複数回測定したTTFTと出力速度の一貫性です。高いほど安定しています。"
+                )
+            )
+            inspectorInfoRow(
+                title: t("Median TTFT", "TTFT中央値"),
+                value: aggregate.medianTTFTMS.map { String(format: "%.0f ms", $0) } ?? "-"
+            )
+            inspectorInfoRow(
+                title: t("Median output", "出力速度中央値"),
+                value: aggregate.medianOutputTokensPerSecond.map { String(format: "%.1f tok/s", $0) } ?? "-"
+            )
         }
     }
 
@@ -1758,7 +1845,7 @@ struct IntegratedWorkspaceView: View {
             }
 
             if let host = result.hostSnapshot {
-                Text("\(result.suiteVersion) • \(host.chipName) • \(host.memoryText) • mlx-lm \(host.mlxLMVersion)")
+                Text("\(result.suiteVersion) • \(host.chipName) • \(host.memoryText) • \(host.localizedServerText(language: viewModel.settings.uiLanguage))")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
@@ -1891,7 +1978,7 @@ struct IntegratedWorkspaceView: View {
     }
 
     private func modelInspectorCommandPreview(for model: ModelConfig) -> some View {
-        let command = LaunchCommandBuilder.command(executablePath: viewModel.settings.mlxServerExecutablePath, model: model)
+        let command = viewModel.launchCommandPreview(for: model)
         return inspectorSection(title: t("Launch Command", "起動コマンド")) {
             KineticCopyButton(
                 feedbackStyle: .trailingOverlay,

@@ -14,11 +14,7 @@ struct MenuBarView: View {
     }
 
     private var menuBarTitle: String {
-        if viewModel.restartRequired {
-            return "MLX: \(viewModel.runtimeState.menuBarStatus) - \(t("restart required", "再起動が必要"))"
-        }
-
-        return "MLX: \(viewModel.runtimeState.menuBarStatus)"
+        viewModel.menuBarTitle
     }
 
     var body: some View {
@@ -29,6 +25,12 @@ struct MenuBarView: View {
             Text(viewModel.runtimeState.badgeDetail)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            if viewModel.runningModelIDs.count > 1 {
+                Text(viewModel.runningModelText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
 
             Divider()
 

@@ -65,11 +65,12 @@ struct ContentView: View {
                 draft: $viewModel.profileEditorDraft,
                 title: t("Edit Model Profile", "モデルプロファイルを編集"),
                 saveButtonTitle: t("Save Profile", "プロファイルを保存"),
-                noticeMessage: viewModel.isManagedProcessRunning
+                noticeMessage: viewModel.isProfileEditorRuntimeLocked
                     ? t("Runtime fields are locked while the managed server is running.", "管理中サーバーの実行中はランタイム項目を編集できません。")
                     : nil,
                 message: viewModel.profileEditorMessage,
-                runtimeFieldsLocked: viewModel.isManagedProcessRunning,
+                runtimeFieldsLocked: viewModel.isProfileEditorRuntimeLocked,
+                kvCacheEnvironment: viewModel.profileEditorKVCacheEnvironment,
                 language: viewModel.settings.uiLanguage,
                 onSave: viewModel.saveProfileEditing,
                 onCancel: viewModel.cancelProfileEditing,
@@ -91,6 +92,7 @@ struct ContentView: View {
                     : nil,
                 message: viewModel.addProfileMessage,
                 runtimeFieldsLocked: false,
+                kvCacheEnvironment: viewModel.addProfileKVCacheEnvironment,
                 language: viewModel.settings.uiLanguage,
                 onSave: viewModel.saveNewProfile,
                 onCancel: viewModel.cancelAddProfile,

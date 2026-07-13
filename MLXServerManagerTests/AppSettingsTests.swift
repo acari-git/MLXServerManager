@@ -8,6 +8,8 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.uiLanguage, .system)
         XCTAssertEqual(settings.uiAppearance, "system")
         XCTAssertEqual(settings.hermesConfigPath, "~/.hermes/config.yaml")
+        XCTAssertEqual(settings.benchmarkPreset, .standard)
+        XCTAssertEqual(settings.rapidMLXExecutablePath, "")
     }
 
     func testDecodingLegacySettingsFillsChromePreferences() throws {
@@ -25,15 +27,19 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.uiLanguage, .system)
         XCTAssertEqual(settings.uiAppearance, "system")
         XCTAssertEqual(settings.hermesConfigPath, "~/.hermes/config.yaml")
+        XCTAssertEqual(settings.benchmarkPreset, .standard)
+        XCTAssertEqual(settings.rapidMLXExecutablePath, "")
     }
 
     func testEncodingRoundTripsChromePreferences() throws {
         let original = AppSettings(
             mlxServerExecutablePath: "/tmp/mlx_lm.server",
+            rapidMLXExecutablePath: "/tmp/rapid-mlx",
             defaultHost: "127.0.0.1",
             defaultPort: 9999,
             apiKeyPlaceholder: "local-only",
             hermesConfigPath: "/tmp/hermes/config.yaml",
+            benchmarkPreset: .detailed,
             uiLanguage: .english,
             uiAppearance: "dark"
         )
@@ -44,6 +50,10 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(decoded.uiLanguage, .english)
         XCTAssertEqual(decoded.uiAppearance, "dark")
         XCTAssertEqual(decoded.hermesConfigPath, "/tmp/hermes/config.yaml")
+        XCTAssertEqual(decoded.benchmarkPreset, .detailed)
+        XCTAssertEqual(decoded.rapidMLXExecutablePath, "/tmp/rapid-mlx")
+        XCTAssertEqual(decoded.executablePath(for: .mlxLM), "/tmp/mlx_lm.server")
+        XCTAssertEqual(decoded.executablePath(for: .rapidMLX), "/tmp/rapid-mlx")
     }
 
     func testEncodingOmitsRetiredDownloadBehaviorKeys() throws {

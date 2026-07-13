@@ -10,6 +10,7 @@ struct ModelProfileEditorView: View {
     let noticeMessage: String?
     let message: String?
     let runtimeFieldsLocked: Bool
+    let kvCacheEnvironment: KVCacheEnvironment
     let language: AppLanguage
     let onSave: () -> Bool
     let onCancel: () -> Void
@@ -78,7 +79,7 @@ struct ModelProfileEditorView: View {
 
             if runtimeFieldsLocked {
                 Label(
-                    t("Stop the managed server before changing model path, host, port, or advanced launch options.", "モデルパス、ホスト、ポート、詳細起動オプションを変更する前に、管理中のサーバーを停止してください。"),
+                    t("Stop the managed server before changing model path, backend, host, port, or advanced launch options.", "モデルパス、バックエンド、ホスト、ポート、詳細起動オプションを変更する前に、管理中のサーバーを停止してください。"),
                     systemImage: "lock.fill"
                 )
                 .font(.callout)
@@ -105,6 +106,24 @@ struct ModelProfileEditorView: View {
                             trigger: validationShakeTrigger
                         )
                         .disabled(runtimeFieldsLocked)
+                }
+
+                editorRow(t("Backend", "バックエンド")) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Picker(t("Backend", "バックエンド"), selection: $draft.backend) {
+                            ForEach(InferenceBackend.allCases) { backend in
+                                Text(backend.localizedTitle(language: language))
+                                    .tag(backend)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .disabled(runtimeFieldsLocked)
+
+                        Text(draft.backend.localizedDetail(language: language))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 editorRow("Host") {
@@ -149,13 +168,15 @@ struct ModelProfileEditorView: View {
                 },
                 content: {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(t("Leave empty to use mlx_lm.server defaults.", "空欄の場合はmlx_lm.serverの既定値を使用します。"))
+                    Text(advancedDefaultsDescription)
                         .font(.callout)
                         .foregroundStyle(.secondary)
 
                     Text(t("Advanced options are workload-dependent and may not improve performance.", "詳細オプションの効果はワークロードに依存し、性能改善を保証するものではありません。"))
                         .font(.callout)
                         .foregroundStyle(.secondary)
+
+                    kvCacheDiagnostic
 
                     Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 14) {
                         advancedRow("Temperature") {
@@ -218,12 +239,14 @@ struct ModelProfileEditorView: View {
                                 .textFieldStyle(.roundedBorder)
                         }
 
-                        advancedRow("Chat Template Args") {
-                            borderedTextEditor(
-                                text: advancedBinding(\.chatTemplateArgs),
-                                minHeight: 112,
-                                font: .system(.callout, design: .monospaced)
-                            )
+                        if draft.backend == .mlxLM {
+                            advancedRow("Chat Template Args") {
+                                borderedTextEditor(
+                                    text: advancedBinding(\.chatTemplateArgs),
+                                    minHeight: 112,
+                                    font: .system(.callout, design: .monospaced)
+                                )
+                            }
                         }
 
                         advancedRow("Raw Extra Args") {
@@ -289,6 +312,88 @@ struct ModelProfileEditorView: View {
             .disabled(runtimeFieldsLocked)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var kvCacheAssessment: KVCacheAssessment {
+        KVCacheAdvisor.assess(
+            options: draft.advancedLaunchOptions,
+            environment: kvCacheEnvironment,
+            backend: draft.backend
+        )
+    }
+
+    private var advancedDefaultsDescription: String {
+        switch draft.backend {
+        case .mlxLM:
+            t("Leave empty to use mlx_lm.server defaults.", "空欄の場合はmlx_lm.serverの既定値を使用します。")
+        case .rapidMLX:
+            t("Leave empty to use Rapid-MLX defaults.", "空欄の場合はRapid-MLXの既定値を使用します。")
+        }
+    }
+
+    private var kvCacheDiagnostic: some View {
+        let assessment = kvCacheAssessment
+        return GroupBox(t("KV Cache", "KVキャッシュ")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Label(assessment.title(language: language), systemImage: kvCacheStatusSymbol(assessment.level))
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(kvCacheStatusColor(assessment.level))
+
+                Text(assessment.detail(language: language))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(assessment.recommendationText(language: language))
+                    .font(.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 10) {
+                    Button {
+                        let recommendation = assessment.recommendation
+                        draft.advancedLaunchOptions.promptCacheSize = String(recommendation.entryLimit)
+                        draft.advancedLaunchOptions.promptCacheBytes = String(recommendation.byteLimit)
+                        advancedOptionsStatus = t("KV cache recommendation applied.", "KVキャッシュの推奨値を反映しました。")
+                    } label: {
+                        Label(t("Apply Recommendation", "推奨値を反映"), systemImage: "wand.and.stars")
+                    }
+                    .disabled(runtimeFieldsLocked)
+
+                    Button {
+                        draft.advancedLaunchOptions.promptCacheSize = nil
+                        draft.advancedLaunchOptions.promptCacheBytes = nil
+                        advancedOptionsStatus = t("KV cache settings reset to server defaults.", "KVキャッシュ設定をサーバー既定値へ戻しました。")
+                    } label: {
+                        Label(t("Use Server Defaults", "サーバー既定値を使用"), systemImage: "arrow.counterclockwise")
+                    }
+                    .disabled(runtimeFieldsLocked)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 4)
+        }
+    }
+
+    private func kvCacheStatusSymbol(_ level: KVCacheDiagnosisLevel) -> String {
+        switch level {
+        case .healthy:
+            "checkmark.circle.fill"
+        case .attention:
+            "info.circle.fill"
+        case .warning:
+            "exclamationmark.triangle.fill"
+        }
+    }
+
+    private func kvCacheStatusColor(_ level: KVCacheDiagnosisLevel) -> Color {
+        switch level {
+        case .healthy:
+            .green
+        case .attention:
+            .orange
+        case .warning:
+            .red
+        }
     }
 
     private func editorRow<Content: View>(
@@ -393,7 +498,10 @@ struct ModelProfileEditorView: View {
             return t("Complete Model Path, Host, and Port to preview the launch command.", "起動コマンドをプレビューするには、モデルパス、ホスト、ポートを入力してください。")
         }
 
-        return ModelProcessManager.commandPreview(for: request, executablePath: "mlx_lm.server")
+        return ModelProcessManager.commandPreview(
+            for: request,
+            executablePath: draft.backend.defaultExecutableName
+        )
     }
 
     private var canCopyLaunchCommandPreview: Bool {
@@ -410,7 +518,8 @@ struct ModelProfileEditorView: View {
         }
 
         return ModelLaunchRequest(
-            executablePath: "mlx_lm.server",
+            executablePath: draft.backend.defaultExecutableName,
+            backend: draft.backend,
             modelID: modelID,
             host: host,
             port: port,

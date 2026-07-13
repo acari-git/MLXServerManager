@@ -80,4 +80,27 @@ final class LaunchCommandBuilderTests: XCTestCase {
         XCTAssertTrue(command.contains("--chat-template-args '{\"enable_thinking\":false}'"))
         XCTAssertFalse(command.contains("--chat-template-args '{\"enable_thinking\":true}'"))
     }
+
+    func testRapidMLXCommandUsesBackendDefaultExecutableAndServeSyntax() {
+        let model = ModelConfig(
+            modelID: "/tmp/model folder",
+            displayName: "Rapid",
+            family: "Local",
+            quantization: "4bit",
+            localName: "model",
+            host: "127.0.0.1",
+            serverPort: 9090,
+            enableThinking: false,
+            notes: "",
+            advancedLaunchOptions: AdvancedLaunchOptions(defaultTemperature: "0.3"),
+            backend: .rapidMLX
+        )
+
+        let command = LaunchCommandBuilder.command(executablePath: "", model: model)
+
+        XCTAssertTrue(command.hasPrefix("rapid-mlx serve '/tmp/model folder'"))
+        XCTAssertTrue(command.contains("--host 127.0.0.1 --port 9090 --no-thinking"))
+        XCTAssertTrue(command.contains("--default-temperature 0.3"))
+        XCTAssertFalse(command.contains("--model"))
+    }
 }

@@ -11,7 +11,9 @@ struct BenchmarkRunConfiguration: Equatable {
     let managedProcessID: Int32?
     let chipName: String
     let memoryText: String
-    let mlxServerExecutablePath: String
+    let backend: InferenceBackend
+    let serverExecutablePath: String
+    let includesAgentProbes: Bool
 }
 
 struct BenchmarkService {
@@ -33,12 +35,17 @@ struct BenchmarkService {
     }
 
     func run(configuration: BenchmarkRunConfiguration) async -> BenchmarkResult {
-        let mlxLMVersion = await mlxLMVersionProvider.version(executablePath: configuration.mlxServerExecutablePath)
+        let serverVersion = await mlxLMVersionProvider.version(
+            executablePath: configuration.serverExecutablePath,
+            backend: configuration.backend
+        )
         let hostSnapshot = BenchmarkHostSnapshot(
             macOSVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             chipName: configuration.chipName,
             memoryText: configuration.memoryText,
-            mlxLMVersion: mlxLMVersion ?? "Unavailable"
+            mlxLMVersion: serverVersion ?? "Unavailable",
+            backend: configuration.backend,
+            serverVersion: serverVersion
         )
 
         let readyStartedAt = Date()
@@ -127,7 +134,7 @@ struct BenchmarkService {
                 message: message,
                 hostSnapshot: resolvedHostSnapshot(
                     base: hostSnapshot,
-                    mlxLMVersion: mlxLMVersion,
+                    serverVersion: serverVersion,
                     systemFingerprint: speedMeasurement.systemFingerprint
                 ),
                 speedMetrics: speedMetrics,
@@ -136,14 +143,22 @@ struct BenchmarkService {
             )
         }
 
-        let agentMeasurements = await runAgentReadiness(baseURL: configuration.baseURL, modelID: configuration.modelID)
-        let agentReadiness = makeAgentReadiness(from: agentMeasurements)
+        let agentReadiness: BenchmarkAgentReadiness?
+        if configuration.includesAgentProbes {
+            let agentMeasurements = await runAgentReadiness(
+                baseURL: configuration.baseURL,
+                modelID: configuration.modelID
+            )
+            agentReadiness = makeAgentReadiness(from: agentMeasurements)
+        } else {
+            agentReadiness = nil
+        }
         let scores = BenchmarkScoreCalculator.scores(speed: speedMetrics, agent: agentReadiness)
         let phase: BenchmarkPhase = speedMetrics.errorMessage == nil && !speedMetrics.timedOut ? .success : .failed
         let message = resultMessage(speedMetrics: speedMetrics, agentReadiness: agentReadiness)
         let resolvedHostSnapshot = resolvedHostSnapshot(
             base: hostSnapshot,
-            mlxLMVersion: mlxLMVersion,
+            serverVersion: serverVersion,
             systemFingerprint: speedMeasurement.systemFingerprint
         )
 
@@ -598,9 +613,12 @@ struct BenchmarkService {
         }
     }
 
-    private func resultMessage(speedMetrics: BenchmarkSpeedMetrics, agentReadiness: BenchmarkAgentReadiness) -> String {
+    private func resultMessage(speedMetrics: BenchmarkSpeedMetrics, agentReadiness: BenchmarkAgentReadiness?) -> String {
         if let errorMessage = speedMetrics.errorMessage {
             return errorMessage
+        }
+        guard let agentReadiness else {
+            return "Speed \(speedMetrics.outputSpeedText), TTFT \(speedMetrics.ttftText)"
         }
         return "Speed \(speedMetrics.outputSpeedText), TTFT \(speedMetrics.ttftText), Agent JSON \(agentReadiness.jsonValidityText)"
     }
@@ -614,14 +632,17 @@ struct BenchmarkService {
 
     private func resolvedHostSnapshot(
         base: BenchmarkHostSnapshot,
-        mlxLMVersion: String?,
+        serverVersion: String?,
         systemFingerprint: String?
     ) -> BenchmarkHostSnapshot {
-        BenchmarkHostSnapshot(
+        let resolvedVersion = serverVersion ?? systemFingerprint ?? "Unavailable"
+        return BenchmarkHostSnapshot(
             macOSVersion: base.macOSVersion,
             chipName: base.chipName,
             memoryText: base.memoryText,
-            mlxLMVersion: mlxLMVersion ?? systemFingerprint ?? "Unavailable"
+            mlxLMVersion: resolvedVersion,
+            backend: base.resolvedBackend,
+            serverVersion: resolvedVersion
         )
     }
 

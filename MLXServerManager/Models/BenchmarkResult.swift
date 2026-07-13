@@ -313,6 +313,36 @@ struct BenchmarkHostSnapshot: Codable, Equatable {
     let chipName: String
     let memoryText: String
     let mlxLMVersion: String
+    let backend: InferenceBackend?
+    let serverVersion: String?
+
+    init(
+        macOSVersion: String,
+        chipName: String,
+        memoryText: String,
+        mlxLMVersion: String,
+        backend: InferenceBackend? = nil,
+        serverVersion: String? = nil
+    ) {
+        self.macOSVersion = macOSVersion
+        self.chipName = chipName
+        self.memoryText = memoryText
+        self.mlxLMVersion = mlxLMVersion
+        self.backend = backend
+        self.serverVersion = serverVersion
+    }
+
+    var resolvedBackend: InferenceBackend {
+        backend ?? .mlxLM
+    }
+
+    var resolvedServerVersion: String {
+        serverVersion ?? mlxLMVersion
+    }
+
+    func localizedServerText(language: AppLanguage) -> String {
+        "\(resolvedBackend.localizedTitle(language: language)) \(resolvedServerVersion)"
+    }
 }
 
 struct BenchmarkSpeedMetrics: Codable, Equatable {
@@ -584,7 +614,7 @@ struct BenchmarkResult: Codable, Identifiable, Equatable {
                 "macOS: \(hostSnapshot.macOSVersion)",
                 "Chip: \(hostSnapshot.chipName)",
                 "Memory: \(hostSnapshot.memoryText)",
-                "mlx-lm: \(hostSnapshot.mlxLMVersion)"
+                "Backend: \(hostSnapshot.localizedServerText(language: .english))"
             ]
         }
 
@@ -644,7 +674,7 @@ struct BenchmarkResult: Codable, Identifiable, Equatable {
                 "macOS: \(hostSnapshot.macOSVersion)",
                 "チップ: \(hostSnapshot.chipName)",
                 "メモリ: \(hostSnapshot.memoryText)",
-                "mlx-lm: \(hostSnapshot.mlxLMVersion)"
+                "バックエンド: \(hostSnapshot.localizedServerText(language: .japanese))"
             ]
         }
 
@@ -700,26 +730,30 @@ struct BenchmarkResult: Codable, Identifiable, Equatable {
 }
 
 struct BenchmarkResultsSnapshot: Codable, Equatable {
-    static let currentSchemaVersion = 1
+    static let currentSchemaVersion = 2
 
     var schemaVersion: Int
     var benchmarkResultsByProfileID: [String: BenchmarkResult]
     var agenticBenchmarkResultsByProfileID: [String: AgenticBenchmarkResult]
+    var benchmarkSessionsByProfileID: [String: BenchmarkSessionResult]
 
     init(
         schemaVersion: Int = currentSchemaVersion,
         benchmarkResultsByProfileID: [String: BenchmarkResult],
-        agenticBenchmarkResultsByProfileID: [String: AgenticBenchmarkResult]
+        agenticBenchmarkResultsByProfileID: [String: AgenticBenchmarkResult],
+        benchmarkSessionsByProfileID: [String: BenchmarkSessionResult] = [:]
     ) {
         self.schemaVersion = schemaVersion
         self.benchmarkResultsByProfileID = benchmarkResultsByProfileID
         self.agenticBenchmarkResultsByProfileID = agenticBenchmarkResultsByProfileID
+        self.benchmarkSessionsByProfileID = benchmarkSessionsByProfileID
     }
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion
         case benchmarkResultsByProfileID
         case agenticBenchmarkResultsByProfileID
+        case benchmarkSessionsByProfileID
     }
 
     init(from decoder: Decoder) throws {
@@ -733,10 +767,15 @@ struct BenchmarkResultsSnapshot: Codable, Equatable {
             [String: AgenticBenchmarkResult].self,
             forKey: .agenticBenchmarkResultsByProfileID
         ) ?? [:]
+        benchmarkSessionsByProfileID = try container.decodeIfPresent(
+            [String: BenchmarkSessionResult].self,
+            forKey: .benchmarkSessionsByProfileID
+        ) ?? [:]
     }
 
     static let empty = BenchmarkResultsSnapshot(
         benchmarkResultsByProfileID: [:],
-        agenticBenchmarkResultsByProfileID: [:]
+        agenticBenchmarkResultsByProfileID: [:],
+        benchmarkSessionsByProfileID: [:]
     )
 }

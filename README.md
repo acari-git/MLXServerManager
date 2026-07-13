@@ -2,12 +2,12 @@
 
 MLX Server Manager is a lightweight macOS SwiftUI GUI for operating local OpenAI-compatible MLX endpoints in Direct Mode.
 
-It is primarily a control surface for app-managed `mlx_lm.server`, with support for detecting and adopting an already-running external OpenAI-compatible server as connection context.
+It is a control surface for app-managed `mlx_lm.server` and Rapid-MLX processes, with support for detecting and adopting an already-running external OpenAI-compatible server as connection context.
 
 The app keeps Direct Mode:
 
 ```text
-OpenAI-compatible client -> mlx_lm.server or adopted external server -> MLX model
+OpenAI-compatible client -> selected managed backend or adopted external server -> MLX model
 ```
 
 MLX Server Manager controls and observes app-managed local server processes, but it does not enter the inference request path. OpenAI-compatible clients connect directly to the server endpoint.
@@ -20,7 +20,7 @@ MLX Server Manager controls and observes app-managed local server processes, but
 
 The main dashboard shows the core MLX Server Manager workflow in one place: model profiles, app settings, diagnostics, server status, selected model details, OpenAI-compatible connection settings, and logs.
 
-MLX Server Manager remains a Direct Mode control surface for `mlx_lm.server`. It does not proxy inference requests.
+MLX Server Manager remains a Direct Mode control surface. It does not proxy inference requests or route requests between backends.
 
 ### Connection Settings / Current Target
 
@@ -50,7 +50,7 @@ Adopt does not mean process ownership. MLX Server Manager does not stop, restart
 
 The Direct Mode path remains:
 
-`OpenAI-compatible client -> mlx_lm.server or adopted external server -> MLX model`
+`OpenAI-compatible client -> selected managed backend or adopted external server -> MLX model`
 
 ### First-run Onboarding Guidance
 
@@ -64,23 +64,23 @@ The guidance is informational only. It does not install dependencies, download m
 
 ## Why This Project Exists
 
-`mlx_lm.server` is fast and simple, but day-to-day local use benefits from a small GUI around process management, diagnostics, model profiles, logs, memory display, external endpoint visibility, and connection settings.
+Local MLX servers are fast and simple, but day-to-day use benefits from a small GUI around process management, diagnostics, model profiles, logs, memory display, external endpoint visibility, and connection settings.
 
-MLX Server Manager exists to provide that management layer without becoming the inference layer. The goal is to make pure `mlx_lm.server` easier to operate for local OpenAI-compatible clients, especially agent tools that need a stable local endpoint.
+MLX Server Manager exists to provide that management layer without becoming the inference layer. The goal is to make supported local MLX servers easier to operate for OpenAI-compatible clients, especially agent tools that need stable local endpoints.
 
 ## Project Principles
 
 MLX Server Manager follows three product principles:
 
-1. Preserve `mlx-lm` runtime performance as the top priority.
-2. Make `mlx-lm` usable for users who are not comfortable with CLI workflows.
-3. Adopt useful features from other local LLM tools when they do not conflict with `mlx-lm` performance, safety, or Direct Mode boundaries.
+1. Preserve direct local inference performance as the top priority.
+2. Make supported MLX servers usable for users who are not comfortable with CLI workflows.
+3. Adopt useful features from local LLM tools when they do not conflict with performance, safety, or Direct Mode boundaries.
 
 See [docs/product_direction.md](docs/product_direction.md) for the full project direction, including current non-goals and future candidate features.
 
 ## What This Is
 
-- A local macOS app for starting, stopping, and restarting an app-managed `mlx_lm.server`.
+- A local macOS app for independently starting, stopping, and restarting app-managed `mlx_lm.server` and Rapid-MLX processes.
 - A status and diagnostics surface for readiness checks via `GET /v1/models`.
 - A model profile editor for local OpenAI-compatible endpoint settings.
 - A managed-process log and memory display.
@@ -94,8 +94,8 @@ See [docs/product_direction.md](docs/product_direction.md) for the full project 
 - Not an inference proxy.
 - Does not include full Hugging Face model-card browsing, HF token storage, model deletion, or cache cleanup.
 - Not a model deletion tool.
-- Not a multi-backend wrapper.
-- Not a replacement for `mlx-lm` or model setup.
+- Not an inference router between backends.
+- Not a replacement for the supported server runtimes or model setup.
 
 ## Install
 
@@ -257,7 +257,7 @@ MLX Server Manager presents connection information for OpenAI-compatible clients
 - Model ID: the selected Model Profile's `modelID`
 - API key placeholder: `not-required-local`
 
-The client sends inference requests directly to the selected server endpoint. MLX Server Manager starts, stops, monitors, diagnoses, and copies connection settings for app-managed `mlx_lm.server`; for adopted external servers it provides connection context only.
+The client sends inference requests directly to the selected server endpoint. MLX Server Manager starts, stops, monitors, diagnoses, and copies connection settings for app-managed `mlx_lm.server` and Rapid-MLX processes; for adopted external servers it provides connection context only.
 
 For Hermes Agent and similar clients, see [docs/hermes_agent_connection.md](docs/hermes_agent_connection.md). Hermes Agent is treated as an OpenAI-compatible client; MLX Server Manager still stays outside the inference request path.
 
@@ -265,7 +265,8 @@ For Hermes Agent and similar clients, see [docs/hermes_agent_connection.md](docs
 
 As of v24.0.0, MLX Server Manager includes:
 
-- Start, Stop, and Restart for the `mlx_lm.server` process started by this app.
+- Independent Start, Stop, and Restart for app-managed `mlx_lm.server` and Rapid-MLX processes.
+- Multiple concurrently managed models, each with its own process, endpoint, runtime state, and memory measurement.
 - Managed-process-only Stop and Restart behavior.
 - Port availability check.
 - Ready check via `GET /v1/models`.
@@ -277,8 +278,12 @@ As of v24.0.0, MLX Server Manager includes:
 - Rename for imported profile-name conflicts.
 - Explicit Replace for one unambiguous existing profile target.
 - Import / Export fixtures and XCTest regression coverage.
-- Model switching with `Restart required` state.
+- Model selection and lifecycle controls remain profile-specific while other managed models keep running.
 - Advanced Launch Options per model profile.
+- Per-profile backend selection with backward-compatible `mlx-lm` defaults.
+- Quick, Standard, and Detailed benchmark presets with repeated samples, medians, and stability.
+- Model comparison with chat, coding, and AI-agent recommendations for the current Mac.
+- KV cache diagnosis and conservative starting-point recommendations.
 - External Server Detection for selected host/port endpoints.
 - Adopt External Server and Forget External Server for connection context only.
 - Current Target summary in Connection Settings:
@@ -326,14 +331,11 @@ The copied `curl /v1/chat/completions` text is only a client-side convenience ex
 - Proxy mode.
 - LAN Web UI.
 - App Intents.
-- Auto unload.
 - Full Hugging Face model-card browsing.
 - HF token storage or credential management.
 - Silent or background model downloads.
 - Model deletion.
 - Hugging Face cache deletion.
-- Multiple concurrent server management.
-- Multiple model simultaneous launch.
 - RAG.
 - Embedding manager.
 - Tool-call translation.
@@ -413,7 +415,7 @@ Qwen thinking behavior is controlled by the client request and model template be
 - The app is not notarized and is not signed with Developer ID.
 - macOS Gatekeeper may warn when opening the app.
 - Browser-downloaded unsigned builds may show "`MLXServerManager` is damaged and can't be opened"; this can be Gatekeeper quarantine, not necessarily a broken zip or app. Verify the Release asset and checksum before removing quarantine.
-- The app does not bundle `mlx-lm`.
+- The app does not bundle `mlx-lm` or Rapid-MLX.
 - The app does not bundle models.
 - You must provide model files, download them explicitly, or use an existing Hugging Face cache.
 - Hugging Face downloads are explicit user actions and depend on local tooling such as the Hugging Face CLI.
@@ -450,7 +452,7 @@ All changes should be reviewed for:
 - No local personal paths.
 - No model files or runtime settings.
 - No app bundles or build artifacts.
-- No expansion into Chat UI, inference proxy behavior, or multi-backend wrapper behavior.
+- No expansion into Chat UI, inference proxy behavior, or request routing between backends.
 
 ## Documentation
 

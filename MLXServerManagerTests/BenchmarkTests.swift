@@ -472,7 +472,16 @@ final class BenchmarkTests: XCTestCase {
         )
         let snapshot = BenchmarkResultsSnapshot(
             benchmarkResultsByProfileID: ["model-a": benchmark],
-            agenticBenchmarkResultsByProfileID: ["model-a": readiness]
+            agenticBenchmarkResultsByProfileID: ["model-a": readiness],
+            benchmarkSessionsByProfileID: [
+                "model-a": BenchmarkSessionResult(
+                    profileID: "model-a",
+                    modelID: "local/model-a",
+                    selectedProfileName: "Model A",
+                    preset: .standard,
+                    samples: [benchmark]
+                )
+            ]
         )
 
         let data = try JSONEncoder().encode(snapshot)
@@ -480,6 +489,167 @@ final class BenchmarkTests: XCTestCase {
 
         XCTAssertEqual(decoded.benchmarkResultsByProfileID["model-a"]?.useCaseScores.first?.score, 10)
         XCTAssertEqual(decoded.agenticBenchmarkResultsByProfileID["model-a"]?.scoreText, "1/1")
+        XCTAssertEqual(decoded.benchmarkSessionsByProfileID["model-a"]?.preset, .standard)
+        XCTAssertEqual(decoded.benchmarkSessionsByProfileID["model-a"]?.samples.count, 1)
+    }
+
+    func testBenchmarkPresetsUseExpectedSampleCounts() {
+        XCTAssertEqual(BenchmarkPreset.quick.sampleCount, 1)
+        XCTAssertEqual(BenchmarkPreset.standard.sampleCount, 3)
+        XCTAssertEqual(BenchmarkPreset.detailed.sampleCount, 5)
+        XCTAssertFalse(BenchmarkPreset.quick.includesAgentProbes)
+        XCTAssertTrue(BenchmarkPreset.standard.includesAgentProbes)
+    }
+
+    func testBenchmarkSessionUsesMediansAndReportsStability() {
+        let samples = [
+            makeSuccessfulBenchmark(profileID: "model-a", speed: 20, ttft: 1_000, score: 7),
+            makeSuccessfulBenchmark(profileID: "model-a", speed: 30, ttft: 800, score: 9),
+            makeSuccessfulBenchmark(profileID: "model-a", speed: 40, ttft: 600, score: 10)
+        ]
+        let session = BenchmarkSessionResult(
+            profileID: "model-a",
+            modelID: "local/model-a",
+            selectedProfileName: "Model A",
+            preset: .standard,
+            samples: samples
+        )
+
+        XCTAssertEqual(session.aggregate.sampleCount, 3)
+        XCTAssertEqual(session.aggregate.successfulSampleCount, 3)
+        XCTAssertEqual(session.aggregate.medianOutputTokensPerSecond, 30)
+        XCTAssertEqual(session.aggregate.medianTTFTMS, 800)
+        XCTAssertEqual(session.aggregate.medianUseCaseScores.first(where: { $0.useCase == .chat })?.score, 9)
+        XCTAssertNotNil(session.aggregate.stabilityPercent)
+    }
+
+    func testQuickBenchmarkDoesNotClaimAgentRecommendation() {
+        let sample = makeSuccessfulBenchmark(profileID: "model-a", speed: 30, ttft: 700, score: 10)
+        let session = BenchmarkSessionResult(
+            profileID: "model-a",
+            modelID: "local/model-a",
+            selectedProfileName: "Model A",
+            preset: .quick,
+            samples: [sample]
+        )
+
+        XCTAssertNil(session.aggregate.medianUseCaseScores.first(where: { $0.useCase == .agent }))
+    }
+
+    func testComparisonExcludesSingleSampleResultsFromRecommendations() {
+        let model = makeModelConfig(modelID: "local/model-a", displayName: "Model A", port: 8000)
+        let sample = makeSuccessfulBenchmark(profileID: model.id, speed: 30, ttft: 700, score: 10)
+        let session = BenchmarkSessionResult(
+            profileID: model.id,
+            modelID: model.modelID,
+            selectedProfileName: model.displayName,
+            preset: .quick,
+            samples: [sample]
+        )
+
+        let rows = BenchmarkSessionAnalyzer.comparisonRows(
+            models: [model],
+            sessionsByProfileID: [model.id: session]
+        )
+
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertTrue(rows[0].isStale)
+        XCTAssertTrue(rows[0].recommendedUseCases.isEmpty)
+        XCTAssertTrue(BenchmarkSessionAnalyzer.ranked(rows: rows, for: .chat).isEmpty)
+    }
+
+    func testComparisonRecommendsHighestReliableScoreForUseCase() {
+        let first = makeModelConfig(modelID: "local/first", displayName: "First", port: 8000)
+        let second = makeModelConfig(modelID: "local/second", displayName: "Second", port: 8001)
+        let firstSamples = (0..<3).map { _ in
+            makeSuccessfulBenchmark(profileID: first.id, speed: 28, ttft: 700, score: 8)
+        }
+        let secondSamples = (0..<3).map { _ in
+            makeSuccessfulBenchmark(profileID: second.id, speed: 35, ttft: 600, score: 10)
+        }
+        let sessions = [
+            first.id: BenchmarkSessionResult(
+                profileID: first.id,
+                modelID: first.modelID,
+                selectedProfileName: first.displayName,
+                preset: .standard,
+                samples: firstSamples
+            ),
+            second.id: BenchmarkSessionResult(
+                profileID: second.id,
+                modelID: second.modelID,
+                selectedProfileName: second.displayName,
+                preset: .standard,
+                samples: secondSamples
+            )
+        ]
+
+        let rows = BenchmarkSessionAnalyzer.comparisonRows(
+            models: [first, second],
+            sessionsByProfileID: sessions
+        )
+        let ranked = BenchmarkSessionAnalyzer.ranked(rows: rows, for: .coding)
+
+        XCTAssertEqual(ranked.map(\.profileID), [second.id, first.id])
+        XCTAssertTrue(ranked[0].recommendedUseCases.contains(.coding))
+        XCTAssertFalse(ranked[1].recommendedUseCases.contains(.coding))
+    }
+
+    private func makeSuccessfulBenchmark(
+        profileID: String,
+        speed: Double,
+        ttft: Double,
+        score: Int
+    ) -> BenchmarkResult {
+        let metrics = BenchmarkSpeedMetrics(
+            readinessLatencyMS: 100,
+            ttftMS: ttft,
+            totalLatencyMS: 2_000,
+            outputTokensPerSecond: speed,
+            outputTokenCount: 64,
+            finishReason: "stop",
+            httpStatusCode: 200,
+            timedOut: false,
+            errorMessage: nil,
+            managedMemoryGigabytes: 16,
+            availableMemoryGigabytes: 24
+        )
+        return BenchmarkResult(
+            profileID: profileID,
+            modelID: "local/\(profileID)",
+            baseURL: "http://127.0.0.1:8000/v1",
+            phase: .success,
+            readinessLatencyMS: 100,
+            selectedProfileName: profileID,
+            message: "ok",
+            hostSnapshot: BenchmarkHostSnapshot(
+                macOSVersion: "26.5",
+                chipName: "Apple M4 Pro",
+                memoryText: "64 GB",
+                mlxLMVersion: "0.31.3",
+                backend: .mlxLM,
+                serverVersion: "0.31.3"
+            ),
+            speedMetrics: metrics,
+            useCaseScores: BenchmarkUseCase.allCases.map {
+                BenchmarkUseCaseScore(useCase: $0, score: score, reasonCodes: [.genericResponsive])
+            }
+        )
+    }
+
+    private func makeModelConfig(modelID: String, displayName: String, port: Int) -> ModelConfig {
+        ModelConfig(
+            modelID: modelID,
+            displayName: displayName,
+            family: "Test",
+            quantization: "Test",
+            localName: displayName,
+            host: "127.0.0.1",
+            serverPort: port,
+            enableThinking: false,
+            notes: "",
+            advancedLaunchOptions: nil
+        )
     }
 
     func testBenchmarkReasonCodesDecodeLegacyTextAndEncodeStableIdentifiers() throws {
@@ -608,5 +778,37 @@ final class BenchmarkTests: XCTestCase {
         let output = "usage: mlx_lm.server [-h] [--model MODEL] [--adapter-path ADAPTER_PATH]"
 
         XCTAssertNil(MLXLMVersionProvider.normalizedVersionOutput(output))
+    }
+
+    func testVersionProviderRecognizesRapidMLX() {
+        XCTAssertEqual(
+            MLXLMVersionProvider.normalizedVersionOutput("rapid-mlx 0.7.32\n"),
+            "rapid-mlx 0.7.32"
+        )
+    }
+
+    func testLegacyBenchmarkHostSnapshotDefaultsToMLXLM() throws {
+        let data = Data(#"{"macOSVersion":"26.5","chipName":"Apple M4 Pro","memoryText":"64 GB","mlxLMVersion":"0.31.3"}"#.utf8)
+
+        let snapshot = try JSONDecoder().decode(BenchmarkHostSnapshot.self, from: data)
+
+        XCTAssertEqual(snapshot.resolvedBackend, .mlxLM)
+        XCTAssertEqual(snapshot.resolvedServerVersion, "0.31.3")
+    }
+
+    func testBenchmarkHostSnapshotRoundTripsRapidMLXMetadata() throws {
+        let snapshot = BenchmarkHostSnapshot(
+            macOSVersion: "26.5",
+            chipName: "Apple M4 Pro",
+            memoryText: "64 GB",
+            mlxLMVersion: "rapid-mlx 0.7.32",
+            backend: .rapidMLX,
+            serverVersion: "rapid-mlx 0.7.32"
+        )
+
+        let decoded = try JSONDecoder().decode(BenchmarkHostSnapshot.self, from: JSONEncoder().encode(snapshot))
+
+        XCTAssertEqual(decoded.resolvedBackend, .rapidMLX)
+        XCTAssertEqual(decoded.localizedServerText(language: .english), "Rapid-MLX rapid-mlx 0.7.32")
     }
 }

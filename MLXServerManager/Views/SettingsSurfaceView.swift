@@ -11,7 +11,8 @@ struct SettingsSurfaceView: View {
 
     var body: some View {
         SettingsPanelView(
-            executablePath: $draftSettings.mlxServerExecutablePath,
+            mlxExecutablePath: $draftSettings.mlxServerExecutablePath,
+            rapidMLXExecutablePath: $draftSettings.rapidMLXExecutablePath,
             defaultHost: $draftSettings.defaultHost,
             defaultPort: $draftSettings.defaultPort,
             apiKeyPlaceholder: $draftSettings.apiKeyPlaceholder,

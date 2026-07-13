@@ -89,6 +89,7 @@ struct ValidatedImportProfile: Identifiable {
     let host: String
     let port: Int?
     let advancedLaunchOptions: AdvancedLaunchOptions?
+    let backend: InferenceBackend
     let hasAdvancedLaunchOptions: Bool
     let status: ImportProfileValidationStatus
     let messages: [ImportValidationMessage]
@@ -482,6 +483,7 @@ struct ModelProfileImportPreviewService {
                 host: "Missing",
                 port: nil,
                 advancedLaunchOptions: nil,
+                backend: .mlxLM,
                 hasAdvancedLaunchOptions: false,
                 status: .invalid,
                 messages: [.error("Profile entry must be a JSON object.")],
@@ -498,12 +500,18 @@ struct ModelProfileImportPreviewService {
         let host = stringValue(profile["host"])?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let port = integerValue(profile["port"])
         let advancedOptions = advancedLaunchOptions(from: profile["advancedLaunchOptions"])
+        let backendText = stringValue(profile["backend"])?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let backend = backendText.flatMap(InferenceBackend.init(rawValue:)) ?? .mlxLM
         var messages: [ImportValidationMessage] = []
         var conflicts: [String] = []
         var conflictKinds = Set<ImportProfileConflictKind>()
 
         messages.append(contentsOf: ignoredFieldMessages(in: profile.keys, scope: "Profile"))
         messages.append(contentsOf: advancedLaunchOptionsShapeMessages(from: profile["advancedLaunchOptions"]))
+
+        if let backendText, InferenceBackend(rawValue: backendText) == nil {
+            messages.append(.error("Backend must be mlx-lm or rapid-mlx."))
+        }
 
         if name.isEmpty {
             messages.append(.error("Profile name is required."))
@@ -528,7 +536,7 @@ struct ModelProfileImportPreviewService {
         }
 
         if let advancedOptions {
-            messages.append(contentsOf: validateAdvancedLaunchOptions(advancedOptions))
+            messages.append(contentsOf: validateAdvancedLaunchOptions(advancedOptions, backend: backend))
         }
 
         if !name.isEmpty {
@@ -619,6 +627,7 @@ struct ModelProfileImportPreviewService {
             host: host.isEmpty ? "Missing" : host,
             port: port,
             advancedLaunchOptions: advancedOptions?.normalized(),
+            backend: backend,
             hasAdvancedLaunchOptions: advancedOptions?.normalized() != nil,
             status: status,
             messages: messages.isEmpty ? [.info("Profile metadata is valid for preview.")] : messages,
@@ -635,7 +644,10 @@ struct ModelProfileImportPreviewService {
         )
     }
 
-    private func validateAdvancedLaunchOptions(_ options: AdvancedLaunchOptions) -> [ImportValidationMessage] {
+    private func validateAdvancedLaunchOptions(
+        _ options: AdvancedLaunchOptions,
+        backend: InferenceBackend
+    ) -> [ImportValidationMessage] {
         guard let normalizedOptions = options.normalized() else {
             return []
         }
@@ -680,6 +692,9 @@ struct ModelProfileImportPreviewService {
         }
 
         if let chatTemplateArgs = normalizedOptions.chatTemplateArgs {
+            if backend == .rapidMLX {
+                messages.append(.error("Chat Template Args are supported by mlx-lm profiles only."))
+            }
             guard let data = chatTemplateArgs.data(using: .utf8) else {
                 messages.append(.error("Chat Template Args must be valid JSON."))
                 return messages
@@ -690,6 +705,12 @@ struct ModelProfileImportPreviewService {
             } catch {
                 messages.append(.error("Chat Template Args must be valid JSON."))
             }
+        }
+
+        if backend == .rapidMLX,
+           let logLevel = normalizedOptions.logLevel,
+           !["DEBUG", "INFO", "WARNING", "ERROR"].contains(logLevel.uppercased()) {
+            messages.append(.error("Rapid-MLX Log Level must be DEBUG, INFO, WARNING, or ERROR."))
         }
 
         if normalizedOptions.rawExtraArgs != nil {
@@ -711,6 +732,7 @@ struct ModelProfileImportPreviewService {
             "modelID",
             "host",
             "port",
+            "backend",
             "advancedLaunchOptions"
         ]
 
@@ -843,7 +865,8 @@ struct ModelProfileImportPreviewService {
             serverPort: port,
             enableThinking: false,
             notes: "Imported profile metadata. Review before starting a managed server.",
-            advancedLaunchOptions: profile.advancedLaunchOptions?.normalized()
+            advancedLaunchOptions: profile.advancedLaunchOptions?.normalized(),
+            backend: profile.backend
         )
     }
 
@@ -866,7 +889,8 @@ struct ModelProfileImportPreviewService {
             serverPort: port,
             enableThinking: existingModel.enableThinking,
             notes: existingModel.notes,
-            advancedLaunchOptions: profile.advancedLaunchOptions?.normalized()
+            advancedLaunchOptions: profile.advancedLaunchOptions?.normalized(),
+            backend: profile.backend
         )
     }
 

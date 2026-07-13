@@ -63,6 +63,85 @@ final class InternalServiceRegressionTests: XCTestCase {
         XCTAssertEqual(Array(arguments.suffix(2)), ["--custom-json", #"{"key":"value with spaces"}"#])
     }
 
+    func testRapidMLXLaunchArgumentsMapSupportedOptions() {
+        let request = ModelLaunchRequest(
+            executablePath: "/usr/local/bin/rapid-mlx",
+            backend: .rapidMLX,
+            modelID: "/tmp/model folder",
+            host: "127.0.0.1",
+            port: 8088,
+            enableThinking: false,
+            advancedLaunchOptions: AdvancedLaunchOptions(
+                rawExtraArgs: #"--extra-flag "value with spaces""#,
+                defaultTemperature: "0.2",
+                defaultTopP: "0.9",
+                defaultTopK: "40",
+                defaultMinP: "0.05",
+                defaultMaxTokens: "4096",
+                allowedOrigins: #""http://localhost:3000" "https://example.com""#,
+                logLevel: "debug",
+                decodeConcurrency: "4",
+                promptConcurrency: "8",
+                prefillStepSize: "2048",
+                promptCacheSize: "16",
+                promptCacheBytes: "1048577"
+            )
+        )
+
+        XCTAssertEqual(
+            ModelProcessManager.launchArguments(for: request),
+            [
+                "serve", "/tmp/model folder", "--host", "127.0.0.1", "--port", "8088", "--no-thinking",
+                "--default-temperature", "0.2", "--default-top-p", "0.9", "--default-top-k", "40",
+                "--default-min-p", "0.05", "--max-tokens", "4096",
+                "--cors-origins", "http://localhost:3000", "https://example.com",
+                "--log-level", "DEBUG", "--max-num-seqs", "4", "--max-concurrent-requests", "8",
+                "--prefill-step-size", "2048", "--prefix-cache-size", "16", "--cache-memory-mb", "2",
+                "--extra-flag", "value with spaces"
+            ]
+        )
+    }
+
+    func testRapidMLXCORSOriginsAcceptCommaSeparatedValues() {
+        let request = ModelLaunchRequest(
+            executablePath: "/usr/local/bin/rapid-mlx",
+            backend: .rapidMLX,
+            modelID: "local/model",
+            host: "127.0.0.1",
+            port: 8088,
+            enableThinking: true,
+            advancedLaunchOptions: AdvancedLaunchOptions(
+                allowedOrigins: "http://localhost:3000, https://example.com"
+            )
+        )
+
+        XCTAssertEqual(
+            ModelProcessManager.launchArguments(for: request),
+            [
+                "serve", "local/model", "--host", "127.0.0.1", "--port", "8088",
+                "--cors-origins", "http://localhost:3000", "https://example.com"
+            ]
+        )
+    }
+
+    func testLegacyModelProfileDefaultsToMLXLMBackend() throws {
+        let data = Data(#"{"modelID":"local/model","displayName":"Model","family":"Local","quantization":"4bit","localName":"model","host":"127.0.0.1","serverPort":8000,"enableThinking":false,"notes":""}"#.utf8)
+
+        let model = try JSONDecoder().decode(ModelConfig.self, from: data)
+
+        XCTAssertNil(model.backend)
+        XCTAssertEqual(model.resolvedBackend, .mlxLM)
+    }
+
+    func testRapidMLXModelProfileRoundTripsBackend() throws {
+        var model = ModelConfig.defaults[0]
+        model.backend = .rapidMLX
+
+        let decoded = try JSONDecoder().decode(ModelConfig.self, from: JSONEncoder().encode(model))
+
+        XCTAssertEqual(decoded.resolvedBackend, .rapidMLX)
+    }
+
     func testLegacyBenchmarkSnapshotDecodesWithoutSchemaVersion() throws {
         let data = Data(
             #"{"benchmarkResultsByProfileID":{},"agenticBenchmarkResultsByProfileID":{}}"#.utf8

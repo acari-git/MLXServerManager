@@ -55,17 +55,17 @@ enum ModelRuntimeState: Hashable {
     var detail: String {
         switch self {
         case .stopped:
-            "mlx_lm.server is not running. Start, Stop, and Restart are available."
+            "No managed inference server is running. Start, Stop, and Restart are available."
         case let .starting(host, port):
-            "Starting managed mlx_lm.server for \(host):\(port)."
+            "Starting managed inference server for \(host):\(port)."
         case let .loading(host, port, processIdentifier):
             "Managed process pid \(processIdentifier) is loading at \(host):\(port)."
         case let .stopping(processIdentifier):
-            "Stopping managed mlx_lm.server process pid \(processIdentifier)."
+            "Stopping managed inference server process pid \(processIdentifier)."
         case let .checkingPort(host, port):
             "Checking whether \(host):\(port) can be used before launch."
         case let .portAvailable(host, port):
-            "\(host):\(port) is available for mlx_lm.server launch."
+            "\(host):\(port) is available for managed server launch."
         case let .portBusy(host, port):
             "\(host):\(port) is already in use. Start will not launch a second server on this port."
         case let .externalServerDetected(host, port, baseURL, message):

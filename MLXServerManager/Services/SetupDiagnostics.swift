@@ -26,7 +26,11 @@ struct SetupDiagnostics {
         let endpoint = endpoint(settings: settings, selectedModel: selectedModel)
         var results: [DiagnosticsResult] = []
 
-        results.append(contentsOf: executablePathResults(settings.mlxServerExecutablePath))
+        let backend = selectedModel?.resolvedBackend ?? .mlxLM
+        results.append(contentsOf: executablePathResults(
+            settings.executablePath(for: backend),
+            backend: backend
+        ))
         results.append(hostResult(endpoint.host))
         results.append(portResult(endpoint.port))
         results.append(storageResult())
@@ -42,14 +46,14 @@ struct SetupDiagnostics {
         return results
     }
 
-    private func executablePathResults(_ path: String) -> [DiagnosticsResult] {
+    private func executablePathResults(_ path: String, backend: InferenceBackend) -> [DiagnosticsResult] {
         let trimmedPath = path.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedPath.isEmpty else {
             return [
                 DiagnosticsResult(
                     check: .executablePathConfigured,
                     status: .fail,
-                    message: "mlx_lm.server executable path is not set."
+                    message: "\(backend.defaultExecutableName) executable path is not set."
                 ),
                 DiagnosticsResult(
                     check: .executablePathExists,
@@ -107,7 +111,7 @@ struct SetupDiagnostics {
                 DiagnosticsResult(
                     check: .executablePathExecutable,
                     status: .fail,
-                    message: "Directory cannot be used as mlx_lm.server executable.",
+                    message: "Directory cannot be used as \(backend.defaultExecutableName) executable.",
                     detail: trimmedPath
                 )
             ]

@@ -1,6 +1,6 @@
 # Known Limitations
 
-This document lists the current known limitations for MLX Server Manager as of v20.1.0. Older planning documents can still describe earlier version boundaries; this file is the current stable-scope summary.
+This document lists the current known limitations for MLX Server Manager. Older planning documents can still describe earlier version boundaries; this file is the current stable-scope summary.
 
 ## Distribution
 
@@ -16,13 +16,12 @@ This document lists the current known limitations for MLX Server Manager as of v
 
 ## Runtime Dependencies
 
-- The app does not bundle `mlx-lm`.
-- The app does not install `mlx-lm`.
+- The app does not bundle or install `mlx-lm` or Rapid-MLX.
 - The app does not bundle model files.
 - The app does not bundle Hugging Face cache.
-- Users must provide a working `mlx_lm.server` executable path in Settings.
+- Users must provide a working executable path in Settings for every backend they use.
 - Users must provide model files, download models explicitly, or use an existing Hugging Face cache.
-- The app does not replace Python, Homebrew, Hugging Face CLI, or `mlx-lm` environment setup.
+- The app does not replace Python, Homebrew, Hugging Face CLI, or backend environment setup.
 - The app does not verify MLX model compatibility beyond conservative metadata, path, and preflight checks.
 
 ## Model Search, Download, and Profiles
@@ -47,28 +46,30 @@ This document lists the current known limitations for MLX Server Manager as of v
 - CPU and GPU/Metal display remains explicit unsampled context, not active CPU/GPU utilization sampling.
 - Memory shown for the managed process depends on available process information and may be unavailable when no managed process is running.
 - Last-check wording reflects app-observed checks, not automatic model usage telemetry.
-- Start guardrails block obvious unsafe starts, but they do not guarantee that `mlx_lm.server` will load every model successfully.
+- Start guardrails block obvious unsafe starts, but they do not guarantee that a supported backend will load every model successfully.
 - Recovery actions are guidance and explicit user-triggered shortcuts, not automatic repair.
 
 ## Process Management
 
 - The app manages only the process it starts.
-- Stop and Restart do not stop external `mlx_lm.server` processes.
+- Stop and Restart do not stop external server processes.
 - Adopt External Server is connection context only and does not transfer process ownership.
-- Multiple concurrent server management is not implemented.
-- Multiple model simultaneous launch is not implemented.
-- Model selection while running requires Restart to apply runtime-affecting changes.
+- App-managed profiles can run concurrently when each uses a distinct available endpoint.
+- Lifecycle, PID, runtime state, and memory measurements are tracked per managed profile.
+- Runtime-affecting edits remain locked while that profile is running.
 
 ## Readiness, Benchmarks, and Inference
 
 - Ready Check uses `/v1/models` only.
 - The app does not run `/v1/chat/completions` for diagnostics or readiness.
-- The copied chat-completions request is only helper text for external clients.
-- The app does not run model inference.
-- Speed Test is an explicit local endpoint check, not a generation benchmark.
+- Test Chat and benchmark actions are explicit user-triggered calls to the selected OpenAI-compatible endpoint; they do not proxy requests for other clients.
+- Benchmark runs are explicit local generation tests with Quick, Standard, and Detailed presets.
+- Standard and Detailed results use repeated samples, medians, and stability indicators; single-sample results are not used for final recommendations.
+- Model comparison and use-case recommendations apply only to results measured on the current Mac under compatible benchmark conditions.
 - Local benchmark results are workload-dependent.
-- MLX Server Manager does not guarantee faster performance than oMLX or other backends.
-- Advanced `mlx_lm.server` options are optional and per-profile.
+- MLX Server Manager does not guarantee faster performance for one supported backend over another.
+- Advanced launch options and KV cache recommendations are optional and per-profile.
+- KV cache values are conservative starting points based on local memory headroom, not guaranteed optimal settings.
 - The app does not proxy inference requests.
 - Qwen thinking behavior is a client/request-side concern.
 - The app does not optimize inference.

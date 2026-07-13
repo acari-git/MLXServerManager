@@ -2,7 +2,8 @@ import AppKit
 import SwiftUI
 
 struct SettingsPanelView: View {
-    @Binding var executablePath: String
+    @Binding var mlxExecutablePath: String
+    @Binding var rapidMLXExecutablePath: String
     @Binding var defaultHost: String
     @Binding var defaultPort: Int
     @Binding var apiKeyPlaceholder: String
@@ -68,7 +69,16 @@ struct SettingsPanelView: View {
                                 "MLX Server Managerが管理対象のローカルサーバーを起動するときに使う実行ファイルです。"
                             ),
                             placeholder: "/opt/homebrew/bin/mlx_lm.server",
-                            text: $executablePath
+                            text: $mlxExecutablePath
+                        )),
+                        AnyView(editableSettingRow(
+                            title: t("Rapid-MLX location", "Rapid-MLXの場所"),
+                            detail: t(
+                                "Executable used for profiles that select the Rapid-MLX backend.",
+                                "Rapid-MLXバックエンドを選択したプロファイルの起動に使う実行ファイルです。"
+                            ),
+                            placeholder: "/path/to/rapid-mlx",
+                            text: $rapidMLXExecutablePath
                         )),
                         AnyView(editableSettingRow(
                             title: t("Default IP address", "デフォルトIPアドレス"),
@@ -82,8 +92,8 @@ struct SettingsPanelView: View {
                         AnyView(editableSettingRow(
                             title: t("Default port", "デフォルトポート"),
                             detail: t(
-                                "Fallback port for new local mlx_lm.server profiles.",
-                                "新しいローカルmlx_lm.serverプロファイルに使う既定ポートです。"
+                                "Fallback port for new local managed-server profiles.",
+                                "新しいローカル管理サーバープロファイルに使う既定ポートです。"
                             ),
                             placeholder: "8080",
                             text: portTextBinding
