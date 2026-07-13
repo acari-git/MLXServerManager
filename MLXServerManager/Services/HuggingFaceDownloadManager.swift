@@ -134,29 +134,27 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
         return try await withCheckedThrowingContinuation { continuation in
             process.terminationHandler = { [weak self] process in
                 let status = process.terminationStatus
-                self?.flushPendingOutput(outputHandler: outputHandler)
-                if let manager = self {
-                    DispatchQueue.main.async {
-                        manager.clearIfMatching(process)
-                    }
-                }
+                Task { @MainActor [weak self] in
+                    self?.flushPendingOutput(outputHandler: outputHandler)
+                    self?.clearIfMatching(process)
 
-                if status == 0 {
-                    continuation.resume(
-                        returning: HuggingFaceDownloadResult(
-                            repositoryID: request.repositoryID,
-                            destinationPath: request.destinationPath,
-                            terminationStatus: status
+                    if status == 0 {
+                        continuation.resume(
+                            returning: HuggingFaceDownloadResult(
+                                repositoryID: request.repositoryID,
+                                destinationPath: request.destinationPath,
+                                terminationStatus: status
+                            )
                         )
-                    )
-                } else if status == 127 {
-                    continuation.resume(
-                        throwing: HuggingFaceDownloadError.commandNotAvailable(
-                            searchedPaths: Self.candidateExecutablePaths(environment: searchEnvironment)
+                    } else if status == 127 {
+                        continuation.resume(
+                            throwing: HuggingFaceDownloadError.commandNotAvailable(
+                                searchedPaths: Self.candidateExecutablePaths(environment: searchEnvironment)
+                            )
                         )
-                    )
-                } else {
-                    continuation.resume(throwing: HuggingFaceDownloadError.processFailed(status: status))
+                    } else {
+                        continuation.resume(throwing: HuggingFaceDownloadError.processFailed(status: status))
+                    }
                 }
             }
 

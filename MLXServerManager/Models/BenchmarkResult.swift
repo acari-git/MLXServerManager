@@ -97,7 +97,7 @@ enum BenchmarkScoreReasonCode: String, Codable, CaseIterable, Equatable, Hashabl
     case speedIncomplete = "speed_incomplete"
     case genericResponsive = "generic_responsive"
 
-    var englishText: String {
+    nonisolated var englishText: String {
         switch self {
         case .ttftSlowInteractive: "TTFT is slow for interactive chat."
         case .ttftDelayed: "TTFT may feel delayed."
@@ -147,7 +147,7 @@ enum BenchmarkScoreReasonCode: String, Codable, CaseIterable, Equatable, Hashabl
         }
     }
 
-    var japaneseText: String {
+    nonisolated var japaneseText: String {
         switch self {
         case .ttftSlowInteractive: "対話用途ではTTFTが遅めです。"
         case .ttftDelayed: "TTFTに待ち時間を感じる可能性があります。"
@@ -197,7 +197,7 @@ enum BenchmarkScoreReasonCode: String, Codable, CaseIterable, Equatable, Hashabl
         }
     }
 
-    init?(legacyText: String) {
+    nonisolated init?(legacyText: String) {
         guard let match = Self.allCases.first(where: { $0.englishText == legacyText }) else {
             return nil
         }
@@ -209,12 +209,12 @@ struct BenchmarkScoreReason: Codable, Equatable, Hashable {
     let code: BenchmarkScoreReasonCode?
     let legacyText: String?
 
-    init(code: BenchmarkScoreReasonCode) {
+    nonisolated init(code: BenchmarkScoreReasonCode) {
         self.code = code
         legacyText = nil
     }
 
-    init(legacyText: String) {
+    nonisolated init(legacyText: String) {
         code = BenchmarkScoreReasonCode(legacyText: legacyText)
         self.legacyText = code == nil ? legacyText : nil
     }
@@ -259,13 +259,13 @@ struct BenchmarkUseCaseScore: Codable, Equatable {
         reasonValues.compactMap(\.code)
     }
 
-    init(useCase: BenchmarkUseCase, score: Int, reasons: [String]) {
+    nonisolated init(useCase: BenchmarkUseCase, score: Int, reasons: [String]) {
         self.useCase = useCase
         self.score = score
         reasonValues = reasons.map(BenchmarkScoreReason.init(legacyText:))
     }
 
-    init(useCase: BenchmarkUseCase, score: Int, reasonCodes: [BenchmarkScoreReasonCode]) {
+    nonisolated init(useCase: BenchmarkUseCase, score: Int, reasonCodes: [BenchmarkScoreReasonCode]) {
         self.useCase = useCase
         self.score = score
         reasonValues = reasonCodes.map(BenchmarkScoreReason.init(code:))

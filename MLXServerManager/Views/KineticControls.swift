@@ -189,22 +189,18 @@ struct KineticCopyButton<IdleLabel: View>: View {
 }
 
 struct KineticDisclosureSection<Label: View, Content: View>: View {
-    let spacing: CGFloat
     let contentTopPadding: CGFloat
     private let label: Label
     private let content: Content
 
     @State private var isExpanded: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
         initiallyExpanded: Bool = false,
-        spacing: CGFloat = 8,
         contentTopPadding: CGFloat = 0,
         @ViewBuilder label: () -> Label,
         @ViewBuilder content: () -> Content
     ) {
-        self.spacing = spacing
         self.contentTopPadding = contentTopPadding
         self.label = label()
         self.content = content()
@@ -212,36 +208,13 @@ struct KineticDisclosureSection<Label: View, Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: spacing) {
-            Button {
-                withAnimation(reduceMotion ? nil : .spring(response: 0.30, dampingFraction: 0.88)) {
-                    isExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 8) {
-                    label
-                    Spacer(minLength: 8)
-                    Image(systemName: "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
-
-            if isExpanded {
-                content
-                    .padding(.top, contentTopPadding)
-                    .transition(
-                        reduceMotion
-                            ? .opacity
-                            : .opacity.combined(with: .move(edge: .top))
-                    )
-            }
+        DisclosureGroup(isExpanded: $isExpanded) {
+            content
+                .padding(.top, contentTopPadding)
+        } label: {
+            label
         }
-        .animation(reduceMotion ? nil : .spring(response: 0.30, dampingFraction: 0.88), value: isExpanded)
+        .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
     }
 }
 

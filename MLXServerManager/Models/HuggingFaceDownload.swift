@@ -183,7 +183,7 @@ struct HuggingFaceDownloadPreview: Equatable {
     }
 }
 
-enum HuggingFaceDownloadPhase: Equatable {
+nonisolated enum HuggingFaceDownloadPhase: Equatable {
     case waiting
     case preparing
     case downloading
@@ -192,11 +192,11 @@ enum HuggingFaceDownloadPhase: Equatable {
     case failed
     case cancelled
 
-    var title: String {
+    @MainActor var title: String {
         localizedTitle(language: .english)
     }
 
-    func localizedTitle(language: AppLanguage) -> String {
+    @MainActor func localizedTitle(language: AppLanguage) -> String {
         let strings = AppLocalization(language: language)
         switch self {
         case .waiting:

@@ -1800,7 +1800,6 @@ struct IntegratedWorkspaceView: View {
 
                     if !task.diagnostics.isEmpty {
                         KineticDisclosureSection(
-                            spacing: 4,
                             contentTopPadding: 0,
                             label: {
                                 Text(t("Diagnostics", "診断"))
@@ -2303,11 +2302,13 @@ private struct OptionalInspectorHelp: ViewModifier {
                         isPresented = false
                     }
                 }
-                .background {
-                    InspectorHelpPopoverPresenter(
-                        text: helpText,
-                        isPresented: isPresented
-                    )
+                .popover(
+                    isPresented: $isPresented,
+                    attachmentAnchor: .rect(.bounds),
+                    arrowEdge: .bottom
+                ) {
+                    InspectorHelpSystemPopoverContent(text: helpText)
+                        .presentationBackground(Color(nsColor: .textBackgroundColor))
                 }
                 .accessibilityHint(helpText)
         } else {
@@ -2322,7 +2323,23 @@ private extension View {
     }
 }
 
-private struct InspectorHelpPopoverPresenter: NSViewRepresentable {
+private struct InspectorHelpSystemPopoverContent: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(.primary)
+            .lineSpacing(2)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(width: 280, alignment: .leading)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .allowsHitTesting(false)
+    }
+}
+
+private struct InspectorHelpPanelPresenter: NSViewRepresentable {
     let text: String
     let isPresented: Bool
 
@@ -2347,12 +2364,13 @@ private struct InspectorHelpPopoverPresenter: NSViewRepresentable {
     }
 
     final class Coordinator: NSObject {
-        private var popover: NSPopover?
+        private var panel: NSPanel?
+        private weak var parentWindow: NSWindow?
         private var presentedText: String?
         private var presentationGeneration = 0
 
         func update(text: String, isPresented: Bool, relativeTo anchorView: NSView) {
-            if isPresented, popover?.isShown == true, presentedText == text {
+            if isPresented, panel?.isVisible == true, presentedText == text {
                 return
             }
 
@@ -2378,38 +2396,275 @@ private struct InspectorHelpPopoverPresenter: NSViewRepresentable {
 
         func close() {
             presentationGeneration += 1
-            popover?.performClose(nil)
-            popover = nil
+            dismissPanel()
+        }
+
+        private func dismissPanel() {
+            if let panel, let parentWindow {
+                parentWindow.removeChildWindow(panel)
+            }
+            panel?.orderOut(nil)
+            panel?.contentViewController = nil
+            panel = nil
+            parentWindow = nil
             presentedText = nil
         }
 
         private func show(text: String, relativeTo anchorView: NSView) {
-            close()
+            dismissPanel()
 
-            let contentView = InspectorHelpPopoverContent(text: text)
-            let hostingController = NSHostingController(rootView: contentView)
-            hostingController.view.layoutSubtreeIfNeeded()
+            guard let anchorWindow = anchorView.window else {
+                return
+            }
 
-            let popover = NSPopover()
-            popover.behavior = .applicationDefined
-            popover.animates = false
-            popover.contentViewController = hostingController
-            popover.contentSize = hostingController.view.fittingSize
-            self.popover = popover
-            presentedText = text
-
-            popover.show(
-                relativeTo: anchorView.bounds,
-                of: anchorView,
-                preferredEdge: .maxY
+            let visibleFrame = anchorWindow.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
+            let anchorPoint = tooltipAnchorPoint(
+                relativeTo: anchorView,
+                in: anchorWindow,
+                visibleFrame: visibleFrame
             )
-            popover.contentViewController?.view.window?.ignoresMouseEvents = true
+            let panelWidth = InspectorHelpLayout.panelWidth(in: visibleFrame)
+            let centeredArrow = panelWidth / 2 - InspectorHelpLayout.shadowInset
+            let verticalController = makeHostingController(
+                text: text,
+                arrowEdge: .bottom,
+                panelWidth: panelWidth,
+                arrowCenter: centeredArrow
+            )
+            let verticalHeight = measuredHeight(of: verticalController)
+
+            let availableAbove = visibleFrame.maxY - anchorPoint.y - InspectorHelpLayout.anchorSpacing
+            let availableBelow = anchorPoint.y - visibleFrame.minY - InspectorHelpLayout.anchorSpacing
+            let availableLeft = anchorPoint.x - visibleFrame.minX - InspectorHelpLayout.anchorSpacing
+            let availableRight = visibleFrame.maxX - anchorPoint.x - InspectorHelpLayout.anchorSpacing
+            let requiredVerticalSpace = verticalHeight - InspectorHelpLayout.shadowInset
+            let requiredHorizontalSpace = panelWidth - InspectorHelpLayout.shadowInset
+
+            let arrowEdge: InspectorHelpArrowEdge
+            if availableAbove >= requiredVerticalSpace {
+                arrowEdge = .bottom
+            } else if availableLeft >= requiredHorizontalSpace {
+                arrowEdge = .right
+            } else if availableRight >= requiredHorizontalSpace {
+                arrowEdge = .left
+            } else if availableBelow >= requiredVerticalSpace {
+                arrowEdge = .top
+            } else {
+                arrowEdge = availableLeft >= availableRight ? .right : .left
+            }
+
+            let provisionalArrowCenter: CGFloat
+            switch arrowEdge {
+            case .top, .bottom:
+                provisionalArrowCenter = centeredArrow
+            case .left, .right:
+                provisionalArrowCenter = verticalHeight / 2 - InspectorHelpLayout.shadowInset
+            }
+            let provisionalController = makeHostingController(
+                text: text,
+                arrowEdge: arrowEdge,
+                panelWidth: panelWidth,
+                arrowCenter: provisionalArrowCenter
+            )
+            let panelHeight = measuredHeight(of: provisionalController)
+
+            var originX: CGFloat
+            var originY: CGFloat
+            switch arrowEdge {
+            case .bottom:
+                originX = anchorPoint.x - panelWidth / 2
+                originY = anchorPoint.y
+                    + InspectorHelpLayout.anchorSpacing
+                    - InspectorHelpLayout.shadowInset
+            case .top:
+                originX = anchorPoint.x - panelWidth / 2
+                originY = anchorPoint.y
+                    - panelHeight
+                    - InspectorHelpLayout.anchorSpacing
+                    + InspectorHelpLayout.shadowInset
+            case .right:
+                originX = anchorPoint.x
+                    - panelWidth
+                    - InspectorHelpLayout.anchorSpacing
+                    + InspectorHelpLayout.shadowInset
+                originY = anchorPoint.y - panelHeight / 2
+            case .left:
+                originX = anchorPoint.x
+                    + InspectorHelpLayout.anchorSpacing
+                    - InspectorHelpLayout.shadowInset
+                originY = anchorPoint.y - panelHeight / 2
+            }
+
+            originX = min(
+                max(originX, visibleFrame.minX + InspectorHelpLayout.screenMargin),
+                visibleFrame.maxX - panelWidth - InspectorHelpLayout.screenMargin
+            )
+            originY = min(
+                max(originY, visibleFrame.minY + InspectorHelpLayout.screenMargin),
+                visibleFrame.maxY - panelHeight - InspectorHelpLayout.screenMargin
+            )
+
+            let bubbleWidth = panelWidth - InspectorHelpLayout.shadowInset * 2
+            let bubbleHeight = panelHeight - InspectorHelpLayout.shadowInset * 2
+            let arrowCenter: CGFloat
+            switch arrowEdge {
+            case .top, .bottom:
+                arrowCenter = InspectorHelpLayout.clampedArrowCenterX(
+                    anchorPoint.x - originX - InspectorHelpLayout.shadowInset,
+                    bubbleWidth: bubbleWidth
+                )
+            case .left, .right:
+                arrowCenter = InspectorHelpLayout.clampedArrowCenterY(
+                    panelHeight
+                        - InspectorHelpLayout.shadowInset
+                        - (anchorPoint.y - originY),
+                    bubbleHeight: bubbleHeight
+                )
+            }
+
+            let hostingController = makeHostingController(
+                text: text,
+                arrowEdge: arrowEdge,
+                panelWidth: panelWidth,
+                arrowCenter: arrowCenter
+            )
+            let panelSize = NSSize(width: panelWidth, height: panelHeight)
+            let panel = NSPanel(
+                contentRect: NSRect(origin: NSPoint(x: originX, y: originY), size: panelSize),
+                styleMask: [.borderless, .nonactivatingPanel],
+                backing: .buffered,
+                defer: false
+            )
+            panel.contentViewController = hostingController
+            panel.isOpaque = false
+            panel.backgroundColor = .clear
+            panel.hasShadow = false
+            panel.hidesOnDeactivate = true
+            panel.ignoresMouseEvents = true
+            panel.animationBehavior = .none
+            panel.collectionBehavior = [.transient, .ignoresCycle]
+            anchorWindow.addChildWindow(panel, ordered: .above)
+            panel.orderFront(nil)
+
+            self.panel = panel
+            parentWindow = anchorWindow
+            presentedText = text
+        }
+
+        private func tooltipAnchorPoint(
+            relativeTo anchorView: NSView,
+            in anchorWindow: NSWindow,
+            visibleFrame: CGRect
+        ) -> CGPoint {
+            let mouseLocation = NSEvent.mouseLocation
+            if visibleFrame.contains(mouseLocation) {
+                return mouseLocation
+            }
+
+            let anchorRectInWindow = anchorView.convert(anchorView.bounds, to: nil)
+            let anchorRectOnScreen = anchorWindow.convertToScreen(anchorRectInWindow)
+            return CGPoint(x: anchorRectOnScreen.midX, y: anchorRectOnScreen.midY)
+        }
+
+        private func makeHostingController(
+            text: String,
+            arrowEdge: InspectorHelpArrowEdge,
+            panelWidth: CGFloat,
+            arrowCenter: CGFloat
+        ) -> NSHostingController<InspectorHelpBubbleContent> {
+            let content = InspectorHelpBubbleContent(
+                text: text,
+                arrowEdge: arrowEdge,
+                panelWidth: panelWidth,
+                arrowCenter: arrowCenter
+            )
+            let controller = NSHostingController(rootView: content)
+            controller.view.wantsLayer = true
+            controller.view.layer?.backgroundColor = NSColor.clear.cgColor
+            controller.view.frame = NSRect(x: 0, y: 0, width: panelWidth, height: 1)
+            controller.view.layoutSubtreeIfNeeded()
+            return controller
+        }
+
+        private func measuredHeight(
+            of controller: NSHostingController<InspectorHelpBubbleContent>
+        ) -> CGFloat {
+            let measuredHeight = controller.view.fittingSize.height
+            guard measuredHeight.isFinite, measuredHeight > 0 else {
+                return InspectorHelpLayout.fallbackPanelHeight
+            }
+            return ceil(min(measuredHeight, InspectorHelpLayout.maximumPanelHeight))
         }
     }
 }
 
-private struct InspectorHelpPopoverContent: View {
+private enum InspectorHelpArrowEdge: Equatable {
+    case top
+    case bottom
+    case left
+    case right
+}
+
+private enum InspectorHelpLayout {
+    static let preferredPanelWidth: CGFloat = 320
+    static let fallbackPanelHeight: CGFloat = 72
+    static let maximumPanelHeight: CGFloat = 360
+    static let screenMargin: CGFloat = 8
+    static let shadowInset: CGFloat = 10
+    static let anchorSpacing: CGFloat = 4
+    static let horizontalTextPadding: CGFloat = 14
+    static let bodyVerticalPadding: CGFloat = 11
+    static let cornerRadius: CGFloat = 14
+    static let arrowWidth: CGFloat = 18
+    static let arrowHeight: CGFloat = 8
+
+    static func panelWidth(in visibleFrame: CGRect) -> CGFloat {
+        let availableWidth = max(visibleFrame.width - screenMargin * 2, 1)
+        return min(preferredPanelWidth, availableWidth)
+    }
+
+    static func clampedArrowCenterX(_ proposedCenterX: CGFloat, bubbleWidth: CGFloat) -> CGFloat {
+        clampedArrowCenter(proposedCenterX, availableLength: bubbleWidth)
+    }
+
+    static func clampedArrowCenterY(_ proposedCenterY: CGFloat, bubbleHeight: CGFloat) -> CGFloat {
+        clampedArrowCenter(proposedCenterY, availableLength: bubbleHeight)
+    }
+
+    private static func clampedArrowCenter(_ proposedCenter: CGFloat, availableLength: CGFloat) -> CGFloat {
+        let minimumCenter = cornerRadius + arrowWidth / 2 + 4
+        let maximumCenter = max(minimumCenter, availableLength - minimumCenter)
+        return min(max(proposedCenter, minimumCenter), maximumCenter)
+    }
+}
+
+private struct InspectorHelpBubbleContent: View {
     let text: String
+    let arrowEdge: InspectorHelpArrowEdge
+    let panelWidth: CGFloat
+    let arrowCenter: CGFloat
+
+    private var bubbleWidth: CGFloat {
+        max(panelWidth - InspectorHelpLayout.shadowInset * 2, 1)
+    }
+
+    private var horizontalArrowInset: CGFloat {
+        switch arrowEdge {
+        case .left, .right:
+            InspectorHelpLayout.arrowHeight
+        case .top, .bottom:
+            0
+        }
+    }
+
+    private var textWidth: CGFloat {
+        max(
+            bubbleWidth
+                - InspectorHelpLayout.horizontalTextPadding * 2
+                - horizontalArrowInset,
+            1
+        )
+    }
 
     var body: some View {
         Text(text)
@@ -2417,19 +2672,209 @@ private struct InspectorHelpPopoverContent: View {
             .foregroundStyle(.primary)
             .lineSpacing(2)
             .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: 280, alignment: .leading)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color(nsColor: .textBackgroundColor))
+            .frame(width: textWidth, alignment: .leading)
+            .padding(.leading, InspectorHelpLayout.horizontalTextPadding + (arrowEdge == .left ? InspectorHelpLayout.arrowHeight : 0))
+            .padding(.trailing, InspectorHelpLayout.horizontalTextPadding + (arrowEdge == .right ? InspectorHelpLayout.arrowHeight : 0))
+            .padding(
+                .top,
+                InspectorHelpLayout.bodyVerticalPadding
+                    + (arrowEdge == .top ? InspectorHelpLayout.arrowHeight : 0)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(Color(nsColor: .separatorColor).opacity(0.82), lineWidth: 1)
+            .padding(
+                .bottom,
+                InspectorHelpLayout.bodyVerticalPadding
+                    + (arrowEdge == .bottom ? InspectorHelpLayout.arrowHeight : 0)
             )
+            .background {
+                InspectorHelpBubbleShape(
+                    arrowEdge: arrowEdge,
+                    arrowCenter: arrowCenter
+                )
+                .fill(Color(nsColor: .textBackgroundColor))
+            }
+            .overlay {
+                InspectorHelpBubbleShape(
+                    arrowEdge: arrowEdge,
+                    arrowCenter: arrowCenter
+                )
+                .stroke(Color(nsColor: .separatorColor).opacity(0.82), lineWidth: 1)
+            }
             .shadow(color: .black.opacity(0.20), radius: 10, y: 4)
-            .padding(4)
+            .padding(InspectorHelpLayout.shadowInset)
+            .frame(width: panelWidth, alignment: .center)
+    }
+}
+
+private struct InspectorHelpBubbleShape: Shape {
+    let arrowEdge: InspectorHelpArrowEdge
+    let arrowCenter: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        switch arrowEdge {
+        case .bottom:
+            bottomArrowPath(in: rect)
+        case .top:
+            topArrowPath(in: rect)
+        case .left:
+            leftArrowPath(in: rect)
+        case .right:
+            rightArrowPath(in: rect)
+        }
+    }
+
+    private func bottomArrowPath(in rect: CGRect) -> Path {
+        let bodyMaxY = rect.maxY - InspectorHelpLayout.arrowHeight
+        let radius = min(
+            InspectorHelpLayout.cornerRadius,
+            max((bodyMaxY - rect.minY) / 2, 0)
+        )
+        let center = InspectorHelpLayout.clampedArrowCenterX(
+            arrowCenter,
+            bubbleWidth: rect.width
+        )
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX + radius, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX - radius, y: rect.minY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX, y: rect.minY + radius),
+            control: CGPoint(x: rect.maxX, y: rect.minY)
+        )
+        path.addLine(to: CGPoint(x: rect.maxX, y: bodyMaxY - radius))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX - radius, y: bodyMaxY),
+            control: CGPoint(x: rect.maxX, y: bodyMaxY)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + center + InspectorHelpLayout.arrowWidth / 2, y: bodyMaxY))
+        path.addLine(to: CGPoint(x: rect.minX + center, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX + center - InspectorHelpLayout.arrowWidth / 2, y: bodyMaxY))
+        path.addLine(to: CGPoint(x: rect.minX + radius, y: bodyMaxY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX, y: bodyMaxY - radius),
+            control: CGPoint(x: rect.minX, y: bodyMaxY)
+        )
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + radius))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX + radius, y: rect.minY),
+            control: CGPoint(x: rect.minX, y: rect.minY)
+        )
+        path.closeSubpath()
+        return path
+    }
+
+    private func topArrowPath(in rect: CGRect) -> Path {
+        let bodyMinY = rect.minY + InspectorHelpLayout.arrowHeight
+        let radius = min(
+            InspectorHelpLayout.cornerRadius,
+            max((rect.maxY - bodyMinY) / 2, 0)
+        )
+        let center = InspectorHelpLayout.clampedArrowCenterX(
+            arrowCenter,
+            bubbleWidth: rect.width
+        )
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX + center, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.minX + center + InspectorHelpLayout.arrowWidth / 2, y: bodyMinY))
+        path.addLine(to: CGPoint(x: rect.maxX - radius, y: bodyMinY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX, y: bodyMinY + radius),
+            control: CGPoint(x: rect.maxX, y: bodyMinY)
+        )
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - radius))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX - radius, y: rect.maxY),
+            control: CGPoint(x: rect.maxX, y: rect.maxY)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + radius, y: rect.maxY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX, y: rect.maxY - radius),
+            control: CGPoint(x: rect.minX, y: rect.maxY)
+        )
+        path.addLine(to: CGPoint(x: rect.minX, y: bodyMinY + radius))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX + radius, y: bodyMinY),
+            control: CGPoint(x: rect.minX, y: bodyMinY)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + center - InspectorHelpLayout.arrowWidth / 2, y: bodyMinY))
+        path.closeSubpath()
+        return path
+    }
+
+    private func leftArrowPath(in rect: CGRect) -> Path {
+        let bodyMinX = rect.minX + InspectorHelpLayout.arrowHeight
+        let radius = min(
+            InspectorHelpLayout.cornerRadius,
+            max(min((rect.maxX - bodyMinX) / 2, rect.height / 2), 0)
+        )
+        let center = InspectorHelpLayout.clampedArrowCenterY(
+            arrowCenter,
+            bubbleHeight: rect.height
+        )
+        var path = Path()
+        path.move(to: CGPoint(x: bodyMinX + radius, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX - radius, y: rect.minY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX, y: rect.minY + radius),
+            control: CGPoint(x: rect.maxX, y: rect.minY)
+        )
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - radius))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX - radius, y: rect.maxY),
+            control: CGPoint(x: rect.maxX, y: rect.maxY)
+        )
+        path.addLine(to: CGPoint(x: bodyMinX + radius, y: rect.maxY))
+        path.addQuadCurve(
+            to: CGPoint(x: bodyMinX, y: rect.maxY - radius),
+            control: CGPoint(x: bodyMinX, y: rect.maxY)
+        )
+        path.addLine(to: CGPoint(x: bodyMinX, y: rect.minY + center + InspectorHelpLayout.arrowWidth / 2))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + center))
+        path.addLine(to: CGPoint(x: bodyMinX, y: rect.minY + center - InspectorHelpLayout.arrowWidth / 2))
+        path.addLine(to: CGPoint(x: bodyMinX, y: rect.minY + radius))
+        path.addQuadCurve(
+            to: CGPoint(x: bodyMinX + radius, y: rect.minY),
+            control: CGPoint(x: bodyMinX, y: rect.minY)
+        )
+        path.closeSubpath()
+        return path
+    }
+
+    private func rightArrowPath(in rect: CGRect) -> Path {
+        let bodyMaxX = rect.maxX - InspectorHelpLayout.arrowHeight
+        let radius = min(
+            InspectorHelpLayout.cornerRadius,
+            max(min((bodyMaxX - rect.minX) / 2, rect.height / 2), 0)
+        )
+        let center = InspectorHelpLayout.clampedArrowCenterY(
+            arrowCenter,
+            bubbleHeight: rect.height
+        )
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX + radius, y: rect.minY))
+        path.addLine(to: CGPoint(x: bodyMaxX - radius, y: rect.minY))
+        path.addQuadCurve(
+            to: CGPoint(x: bodyMaxX, y: rect.minY + radius),
+            control: CGPoint(x: bodyMaxX, y: rect.minY)
+        )
+        path.addLine(to: CGPoint(x: bodyMaxX, y: rect.minY + center - InspectorHelpLayout.arrowWidth / 2))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + center))
+        path.addLine(to: CGPoint(x: bodyMaxX, y: rect.minY + center + InspectorHelpLayout.arrowWidth / 2))
+        path.addLine(to: CGPoint(x: bodyMaxX, y: rect.maxY - radius))
+        path.addQuadCurve(
+            to: CGPoint(x: bodyMaxX - radius, y: rect.maxY),
+            control: CGPoint(x: bodyMaxX, y: rect.maxY)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + radius, y: rect.maxY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX, y: rect.maxY - radius),
+            control: CGPoint(x: rect.minX, y: rect.maxY)
+        )
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + radius))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX + radius, y: rect.minY),
+            control: CGPoint(x: rect.minX, y: rect.minY)
+        )
+        path.closeSubpath()
+        return path
     }
 }
 
