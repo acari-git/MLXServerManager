@@ -96,6 +96,125 @@ final class ModelProcessRegistryTests: XCTestCase {
         }
     }
 
+    func testStartingDifferentProfilesOnTheSameEndpointIsRejected() throws {
+        let first = FakeModelProcessManager(processIdentifier: 101)
+        let second = FakeModelProcessManager(processIdentifier: 202)
+        var managers = [first, second]
+        let registry = ModelProcessRegistry(managerFactory: { managers.removeFirst() })
+
+        _ = try registry.start(
+            profileID: "first",
+            request: Self.request(modelID: "first", port: 8000),
+            outputHandler: { _ in },
+            terminationHandler: { _ in }
+        )
+
+        XCTAssertThrowsError(
+            try registry.start(
+                profileID: "second",
+                request: Self.request(modelID: "second", port: 8000),
+                outputHandler: { _ in },
+                terminationHandler: { _ in }
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? ModelProcessRegistryError,
+                .endpointAlreadyManaged(
+                    ManagedProcessEndpoint(
+                        profileID: "first",
+                        host: "127.0.0.1",
+                        port: 8000,
+                        processIdentifier: 101
+                    )
+                )
+            )
+        }
+        XCTAssertEqual(registry.runningProfileIDs, ["first"])
+        XCTAssertEqual(managers.count, 1)
+    }
+
+    func testEndpointMatchingTreatsLocalhostAsLoopback() throws {
+        let manager = FakeModelProcessManager(processIdentifier: 101)
+        let registry = ModelProcessRegistry(managerFactory: { manager })
+        let request = ModelLaunchRequest(
+            executablePath: "/usr/bin/true",
+            modelID: "first",
+            host: "localhost",
+            port: 8000,
+            enableThinking: false,
+            advancedLaunchOptions: nil
+        )
+
+        _ = try registry.start(
+            profileID: "first",
+            request: request,
+            outputHandler: { _ in },
+            terminationHandler: { _ in }
+        )
+
+        XCTAssertEqual(
+            registry.runningEndpoint(host: "127.0.0.1", port: 8000),
+            ManagedProcessEndpoint(
+                profileID: "first",
+                host: "localhost",
+                port: 8000,
+                processIdentifier: 101
+            )
+        )
+    }
+
+    func testEndpointMatchingTreatsWildcardHostAsConflicting() throws {
+        let manager = FakeModelProcessManager(processIdentifier: 101)
+        let registry = ModelProcessRegistry(managerFactory: { manager })
+        let request = ModelLaunchRequest(
+            executablePath: "/usr/bin/true",
+            modelID: "first",
+            host: "0.0.0.0",
+            port: 8000,
+            enableThinking: false,
+            advancedLaunchOptions: nil
+        )
+
+        _ = try registry.start(
+            profileID: "first",
+            request: request,
+            outputHandler: { _ in },
+            terminationHandler: { _ in }
+        )
+
+        XCTAssertEqual(
+            registry.runningEndpoint(host: "127.0.0.1", port: 8000)?.profileID,
+            "first"
+        )
+    }
+
+    func testStoppedEndpointCanBeReusedByAnotherProfile() async throws {
+        let first = FakeModelProcessManager(processIdentifier: 101)
+        let second = FakeModelProcessManager(processIdentifier: 202)
+        var managers = [first, second]
+        let registry = ModelProcessRegistry(managerFactory: { managers.removeFirst() })
+
+        _ = try registry.start(
+            profileID: "first",
+            request: Self.request(modelID: "first", port: 8000),
+            outputHandler: { _ in },
+            terminationHandler: { _ in }
+        )
+
+        _ = await registry.stop(profileID: "first")
+
+        _ = try registry.start(
+            profileID: "second",
+            request: Self.request(modelID: "second", port: 8000),
+            outputHandler: { _ in },
+            terminationHandler: { _ in }
+        )
+
+        XCTAssertNil(registry.processIdentifier(for: "first"))
+        XCTAssertEqual(registry.processIdentifier(for: "second"), 202)
+        XCTAssertEqual(registry.runningProfileIDs, ["second"])
+    }
+
     private static func request(modelID: String, port: Int) -> ModelLaunchRequest {
         ModelLaunchRequest(
             executablePath: "/usr/bin/true",
@@ -110,7 +229,7 @@ final class ModelProcessRegistryTests: XCTestCase {
 
 private final class FakeModelProcessManager: ModelProcessManaging {
     private(set) var managedProcessIdentifier: Int32?
-    private var terminationHandler: ((Int32) -> Void)?
+    private var terminationHandler: (@MainActor @Sendable (Int32) -> Void)?
 
     init(processIdentifier: Int32) {
         managedProcessIdentifier = processIdentifier
@@ -118,8 +237,8 @@ private final class FakeModelProcessManager: ModelProcessManaging {
 
     func start(
         request: ModelLaunchRequest,
-        outputHandler: @escaping (String) -> Void,
-        terminationHandler: @escaping (Int32) -> Void
+        outputHandler: @escaping @Sendable (String) -> Void,
+        terminationHandler: @escaping @MainActor @Sendable (Int32) -> Void
     ) throws -> ModelLaunchResult {
         self.terminationHandler = terminationHandler
         guard let managedProcessIdentifier else {
@@ -146,6 +265,7 @@ private final class FakeModelProcessManager: ModelProcessManaging {
         )
     }
 
+    @MainActor
     func terminate(status: Int32) {
         managedProcessIdentifier = nil
         terminationHandler?(status)

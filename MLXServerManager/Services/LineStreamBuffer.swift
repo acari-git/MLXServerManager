@@ -1,6 +1,6 @@
 import Foundation
 
-final class LineStreamBuffer: @unchecked Sendable {
+nonisolated final class LineStreamBuffer: @unchecked Sendable {
     private let lock = NSLock()
     private let maximumLinesPerLabel: Int?
     private var pendingTextByLabel: [String: String] = [:]

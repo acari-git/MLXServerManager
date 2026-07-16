@@ -1,6 +1,6 @@
 import Foundation
 
-struct LaunchCommandBuilder {
+nonisolated struct LaunchCommandBuilder {
     static func command(executablePath: String, model: ModelConfig) -> String {
         let executable = executablePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? model.resolvedBackend.defaultExecutableName

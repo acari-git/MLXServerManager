@@ -34,6 +34,18 @@ struct BenchmarkService {
         self.session = session
     }
 
+    func warmUp(configuration: BenchmarkRunConfiguration) async -> Bool {
+        let measurement = await measuredChatCompletion(
+            baseURL: configuration.baseURL,
+            modelID: configuration.modelID,
+            prompt: Self.warmupPrompt,
+            maxTokens: 16,
+            timeout: 45
+        )
+        return measurement.httpStatusCode.map { (200..<300).contains($0) } == true
+            && !measurement.timedOut
+    }
+
     func run(configuration: BenchmarkRunConfiguration) async -> BenchmarkResult {
         let serverVersion = await mlxLMVersionProvider.version(
             executablePath: configuration.serverExecutablePath,
@@ -45,7 +57,8 @@ struct BenchmarkService {
             memoryText: configuration.memoryText,
             mlxLMVersion: serverVersion ?? "Unavailable",
             backend: configuration.backend,
-            serverVersion: serverVersion
+            serverVersion: serverVersion,
+            thermalState: .current
         )
 
         let readyStartedAt = Date()
@@ -642,7 +655,8 @@ struct BenchmarkService {
             memoryText: base.memoryText,
             mlxLMVersion: resolvedVersion,
             backend: base.resolvedBackend,
-            serverVersion: resolvedVersion
+            serverVersion: resolvedVersion,
+            thermalState: base.thermalState
         )
     }
 
@@ -683,6 +697,11 @@ struct BenchmarkService {
         }
         return values.reduce(0, +) / Double(values.count)
     }
+
+    private static let warmupPrompt = """
+    Output only this exact text:
+    準備完了
+    """
 
     private static let speedProbePrompt = """
     Output exactly the following Japanese text and nothing else:

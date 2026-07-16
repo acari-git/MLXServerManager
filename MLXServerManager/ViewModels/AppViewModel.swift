@@ -187,10 +187,14 @@ final class AppViewModel: ObservableObject {
     @Published var profileEditorDraft: ModelProfileDraft = .empty
     @Published private(set) var isProfileEditorPresented = false
     @Published private(set) var profileEditorMessage: String?
+    @Published private(set) var profileEditorPortSuggestionMessage: String?
     @Published var addProfileDraft: ModelProfileDraft = .empty
     @Published private(set) var isAddProfilePresented = false
     @Published private(set) var addProfileMessage: String?
+    @Published private(set) var addProfilePortSuggestionMessage: String?
     @Published var isDeleteProfileConfirmationPresented = false
+    @Published var isMemoryRiskStartConfirmationPresented = false
+    @Published private(set) var pendingMemoryRiskAssessment: MultiModelMemoryAssessment?
     @Published private(set) var profileDeletionMessage: String?
     @Published private(set) var profileDeletionUndoState: ProfileDeletionUndoState?
     @Published private(set) var modelProfileExportMessage: String?
@@ -254,6 +258,8 @@ final class AppViewModel: ObservableObject {
     private let readyChecker: ReadyChecker
     private let processRegistry: ModelProcessRegistry
     private let memoryMonitor: MemoryMonitor
+    private let systemMemorySnapshotProvider: () -> SystemMemorySnapshot
+    private let availablePortFinder: AvailablePortFinder
     private let setupDiagnostics: SetupDiagnostics
     private let modelProfileExportService: ModelProfileExportService
     private let modelProfileImportPreviewService: ModelProfileImportPreviewService
@@ -282,10 +288,13 @@ final class AppViewModel: ObservableObject {
     private var cancelledHuggingFaceDownloadIDs: Set<UUID> = []
     private var miniChatTask: Task<Void, Never>?
     private var pendingDeleteModelID: ModelConfig.ID?
+    private var pendingMemoryRiskModelID: ModelConfig.ID?
     private var profileDeletionUndoPayload: ProfileDeletionUndoPayload?
     private var profileDeletionUndoTask: Task<Void, Never>?
     private var modelSizeGigabytesCache: [String: Double] = [:]
     private var portCheckCache: [String: PortCheckCacheEntry] = [:]
+    private var profileEditorPortSuggestionEndpointKey: String?
+    private var addProfilePortSuggestionEndpointKey: String?
     private var systemInfoRowsCache: [AppLanguage: SystemInfoRowsCacheEntry] = [:]
     private var logCategoryFilterOptionsCache: [String]
     private var visibleLogEntriesCache: [LogEntry]
@@ -355,6 +364,8 @@ final class AppViewModel: ObservableObject {
         readyChecker: ReadyChecker? = nil,
         processManager: ModelProcessManager? = nil,
         memoryMonitor: MemoryMonitor? = nil,
+        systemMemorySnapshotProvider: (() -> SystemMemorySnapshot)? = nil,
+        availablePortFinder: AvailablePortFinder? = nil,
         setupDiagnostics: SetupDiagnostics? = nil,
         modelProfileExportService: ModelProfileExportService? = nil,
         modelProfileImportPreviewService: ModelProfileImportPreviewService? = nil,
@@ -371,7 +382,11 @@ final class AppViewModel: ObservableObject {
         self.portChecker = portChecker ?? PortChecker()
         self.readyChecker = readyChecker ?? ReadyChecker()
         self.processRegistry = ModelProcessRegistry(initialManager: processManager)
-        self.memoryMonitor = memoryMonitor ?? MemoryMonitor()
+        let resolvedMemoryMonitor = memoryMonitor ?? MemoryMonitor()
+        self.memoryMonitor = resolvedMemoryMonitor
+        self.systemMemorySnapshotProvider = systemMemorySnapshotProvider
+            ?? { resolvedMemoryMonitor.currentSystemSnapshot() }
+        self.availablePortFinder = availablePortFinder ?? AvailablePortFinder()
         self.setupDiagnostics = setupDiagnostics ?? SetupDiagnostics(
             settingsStore: self.settingsStore,
             portChecker: self.portChecker,
@@ -533,9 +548,91 @@ final class AppViewModel: ObservableObject {
 
     func startRequested(for model: ModelConfig) {
         selectedModelID = model.id
+
+        if processRegistry.processIdentifier(for: model.id) == nil {
+            let assessment = memorySafetyAssessment(for: model)
+            if assessment.requiresConfirmation {
+                pendingMemoryRiskModelID = model.id
+                pendingMemoryRiskAssessment = assessment
+                isMemoryRiskStartConfirmationPresented = true
+                appendLog("[start] memory warning: \(assessment.title(language: settings.uiLanguage)). \(assessment.detail(language: settings.uiLanguage))")
+                return
+            }
+
+            if assessment.level == .caution || assessment.level == .unavailable {
+                appendLog("[start] memory advisory: \(assessment.title(language: settings.uiLanguage)). \(assessment.detail(language: settings.uiLanguage))")
+            }
+        }
+
+        performStartRequest(for: model)
+    }
+
+    func confirmMemoryRiskStart() {
+        guard let modelID = pendingMemoryRiskModelID,
+              let model = models.first(where: { $0.id == modelID }) else {
+            clearPendingMemoryRiskStart()
+            appendLog("[start] cancelled because the pending model profile is no longer available.")
+            return
+        }
+
+        clearPendingMemoryRiskStart()
+        appendLog("[start] continuing after explicit memory-risk confirmation for \(model.displayName).")
+        performStartRequest(for: model)
+    }
+
+    func cancelMemoryRiskStart() {
+        let displayName = pendingMemoryRiskModelID
+            .flatMap { modelID in models.first(where: { $0.id == modelID })?.displayName }
+        clearPendingMemoryRiskStart()
+        appendLog("[start] cancelled at memory-risk confirmation\(displayName.map { " for \($0)" } ?? "").")
+    }
+
+    var memoryRiskConfirmationTitle: String {
+        pendingMemoryRiskAssessment?.title(language: settings.uiLanguage)
+            ?? Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Confirm model start",
+                japanese: "モデルの起動を確認"
+            )
+    }
+
+    var memoryRiskConfirmationDetail: String {
+        pendingMemoryRiskAssessment?.detail(language: settings.uiLanguage)
+            ?? Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Current memory capacity could not be evaluated.",
+                japanese: "現在のメモリ容量を評価できませんでした。"
+            )
+    }
+
+    func memorySafetyAssessment(for model: ModelConfig) -> MultiModelMemoryAssessment {
+        let systemMemory = systemMemorySnapshotProvider()
+        let managedMemory = runningModelIDs.reduce(0.0) { partialResult, modelID in
+            partialResult + max(memoryUsageByModelID[modelID] ?? 0, 0)
+        }
+
+        return MultiModelMemoryAdvisor.assess(
+            environment: MultiModelMemoryEnvironment(
+                totalMemoryGigabytes: systemMemory.totalGigabytes,
+                availableMemoryGigabytes: systemMemory.availableGigabytes,
+                managedMemoryGigabytes: managedMemory,
+                runningModelCount: runningModelIDs.count,
+                candidateModelGigabytes: modelSizeGigabytes(for: model),
+                candidateCacheBytes: model.advancedLaunchOptions?.normalized()?.promptCacheBytes.flatMap(UInt64.init)
+            )
+        )
+    }
+
+    private func performStartRequest(for model: ModelConfig) {
         Task {
             _ = await startManagedServer(model: model, logPrefix: "start")
         }
+    }
+
+    private func clearPendingMemoryRiskStart() {
+        isMemoryRiskStartConfirmationPresented = false
+        pendingMemoryRiskAssessment = nil
+        pendingMemoryRiskModelID = nil
     }
 
     func stopRequested(for model: ModelConfig) {
@@ -714,6 +811,14 @@ final class AppViewModel: ObservableObject {
         let modelSafety = modelIdentitySafetyText(for: model)
         if modelSafety.localizedCaseInsensitiveContains("Missing") {
             return modelSafety
+        }
+
+        if let conflict = managedEndpointConflict(for: model) {
+            return Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Server port: Used by loaded model \(conflict.model.displayName) (pid \(conflict.endpoint.processIdentifier))",
+                japanese: "サーバーポート: ロード済みモデル \(conflict.model.displayName) が使用中です (pid \(conflict.endpoint.processIdentifier))"
+            )
         }
 
         switch cachedPortCheck(host: model.host, port: model.serverPort) {
@@ -948,12 +1053,27 @@ final class AppViewModel: ObservableObject {
         BenchmarkSessionAnalyzer.comparisonRows(
             models: models,
             sessionsByProfileID: benchmarkSessionsByProfileID,
-            currentChipName: systemProfilerHardwareInfo["Chip"]
+            currentChipName: systemProfilerHardwareInfo["Chip"],
+            currentExecutionFingerprintsByProfileID: Dictionary(
+                uniqueKeysWithValues: models.map { model in
+                    (
+                        model.id,
+                        BenchmarkExecutionFingerprint.make(
+                            model: model,
+                            executablePath: executablePath(for: model)
+                        )
+                    )
+                }
+            )
         )
     }
 
     func rankedBenchmarkRows(for useCase: BenchmarkUseCase) -> [BenchmarkComparisonRow] {
         BenchmarkSessionAnalyzer.ranked(rows: benchmarkComparisonRows, for: useCase)
+    }
+
+    func benchmarkComparisonRow(for model: ModelConfig) -> BenchmarkComparisonRow? {
+        benchmarkComparisonRows.first(where: { $0.profileID == model.id })
     }
 
     func setBenchmarkPreset(_ preset: BenchmarkPreset) {
@@ -1864,8 +1984,11 @@ final class AppViewModel: ObservableObject {
     }
 
     private static func portCheckCacheKey(host: String, port: Int) -> String {
-        let normalizedHost = host.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return "\(normalizedHost == "localhost" ? "127.0.0.1" : normalizedHost):\(port)"
+        "\(normalizedHost(host)):\(port)"
+    }
+
+    private static func normalizedHost(_ host: String) -> String {
+        EndpointHostMatcher.normalized(host)
     }
 
     private func memoryValueForSort(_ model: ModelConfig) -> Double {
@@ -1988,7 +2111,8 @@ final class AppViewModel: ObservableObject {
             return nil
         }
 
-        return String(cString: buffer).trimmingCharacters(in: .whitespacesAndNewlines)
+        let bytes = buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }
+        return String(decoding: bytes, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func storageUsageText(language: AppLanguage) -> String {
@@ -2352,6 +2476,26 @@ final class AppViewModel: ObservableObject {
         let memoryText = systemProfilerHardwareInfo["Memory"] ?? Self.formatMemoryGigabytes(Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824)
         let service = benchmarkService
         let preset = settings.benchmarkPreset
+        let benchmarkModel = selectedModel
+        let serverExecutablePath = benchmarkModel.map(executablePath(for:)) ?? settings.mlxServerExecutablePath
+        let executionFingerprint = benchmarkModel.map {
+            BenchmarkExecutionFingerprint.make(model: $0, executablePath: serverExecutablePath)
+        }
+        let configuration = BenchmarkRunConfiguration(
+            host: host,
+            port: port,
+            baseURL: targetBaseURL,
+            profileID: profileID,
+            modelID: modelID,
+            selectedProfileName: selectedProfileName,
+            runningProfileID: runningProfileID,
+            managedProcessID: managedProcessID,
+            chipName: chipName,
+            memoryText: memoryText,
+            backend: benchmarkModel?.resolvedBackend ?? .mlxLM,
+            serverExecutablePath: serverExecutablePath,
+            includesAgentProbes: preset.includesAgentProbes
+        )
         isSpeedTestRunning = true
         benchmarkSampleIndex = 0
         benchmarkSampleCount = preset.sampleCount
@@ -2367,24 +2511,14 @@ final class AppViewModel: ObservableObject {
         Task {
             let startedAt = Date()
             var samples: [BenchmarkResult] = []
+            if preset.usesWarmup {
+                appendLog("[benchmark] warm-up started; this request is excluded from measured samples.")
+                let warmupSucceeded = await service.warmUp(configuration: configuration)
+                appendLog("[benchmark] warm-up \(warmupSucceeded ? "completed" : "did not complete cleanly"); measured samples will continue.")
+            }
             for index in 1...preset.sampleCount {
                 guard !Task.isCancelled else { break }
                 benchmarkSampleIndex = index
-                let configuration = BenchmarkRunConfiguration(
-                    host: host,
-                    port: port,
-                    baseURL: targetBaseURL,
-                    profileID: profileID,
-                    modelID: modelID,
-                    selectedProfileName: selectedProfileName,
-                    runningProfileID: runningProfileID,
-                    managedProcessID: managedProcessID,
-                    chipName: chipName,
-                    memoryText: memoryText,
-                    backend: selectedModel?.resolvedBackend ?? .mlxLM,
-                    serverExecutablePath: selectedModel.map(executablePath(for:)) ?? settings.mlxServerExecutablePath,
-                    includesAgentProbes: preset.includesAgentProbes
-                )
                 let result = await service.run(configuration: configuration)
                 samples.append(result)
                 benchmarkHistory.insert(result, at: 0)
@@ -2408,6 +2542,7 @@ final class AppViewModel: ObservableObject {
                 modelID: modelID,
                 selectedProfileName: selectedProfileName,
                 preset: preset,
+                executionFingerprint: executionFingerprint,
                 samples: samples
             )
             let benchmarkResult = session.representativeResult ?? samples[0]
@@ -3381,14 +3516,17 @@ final class AppViewModel: ObservableObject {
 
         addProfileDraft = .empty
         addProfileMessage = nil
+        clearAddProfilePortSuggestion()
         isAddProfilePresented = false
         profileEditorDraft = ModelProfileDraft(model: selectedModel)
         profileEditorMessage = nil
+        clearProfileEditorPortSuggestion()
         isProfileEditorPresented = true
         appendLog("[profile] editing \(selectedModel.modelID)")
     }
 
     func cancelProfileEditing() {
+        clearProfileEditorPortSuggestion()
         profileEditorDraft = .empty
         profileEditorMessage = nil
         isProfileEditorPresented = false
@@ -3396,16 +3534,175 @@ final class AppViewModel: ObservableObject {
     }
 
     func addProfileRequested() {
+        clearProfileEditorPortSuggestion()
         profileEditorDraft = .empty
         profileEditorMessage = nil
         isProfileEditorPresented = false
+        clearAddProfilePortSuggestion()
         addProfileDraft = ModelProfileDraft.newProfile(
             defaultHost: settings.defaultHost,
             defaultPort: settings.defaultPort
         )
         addProfileMessage = nil
+        suggestAvailablePortForAddProfile()
         isAddProfilePresented = true
         appendLog("[profile] adding new model profile.")
+    }
+
+    var addProfileNoticeMessage: String? {
+        guard isManagedProcessRunning else { return nil }
+        return Self.localizedText(
+            language: settings.uiLanguage,
+            english: "Saving a new profile will not change running managed servers.",
+            japanese: "新規プロファイルを保存しても、実行中の管理サーバーは変更されません。"
+        )
+    }
+
+    func suggestAvailablePortForProfileEditor() {
+        guard isProfileEditorPresented, !isProfileEditorRuntimeLocked else { return }
+
+        let host = profileEditorDraft.host.trimmingCharacters(in: .whitespacesAndNewlines)
+        let requestedPort = normalizedPortSuggestionInput(profileEditorDraft.serverPortText)
+        profileEditorPortSuggestionEndpointKey = Self.portCheckCacheKey(host: host, port: requestedPort)
+        profileEditorDraft.serverPortText = String(requestedPort)
+        let reservedPorts = reservedPorts(
+            on: host,
+            excludingModelID: profileEditorDraft.originalModelID
+        )
+
+        guard let port = availablePortFinder.firstAvailablePort(
+            host: host,
+            preferredPort: requestedPort,
+            reservedPorts: reservedPorts
+        ) else {
+            let upperBound = min(requestedPort + 99, 65_535)
+            profileEditorPortSuggestionMessage = noAvailablePortSuggestionMessage(
+                requestedPort: requestedPort,
+                upperBound: upperBound
+            )
+            appendLog("[profile] no available port suggestion found for edited profile at \(host) from \(requestedPort).")
+            return
+        }
+
+        profileEditorPortSuggestionEndpointKey = Self.portCheckCacheKey(host: host, port: port)
+        profileEditorDraft.serverPortText = String(port)
+        profileEditorPortSuggestionMessage = availablePortSuggestionMessage(
+            requestedPort: requestedPort,
+            availablePort: port
+        )
+        appendLog("[profile] available port suggestion for edited profile: \(host):\(port).")
+    }
+
+    func profileEditorEndpointInputChanged() {
+        guard let profileEditorPortSuggestionEndpointKey else { return }
+        let host = profileEditorDraft.host.trimmingCharacters(in: .whitespacesAndNewlines)
+        let portText = profileEditorDraft.serverPortText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let port = Int(portText),
+              (1...65_535).contains(port),
+              Self.portCheckCacheKey(host: host, port: port) == profileEditorPortSuggestionEndpointKey else {
+            clearProfileEditorPortSuggestion()
+            return
+        }
+    }
+
+    private func clearProfileEditorPortSuggestion() {
+        profileEditorPortSuggestionEndpointKey = nil
+        profileEditorPortSuggestionMessage = nil
+    }
+
+    func suggestAvailablePortForAddProfile() {
+        let host = addProfileDraft.host.trimmingCharacters(in: .whitespacesAndNewlines)
+        let requestedPort = normalizedPortSuggestionInput(addProfileDraft.serverPortText)
+        addProfilePortSuggestionEndpointKey = Self.portCheckCacheKey(host: host, port: requestedPort)
+        addProfileDraft.serverPortText = String(requestedPort)
+        let reservedPorts = reservedPorts(on: host)
+
+        guard let port = availablePortFinder.firstAvailablePort(
+            host: host,
+            preferredPort: requestedPort,
+            reservedPorts: reservedPorts
+        ) else {
+            let upperBound = min(requestedPort + 99, 65_535)
+            addProfilePortSuggestionMessage = noAvailablePortSuggestionMessage(
+                requestedPort: requestedPort,
+                upperBound: upperBound
+            )
+            appendLog("[profile] no available port suggestion found for \(host) from \(requestedPort).")
+            return
+        }
+
+        addProfilePortSuggestionEndpointKey = Self.portCheckCacheKey(host: host, port: port)
+        addProfileDraft.serverPortText = String(port)
+        addProfilePortSuggestionMessage = availablePortSuggestionMessage(
+            requestedPort: requestedPort,
+            availablePort: port
+        )
+        appendLog("[profile] available port suggestion: \(host):\(port).")
+    }
+
+    func addProfileEndpointInputChanged() {
+        guard let addProfilePortSuggestionEndpointKey else { return }
+        let host = addProfileDraft.host.trimmingCharacters(in: .whitespacesAndNewlines)
+        let portText = addProfileDraft.serverPortText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let port = Int(portText),
+              (1...65_535).contains(port),
+              Self.portCheckCacheKey(host: host, port: port) == addProfilePortSuggestionEndpointKey else {
+            clearAddProfilePortSuggestion()
+            return
+        }
+    }
+
+    private func clearAddProfilePortSuggestion() {
+        addProfilePortSuggestionEndpointKey = nil
+        addProfilePortSuggestionMessage = nil
+    }
+
+    private func normalizedPortSuggestionInput(_ portText: String) -> Int {
+        let parsedPort = Int(portText.trimmingCharacters(in: .whitespacesAndNewlines))
+        return parsedPort.flatMap { (1...65_535).contains($0) ? $0 : nil }
+            ?? min(max(settings.defaultPort, 1), 65_535)
+    }
+
+    private func reservedPorts(
+        on host: String,
+        excludingModelID: ModelConfig.ID? = nil
+    ) -> Set<Int> {
+        Set(models.compactMap { model in
+            guard model.id != excludingModelID,
+                  EndpointHostMatcher.conflicts(model.host, host) else {
+                return nil
+            }
+            return model.serverPort
+        })
+    }
+
+    private func availablePortSuggestionMessage(
+        requestedPort: Int,
+        availablePort: Int
+    ) -> String {
+        if availablePort == requestedPort {
+            return Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Port \(availablePort) is available.",
+                japanese: "ポート\(availablePort)は利用可能です。"
+            )
+        }
+        return Self.localizedText(
+            language: settings.uiLanguage,
+            english: "Port \(availablePort) was selected because earlier ports are assigned or in use.",
+            japanese: "手前のポートが割り当て済みまたは使用中のため、ポート\(availablePort)を選択しました。"
+        )
+    }
+
+    private func noAvailablePortSuggestionMessage(
+        requestedPort: Int,
+        upperBound: Int
+    ) -> String {
+        Self.localizedText(
+            language: settings.uiLanguage,
+            english: "No available port was found from \(requestedPort) through \(upperBound). You can enter another port manually.",
+            japanese: "\(requestedPort)〜\(upperBound)で利用可能なポートが見つかりませんでした。別のポートを手動で入力できます。"
+        )
     }
 
     func exportProfilesRequested() {
@@ -3559,6 +3856,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func cancelAddProfile() {
+        clearAddProfilePortSuggestion()
         addProfileDraft = .empty
         addProfileMessage = nil
         isAddProfilePresented = false
@@ -3580,6 +3878,7 @@ final class AppViewModel: ObservableObject {
                 invalidateModelSizeCache(for: newModel)
                 invalidatePortCheckCache()
                 models = nextModels
+                clearAddProfilePortSuggestion()
                 addProfileDraft = .empty
                 addProfileMessage = nil
                 isAddProfilePresented = false
@@ -3995,6 +4294,7 @@ final class AppViewModel: ObservableObject {
                 selectedModelID = updatedModel.id
                 profileEditorDraft = ModelProfileDraft(model: updatedModel)
                 profileEditorMessage = nil
+                clearProfileEditorPortSuggestion()
                 isProfileEditorPresented = false
                 appendLog("[profile] saved \(updatedModel.modelID) to models.json.")
                 return true
@@ -4392,9 +4692,10 @@ final class AppViewModel: ObservableObject {
                     excludePatterns: Self.patternList(from: job.draft.excludePatterns),
                     authorizationValue: huggingFaceCredentialStore.readValue()
                 ),
-                outputHandler: { [weak self] line in
-                    Task { @MainActor in
-                        self?.appendHuggingFaceOutputLine(line, queueEntryID: job.id)
+                outputHandler: { [weak self, queueEntryID = job.id] line in
+                    guard let self else { return }
+                    Task { @MainActor [self, line, queueEntryID] in
+                        self.appendHuggingFaceOutputLine(line, queueEntryID: queueEntryID)
                     }
                 }
             )
@@ -4828,6 +5129,17 @@ final class AppViewModel: ObservableObject {
             }
         }
 
+        if let conflict = managedEndpointConflict(for: model) {
+            let message = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "The endpoint \(host):\(port) is already used by loaded model \(conflict.model.displayName) (pid \(conflict.endpoint.processIdentifier)). Choose another port.",
+                japanese: "\(host):\(port) はロード済みモデル \(conflict.model.displayName) (pid \(conflict.endpoint.processIdentifier)) が使用中です。別のポートを選択してください。"
+            )
+            setRuntimeState(.portBusy(host: host, port: port), for: model.id)
+            appendLog("[\(logPrefix)] preflight failed: \(message)")
+            return false
+        }
+
         appendLog("[\(logPrefix)] preflight passed for selected profile.")
         appendLog("[\(logPrefix)] starting \(model.modelID) at \(host):\(port)")
         appendLog("[\(logPrefix)] checking port before launch: \(host):\(port)")
@@ -4876,17 +5188,16 @@ final class AppViewModel: ObservableObject {
                 profileID: model.id,
                 request: request,
                 outputHandler: { [weak self] line in
-                    Task { @MainActor in
-                        self?.appendLog(line)
+                    guard let self else { return }
+                    Task { @MainActor [self, line] in
+                        self.appendLog(line)
                     }
                 },
-                terminationHandler: { [weak self] status in
-                    Task { @MainActor in
-                        self?.handleUnexpectedProcessTermination(
-                            modelID: model.id,
-                            status: status
-                        )
-                    }
+                terminationHandler: { [weak self, modelID = model.id] status in
+                    self?.handleUnexpectedProcessTermination(
+                        modelID: modelID,
+                        status: status
+                    )
                 }
             )
 
@@ -4919,6 +5230,21 @@ final class AppViewModel: ObservableObject {
             appendLog("[\(logPrefix)] failed: \(error.localizedDescription)")
             return false
         }
+    }
+
+    private func managedEndpointConflict(
+        for model: ModelConfig
+    ) -> (model: ModelConfig, endpoint: ManagedProcessEndpoint)? {
+        guard let endpoint = processRegistry.runningEndpoint(
+            host: model.host,
+            port: model.serverPort,
+            excluding: model.id
+        ),
+        let owner = models.first(where: { $0.id == endpoint.profileID }) else {
+            return nil
+        }
+
+        return (owner, endpoint)
     }
 
     private func loadSettings() {
@@ -5762,20 +6088,30 @@ final class AppViewModel: ObservableObject {
 
     private func evaluateAutoUnload() async {
         let now = Date()
-        for modelID in runningModelIDs {
+        let candidates = runningModelIDs.compactMap { modelID -> AutoUnloadCandidate? in
             guard let runningModel = models.first(where: { $0.id == modelID }),
-                  isAutoUnloadEnabled(for: runningModel),
-                  let startedAt = managedServerStartedAtByModelID[modelID],
-                  !isModelTransitioning(runningModel) else {
+                  let startedAt = managedServerStartedAtByModelID[modelID] else {
+                return nil
+            }
+
+            return AutoUnloadCandidate(
+                modelID: modelID,
+                startedAt: startedAt,
+                limitMinutes: autoUnloadMinutes(for: runningModel),
+                isEnabled: isAutoUnloadEnabled(for: runningModel),
+                isTransitioning: isModelTransitioning(runningModel)
+            )
+        }
+
+        for modelID in AutoUnloadPlanner.expiredModelIDs(from: candidates, now: now) {
+            guard let runningModel = models.first(where: { $0.id == modelID }),
+                  let startedAt = managedServerStartedAtByModelID[modelID] else {
                 continue
             }
 
             let elapsedSeconds = now.timeIntervalSince(startedAt)
-            let limitSeconds = TimeInterval(autoUnloadMinutes(for: runningModel) * 60)
-            guard elapsedSeconds >= limitSeconds else { continue }
-
             appendLog("[auto-unload] elapsed \(Int(elapsedSeconds))s reached \(autoUnloadMinutes(for: runningModel)) minute limit. Unloading \(runningModel.displayName).")
-            stopRequested(for: runningModel)
+            requestStop(for: runningModel, logPrefix: "auto-unload")
         }
     }
 

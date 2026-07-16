@@ -1,12 +1,12 @@
 import Foundation
 
-struct SettingsSnapshot {
+nonisolated struct SettingsSnapshot {
     var settings: AppSettings
     var models: [ModelConfig]
     var usedDefaults: Bool
 }
 
-private struct PersistedSettingsSnapshot: Codable {
+private nonisolated struct PersistedSettingsSnapshot: Codable {
     static let currentSchemaVersion = 1
 
     let schemaVersion: Int
@@ -20,7 +20,7 @@ private struct PersistedSettingsSnapshot: Codable {
     }
 }
 
-enum SettingsStoreError: LocalizedError {
+nonisolated enum SettingsStoreError: LocalizedError {
     case applicationSupportDirectoryUnavailable
 
     var errorDescription: String? {
@@ -31,7 +31,7 @@ enum SettingsStoreError: LocalizedError {
     }
 }
 
-struct SettingsStore {
+nonisolated struct SettingsStore {
     let fileManager: FileManager
     let appDirectoryName: String
 

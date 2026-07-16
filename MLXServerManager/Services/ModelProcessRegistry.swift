@@ -1,5 +1,23 @@
 import Foundation
 
+nonisolated struct ManagedProcessEndpoint: Equatable {
+    let profileID: ModelConfig.ID
+    let host: String
+    let port: Int
+    let processIdentifier: Int32
+}
+
+nonisolated enum ModelProcessRegistryError: LocalizedError, Equatable {
+    case endpointAlreadyManaged(ManagedProcessEndpoint)
+
+    var errorDescription: String? {
+        switch self {
+        case let .endpointAlreadyManaged(endpoint):
+            "The endpoint \(endpoint.host):\(endpoint.port) is already managed by profile \(endpoint.profileID) with pid \(endpoint.processIdentifier)."
+        }
+    }
+}
+
 @MainActor
 final class ModelProcessRegistry {
     typealias ManagerFactory = @MainActor () -> any ModelProcessManaging
@@ -7,6 +25,8 @@ final class ModelProcessRegistry {
     private struct Entry {
         let token: UUID
         let manager: any ModelProcessManaging
+        let host: String
+        let port: Int
     }
 
     private var entries: [ModelConfig.ID: Entry] = [:]
@@ -39,14 +59,45 @@ final class ModelProcessRegistry {
         processIdentifier(for: profileID) != nil
     }
 
+    func runningEndpoint(
+        host: String,
+        port: Int,
+        excluding excludedProfileID: ModelConfig.ID? = nil
+    ) -> ManagedProcessEndpoint? {
+        return entries.compactMap { profileID, entry -> ManagedProcessEndpoint? in
+            guard profileID != excludedProfileID,
+                  entry.port == port,
+                  EndpointHostMatcher.conflicts(entry.host, host),
+                  let processIdentifier = entry.manager.managedProcessIdentifier else {
+                return nil
+            }
+
+            return ManagedProcessEndpoint(
+                profileID: profileID,
+                host: entry.host,
+                port: entry.port,
+                processIdentifier: processIdentifier
+            )
+        }
+        .first
+    }
+
     func start(
         profileID: ModelConfig.ID,
         request: ModelLaunchRequest,
-        outputHandler: @escaping (String) -> Void,
-        terminationHandler: @escaping (Int32) -> Void
+        outputHandler: @escaping @Sendable (String) -> Void,
+        terminationHandler: @escaping @MainActor @Sendable (Int32) -> Void
     ) throws -> ModelLaunchResult {
         if let processIdentifier = processIdentifier(for: profileID) {
             throw ModelProcessManagerError.alreadyRunning(processIdentifier: processIdentifier)
+        }
+
+        if let endpoint = runningEndpoint(
+            host: request.host,
+            port: request.port,
+            excluding: profileID
+        ) {
+            throw ModelProcessRegistryError.endpointAlreadyManaged(endpoint)
         }
 
         let entry: Entry
@@ -54,7 +105,12 @@ final class ModelProcessRegistry {
             entry = existingEntry
         } else {
             let manager = makeManager()
-            entry = Entry(token: UUID(), manager: manager)
+            entry = Entry(
+                token: UUID(),
+                manager: manager,
+                host: request.host,
+                port: request.port
+            )
             entries[profileID] = entry
         }
 
@@ -106,4 +162,5 @@ final class ModelProcessRegistry {
         }
         return managerFactory()
     }
+
 }

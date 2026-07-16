@@ -1,6 +1,6 @@
 import Foundation
 
-struct ModelLaunchRequest: Equatable {
+nonisolated struct ModelLaunchRequest: Equatable {
     let executablePath: String
     let backend: InferenceBackend
     let modelID: String
@@ -28,18 +28,18 @@ struct ModelLaunchRequest: Equatable {
     }
 }
 
-struct ModelLaunchResult: Equatable {
+nonisolated struct ModelLaunchResult: Equatable {
     let processIdentifier: Int32
     let commandSummary: String
 }
 
-enum ModelStopResult: Equatable {
+nonisolated enum ModelStopResult: Equatable {
     case notRunning
     case stopped(processIdentifier: Int32, terminationStatus: Int32, usedInterrupt: Bool)
     case timedOut(processIdentifier: Int32)
 }
 
-enum ModelProcessManagerError: LocalizedError, Equatable {
+nonisolated enum ModelProcessManagerError: LocalizedError, Equatable {
     case executablePathMissing
     case executableNotFound(String)
     case executableNotRunnable(String)
@@ -67,8 +67,8 @@ protocol ModelProcessManaging: AnyObject {
 
     func start(
         request: ModelLaunchRequest,
-        outputHandler: @escaping (String) -> Void,
-        terminationHandler: @escaping (Int32) -> Void
+        outputHandler: @escaping @Sendable (String) -> Void,
+        terminationHandler: @escaping @MainActor @Sendable (Int32) -> Void
     ) throws -> ModelLaunchResult
 
     func stop(
@@ -93,8 +93,8 @@ final class ModelProcessManager: ModelProcessManaging {
 
     func start(
         request: ModelLaunchRequest,
-        outputHandler: @escaping (String) -> Void,
-        terminationHandler: @escaping (Int32) -> Void
+        outputHandler: @escaping @Sendable (String) -> Void,
+        terminationHandler: @escaping @MainActor @Sendable (Int32) -> Void
     ) throws -> ModelLaunchResult {
         let executablePath = request.executablePath.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !executablePath.isEmpty else {
@@ -290,7 +290,7 @@ final class ModelProcessManager: ModelProcessManaging {
     private func configurePipe(
         _ pipe: Pipe,
         label: String,
-        outputHandler: @escaping (String) -> Void
+        outputHandler: @escaping @Sendable (String) -> Void
     ) {
         pipe.fileHandleForReading.readabilityHandler = { [weak self] fileHandle in
             let data = fileHandle.availableData
@@ -312,7 +312,7 @@ final class ModelProcessManager: ModelProcessManaging {
         }
     }
 
-    private func flushPendingOutput(outputHandler: @escaping (String) -> Void) {
+    private func flushPendingOutput(outputHandler: @escaping @Sendable (String) -> Void) {
         for label in ["stdout", "stderr"] {
             for line in lineBuffer.flush(label: label) {
                 outputHandler("[process:\(label)] \(line)")

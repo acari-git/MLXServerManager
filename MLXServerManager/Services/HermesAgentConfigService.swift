@@ -1,12 +1,12 @@
 import Foundation
 
-struct HermesAgentConnectionSettings: Equatable {
+nonisolated struct HermesAgentConnectionSettings: Equatable {
     let baseURL: String
     let modelID: String
     let apiKey: String
 }
 
-struct HermesAgentConfigUpdateResult: Equatable {
+nonisolated struct HermesAgentConfigUpdateResult: Equatable {
     let configURL: URL
     let backupURL: URL?
     let changedKeys: [String]
@@ -16,7 +16,7 @@ struct HermesAgentConfigUpdateResult: Equatable {
     }
 }
 
-enum HermesAgentConfigServiceError: LocalizedError, Equatable {
+nonisolated enum HermesAgentConfigServiceError: LocalizedError, Equatable {
     case configPathMissing
     case configFileNotFound(String)
     case configPathIsDirectory(String)
@@ -39,7 +39,7 @@ enum HermesAgentConfigServiceError: LocalizedError, Equatable {
     }
 }
 
-struct HermesAgentConfigService {
+nonisolated struct HermesAgentConfigService {
     var fileManager: FileManager = .default
     var dateProvider: () -> Date = Date.init
 

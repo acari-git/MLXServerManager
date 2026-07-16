@@ -1,14 +1,14 @@
 import Darwin
 import Foundation
 
-enum PortCheckResult: Equatable {
+nonisolated enum PortCheckResult: Equatable {
     case available(host: String, port: Int)
     case busy(host: String, port: Int, pid: Int?)
     case invalidInput(message: String)
     case failed(host: String, port: Int, message: String)
 }
 
-struct PortChecker {
+nonisolated struct PortChecker {
     func check(host: String, port: Int) -> PortCheckResult {
         guard !host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return .invalidInput(message: "Host is empty.")

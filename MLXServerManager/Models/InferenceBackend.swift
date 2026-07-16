@@ -1,6 +1,6 @@
 import Foundation
 
-enum InferenceBackend: String, Codable, CaseIterable, Hashable, Identifiable {
+nonisolated enum InferenceBackend: String, Codable, CaseIterable, Hashable, Identifiable {
     case mlxLM = "mlx-lm"
     case rapidMLX = "rapid-mlx"
 

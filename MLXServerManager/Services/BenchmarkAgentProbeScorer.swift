@@ -1,6 +1,6 @@
 import Foundation
 
-enum BenchmarkAgentProbeKind: CaseIterable, Equatable, Sendable {
+nonisolated enum BenchmarkAgentProbeKind: CaseIterable, Equatable, Sendable {
     case jsonSchema
     case toolSelectionRead
     case toolSelectionEdit
@@ -51,13 +51,13 @@ enum BenchmarkAgentProbeKind: CaseIterable, Equatable, Sendable {
     }
 }
 
-struct BenchmarkAgentProbeScore: Equatable {
+nonisolated struct BenchmarkAgentProbeScore: Equatable {
     let jsonValid: Bool
     let instructionFollowed: Bool
     let toolSelectionPassed: Bool
 }
 
-struct BenchmarkAgentProbeScorer {
+nonisolated struct BenchmarkAgentProbeScorer {
     nonisolated static func score(output: String, kind: BenchmarkAgentProbeKind) -> BenchmarkAgentProbeScore {
         guard let object = BenchmarkJSONExtractor.object(from: output) else {
             return BenchmarkAgentProbeScore(jsonValid: false, instructionFollowed: false, toolSelectionPassed: false)
@@ -87,7 +87,7 @@ struct BenchmarkAgentProbeScorer {
     }
 }
 
-struct BenchmarkJSONExtractor {
+nonisolated struct BenchmarkJSONExtractor {
     nonisolated static func object(from text: String) -> [String: Any]? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         for candidate in jsonCandidates(from: trimmed) {

@@ -1,16 +1,16 @@
 import Foundation
 
-enum LocalModelAvailabilityCheckResult: Hashable {
+nonisolated enum LocalModelAvailabilityCheckResult: Hashable {
     case present(path: String)
     case missing(path: String)
     case notInspectable(message: String)
 }
 
-protocol LocalModelAvailabilityChecking {
+nonisolated protocol LocalModelAvailabilityChecking {
     func check(path: String) -> LocalModelAvailabilityCheckResult
 }
 
-struct FileSystemLocalModelAvailabilityChecker: LocalModelAvailabilityChecking {
+nonisolated struct FileSystemLocalModelAvailabilityChecker: LocalModelAvailabilityChecking {
     private let fileManager: FileManager
 
     init(fileManager: FileManager = .default) {

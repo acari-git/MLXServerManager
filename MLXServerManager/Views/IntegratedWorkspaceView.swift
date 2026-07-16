@@ -9,7 +9,6 @@ struct IntegratedWorkspaceView: View {
     @State var selectedDestination: IntegratedWorkspaceDestination = .models
     @State private var isBottomPanelVisible = true
     @State private var isBottomPanelAutoHidden = false
-    @State private var modelTableSortOrder = [KeyPathComparator<ModelTableRow>]()
     @State private var modelTableSortColumn: ModelTableSortColumn?
     @State private var modelTableSortDirection: SortOrder = .forward
     @State private var hoveredStatusModelID: ModelConfig.ID?
@@ -72,10 +71,12 @@ struct IntegratedWorkspaceView: View {
     }
 
     private func sortedModelRows(from rows: [ModelTableRow]) -> [ModelTableRow] {
-        if modelTableSortOrder.isEmpty {
+        guard let column = modelTableSortColumn else {
             return rows
         }
-        return rows.sorted(using: modelTableSortOrder)
+        return rows.sorted {
+            column.isOrderedBefore($0, $1, order: modelTableSortDirection)
+        }
     }
 
     private var strings: AppLocalization {
@@ -323,23 +324,35 @@ struct IntegratedWorkspaceView: View {
         case autoUnload
         case reasoning
 
-        func comparator(order: SortOrder) -> KeyPathComparator<ModelTableRow> {
+        func isOrderedBefore(
+            _ lhs: ModelTableRow,
+            _ rhs: ModelTableRow,
+            order: SortOrder
+        ) -> Bool {
             switch self {
             case .name:
-                KeyPathComparator(\.nameSortValue, order: order)
+                ordered(lhs.nameSortValue, before: rhs.nameSortValue, order: order)
             case .size:
-                KeyPathComparator(\.sizeSortValue, order: order)
+                ordered(lhs.sizeSortValue, before: rhs.sizeSortValue, order: order)
             case .status:
-                KeyPathComparator(\.statusSortValue, order: order)
+                ordered(lhs.statusSortValue, before: rhs.statusSortValue, order: order)
             case .endpoint:
-                KeyPathComparator(\.endpointSortValue, order: order)
+                ordered(lhs.endpointSortValue, before: rhs.endpointSortValue, order: order)
             case .memory:
-                KeyPathComparator(\.memorySortValue, order: order)
+                ordered(lhs.memorySortValue, before: rhs.memorySortValue, order: order)
             case .autoUnload:
-                KeyPathComparator(\.autoUnloadSortValue, order: order)
+                ordered(lhs.autoUnloadSortValue, before: rhs.autoUnloadSortValue, order: order)
             case .reasoning:
-                KeyPathComparator(\.reasoningSortValue, order: order)
+                ordered(lhs.reasoningSortValue, before: rhs.reasoningSortValue, order: order)
             }
+        }
+
+        private func ordered<Value: Comparable>(
+            _ lhs: Value,
+            before rhs: Value,
+            order: SortOrder
+        ) -> Bool {
+            order == .forward ? lhs < rhs : lhs > rhs
         }
     }
 
@@ -1270,7 +1283,6 @@ struct IntegratedWorkspaceView: View {
             : .forward
         modelTableSortColumn = column
         modelTableSortDirection = nextDirection
-        modelTableSortOrder = [column.comparator(order: nextDirection)]
     }
 
     private var modelInspectorPanel: some View {
@@ -1651,6 +1663,19 @@ struct IntegratedWorkspaceView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                if let comparisonRow = viewModel.benchmarkComparisonRow(for: model),
+                   let exclusionSummary = comparisonRow.localizedExclusionSummary(
+                       language: viewModel.settings.uiLanguage
+                   ) {
+                    Label(
+                        t("Re-run needed: \(exclusionSummary)", "再測定が必要: \(exclusionSummary)"),
+                        systemImage: "arrow.clockwise.circle"
+                    )
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+
                 if let result = viewModel.benchmarkResult(for: model) {
                     if let session = viewModel.benchmarkSession(for: model) {
                         benchmarkAggregateSummary(session)
@@ -1845,7 +1870,10 @@ struct IntegratedWorkspaceView: View {
             }
 
             if let host = result.hostSnapshot {
-                Text("\(result.suiteVersion) • \(host.chipName) • \(host.memoryText) • \(host.localizedServerText(language: viewModel.settings.uiLanguage))")
+                let thermalText = host.thermalState.map {
+                    " • \(t("Thermal", "熱状態")): \($0.localizedTitle(language: viewModel.settings.uiLanguage))"
+                } ?? ""
+                Text("\(result.suiteVersion) • \(host.chipName) • \(host.memoryText) • \(host.localizedServerText(language: viewModel.settings.uiLanguage))\(thermalText)")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
@@ -2083,17 +2111,17 @@ struct IntegratedWorkspaceView: View {
         guard let provider = providers.first(where: { $0.canLoadObject(ofClass: NSString.self) }) else {
             return false
         }
+        let targetModelID = targetModel.id
 
         provider.loadObject(ofClass: NSString.self) { value, _ in
             guard let draggedModelID = value as? String,
-                  draggedModelID != targetModel.id else {
+                  draggedModelID != targetModelID else {
                 return
             }
 
             Task { @MainActor in
-                modelTableSortOrder = []
                 modelTableSortColumn = nil
-                viewModel.moveModel(withID: draggedModelID, before: targetModel.id)
+                viewModel.moveModel(withID: draggedModelID, before: targetModelID)
             }
         }
         return true
@@ -2110,7 +2138,6 @@ struct IntegratedWorkspaceView: View {
             }
 
             Task { @MainActor in
-                modelTableSortOrder = []
                 modelTableSortColumn = nil
                 viewModel.moveModelToEnd(withID: draggedModelID)
             }
@@ -2685,14 +2712,14 @@ private struct InspectorHelpPanelPresenter: NSViewRepresentable {
     }
 }
 
-private enum InspectorHelpArrowEdge: Equatable {
+nonisolated private enum InspectorHelpArrowEdge: Equatable {
     case top
     case bottom
     case left
     case right
 }
 
-private enum InspectorHelpLayout {
+nonisolated private enum InspectorHelpLayout {
     static let preferredPanelWidth: CGFloat = 320
     static let fallbackPanelHeight: CGFloat = 72
     static let maximumPanelHeight: CGFloat = 360

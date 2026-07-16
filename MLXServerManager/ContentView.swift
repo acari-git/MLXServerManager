@@ -57,6 +57,19 @@ struct ContentView: View {
                 "プロファイルのみ削除するか、一致するHugging Face hubキャッシュも削除するかを選択します。ローカルのモデルフォルダは削除されません。"
             ))
         }
+        .alert(
+            viewModel.memoryRiskConfirmationTitle,
+            isPresented: $viewModel.isMemoryRiskStartConfirmationPresented
+        ) {
+            Button(t("Start Anyway", "このまま起動"), role: .destructive) {
+                viewModel.confirmMemoryRiskStart()
+            }
+            Button(strings.text(.cancel), role: .cancel) {
+                viewModel.cancelMemoryRiskStart()
+            }
+        } message: {
+            Text(viewModel.memoryRiskConfirmationDetail)
+        }
         .sheet(isPresented: Binding(
             get: { viewModel.isProfileEditorPresented },
             set: { if !$0 { viewModel.cancelProfileEditing() } }
@@ -72,6 +85,9 @@ struct ContentView: View {
                 runtimeFieldsLocked: viewModel.isProfileEditorRuntimeLocked,
                 kvCacheEnvironment: viewModel.profileEditorKVCacheEnvironment,
                 language: viewModel.settings.uiLanguage,
+                portSuggestionMessage: viewModel.profileEditorPortSuggestionMessage,
+                onSuggestPort: viewModel.suggestAvailablePortForProfileEditor,
+                onEndpointInputChanged: viewModel.profileEditorEndpointInputChanged,
                 onSave: viewModel.saveProfileEditing,
                 onCancel: viewModel.cancelProfileEditing,
                 onCopyPreview: viewModel.copyLaunchCommandPreview
@@ -87,13 +103,14 @@ struct ContentView: View {
                 draft: $viewModel.addProfileDraft,
                 title: t("Add Model Profile", "モデルプロファイルを追加"),
                 saveButtonTitle: t("Save New Profile", "新規プロファイルを保存"),
-                noticeMessage: viewModel.isManagedProcessRunning
-                    ? t("Saving a new profile will not change the running managed server.", "新規プロファイルを保存しても、実行中の管理サーバーは変更されません。")
-                    : nil,
+                noticeMessage: viewModel.addProfileNoticeMessage,
                 message: viewModel.addProfileMessage,
                 runtimeFieldsLocked: false,
                 kvCacheEnvironment: viewModel.addProfileKVCacheEnvironment,
                 language: viewModel.settings.uiLanguage,
+                portSuggestionMessage: viewModel.addProfilePortSuggestionMessage,
+                onSuggestPort: viewModel.suggestAvailablePortForAddProfile,
+                onEndpointInputChanged: viewModel.addProfileEndpointInputChanged,
                 onSave: viewModel.saveNewProfile,
                 onCancel: viewModel.cancelAddProfile,
                 onCopyPreview: viewModel.copyLaunchCommandPreview

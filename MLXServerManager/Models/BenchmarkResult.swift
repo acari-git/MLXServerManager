@@ -1,10 +1,10 @@
 import Foundation
 
-enum BenchmarkSuite {
+nonisolated enum BenchmarkSuite {
     static let version = "MLXSM Benchmark v1"
 }
 
-enum BenchmarkPhase: String, Codable, Equatable {
+nonisolated enum BenchmarkPhase: String, Codable, Equatable {
     case success = "Success"
     case failed = "Failed"
     case cancelled = "Cancelled"
@@ -22,7 +22,7 @@ enum BenchmarkPhase: String, Codable, Equatable {
     }
 }
 
-enum BenchmarkUseCase: String, Codable, CaseIterable, Equatable, Hashable {
+nonisolated enum BenchmarkUseCase: String, Codable, CaseIterable, Equatable, Hashable {
     case chat
     case coding
     case agent
@@ -50,7 +50,7 @@ enum BenchmarkUseCase: String, Codable, CaseIterable, Equatable, Hashable {
     }
 }
 
-enum BenchmarkScoreReasonCode: String, Codable, CaseIterable, Equatable, Hashable {
+nonisolated enum BenchmarkScoreReasonCode: String, Codable, CaseIterable, Equatable, Hashable {
     case ttftSlowInteractive = "ttft_slow_interactive"
     case ttftDelayed = "ttft_delayed"
     case ttftAcceptable = "ttft_acceptable"
@@ -205,7 +205,7 @@ enum BenchmarkScoreReasonCode: String, Codable, CaseIterable, Equatable, Hashabl
     }
 }
 
-struct BenchmarkScoreReason: Codable, Equatable, Hashable {
+nonisolated struct BenchmarkScoreReason: Codable, Equatable, Hashable {
     let code: BenchmarkScoreReasonCode?
     let legacyText: String?
 
@@ -246,7 +246,7 @@ struct BenchmarkScoreReason: Codable, Equatable, Hashable {
     }
 }
 
-struct BenchmarkUseCaseScore: Codable, Equatable {
+nonisolated struct BenchmarkUseCaseScore: Codable, Equatable {
     let useCase: BenchmarkUseCase
     let score: Int
     private let reasonValues: [BenchmarkScoreReason]
@@ -308,13 +308,58 @@ struct BenchmarkUseCaseScore: Codable, Equatable {
     }
 }
 
-struct BenchmarkHostSnapshot: Codable, Equatable {
+nonisolated enum BenchmarkThermalState: String, Codable, Equatable, Comparable {
+    case nominal
+    case fair
+    case serious
+    case critical
+
+    static var current: BenchmarkThermalState {
+        switch ProcessInfo.processInfo.thermalState {
+        case .nominal: .nominal
+        case .fair: .fair
+        case .serious: .serious
+        case .critical: .critical
+        @unknown default: .serious
+        }
+    }
+
+    var excludesRecommendation: Bool {
+        self >= .serious
+    }
+
+    func localizedTitle(language: AppLanguage) -> String {
+        let strings = AppLocalization(language: language)
+        return switch self {
+        case .nominal: strings.text(english: "Nominal", japanese: "正常")
+        case .fair: strings.text(english: "Fair", japanese: "やや高い")
+        case .serious: strings.text(english: "Serious", japanese: "高い")
+        case .critical: strings.text(english: "Critical", japanese: "重大")
+        }
+    }
+
+    static func < (lhs: BenchmarkThermalState, rhs: BenchmarkThermalState) -> Bool {
+        lhs.severity < rhs.severity
+    }
+
+    private var severity: Int {
+        switch self {
+        case .nominal: 0
+        case .fair: 1
+        case .serious: 2
+        case .critical: 3
+        }
+    }
+}
+
+nonisolated struct BenchmarkHostSnapshot: Codable, Equatable {
     let macOSVersion: String
     let chipName: String
     let memoryText: String
     let mlxLMVersion: String
     let backend: InferenceBackend?
     let serverVersion: String?
+    let thermalState: BenchmarkThermalState?
 
     init(
         macOSVersion: String,
@@ -322,7 +367,8 @@ struct BenchmarkHostSnapshot: Codable, Equatable {
         memoryText: String,
         mlxLMVersion: String,
         backend: InferenceBackend? = nil,
-        serverVersion: String? = nil
+        serverVersion: String? = nil,
+        thermalState: BenchmarkThermalState? = nil
     ) {
         self.macOSVersion = macOSVersion
         self.chipName = chipName
@@ -330,6 +376,7 @@ struct BenchmarkHostSnapshot: Codable, Equatable {
         self.mlxLMVersion = mlxLMVersion
         self.backend = backend
         self.serverVersion = serverVersion
+        self.thermalState = thermalState
     }
 
     var resolvedBackend: InferenceBackend {
@@ -345,7 +392,7 @@ struct BenchmarkHostSnapshot: Codable, Equatable {
     }
 }
 
-struct BenchmarkSpeedMetrics: Codable, Equatable {
+nonisolated struct BenchmarkSpeedMetrics: Codable, Equatable {
     let readinessLatencyMS: Double?
     let ttftMS: Double?
     let totalLatencyMS: Double?
@@ -423,7 +470,7 @@ struct BenchmarkSpeedMetrics: Codable, Equatable {
     }
 }
 
-struct BenchmarkAgentReadiness: Codable, Equatable {
+nonisolated struct BenchmarkAgentReadiness: Codable, Equatable {
     let totalRuns: Int
     let successfulRuns: Int
     let jsonValidResponses: Int
@@ -502,7 +549,7 @@ struct BenchmarkAgentReadiness: Codable, Equatable {
     }
 }
 
-struct BenchmarkResult: Codable, Identifiable, Equatable {
+nonisolated struct BenchmarkResult: Codable, Identifiable, Equatable {
     let id: UUID
     let timestamp: Date
     let suiteVersion: String
@@ -616,6 +663,9 @@ struct BenchmarkResult: Codable, Identifiable, Equatable {
                 "Memory: \(hostSnapshot.memoryText)",
                 "Backend: \(hostSnapshot.localizedServerText(language: .english))"
             ]
+            if let thermalState = hostSnapshot.thermalState {
+                lines.append("Thermal state: \(thermalState.localizedTitle(language: .english))")
+            }
         }
 
         if let speedMetrics {
@@ -676,6 +726,9 @@ struct BenchmarkResult: Codable, Identifiable, Equatable {
                 "メモリ: \(hostSnapshot.memoryText)",
                 "バックエンド: \(hostSnapshot.localizedServerText(language: .japanese))"
             ]
+            if let thermalState = hostSnapshot.thermalState {
+                lines.append("熱状態: \(thermalState.localizedTitle(language: .japanese))")
+            }
         }
 
         if let speedMetrics {
@@ -729,8 +782,8 @@ struct BenchmarkResult: Codable, Identifiable, Equatable {
     }
 }
 
-struct BenchmarkResultsSnapshot: Codable, Equatable {
-    static let currentSchemaVersion = 2
+nonisolated struct BenchmarkResultsSnapshot: Codable, Equatable {
+    static let currentSchemaVersion = 3
 
     var schemaVersion: Int
     var benchmarkResultsByProfileID: [String: BenchmarkResult]

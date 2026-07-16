@@ -1,6 +1,6 @@
 import Foundation
 
-enum ModelAvailabilityState: String, CaseIterable, Hashable {
+nonisolated enum ModelAvailabilityState: String, CaseIterable, Hashable {
     case unknown
     case configured
     case present
@@ -29,7 +29,7 @@ enum ModelAvailabilityState: String, CaseIterable, Hashable {
     }
 }
 
-struct ModelAvailabilitySummary: Hashable {
+nonisolated struct ModelAvailabilitySummary: Hashable {
     let state: ModelAvailabilityState
     let profileDisplayName: String
     let configuredTarget: String
@@ -128,7 +128,7 @@ struct ModelAvailabilitySummary: Hashable {
     }
 }
 
-enum ModelAvailabilityPathFormatter {
+nonisolated enum ModelAvailabilityPathFormatter {
     static func localPathCandidate(for model: ModelConfig) -> String? {
         if let modelIDPath = expandedLocalPath(from: model.modelID) {
             return modelIDPath
@@ -159,7 +159,10 @@ enum ModelAvailabilityPathFormatter {
         return nil
     }
 
-    static func compact(path: String, homeDirectory: String = FileManager.default.homeDirectoryForCurrentUser.path) -> String {
+    nonisolated static func compact(
+        path: String,
+        homeDirectory: String = FileManager.default.homeDirectoryForCurrentUser.path
+    ) -> String {
         let normalizedHome = homeDirectory.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard !normalizedHome.isEmpty else {
             return path

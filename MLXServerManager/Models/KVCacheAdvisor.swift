@@ -1,19 +1,19 @@
 import Foundation
 
-enum KVCacheDiagnosisLevel: String, Codable, Hashable {
+nonisolated enum KVCacheDiagnosisLevel: String, Codable, Hashable {
     case healthy
     case attention
     case warning
 }
 
-struct KVCacheEnvironment: Equatable {
+nonisolated struct KVCacheEnvironment: Equatable {
     let totalMemoryGigabytes: Double
     let availableMemoryGigabytes: Double?
     let modelStorageGigabytes: Double?
     let isModelLoaded: Bool
 }
 
-struct KVCacheRecommendation: Equatable {
+nonisolated struct KVCacheRecommendation: Equatable {
     let entryLimit: Int
     let byteLimit: UInt64
     let projectedHeadroomGigabytes: Double
@@ -23,7 +23,7 @@ struct KVCacheRecommendation: Equatable {
     }
 }
 
-struct KVCacheAssessment: Equatable {
+nonisolated struct KVCacheAssessment: Equatable {
     let backend: InferenceBackend
     let level: KVCacheDiagnosisLevel
     let recommendation: KVCacheRecommendation
@@ -115,7 +115,7 @@ struct KVCacheAssessment: Equatable {
     }
 }
 
-enum KVCacheAdvisor {
+nonisolated enum KVCacheAdvisor {
     static let mlxLMDefaultEntryLimit = 10
     static let rapidMLXDefaultEntryLimit = 100
 

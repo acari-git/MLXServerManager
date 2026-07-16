@@ -1,6 +1,6 @@
 import Foundation
 
-enum AppLanguage: String, Codable, CaseIterable, Identifiable, Hashable {
+nonisolated enum AppLanguage: String, Codable, CaseIterable, Identifiable, Hashable {
     case system
     case japanese
     case english
@@ -29,7 +29,7 @@ enum AppLanguage: String, Codable, CaseIterable, Identifiable, Hashable {
     }
 }
 
-struct AppLocalization {
+nonisolated struct AppLocalization {
     let language: AppLanguage
 
     init(language: AppLanguage) {
@@ -55,7 +55,7 @@ struct AppLocalization {
     }
 }
 
-enum AppTextKey: CaseIterable {
+nonisolated enum AppTextKey: CaseIterable {
     case dashboard
     case models
     case downloads

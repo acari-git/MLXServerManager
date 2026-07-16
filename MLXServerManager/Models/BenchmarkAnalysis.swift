@@ -1,6 +1,6 @@
 import Foundation
 
-enum BenchmarkPreset: String, Codable, CaseIterable, Identifiable, Hashable {
+nonisolated enum BenchmarkPreset: String, Codable, CaseIterable, Identifiable, Hashable {
     case quick
     case standard
     case detailed
@@ -16,6 +16,10 @@ enum BenchmarkPreset: String, Codable, CaseIterable, Identifiable, Hashable {
     }
 
     var includesAgentProbes: Bool {
+        self != .quick
+    }
+
+    var usesWarmup: Bool {
         self != .quick
     }
 
@@ -53,7 +57,7 @@ enum BenchmarkPreset: String, Codable, CaseIterable, Identifiable, Hashable {
     }
 }
 
-enum BenchmarkStabilityLevel: String, Codable, Equatable {
+nonisolated enum BenchmarkStabilityLevel: String, Codable, Equatable {
     case high
     case medium
     case low
@@ -70,7 +74,7 @@ enum BenchmarkStabilityLevel: String, Codable, Equatable {
     }
 }
 
-struct BenchmarkAggregateMetrics: Codable, Equatable {
+nonisolated struct BenchmarkAggregateMetrics: Codable, Equatable {
     let sampleCount: Int
     let successfulSampleCount: Int
     let medianTTFTMS: Double?
@@ -87,13 +91,14 @@ struct BenchmarkAggregateMetrics: Codable, Equatable {
     }
 }
 
-struct BenchmarkSessionResult: Codable, Identifiable, Equatable {
+nonisolated struct BenchmarkSessionResult: Codable, Identifiable, Equatable {
     let id: UUID
     let timestamp: Date
     let profileID: String
     let modelID: String
     let selectedProfileName: String
     let preset: BenchmarkPreset
+    let executionFingerprint: String?
     let samples: [BenchmarkResult]
     let aggregate: BenchmarkAggregateMetrics
 
@@ -104,6 +109,7 @@ struct BenchmarkSessionResult: Codable, Identifiable, Equatable {
         modelID: String,
         selectedProfileName: String,
         preset: BenchmarkPreset,
+        executionFingerprint: String? = nil,
         samples: [BenchmarkResult]
     ) {
         self.id = id
@@ -112,6 +118,7 @@ struct BenchmarkSessionResult: Codable, Identifiable, Equatable {
         self.modelID = modelID
         self.selectedProfileName = selectedProfileName
         self.preset = preset
+        self.executionFingerprint = executionFingerprint
         self.samples = samples
         aggregate = BenchmarkSessionAnalyzer.aggregate(
             samples: samples,
@@ -125,23 +132,80 @@ struct BenchmarkSessionResult: Codable, Identifiable, Equatable {
             medianOutputTokensPerSecond: aggregate.medianOutputTokensPerSecond
         )
     }
+
+    var worstThermalState: BenchmarkThermalState? {
+        samples.compactMap { $0.hostSnapshot?.thermalState }.max()
+    }
 }
 
-struct BenchmarkComparisonRow: Identifiable, Equatable {
+nonisolated enum BenchmarkComparisonExclusionReason: String, Equatable, Hashable {
+    case suiteChanged
+    case chipChanged
+    case backendChanged
+    case executionConfigurationChanged
+    case thermalPressure
+    case insufficientSuccessfulSamples
+
+    func localizedTitle(language: AppLanguage) -> String {
+        let strings = AppLocalization(language: language)
+        return switch self {
+        case .suiteChanged:
+            strings.text(
+                english: "The benchmark suite has changed",
+                japanese: "ベンチマーク内容が更新されています"
+            )
+        case .chipChanged:
+            strings.text(
+                english: "The Mac hardware does not match",
+                japanese: "測定時とMacの構成が異なります"
+            )
+        case .backendChanged:
+            strings.text(
+                english: "The inference backend has changed",
+                japanese: "推論バックエンドが変更されています"
+            )
+        case .executionConfigurationChanged:
+            strings.text(
+                english: "The model launch settings have changed",
+                japanese: "モデルの起動設定が変更されています"
+            )
+        case .thermalPressure:
+            strings.text(
+                english: "The Mac was under high thermal pressure",
+                japanese: "測定時のMacが高温状態でした"
+            )
+        case .insufficientSuccessfulSamples:
+            strings.text(
+                english: "At least two successful samples are required",
+                japanese: "成功した測定が2回以上必要です"
+            )
+        }
+    }
+}
+
+nonisolated struct BenchmarkComparisonRow: Identifiable, Equatable {
     let profileID: String
     let displayName: String
     let session: BenchmarkSessionResult
-    let isStale: Bool
+    let exclusionReasons: [BenchmarkComparisonExclusionReason]
     let recommendedUseCases: Set<BenchmarkUseCase>
 
     var id: String { profileID }
+    var isStale: Bool { !exclusionReasons.isEmpty }
 
     func score(for useCase: BenchmarkUseCase) -> Int? {
         session.aggregate.medianUseCaseScores.first(where: { $0.useCase == useCase })?.score
     }
+
+    func localizedExclusionSummary(language: AppLanguage) -> String? {
+        guard !exclusionReasons.isEmpty else { return nil }
+        return exclusionReasons
+            .map { $0.localizedTitle(language: language) }
+            .joined(separator: language.resolved == .english ? "; " : "、")
+    }
 }
 
-enum BenchmarkSessionAnalyzer {
+nonisolated enum BenchmarkSessionAnalyzer {
     static func aggregate(
         samples: [BenchmarkResult],
         includesAgentProbes: Bool = true
@@ -206,20 +270,40 @@ enum BenchmarkSessionAnalyzer {
         models: [ModelConfig],
         sessionsByProfileID: [String: BenchmarkSessionResult],
         currentSuiteVersion: String = BenchmarkSuite.version,
-        currentChipName: String? = nil
+        currentChipName: String? = nil,
+        currentExecutionFingerprintsByProfileID: [String: String]? = nil
     ) -> [BenchmarkComparisonRow] {
         var rows = models.compactMap { model -> BenchmarkComparisonRow? in
             guard let session = sessionsByProfileID[model.id] else { return nil }
             let host = session.representativeResult?.hostSnapshot
-            let isStale = session.representativeResult?.suiteVersion != currentSuiteVersion
-                || (currentChipName != nil && host?.chipName != currentChipName)
-                || host?.resolvedBackend != model.resolvedBackend
-                || session.aggregate.successfulSampleCount < 2
+            let expectedExecutionFingerprint = currentExecutionFingerprintsByProfileID?[model.id]
+            let executionConfigurationChanged = expectedExecutionFingerprint.map {
+                session.executionFingerprint != $0
+            } ?? false
+            var exclusionReasons: [BenchmarkComparisonExclusionReason] = []
+            if session.representativeResult?.suiteVersion != currentSuiteVersion {
+                exclusionReasons.append(.suiteChanged)
+            }
+            if currentChipName != nil && host?.chipName != currentChipName {
+                exclusionReasons.append(.chipChanged)
+            }
+            if host?.resolvedBackend != model.resolvedBackend {
+                exclusionReasons.append(.backendChanged)
+            }
+            if executionConfigurationChanged {
+                exclusionReasons.append(.executionConfigurationChanged)
+            }
+            if session.worstThermalState?.excludesRecommendation == true {
+                exclusionReasons.append(.thermalPressure)
+            }
+            if session.aggregate.successfulSampleCount < 2 {
+                exclusionReasons.append(.insufficientSuccessfulSamples)
+            }
             return BenchmarkComparisonRow(
                 profileID: model.id,
                 displayName: model.displayName,
                 session: session,
-                isStale: isStale,
+                exclusionReasons: exclusionReasons,
                 recommendedUseCases: []
             )
         }
@@ -233,7 +317,7 @@ enum BenchmarkSessionAnalyzer {
                 profileID: row.profileID,
                 displayName: row.displayName,
                 session: row.session,
-                isStale: row.isStale,
+                exclusionReasons: row.exclusionReasons,
                 recommendedUseCases: Set(recommendations.compactMap { key, value in
                     value == row.profileID ? key : nil
                 })

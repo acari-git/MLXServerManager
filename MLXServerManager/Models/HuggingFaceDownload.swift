@@ -1,6 +1,6 @@
 import Foundation
 
-struct HuggingFaceModelReference: Equatable {
+nonisolated struct HuggingFaceModelReference: Equatable {
     let repositoryID: String
     let owner: String
     let name: String
@@ -83,7 +83,7 @@ struct HuggingFaceModelReference: Equatable {
     }
 }
 
-enum HuggingFaceModelReferenceError: LocalizedError, Equatable {
+nonisolated enum HuggingFaceModelReferenceError: LocalizedError, Equatable {
     case emptyInput
     case invalidURL
     case missingRepository
@@ -106,7 +106,7 @@ enum HuggingFaceModelReferenceError: LocalizedError, Equatable {
     }
 }
 
-struct HuggingFaceDownloadDraft: Equatable {
+nonisolated struct HuggingFaceDownloadDraft: Equatable {
     var source: String
     var revision: String
     var includePatterns: String
@@ -138,7 +138,7 @@ struct HuggingFaceDownloadDraft: Equatable {
     }
 }
 
-struct HuggingFaceDownloadPreview: Equatable {
+nonisolated struct HuggingFaceDownloadPreview: Equatable {
     let reference: HuggingFaceModelReference?
     let destinationPath: String?
     let compactDestinationPath: String
@@ -294,7 +294,7 @@ struct HuggingFaceDownloadStatus: Equatable {
     )
 }
 
-struct HuggingFaceDownloadPlanner {
+nonisolated struct HuggingFaceDownloadPlanner {
     static func destinationState(path: String?) -> (note: String, message: String, canUse: Bool) {
         guard let path else {
             return ("No local destination.", "Save directory is not a local path.", false)

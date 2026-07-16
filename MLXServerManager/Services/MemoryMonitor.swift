@@ -242,7 +242,11 @@ struct MemoryMonitor: Sendable {
 
         guard result == KERN_SUCCESS else { return nil }
 
-        let pageSize = UInt64(vm_kernel_page_size)
+        var hostPageSize: vm_size_t = 0
+        guard host_page_size(mach_host_self(), &hostPageSize) == KERN_SUCCESS else {
+            return nil
+        }
+        let pageSize = UInt64(hostPageSize)
         let availableBytes = [
             UInt64(stats.free_count),
             UInt64(stats.inactive_count),

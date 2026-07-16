@@ -479,6 +479,7 @@ final class BenchmarkTests: XCTestCase {
                     modelID: "local/model-a",
                     selectedProfileName: "Model A",
                     preset: .standard,
+                    executionFingerprint: "fingerprint-v1",
                     samples: [benchmark]
                 )
             ]
@@ -491,6 +492,7 @@ final class BenchmarkTests: XCTestCase {
         XCTAssertEqual(decoded.agenticBenchmarkResultsByProfileID["model-a"]?.scoreText, "1/1")
         XCTAssertEqual(decoded.benchmarkSessionsByProfileID["model-a"]?.preset, .standard)
         XCTAssertEqual(decoded.benchmarkSessionsByProfileID["model-a"]?.samples.count, 1)
+        XCTAssertEqual(decoded.benchmarkSessionsByProfileID["model-a"]?.executionFingerprint, "fingerprint-v1")
     }
 
     func testBenchmarkPresetsUseExpectedSampleCounts() {
@@ -499,6 +501,36 @@ final class BenchmarkTests: XCTestCase {
         XCTAssertEqual(BenchmarkPreset.detailed.sampleCount, 5)
         XCTAssertFalse(BenchmarkPreset.quick.includesAgentProbes)
         XCTAssertTrue(BenchmarkPreset.standard.includesAgentProbes)
+        XCTAssertFalse(BenchmarkPreset.quick.usesWarmup)
+        XCTAssertTrue(BenchmarkPreset.standard.usesWarmup)
+        XCTAssertTrue(BenchmarkPreset.detailed.usesWarmup)
+    }
+
+    func testExecutionFingerprintIsStableAndChangesWithRuntimeConfiguration() {
+        let base = makeModelConfig(modelID: "local/model-a", displayName: "Model A", port: 8000)
+        var changed = base
+        changed.enableThinking = true
+        changed.advancedLaunchOptions = AdvancedLaunchOptions(defaultTemperature: "0.4")
+
+        let first = BenchmarkExecutionFingerprint.make(model: base, executablePath: "/tmp/mlx_lm.server")
+        let repeated = BenchmarkExecutionFingerprint.make(model: base, executablePath: "/tmp/mlx_lm.server")
+        let changedConfiguration = BenchmarkExecutionFingerprint.make(model: changed, executablePath: "/tmp/mlx_lm.server")
+
+        XCTAssertEqual(first, repeated)
+        XCTAssertEqual(first.count, 64)
+        XCTAssertNotEqual(first, changedConfiguration)
+    }
+
+    func testExecutionFingerprintNormalizesLocalhost() {
+        var localhostModel = makeModelConfig(modelID: "local/model-a", displayName: "Model A", port: 8000)
+        var loopbackModel = localhostModel
+        localhostModel.host = "localhost"
+        loopbackModel.host = "127.0.0.1"
+
+        XCTAssertEqual(
+            BenchmarkExecutionFingerprint.make(model: localhostModel, executablePath: "/tmp/mlx_lm.server"),
+            BenchmarkExecutionFingerprint.make(model: loopbackModel, executablePath: "/tmp/mlx_lm.server")
+        )
     }
 
     func testBenchmarkSessionUsesMediansAndReportsStability() {
@@ -554,6 +586,7 @@ final class BenchmarkTests: XCTestCase {
 
         XCTAssertEqual(rows.count, 1)
         XCTAssertTrue(rows[0].isStale)
+        XCTAssertEqual(rows[0].exclusionReasons, [.insufficientSuccessfulSamples])
         XCTAssertTrue(rows[0].recommendedUseCases.isEmpty)
         XCTAssertTrue(BenchmarkSessionAnalyzer.ranked(rows: rows, for: .chat).isEmpty)
     }
@@ -595,11 +628,110 @@ final class BenchmarkTests: XCTestCase {
         XCTAssertFalse(ranked[1].recommendedUseCases.contains(.coding))
     }
 
+    func testComparisonMarksChangedExecutionConfigurationAsStale() throws {
+        let model = makeModelConfig(modelID: "local/model-a", displayName: "Model A", port: 8000)
+        let samples = (0..<3).map { _ in
+            makeSuccessfulBenchmark(profileID: model.id, speed: 30, ttft: 700, score: 9)
+        }
+        let session = BenchmarkSessionResult(
+            profileID: model.id,
+            modelID: model.modelID,
+            selectedProfileName: model.displayName,
+            preset: .standard,
+            executionFingerprint: "old-configuration",
+            samples: samples
+        )
+
+        let rows = BenchmarkSessionAnalyzer.comparisonRows(
+            models: [model],
+            sessionsByProfileID: [model.id: session],
+            currentExecutionFingerprintsByProfileID: [model.id: "new-configuration"]
+        )
+
+        let row = try XCTUnwrap(rows.first)
+        XCTAssertTrue(row.isStale)
+        XCTAssertEqual(row.exclusionReasons, [.executionConfigurationChanged])
+    }
+
+    func testComparisonExcludesThermallyThrottledSession() throws {
+        let model = makeModelConfig(modelID: "local/model-a", displayName: "Model A", port: 8000)
+        let samples = (0..<3).map { _ in
+            makeSuccessfulBenchmark(
+                profileID: model.id,
+                speed: 30,
+                ttft: 700,
+                score: 9,
+                thermalState: .serious
+            )
+        }
+        let session = BenchmarkSessionResult(
+            profileID: model.id,
+            modelID: model.modelID,
+            selectedProfileName: model.displayName,
+            preset: .standard,
+            samples: samples
+        )
+
+        let rows = BenchmarkSessionAnalyzer.comparisonRows(
+            models: [model],
+            sessionsByProfileID: [model.id: session]
+        )
+
+        let row = try XCTUnwrap(rows.first)
+        XCTAssertTrue(row.isStale)
+        XCTAssertEqual(row.exclusionReasons, [.thermalPressure])
+        XCTAssertEqual(session.worstThermalState, .serious)
+    }
+
+    func testComparisonReportsAllExclusionReasonsInDeterministicOrder() throws {
+        let model = makeModelConfig(modelID: "local/model-a", displayName: "Model A", port: 8000)
+        let sample = makeSuccessfulBenchmark(
+            profileID: model.id,
+            speed: 30,
+            ttft: 700,
+            score: 9,
+            thermalState: .critical,
+            suiteVersion: "MLXSM Benchmark legacy",
+            chipName: "Apple M3",
+            backend: .rapidMLX
+        )
+        let session = BenchmarkSessionResult(
+            profileID: model.id,
+            modelID: model.modelID,
+            selectedProfileName: model.displayName,
+            preset: .standard,
+            executionFingerprint: "old-configuration",
+            samples: [sample]
+        )
+
+        let row = try XCTUnwrap(BenchmarkSessionAnalyzer.comparisonRows(
+            models: [model],
+            sessionsByProfileID: [model.id: session],
+            currentChipName: "Apple M4 Pro",
+            currentExecutionFingerprintsByProfileID: [model.id: "new-configuration"]
+        ).first)
+
+        XCTAssertEqual(row.exclusionReasons, [
+            .suiteChanged,
+            .chipChanged,
+            .backendChanged,
+            .executionConfigurationChanged,
+            .thermalPressure,
+            .insufficientSuccessfulSamples
+        ])
+        XCTAssertTrue(row.localizedExclusionSummary(language: .japanese)?.contains("起動設定") == true)
+        XCTAssertTrue(row.localizedExclusionSummary(language: .english)?.contains("thermal pressure") == true)
+    }
+
     private func makeSuccessfulBenchmark(
         profileID: String,
         speed: Double,
         ttft: Double,
-        score: Int
+        score: Int,
+        thermalState: BenchmarkThermalState? = nil,
+        suiteVersion: String = BenchmarkSuite.version,
+        chipName: String = "Apple M4 Pro",
+        backend: InferenceBackend = .mlxLM
     ) -> BenchmarkResult {
         let metrics = BenchmarkSpeedMetrics(
             readinessLatencyMS: 100,
@@ -615,6 +747,7 @@ final class BenchmarkTests: XCTestCase {
             availableMemoryGigabytes: 24
         )
         return BenchmarkResult(
+            suiteVersion: suiteVersion,
             profileID: profileID,
             modelID: "local/\(profileID)",
             baseURL: "http://127.0.0.1:8000/v1",
@@ -624,11 +757,12 @@ final class BenchmarkTests: XCTestCase {
             message: "ok",
             hostSnapshot: BenchmarkHostSnapshot(
                 macOSVersion: "26.5",
-                chipName: "Apple M4 Pro",
+                chipName: chipName,
                 memoryText: "64 GB",
                 mlxLMVersion: "0.31.3",
-                backend: .mlxLM,
-                serverVersion: "0.31.3"
+                backend: backend,
+                serverVersion: "0.31.3",
+                thermalState: thermalState
             ),
             speedMetrics: metrics,
             useCaseScores: BenchmarkUseCase.allCases.map {
@@ -794,6 +928,7 @@ final class BenchmarkTests: XCTestCase {
 
         XCTAssertEqual(snapshot.resolvedBackend, .mlxLM)
         XCTAssertEqual(snapshot.resolvedServerVersion, "0.31.3")
+        XCTAssertNil(snapshot.thermalState)
     }
 
     func testBenchmarkHostSnapshotRoundTripsRapidMLXMetadata() throws {
@@ -803,12 +938,14 @@ final class BenchmarkTests: XCTestCase {
             memoryText: "64 GB",
             mlxLMVersion: "rapid-mlx 0.7.32",
             backend: .rapidMLX,
-            serverVersion: "rapid-mlx 0.7.32"
+            serverVersion: "rapid-mlx 0.7.32",
+            thermalState: .fair
         )
 
         let decoded = try JSONDecoder().decode(BenchmarkHostSnapshot.self, from: JSONEncoder().encode(snapshot))
 
         XCTAssertEqual(decoded.resolvedBackend, .rapidMLX)
         XCTAssertEqual(decoded.localizedServerText(language: .english), "Rapid-MLX rapid-mlx 0.7.32")
+        XCTAssertEqual(decoded.thermalState, .fair)
     }
 }

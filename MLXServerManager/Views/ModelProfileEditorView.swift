@@ -12,6 +12,9 @@ struct ModelProfileEditorView: View {
     let runtimeFieldsLocked: Bool
     let kvCacheEnvironment: KVCacheEnvironment
     let language: AppLanguage
+    var portSuggestionMessage: String? = nil
+    var onSuggestPort: (() -> Void)? = nil
+    var onEndpointInputChanged: (() -> Void)? = nil
     let onSave: () -> Bool
     let onCancel: () -> Void
     let onCopyPreview: (String) -> Void
@@ -134,16 +137,40 @@ struct ModelProfileEditorView: View {
                             trigger: validationShakeTrigger
                         )
                         .disabled(runtimeFieldsLocked)
+                        .onChange(of: draft.host) { _, _ in
+                            onEndpointInputChanged?()
+                        }
                 }
 
                 editorRow("Port") {
-                    TextField("8080", text: $draft.serverPortText)
-                        .textFieldStyle(.roundedBorder)
-                        .kineticValidationFeedback(
-                            isInvalid: validationTarget == .port,
-                            trigger: validationShakeTrigger
-                        )
-                        .disabled(runtimeFieldsLocked)
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(spacing: 8) {
+                            TextField("8080", text: $draft.serverPortText)
+                                .textFieldStyle(.roundedBorder)
+                                .kineticValidationFeedback(
+                                    isInvalid: validationTarget == .port,
+                                    trigger: validationShakeTrigger
+                                )
+                                .disabled(runtimeFieldsLocked)
+                                .onChange(of: draft.serverPortText) { _, _ in
+                                    onEndpointInputChanged?()
+                                }
+
+                            if let onSuggestPort {
+                                Button(action: onSuggestPort) {
+                                    Label(t("Find Available Port", "空きポートを検索"), systemImage: "network")
+                                }
+                                .disabled(runtimeFieldsLocked)
+                            }
+                        }
+
+                        if let portSuggestionMessage, !portSuggestionMessage.isEmpty {
+                            Text(portSuggestionMessage)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                 }
 
                 editorRow(t("Reasoning Mode", "推論モード")) {

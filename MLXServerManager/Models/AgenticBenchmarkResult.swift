@@ -1,10 +1,10 @@
 import Foundation
 
-enum AgenticBenchmarkSuite {
+nonisolated enum AgenticBenchmarkSuite {
     static let version = "MLXSM Agent Readiness Benchmark v0.1"
 }
 
-enum AgenticBenchmarkPhase: String, Codable, Equatable {
+nonisolated enum AgenticBenchmarkPhase: String, Codable, Equatable {
     case success = "Success"
     case failed = "Failed"
     case cancelled = "Cancelled"
@@ -22,12 +22,12 @@ enum AgenticBenchmarkPhase: String, Codable, Equatable {
     }
 }
 
-struct AgenticBenchmarkCheck: Codable, Equatable {
+nonisolated struct AgenticBenchmarkCheck: Codable, Equatable {
     let title: String
     let passed: Bool
 }
 
-struct AgenticBenchmarkTaskDiagnostic: Identifiable, Equatable {
+nonisolated struct AgenticBenchmarkTaskDiagnostic: Identifiable, Equatable {
     let title: String
     let text: String
 
@@ -36,7 +36,7 @@ struct AgenticBenchmarkTaskDiagnostic: Identifiable, Equatable {
     }
 }
 
-struct AgenticBenchmarkTaskResult: Codable, Identifiable, Equatable {
+nonisolated struct AgenticBenchmarkTaskResult: Codable, Identifiable, Equatable {
     let id: String
     let axis: String
     let title: String
@@ -223,7 +223,7 @@ struct AgenticBenchmarkTaskResult: Codable, Identifiable, Equatable {
     ]
 }
 
-struct AgenticBenchmarkResult: Codable, Identifiable, Equatable {
+nonisolated struct AgenticBenchmarkResult: Codable, Identifiable, Equatable {
     let id: UUID
     let timestamp: Date
     let suiteVersion: String

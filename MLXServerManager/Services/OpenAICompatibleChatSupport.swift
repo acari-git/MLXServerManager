@@ -1,11 +1,11 @@
 import Foundation
 
-struct BenchmarkChatMessage: Codable, Equatable {
+nonisolated struct BenchmarkChatMessage: Codable, Equatable {
     let role: String
     let content: String
 }
 
-struct BenchmarkChatTemplateKwargs: Codable, Equatable {
+nonisolated struct BenchmarkChatTemplateKwargs: Codable, Equatable {
     let enableThinking: Bool
 
     enum CodingKeys: String, CodingKey {
@@ -13,11 +13,11 @@ struct BenchmarkChatTemplateKwargs: Codable, Equatable {
     }
 }
 
-struct BenchmarkResponseFormat: Codable, Equatable {
+nonisolated struct BenchmarkResponseFormat: Codable, Equatable {
     let type: String
 }
 
-struct BenchmarkStreamOptions: Codable, Equatable {
+nonisolated struct BenchmarkStreamOptions: Codable, Equatable {
     let includeUsage: Bool
 
     enum CodingKeys: String, CodingKey {
@@ -25,7 +25,7 @@ struct BenchmarkStreamOptions: Codable, Equatable {
     }
 }
 
-struct BenchmarkChatCompletionRequest: Encodable, Equatable {
+nonisolated struct BenchmarkChatCompletionRequest: Encodable, Equatable {
     let model: String
     let messages: [BenchmarkChatMessage]
     let stream: Bool
@@ -67,7 +67,7 @@ struct BenchmarkChatCompletionRequest: Encodable, Equatable {
     }
 }
 
-struct OpenAICompatibleChatUsage: Decodable, Equatable {
+nonisolated struct OpenAICompatibleChatUsage: Decodable, Equatable {
     let completionTokens: Int?
 
     enum CodingKeys: String, CodingKey {
@@ -75,7 +75,7 @@ struct OpenAICompatibleChatUsage: Decodable, Equatable {
     }
 }
 
-struct OpenAICompatibleChatResponse: Decodable, Equatable {
+nonisolated struct OpenAICompatibleChatResponse: Decodable, Equatable {
     struct Choice: Decodable, Equatable {
         struct Message: Decodable, Equatable {
             let content: String?
@@ -115,7 +115,7 @@ struct OpenAICompatibleChatResponse: Decodable, Equatable {
     }
 }
 
-struct BenchmarkStreamingChatChunk: Decodable, Equatable {
+nonisolated struct BenchmarkStreamingChatChunk: Decodable, Equatable {
     struct Choice: Decodable, Equatable {
         struct Delta: Decodable, Equatable {
             let content: String?
@@ -155,7 +155,7 @@ struct BenchmarkStreamingChatChunk: Decodable, Equatable {
     }
 }
 
-enum BenchmarkTokenCountResolver {
+nonisolated enum BenchmarkTokenCountResolver {
     nonisolated static func outputTokenCount(reported: Int?, output: String) -> Int {
         if let reported, reported >= 0 {
             return reported
@@ -164,7 +164,7 @@ enum BenchmarkTokenCountResolver {
     }
 }
 
-enum OpenAICompatibleChatSupport {
+nonisolated enum OpenAICompatibleChatSupport {
     nonisolated static func chatCompletionsURL(from baseURL: String) -> URL? {
         let trimmed = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         return URL(string: "\(trimmed)/chat/completions")

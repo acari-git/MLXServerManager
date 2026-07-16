@@ -1,6 +1,6 @@
 import Foundation
 
-struct AppSettings: Codable, Hashable {
+nonisolated struct AppSettings: Codable, Hashable {
     var mlxServerExecutablePath: String
     var rapidMLXExecutablePath: String
     var defaultHost: String

@@ -50,7 +50,7 @@ enum HuggingFaceDownloadError: LocalizedError, Equatable {
 protocol HuggingFaceModelDownloading: AnyObject {
     func download(
         request: HuggingFaceDownloadRequest,
-        outputHandler: @escaping (String) -> Void
+        outputHandler: @escaping @Sendable (String) -> Void
     ) async throws -> HuggingFaceDownloadResult
     func cancel()
 }
@@ -73,7 +73,7 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
 
     func download(
         request: HuggingFaceDownloadRequest,
-        outputHandler: @escaping (String) -> Void
+        outputHandler: @escaping @Sendable (String) -> Void
     ) async throws -> HuggingFaceDownloadResult {
         let destinationURL = URL(fileURLWithPath: request.destinationPath, isDirectory: true)
         let parentURL = destinationURL.deletingLastPathComponent()
@@ -171,7 +171,11 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
         activeProcess?.terminate()
     }
 
-    private func configurePipe(_ pipe: Pipe, label: String, outputHandler: @escaping (String) -> Void) {
+    private func configurePipe(
+        _ pipe: Pipe,
+        label: String,
+        outputHandler: @escaping @Sendable (String) -> Void
+    ) {
         pipe.fileHandleForReading.readabilityHandler = { [weak self] fileHandle in
             let data = fileHandle.availableData
             guard let self else { return }
@@ -188,13 +192,17 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
         }
     }
 
-    private func flushPendingOutput(outputHandler: @escaping (String) -> Void) {
+    private func flushPendingOutput(outputHandler: @escaping @Sendable (String) -> Void) {
         for label in ["stdout", "stderr"] {
             emit(lineBuffer.flush(label: label), label: label, outputHandler: outputHandler)
         }
     }
 
-    private func emit(_ lines: [String], label: String, outputHandler: @escaping (String) -> Void) {
+    nonisolated private func emit(
+        _ lines: [String],
+        label: String,
+        outputHandler: @escaping @Sendable (String) -> Void
+    ) {
         for line in lines {
             let sanitized = HuggingFaceDownloadPlanner.sanitizedOutputLine(line)
             guard !sanitized.isEmpty else { continue }

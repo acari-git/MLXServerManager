@@ -1,6 +1,6 @@
 import Foundation
 
-struct ModelConfig: Codable, Identifiable, Hashable {
+nonisolated struct ModelConfig: Codable, Identifiable, Hashable {
     var modelID: String
     var displayName: String
     var family: String
@@ -41,7 +41,7 @@ struct ModelConfig: Codable, Identifiable, Hashable {
     ]
 }
 
-struct AdvancedLaunchOptions: Codable, Hashable {
+nonisolated struct AdvancedLaunchOptions: Codable, Hashable {
     var rawExtraArgs: String? = nil
     var chatTemplateArgs: String? = nil
     var defaultTemperature: String? = nil
@@ -119,7 +119,7 @@ struct AdvancedLaunchOptions: Codable, Hashable {
     }
 }
 
-struct ModelProfileDraft: Equatable {
+nonisolated struct ModelProfileDraft: Equatable {
     var originalModelID: String
     var displayName: String
     var modelID: String
