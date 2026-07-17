@@ -628,6 +628,63 @@ final class BenchmarkTests: XCTestCase {
         XCTAssertFalse(ranked[1].recommendedUseCases.contains(.coding))
     }
 
+    func testComparisonProjectionIndexesAndRanksAnalyzerRows() throws {
+        let first = makeModelConfig(modelID: "local/first", displayName: "First", port: 8000)
+        let second = makeModelConfig(modelID: "local/second", displayName: "Second", port: 8001)
+        let sessions = [
+            first.id: BenchmarkSessionResult(
+                profileID: first.id,
+                modelID: first.modelID,
+                selectedProfileName: first.displayName,
+                preset: .standard,
+                samples: (0..<3).map { _ in
+                    makeSuccessfulBenchmark(profileID: first.id, speed: 28, ttft: 700, score: 8)
+                }
+            ),
+            second.id: BenchmarkSessionResult(
+                profileID: second.id,
+                modelID: second.modelID,
+                selectedProfileName: second.displayName,
+                preset: .standard,
+                samples: (0..<3).map { _ in
+                    makeSuccessfulBenchmark(profileID: second.id, speed: 35, ttft: 600, score: 10)
+                }
+            )
+        ]
+        let projection = BenchmarkComparisonProjection(
+            models: [first, second],
+            sessionsByProfileID: sessions,
+            currentChipName: "Apple M4 Pro",
+            currentExecutionFingerprintsByProfileID: [:]
+        )
+
+        XCTAssertEqual(projection.rows.count, 2)
+        XCTAssertEqual(projection.comparableRowCount, 2)
+        XCTAssertEqual(try XCTUnwrap(projection.row(for: first.id)).displayName, first.displayName)
+        XCTAssertEqual(projection.rankedRows(for: .coding).map(\.profileID), [second.id, first.id])
+    }
+
+    func testComparisonProjectionExcludesStaleRowsFromComparableCountAndRanking() {
+        let model = makeModelConfig(modelID: "local/model-a", displayName: "Model A", port: 8000)
+        let session = BenchmarkSessionResult(
+            profileID: model.id,
+            modelID: model.modelID,
+            selectedProfileName: model.displayName,
+            preset: .quick,
+            samples: [makeSuccessfulBenchmark(profileID: model.id, speed: 30, ttft: 700, score: 10)]
+        )
+        let projection = BenchmarkComparisonProjection(
+            models: [model],
+            sessionsByProfileID: [model.id: session],
+            currentChipName: "Apple M4 Pro",
+            currentExecutionFingerprintsByProfileID: [:]
+        )
+
+        XCTAssertEqual(projection.comparableRowCount, 0)
+        XCTAssertTrue(projection.rankedRows(for: .chat).isEmpty)
+        XCTAssertEqual(projection.row(for: model.id)?.exclusionReasons, [.insufficientSuccessfulSamples])
+    }
+
     func testComparisonMarksChangedExecutionConfigurationAsStale() throws {
         let model = makeModelConfig(modelID: "local/model-a", displayName: "Model A", port: 8000)
         let samples = (0..<3).map { _ in

@@ -227,6 +227,7 @@ struct DownloadsSurfaceView: View {
 
     @ViewBuilder
     private var filePreviewSummary: some View {
+        let selection = viewModel.huggingFaceDownloadFileSelection
         if viewModel.huggingFaceFilePreview.isLoading {
             HStack(spacing: 8) {
                 KineticIndeterminateBar()
@@ -242,19 +243,19 @@ struct DownloadsSurfaceView: View {
                     .disabled(viewModel.huggingFaceFilePreview.files.isEmpty)
 
                 HStack {
-                    Text(viewModel.huggingFaceSelectedPreviewSummary)
+                    Text(viewModel.huggingFaceSelectedPreviewSummary(for: selection))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
                     Button(t("Select filtered", "フィルター結果を選択")) { viewModel.selectAllHuggingFacePreviewFiles() }
-                        .disabled(viewModel.filteredHuggingFacePreviewFiles.isEmpty)
+                        .disabled(selection.filteredFiles.isEmpty)
                     Button(t("Clear", "クリア")) { viewModel.clearHuggingFacePreviewSelection() }
                         .disabled(viewModel.selectedHuggingFacePreviewFileIDs.isEmpty)
                 }
 
-                if !viewModel.filteredHuggingFacePreviewFiles.isEmpty {
+                if !selection.filteredFiles.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
-                        ForEach(viewModel.filteredHuggingFacePreviewFiles.prefix(10)) { file in
+                        ForEach(selection.filteredFiles.prefix(10)) { file in
                             HStack(spacing: 8) {
                                 Toggle(
                                     "",

@@ -83,6 +83,8 @@ private struct QueuedHuggingFaceDownload {
     let draft: HuggingFaceDownloadDraft
     let expectedFiles: [HuggingFaceDownloadPreviewFile]
     let expectedBytes: Int64?
+    let includePatterns: [String]
+    let excludePatterns: [String]
 }
 
 private struct PortCheckCacheEntry {
@@ -93,6 +95,19 @@ private struct PortCheckCacheEntry {
 private struct SystemInfoRowsCacheEntry {
     let rows: [(String, String)]
     let measuredAt: Date
+}
+
+private struct BenchmarkComparisonProjectionCacheKey: Equatable {
+    let models: [ModelConfig]
+    let sessionsByProfileID: [ModelConfig.ID: BenchmarkSessionResult]
+    let currentChipName: String?
+    let mlxServerExecutablePath: String
+    let rapidMLXExecutablePath: String
+}
+
+private struct BenchmarkComparisonProjectionCacheEntry {
+    let key: BenchmarkComparisonProjectionCacheKey
+    let projection: BenchmarkComparisonProjection
 }
 
 @MainActor
@@ -183,19 +198,7 @@ final class AppViewModel: ObservableObject {
     private let systemProfilerHardwareInfo = AppViewModel.loadSystemProfilerHardwareInfo()
     @Published private(set) var selectedHuggingFaceSearchResult: HuggingFaceSearchResult?
     @Published private(set) var isHuggingFaceSearching = false
-    @Published private(set) var isSpeedTestRunning = false
-    @Published private(set) var latestSpeedTestMessage = AppViewModel.defaultSpeedTestMessage(language: .system)
-    @Published private(set) var latestSpeedTestDurationMS: Double?
-    @Published private(set) var latestBenchmarkResult: BenchmarkResult?
-    @Published private(set) var benchmarkHistory: [BenchmarkResult] = []
-    @Published private(set) var benchmarkResultsByProfileID: [ModelConfig.ID: BenchmarkResult] = [:]
-    @Published private(set) var benchmarkSessionsByProfileID: [ModelConfig.ID: BenchmarkSessionResult] = [:]
-    @Published private(set) var benchmarkSampleIndex = 0
-    @Published private(set) var benchmarkSampleCount = 0
-    @Published private(set) var isAgenticBenchmarkRunning = false
-    @Published private(set) var latestAgenticBenchmarkResult: AgenticBenchmarkResult?
-    @Published private(set) var agenticBenchmarkHistory: [AgenticBenchmarkResult] = []
-    @Published private(set) var agenticBenchmarkResultsByProfileID: [ModelConfig.ID: AgenticBenchmarkResult] = [:]
+    @Published private var benchmarkViewState: BenchmarkViewState
     @Published var miniChatPrompt = ""
     @Published private(set) var miniChatMessages: [MiniChatTranscriptMessage] = []
     @Published private(set) var miniChatResponse = ""
@@ -254,6 +257,7 @@ final class AppViewModel: ObservableObject {
     private var logCategoryFilterOptionsCache: [String]
     private var visibleLogEntriesCache: [LogEntry]
     private var latestImportantLogEntryCache: LogEntry?
+    private var benchmarkComparisonProjectionCacheEntry: BenchmarkComparisonProjectionCacheEntry?
     private var isProjectingSelectedRuntime = false
 
     private static let initialLogLines = [
@@ -335,6 +339,9 @@ final class AppViewModel: ObservableObject {
         agenticBenchmarkService: AgenticBenchmarkService? = nil,
         testChatService: TestChatService? = nil
     ) {
+        self.benchmarkViewState = BenchmarkViewState(
+            latestSpeedTestMessage: Self.defaultSpeedTestMessage(language: .system)
+        )
         self.settingsStore = settingsStore ?? SettingsStore()
         self.portChecker = portChecker ?? PortChecker()
         self.readyChecker = readyChecker ?? ReadyChecker()
@@ -385,6 +392,30 @@ final class AppViewModel: ObservableObject {
             startSystemUsageMonitoring()
             startAutoUnloadMonitoring()
         }
+    }
+
+    var isSpeedTestRunning: Bool { benchmarkViewState.isSpeedTestRunning }
+    var latestSpeedTestMessage: String { benchmarkViewState.latestSpeedTestMessage }
+    var latestSpeedTestDurationMS: Double? { benchmarkViewState.latestSpeedTestDurationMS }
+    var latestBenchmarkResult: BenchmarkResult? { benchmarkViewState.latestBenchmarkResult }
+    var benchmarkHistory: [BenchmarkResult] { benchmarkViewState.benchmarkHistory }
+    var benchmarkResultsByProfileID: [ModelConfig.ID: BenchmarkResult] {
+        benchmarkViewState.benchmarkResultsByProfileID
+    }
+    var benchmarkSessionsByProfileID: [ModelConfig.ID: BenchmarkSessionResult] {
+        benchmarkViewState.benchmarkSessionsByProfileID
+    }
+    var benchmarkSampleIndex: Int { benchmarkViewState.benchmarkSampleIndex }
+    var benchmarkSampleCount: Int { benchmarkViewState.benchmarkSampleCount }
+    var isAgenticBenchmarkRunning: Bool { benchmarkViewState.isAgenticBenchmarkRunning }
+    var latestAgenticBenchmarkResult: AgenticBenchmarkResult? {
+        benchmarkViewState.latestAgenticBenchmarkResult
+    }
+    var agenticBenchmarkHistory: [AgenticBenchmarkResult] {
+        benchmarkViewState.agenticBenchmarkHistory
+    }
+    var agenticBenchmarkResultsByProfileID: [ModelConfig.ID: AgenticBenchmarkResult] {
+        benchmarkViewState.agenticBenchmarkResultsByProfileID
     }
 
     var selectedModel: ModelConfig? {
@@ -486,7 +517,7 @@ final class AppViewModel: ObservableObject {
         huggingFaceCLIMessage = Self.defaultHuggingFaceCLIMessage(language: language)
         localModelMessage = Self.defaultLocalModelMessage(language: language)
         huggingFaceSearchMessage = Self.defaultHuggingFaceSearchMessage(language: language)
-        latestSpeedTestMessage = Self.defaultSpeedTestMessage(language: language)
+        benchmarkViewState.setLatestSpeedTestMessage(Self.defaultSpeedTestMessage(language: language))
         hermesAgentConfigMessage = Self.defaultHermesAgentConfigMessage(language: language)
     }
 
@@ -693,30 +724,26 @@ final class AppViewModel: ObservableObject {
             && selectedHuggingFaceSearchResult?.id == huggingFaceDownloadDraft.source.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    var filteredHuggingFacePreviewFiles: [HuggingFaceDownloadPreviewFile] {
-        guard huggingFaceFilePreviewMatchesCurrentDraft else {
-            return []
-        }
-        return huggingFaceFilePreview.files.filter { file in
-            Self.shouldIncludePreviewFile(
-                file.path,
-                includePatterns: Self.patternList(from: huggingFaceDownloadDraft.includePatterns),
-                excludePatterns: Self.patternList(from: huggingFaceDownloadDraft.excludePatterns)
+    var huggingFaceDownloadFileSelection: HuggingFaceDownloadFileSelection {
+        HuggingFaceDownloadFileSelectionPlanner.make(
+            files: huggingFaceFilePreviewMatchesCurrentDraft ? huggingFaceFilePreview.files : [],
+            draft: huggingFaceDownloadDraft,
+            selectedFileIDs: selectedHuggingFacePreviewFileIDs
+        )
+    }
+
+    func huggingFaceSelectedPreviewSummary(for selection: HuggingFaceDownloadFileSelection) -> String {
+        guard !selection.downloadFiles.isEmpty else {
+            return Self.localizedText(
+                language: settings.uiLanguage,
+                english: "No preview files selected.",
+                japanese: "プレビューファイルが選択されていません。"
             )
         }
-    }
-
-    var selectedHuggingFacePreviewFiles: [HuggingFaceDownloadPreviewFile] {
-        filteredHuggingFacePreviewFiles.filter { selectedHuggingFacePreviewFileIDs.contains($0.id) }
-    }
-
-    var huggingFaceSelectedPreviewSummary: String {
-        let files = huggingFaceDownloadDraft.useSelectedPreviewFiles ? selectedHuggingFacePreviewFiles : filteredHuggingFacePreviewFiles
-        if files.isEmpty { return Self.localizedText(language: settings.uiLanguage, english: "No preview files selected.", japanese: "プレビューファイルが選択されていません。") }
-        let total = files.compactMap(\.size).reduce(Int64(0), +)
-        let hasUnknown = files.contains { $0.size == nil }
-        let sizeText = hasUnknown ? "unknown size" : ByteCountFormatter.string(fromByteCount: total, countStyle: .file)
-        return "\(files.count) files • \(sizeText)"
+        let sizeText = selection.hasUnknownDownloadSize
+            ? "unknown size"
+            : ByteCountFormatter.string(fromByteCount: selection.knownDownloadByteCount, countStyle: .file)
+        return "\(selection.downloadFiles.count) files • \(sizeText)"
     }
 
     var visibleHuggingFaceSearchResults: [HuggingFaceSearchResult] {
@@ -1009,30 +1036,56 @@ final class AppViewModel: ObservableObject {
     }
 
     var benchmarkComparisonRows: [BenchmarkComparisonRow] {
-        BenchmarkSessionAnalyzer.comparisonRows(
-            models: models,
-            sessionsByProfileID: benchmarkSessionsByProfileID,
-            currentChipName: systemProfilerHardwareInfo["Chip"],
-            currentExecutionFingerprintsByProfileID: Dictionary(
-                uniqueKeysWithValues: models.map { model in
-                    (
-                        model.id,
-                        BenchmarkExecutionFingerprint.make(
-                            model: model,
-                            executablePath: executablePath(for: model)
-                        )
-                    )
-                }
-            )
-        )
+        benchmarkComparisonProjection.rows
     }
 
     func rankedBenchmarkRows(for useCase: BenchmarkUseCase) -> [BenchmarkComparisonRow] {
-        BenchmarkSessionAnalyzer.ranked(rows: benchmarkComparisonRows, for: useCase)
+        benchmarkComparisonProjection.rankedRows(for: useCase)
     }
 
     func benchmarkComparisonRow(for model: ModelConfig) -> BenchmarkComparisonRow? {
-        benchmarkComparisonRows.first(where: { $0.profileID == model.id })
+        benchmarkComparisonProjection.row(for: model.id)
+    }
+
+    var comparableBenchmarkRowCount: Int {
+        benchmarkComparisonProjection.comparableRowCount
+    }
+
+    private var benchmarkComparisonProjection: BenchmarkComparisonProjection {
+        let cacheKey = BenchmarkComparisonProjectionCacheKey(
+            models: models,
+            sessionsByProfileID: benchmarkSessionsByProfileID,
+            currentChipName: systemProfilerHardwareInfo["Chip"],
+            mlxServerExecutablePath: settings.mlxServerExecutablePath,
+            rapidMLXExecutablePath: settings.rapidMLXExecutablePath
+        )
+        if let cacheEntry = benchmarkComparisonProjectionCacheEntry,
+           cacheEntry.key == cacheKey {
+            return cacheEntry.projection
+        }
+
+        let executionFingerprints = Dictionary(
+            uniqueKeysWithValues: models.map { model in
+                (
+                    model.id,
+                    BenchmarkExecutionFingerprint.make(
+                        model: model,
+                        executablePath: executablePath(for: model)
+                    )
+                )
+            }
+        )
+        let projection = BenchmarkComparisonProjection(
+            models: models,
+            sessionsByProfileID: benchmarkSessionsByProfileID,
+            currentChipName: systemProfilerHardwareInfo["Chip"],
+            currentExecutionFingerprintsByProfileID: executionFingerprints
+        )
+        benchmarkComparisonProjectionCacheEntry = BenchmarkComparisonProjectionCacheEntry(
+            key: cacheKey,
+            projection: projection
+        )
+        return projection
     }
 
     func setBenchmarkPreset(_ preset: BenchmarkPreset) {
@@ -2416,7 +2469,9 @@ final class AppViewModel: ObservableObject {
 
     func runSpeedTestRequested() {
         guard canRunSpeedTest else {
-            latestSpeedTestMessage = Self.localizedText(language: settings.uiLanguage, english: "Start the server before running Benchmark.", japanese: "ベンチマーク前にサーバーを起動してください。")
+            benchmarkViewState.setLatestSpeedTestMessage(
+                Self.localizedText(language: settings.uiLanguage, english: "Start the server before running Benchmark.", japanese: "ベンチマーク前にサーバーを起動してください。")
+            )
             appendLog("[benchmark] speed test skipped: no active connection target.")
             return
         }
@@ -2455,15 +2510,12 @@ final class AppViewModel: ObservableObject {
             serverExecutablePath: serverExecutablePath,
             includesAgentProbes: preset.includesAgentProbes
         )
-        isSpeedTestRunning = true
-        benchmarkSampleIndex = 0
-        benchmarkSampleCount = preset.sampleCount
-        latestSpeedTestMessage = Self.localizedText(
+        let runningMessage = Self.localizedText(
             language: settings.uiLanguage,
             english: "Running \(preset.localizedTitle(language: .english)) Benchmark...",
             japanese: "\(preset.localizedTitle(language: .japanese))ベンチマークを実行中..."
         )
-        latestSpeedTestDurationMS = nil
+        benchmarkViewState.beginBenchmark(sampleCount: preset.sampleCount, message: runningMessage)
         appendRuntimeEvent(category: "Benchmark", message: "\(preset.rawValue) benchmark started for \(host):\(port)")
         appendLog("[benchmark] \(preset.rawValue) benchmark started: \(targetBaseURL), samples=\(preset.sampleCount)")
 
@@ -2479,41 +2531,39 @@ final class AppViewModel: ObservableObject {
                 case let .warmUpCompleted(succeeded):
                     appendLog("[benchmark] warm-up \(succeeded ? "completed" : "did not complete cleanly"); measured samples will continue.")
                 case let .sampleStarted(index, _):
-                    benchmarkSampleIndex = index
+                    benchmarkViewState.beginBenchmarkSample(index: index)
                 case let .sampleCompleted(index, total, result):
-                    benchmarkHistory.insert(result, at: 0)
+                    benchmarkViewState.recordBenchmarkSample(result)
                     appendLog("[benchmark] sample \(index)/\(total) \(result.phase.rawValue.lowercased()): \(result.message)")
                 }
             }
 
             guard let session = outcome.session,
                   let benchmarkResult = outcome.representativeResult else {
-                latestSpeedTestMessage = Self.localizedText(
+                let cancellationMessage = Self.localizedText(
                     language: settings.uiLanguage,
                     english: "Benchmark was cancelled before a sample completed.",
                     japanese: "測定が完了する前にベンチマークがキャンセルされました。"
                 )
-                benchmarkSampleIndex = 0
-                benchmarkSampleCount = 0
-                isSpeedTestRunning = false
+                benchmarkViewState.cancelBenchmark(message: cancellationMessage)
                 return
             }
 
             let elapsedMS = outcome.elapsedMilliseconds
-            latestSpeedTestDurationMS = elapsedMS
-            latestSpeedTestMessage = Self.benchmarkSessionSummary(
+            let completionMessage = Self.benchmarkSessionSummary(
                 session,
                 language: settings.uiLanguage
             )
-            latestBenchmarkResult = benchmarkResult
-            benchmarkResultsByProfileID[benchmarkResult.profileID] = benchmarkResult
-            benchmarkSessionsByProfileID[benchmarkResult.profileID] = session
+            benchmarkViewState.recordBenchmarkCompletion(
+                result: benchmarkResult,
+                session: session,
+                durationMS: elapsedMS,
+                message: completionMessage
+            )
             savePersistedBenchmarkResults()
-            appendRuntimeEvent(category: "Benchmark", message: latestSpeedTestMessage)
-            appendLog("[benchmark] \(preset.rawValue) benchmark completed in \(Int(elapsedMS)) ms: \(latestSpeedTestMessage)")
-            benchmarkSampleIndex = 0
-            benchmarkSampleCount = 0
-            isSpeedTestRunning = false
+            appendRuntimeEvent(category: "Benchmark", message: completionMessage)
+            appendLog("[benchmark] \(preset.rawValue) benchmark completed in \(Int(elapsedMS)) ms: \(completionMessage)")
+            benchmarkViewState.endBenchmark()
         }
     }
 
@@ -2531,7 +2581,7 @@ final class AppViewModel: ObservableObject {
         let targetBaseURL = baseURL
         let service = agenticBenchmarkService
 
-        isAgenticBenchmarkRunning = true
+        benchmarkViewState.beginAgenticBenchmark()
         appendRuntimeEvent(category: "Benchmark", message: "Agent Readiness started for \(host):\(port)")
         appendLog("[agent-readiness] started: \(targetBaseURL)")
 
@@ -2547,13 +2597,11 @@ final class AppViewModel: ObservableObject {
             )
             let result = await service.run(configuration: configuration)
             let elapsedMS = Date().timeIntervalSince(startedAt) * 1000
-            latestAgenticBenchmarkResult = result
-            agenticBenchmarkHistory.insert(result, at: 0)
-            agenticBenchmarkResultsByProfileID[result.profileID] = result
+            benchmarkViewState.recordAgenticBenchmarkCompletion(result)
             savePersistedBenchmarkResults()
             appendRuntimeEvent(category: "Benchmark", message: result.summary)
             appendLog("[agent-readiness] \(result.phase.rawValue.lowercased()) in \(Int(elapsedMS)) ms: \(result.message)")
-            isAgenticBenchmarkRunning = false
+            benchmarkViewState.endAgenticBenchmark()
         }
     }
 
@@ -2813,7 +2861,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func selectAllHuggingFacePreviewFiles() {
-        selectedHuggingFacePreviewFileIDs = Set(filteredHuggingFacePreviewFiles.map(\.id))
+        selectedHuggingFacePreviewFileIDs = Set(huggingFaceDownloadFileSelection.filteredFiles.map(\.id))
     }
 
     func applyHuggingFaceMLXPreset() {
@@ -2971,8 +3019,9 @@ final class AppViewModel: ObservableObject {
 
         let displayName = preview.displayName
         let draft = huggingFaceDownloadDraft
-        let expectedDownloadFiles = huggingFaceExpectedDownloadFiles()
-        let expectedDownloadBytes = totalBytes(for: expectedDownloadFiles)
+        let fileSelection = huggingFaceDownloadFileSelection
+        let expectedDownloadFiles = fileSelection.downloadFiles
+        let expectedDownloadBytes = fileSelection.totalDownloadBytes
         let queueEntryID = UUID()
         let entryPhase: HuggingFaceDownloadPhase = activeHuggingFaceDownloadTasks.count < settings.maxConcurrentModelDownloads ? .preparing : .waiting
         huggingFaceDownloadQueue.insert(
@@ -2997,7 +3046,9 @@ final class AppViewModel: ObservableObject {
             displayName: displayName,
             draft: draft,
             expectedFiles: expectedDownloadFiles,
-            expectedBytes: expectedDownloadBytes
+            expectedBytes: expectedDownloadBytes,
+            includePatterns: fileSelection.downloadIncludePatterns,
+            excludePatterns: fileSelection.downloadExcludePatterns
         )
         if primaryHuggingFaceDownloadID == nil {
             primaryHuggingFaceDownloadID = queueEntryID
@@ -3019,7 +3070,7 @@ final class AppViewModel: ObservableObject {
         )
 
         if huggingFaceFilePreviewIdentity == identity,
-           !filteredHuggingFacePreviewFiles.isEmpty {
+           !huggingFaceDownloadFileSelection.filteredFiles.isEmpty {
             return true
         }
 
@@ -3049,7 +3100,7 @@ final class AppViewModel: ObservableObject {
                 return
             }
 
-            guard !self.filteredHuggingFacePreviewFiles.isEmpty else {
+            guard !self.huggingFaceDownloadFileSelection.filteredFiles.isEmpty else {
                 self.huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
                     phase: .failed,
                     message: Self.localizedText(
@@ -4619,8 +4670,8 @@ final class AppViewModel: ObservableObject {
                     repositoryID: job.reference.repositoryID,
                     destinationPath: job.destinationPath,
                     revision: job.draft.revision.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "main" : job.draft.revision.trimmingCharacters(in: .whitespacesAndNewlines),
-                    includePatterns: job.draft.useSelectedPreviewFiles ? job.expectedFiles.map(\.path) : Self.patternList(from: job.draft.includePatterns),
-                    excludePatterns: Self.patternList(from: job.draft.excludePatterns),
+                    includePatterns: job.includePatterns,
+                    excludePatterns: job.excludePatterns,
                     authorizationValue: huggingFaceCredentialStore.readValue()
                 ),
                 outputHandler: { [weak self, queueEntryID = job.id] line in
@@ -4729,57 +4780,6 @@ final class AppViewModel: ObservableObject {
             return false
         }
         return huggingFaceFilePreviewIdentity == currentHuggingFaceDraftIdentity
-    }
-
-    private func huggingFaceIncludePatternsForDownload() -> [String] {
-        if huggingFaceDownloadDraft.useSelectedPreviewFiles, !selectedHuggingFacePreviewFiles.isEmpty {
-            return selectedHuggingFacePreviewFiles.map(\.path)
-        }
-        return Self.patternList(from: huggingFaceDownloadDraft.includePatterns)
-    }
-
-    private func huggingFaceExpectedDownloadFiles() -> [HuggingFaceDownloadPreviewFile] {
-        let files = huggingFaceDownloadDraft.useSelectedPreviewFiles ? selectedHuggingFacePreviewFiles : filteredHuggingFacePreviewFiles
-        return files
-    }
-
-    private func totalBytes(for files: [HuggingFaceDownloadPreviewFile]) -> Int64? {
-        guard !files.isEmpty else {
-            return nil
-        }
-
-        var total: Int64 = 0
-        for file in files {
-            guard let size = file.size else {
-                return nil
-            }
-            total += size
-        }
-        return total > 0 ? total : nil
-    }
-
-    nonisolated private static func patternList(from text: String) -> [String] {
-        text.split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-    }
-
-    nonisolated private static func shouldIncludePreviewFile(_ path: String, includePatterns: [String], excludePatterns: [String]) -> Bool {
-        let included = includePatterns.isEmpty || includePatterns.contains { matchesGlob(path: path, pattern: $0) }
-        let excluded = excludePatterns.contains { matchesGlob(path: path, pattern: $0) }
-        return included && !excluded
-    }
-
-    nonisolated private static func matchesGlob(path: String, pattern: String) -> Bool {
-        let escaped = NSRegularExpression.escapedPattern(for: pattern)
-            .replacingOccurrences(of: "\\*\\*", with: ".*")
-            .replacingOccurrences(of: "\\*", with: "[^/]*")
-            .replacingOccurrences(of: "\\?", with: "[^/]")
-        let fullPattern = "^\(escaped)$"
-        let basenamePattern = "^\(escaped)$"
-        let basename = URL(fileURLWithPath: path).lastPathComponent
-        return path.range(of: fullPattern, options: .regularExpression) != nil
-            || basename.range(of: basenamePattern, options: .regularExpression) != nil
     }
 
     private func huggingFaceDownloadFailureGuidance(from error: Error) -> String {
@@ -5209,42 +5209,21 @@ final class AppViewModel: ObservableObject {
     private func loadPersistedBenchmarkResults() {
         do {
             let snapshot = try settingsStore.loadBenchmarkResults()
-            benchmarkResultsByProfileID = snapshot.value.benchmarkResultsByProfileID
-            agenticBenchmarkResultsByProfileID = snapshot.value.agenticBenchmarkResultsByProfileID
-            benchmarkSessionsByProfileID = snapshot.value.benchmarkSessionsByProfileID
-            if benchmarkSessionsByProfileID.isEmpty, !benchmarkResultsByProfileID.isEmpty {
-                benchmarkSessionsByProfileID = benchmarkResultsByProfileID.mapValues { result in
-                    BenchmarkSessionResult(
-                        timestamp: result.timestamp,
-                        profileID: result.profileID,
-                        modelID: result.modelID,
-                        selectedProfileName: result.selectedProfileName,
-                        preset: .standard,
-                        samples: [result]
-                    )
-                }
-            }
+            benchmarkViewState.replacePersistedResults(with: snapshot.value)
             if snapshot.usedDefault {
                 appendLog("[benchmark] benchmark-results.json not found. Model benchmark results will be saved after the next run.")
             } else {
                 appendLog("[benchmark] Loaded benchmark-results.json from \(settingsDirectoryPath).")
             }
         } catch {
-            benchmarkResultsByProfileID = [:]
-            agenticBenchmarkResultsByProfileID = [:]
-            benchmarkSessionsByProfileID = [:]
+            benchmarkViewState.clearPersistedResults()
             appendLog("[benchmark] Failed to load benchmark-results.json: \(error.localizedDescription)")
         }
     }
 
     private func savePersistedBenchmarkResults() {
-        let snapshot = BenchmarkResultsSnapshot(
-            benchmarkResultsByProfileID: benchmarkResultsByProfileID,
-            agenticBenchmarkResultsByProfileID: agenticBenchmarkResultsByProfileID,
-            benchmarkSessionsByProfileID: benchmarkSessionsByProfileID
-        )
         do {
-            try settingsStore.save(benchmarkResults: snapshot)
+            try settingsStore.save(benchmarkResults: benchmarkViewState.persistedResultsSnapshot)
         } catch {
             appendLog("[benchmark] Failed to save benchmark-results.json: \(error.localizedDescription)")
         }

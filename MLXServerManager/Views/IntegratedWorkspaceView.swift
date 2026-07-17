@@ -1610,7 +1610,7 @@ struct IntegratedWorkspaceView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .disabled(viewModel.benchmarkComparisonRows.filter { !$0.isStale }.count < 2)
+                    .disabled(viewModel.comparableBenchmarkRowCount < 2)
                     .help(t("Compare measured models by use case", "測定済みモデルを用途別に比較"))
                 }
 

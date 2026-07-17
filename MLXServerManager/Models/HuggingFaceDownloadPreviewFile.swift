@@ -1,6 +1,6 @@
 import Foundation
 
-struct HuggingFaceDownloadPreviewFile: Identifiable, Equatable {
+nonisolated struct HuggingFaceDownloadPreviewFile: Identifiable, Equatable, Sendable {
     let path: String
     let size: Int64?
 

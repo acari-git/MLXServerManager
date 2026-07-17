@@ -55,6 +55,94 @@ final class HuggingFaceDownloadTests: XCTestCase {
         XCTAssertNil(HuggingFaceDownloadPlanner.progressFraction(from: "working"))
     }
 
+    func testFileSelectionParsesPatternsOnceAndFiltersByPathOrBasename() {
+        let draft = makeDownloadDraft(
+            includePatterns: " *.safetensors, config/*.json, tokenizer.? ",
+            excludePatterns: " *draft* "
+        )
+        let files = [
+            HuggingFaceDownloadPreviewFile(path: "weights/model.safetensors", size: 10),
+            HuggingFaceDownloadPreviewFile(path: "config/model.json", size: 20),
+            HuggingFaceDownloadPreviewFile(path: "nested/tokenizer.a", size: 30),
+            HuggingFaceDownloadPreviewFile(path: "weights/model-draft.safetensors", size: 40),
+            HuggingFaceDownloadPreviewFile(path: "README.md", size: 50)
+        ]
+
+        let selection = HuggingFaceDownloadFileSelectionPlanner.make(
+            files: files,
+            draft: draft,
+            selectedFileIDs: Set(files.map(\.id))
+        )
+
+        XCTAssertEqual(
+            selection.filteredFiles.map(\.path),
+            ["weights/model.safetensors", "config/model.json", "nested/tokenizer.a"]
+        )
+        XCTAssertEqual(selection.downloadIncludePatterns, ["*.safetensors", "config/*.json", "tokenizer.?"])
+        XCTAssertEqual(selection.downloadExcludePatterns, ["*draft*"])
+        XCTAssertEqual(selection.totalDownloadBytes, 60)
+    }
+
+    func testSelectedFileModeUsesOnlyFilteredSelectedFilesAndExactPaths() {
+        let draft = makeDownloadDraft(
+            includePatterns: "*.safetensors, *.json",
+            excludePatterns: "*.bin",
+            useSelectedPreviewFiles: true
+        )
+        let files = [
+            HuggingFaceDownloadPreviewFile(path: "a.safetensors", size: 3),
+            HuggingFaceDownloadPreviewFile(path: "b.json", size: 4),
+            HuggingFaceDownloadPreviewFile(path: "c.bin", size: 5)
+        ]
+
+        let selection = HuggingFaceDownloadFileSelectionPlanner.make(
+            files: files,
+            draft: draft,
+            selectedFileIDs: ["b.json", "c.bin"]
+        )
+
+        XCTAssertEqual(selection.selectedFiles.map(\.path), ["b.json"])
+        XCTAssertEqual(selection.downloadFiles.map(\.path), ["b.json"])
+        XCTAssertEqual(selection.downloadIncludePatterns, ["b.json"])
+        XCTAssertEqual(selection.downloadExcludePatterns, ["*.bin"])
+        XCTAssertEqual(selection.totalDownloadBytes, 4)
+    }
+
+    func testSelectedFileModePreservesEmptySelectionBehavior() {
+        let draft = makeDownloadDraft(
+            includePatterns: "*.json",
+            excludePatterns: "",
+            useSelectedPreviewFiles: true
+        )
+
+        let selection = HuggingFaceDownloadFileSelectionPlanner.make(
+            files: [HuggingFaceDownloadPreviewFile(path: "config.json", size: 4)],
+            draft: draft,
+            selectedFileIDs: []
+        )
+
+        XCTAssertTrue(selection.downloadFiles.isEmpty)
+        XCTAssertEqual(selection.downloadIncludePatterns, ["*.json"])
+        XCTAssertNil(selection.totalDownloadBytes)
+    }
+
+    func testFileSelectionReportsUnknownTotalWithoutDiscardingKnownBytes() {
+        let draft = makeDownloadDraft(includePatterns: "", excludePatterns: "")
+
+        let selection = HuggingFaceDownloadFileSelectionPlanner.make(
+            files: [
+                HuggingFaceDownloadPreviewFile(path: "known.json", size: 7),
+                HuggingFaceDownloadPreviewFile(path: "unknown.safetensors", size: nil)
+            ],
+            draft: draft,
+            selectedFileIDs: []
+        )
+
+        XCTAssertEqual(selection.knownDownloadByteCount, 7)
+        XCTAssertTrue(selection.hasUnknownDownloadSize)
+        XCTAssertNil(selection.totalDownloadBytes)
+    }
+
     func testDestinationStateDistinguishesNewFolderDirectoryAndFile() throws {
         let baseURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -157,6 +245,27 @@ final class HuggingFaceDownloadTests: XCTestCase {
         case let .failure(error):
             throw error
         }
+    }
+
+    private func makeDownloadDraft(
+        includePatterns: String,
+        excludePatterns: String,
+        useSelectedPreviewFiles: Bool = false
+    ) -> HuggingFaceDownloadDraft {
+        HuggingFaceDownloadDraft(
+            source: "owner/model",
+            revision: "main",
+            includePatterns: includePatterns,
+            excludePatterns: excludePatterns,
+            useSelectedPreviewFiles: useSelectedPreviewFiles,
+            saveDirectory: "~/Models/mlx",
+            displayName: "",
+            host: "127.0.0.1",
+            serverPortText: "8000",
+            enableThinking: false,
+            autoAddToModelList: true,
+            autoSelectAfterAdd: true
+        )
     }
 }
 
