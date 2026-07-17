@@ -90,10 +90,10 @@ See [docs/product_direction.md](docs/product_direction.md) for the full project 
 
 ## What This Is Not
 
-- Not a chat UI.
+- Not a general-purpose chat UI. Test Chat is a single-message endpoint diagnostic for confirming that the selected model responds.
 - Not an inference proxy.
-- Does not include full Hugging Face model-card browsing, HF token storage, model deletion, or cache cleanup.
-- Not a model deletion tool.
+- Does not include full Hugging Face model-card browsing, HF token storage, local model-folder deletion, or broad cache cleanup.
+- Not a general model-file deletion tool. Only a matching Hugging Face hub cache can be removed as a separate, explicitly confirmed profile-deletion action.
 - Not an inference router between backends.
 - Not a replacement for the supported server runtimes or model setup.
 
@@ -155,7 +155,7 @@ Do not download the source archive if you want the app binary. Use the named `ML
 
 v23.0.0 completes the current integrated GUI refresh. The model list remains the primary operating table, while Downloads, Logs, Settings, and the right-side Operations Inspector now use clearer command-center, empty-state, and quick-settings patterns. Language and theme are available from the bottom-left Settings menu.
 
-You must provide your own `mlx-lm` environment and `mlx_lm.server` executable. You can register existing model files, search Hugging Face and choose a result, or use Downloads to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: the client connects directly to `mlx_lm.server`; MLX Server Manager does not proxy inference traffic or run chat completions.
+You must provide your own supported backend environment and executable. You can register existing model files, search Hugging Face and choose a result, or use Downloads to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: clients connect directly to the selected endpoint, and MLX Server Manager never proxies client traffic. Test Chat, Benchmark, and Agent Readiness generation requests occur only when the user explicitly runs those diagnostics.
 
 See [docs/distribution.md](docs/distribution.md) for release asset and Gatekeeper details, [docs/known_limitations.md](docs/known_limitations.md) for the full stable-scope boundary, and [docs/v23_0_integrated_gui_refresh.md](docs/v23_0_integrated_gui_refresh.md) for the v23.0.0 GUI refresh note.
 
@@ -282,11 +282,14 @@ As of v25.0.0, MLX Server Manager includes:
 - Explicit Replace for one unambiguous existing profile target.
 - Import / Export fixtures and XCTest regression coverage.
 - Model selection and lifecycle controls remain profile-specific while other managed models keep running.
+- Optional per-profile automatic unload after a user-configured idle interval.
 - Advanced Launch Options per model profile.
 - Per-profile backend selection with backward-compatible `mlx-lm` defaults.
 - Quick, Standard, and Detailed benchmark presets with repeated samples, medians, and stability.
 - Benchmark warm-up, execution fingerprints, thermal-state capture, and stale comparison exclusion.
 - Model comparison with chat, coding, and AI-agent recommendations for the current Mac.
+- Single-message Test Chat for confirming that the selected endpoint returns a response.
+- Docker-free Agent Readiness checks using deterministic virtual-tool tasks.
 - KV cache diagnosis and conservative starting-point recommendations.
 - External Server Detection for selected host/port endpoints.
 - Adopt External Server and Forget External Server for connection context only.
@@ -323,23 +326,25 @@ As of v25.0.0, MLX Server Manager includes:
 - Explicit Hugging Face download by model ID or URL through local tooling.
 - Download queue status, progress parsing, retry, cancel, restore form, and URL copy actions.
 - Optional auto-add of downloaded models to the model profile list.
+- Separate, explicitly confirmed deletion of a matching Hugging Face hub cache when deleting a profile; local model folders are never deleted by this action.
+- Hermes Agent YAML update, backup, restore, and connection-value copy actions.
 - Integrated Dashboard / workspace for model list, lifecycle actions, logs, details, recovery, settings, and connection copy actions.
 - Start guardrails and integrated Recovery actions for common runtime and download failures.
 - Unsigned `.app` zip distribution documentation.
 
-The copied `curl /v1/chat/completions` text is only a client-side convenience example. The app itself uses `/v1/models` for readiness and diagnostics and does not send inference requests.
+The copied `curl /v1/chat/completions` text is a client-side convenience example. Ready Check and non-generation diagnostics use `/v1/models`. Test Chat, Benchmark, and Agent Readiness send generation requests only after an explicit user action and still connect directly to the selected endpoint without inserting a proxy.
 
 ## Non-Goals
 
-- Chat UI.
+- General-purpose chat UI.
 - Proxy mode.
 - LAN Web UI.
 - App Intents.
 - Full Hugging Face model-card browsing.
 - HF token storage or credential management.
 - Silent or background model downloads.
-- Model deletion.
-- Hugging Face cache deletion.
+- Local model-folder deletion.
+- Broad Hugging Face cache browsing or cleanup.
 - RAG.
 - Embedding manager.
 - Tool-call translation.
@@ -347,7 +352,7 @@ The copied `curl /v1/chat/completions` text is only a client-side convenience ex
 - Persistent file logging.
 - Notarization, Developer ID signing, DMG, App Store distribution, Homebrew cask, auto updater, or CI/CD release automation.
 
-Model download is available only as an explicit, user-initiated workflow. It must not silently download files, start servers automatically, store credentials, delete models, or clean caches.
+Model download is available only as an explicit, user-initiated workflow. It must not silently download files, start servers automatically, store credentials, delete local model folders, or clean caches. Matching Hugging Face hub cache deletion is a separate destructive action that requires explicit confirmation during profile deletion.
 
 ## First-Run Workflow
 

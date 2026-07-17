@@ -44,7 +44,7 @@ final class ModelProcessRegistryTests: XCTestCase {
 
         let result = await registry.stop(profileID: "first")
 
-        XCTAssertEqual(result, .stopped(processIdentifier: 101, terminationStatus: 0, usedInterrupt: false))
+        XCTAssertEqual(result, .stopped(processIdentifier: 101, terminationStatus: 0, stopMethod: .terminate))
         XCTAssertNil(registry.processIdentifier(for: "first"))
         XCTAssertEqual(registry.processIdentifier(for: "second"), 202)
     }
@@ -261,7 +261,7 @@ private final class FakeModelProcessManager: ModelProcessManaging {
         return .stopped(
             processIdentifier: managedProcessIdentifier,
             terminationStatus: 0,
-            usedInterrupt: false
+            stopMethod: .terminate
         )
     }
 

@@ -3,17 +3,24 @@ import Foundation
 nonisolated final class LineStreamBuffer: @unchecked Sendable {
     private let lock = NSLock()
     private let maximumLinesPerLabel: Int?
+    private let maximumCharactersPerLine: Int?
     private var pendingTextByLabel: [String: String] = [:]
     private var emittedLineCountByLabel: [String: Int] = [:]
+    private var omittedCharacterCountByLabel: [String: Int] = [:]
 
-    init(maximumLinesPerLabel: Int? = nil) {
+    init(
+        maximumLinesPerLabel: Int? = nil,
+        maximumCharactersPerLine: Int? = 65_536
+    ) {
         self.maximumLinesPerLabel = maximumLinesPerLabel
+        self.maximumCharactersPerLine = maximumCharactersPerLine.map { max(1, $0) }
     }
 
     func reset() {
         lock.lock()
         pendingTextByLabel.removeAll()
         emittedLineCountByLabel.removeAll()
+        omittedCharacterCountByLabel.removeAll()
         lock.unlock()
     }
 
@@ -28,9 +35,10 @@ nonisolated final class LineStreamBuffer: @unchecked Sendable {
         while let newlineIndex = pending.firstIndex(of: "\n") {
             let line = String(pending[..<newlineIndex])
             pending.removeSubrange(...newlineIndex)
-            appendIfAllowed(line, label: label, to: &lines)
+            appendIfAllowed(boundedLine(line, label: label), label: label, to: &lines)
         }
 
+        boundPendingText(&pending, label: label)
         pendingTextByLabel[label] = pending
         return lines
     }
@@ -41,8 +49,36 @@ nonisolated final class LineStreamBuffer: @unchecked Sendable {
 
         let pending = pendingTextByLabel.removeValue(forKey: label) ?? ""
         var lines: [String] = []
-        appendIfAllowed(pending, label: label, to: &lines)
+        appendIfAllowed(boundedLine(pending, label: label), label: label, to: &lines)
         return lines
+    }
+
+    private func boundPendingText(_ pending: inout String, label: String) {
+        guard let maximumCharactersPerLine,
+              pending.count > maximumCharactersPerLine else {
+            return
+        }
+
+        let omittedCount = pending.count - maximumCharactersPerLine
+        omittedCharacterCountByLabel[label, default: 0] += omittedCount
+        pending = String(pending.suffix(maximumCharactersPerLine))
+    }
+
+    private func boundedLine(_ line: String, label: String) -> String {
+        var omittedCount = omittedCharacterCountByLabel.removeValue(forKey: label) ?? 0
+        var retainedLine = line
+
+        if let maximumCharactersPerLine,
+           retainedLine.count > maximumCharactersPerLine {
+            omittedCount += retainedLine.count - maximumCharactersPerLine
+            retainedLine = String(retainedLine.suffix(maximumCharactersPerLine))
+        }
+
+        guard omittedCount > 0 else {
+            return retainedLine
+        }
+
+        return "[output truncated: \(omittedCount) characters omitted] \(retainedLine)"
     }
 
     private func appendIfAllowed(_ line: String, label: String, to lines: inout [String]) {

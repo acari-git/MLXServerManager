@@ -4,16 +4,6 @@ import Combine
 import Foundation
 import UniformTypeIdentifiers
 
-private enum ProfileValidationResult {
-    case valid(ModelConfig)
-    case invalid(String)
-}
-
-private enum AdvancedLaunchOptionsValidationResult {
-    case valid(AdvancedLaunchOptions?)
-    case invalid(String)
-}
-
 private enum PortReleaseCheckOutcome: Equatable {
     case released
     case busy
@@ -85,29 +75,6 @@ struct MiniChatTranscriptMessage: Identifiable, Equatable {
     let content: String
 }
 
-private struct MiniChatMessagePayload: Codable {
-    let role: String
-    let content: String
-}
-
-private struct MiniChatRequestPayload: Encodable {
-    let model: String
-    let messages: [MiniChatMessagePayload]
-    let stream: Bool
-    let maxTokens: Int
-    let temperature: Double
-    let stop: [String]
-
-    enum CodingKeys: String, CodingKey {
-        case model
-        case messages
-        case stream
-        case maxTokens = "max_tokens"
-        case temperature
-        case stop
-    }
-}
-
 private struct QueuedHuggingFaceDownload {
     let id: UUID
     let reference: HuggingFaceModelReference
@@ -116,20 +83,6 @@ private struct QueuedHuggingFaceDownload {
     let draft: HuggingFaceDownloadDraft
     let expectedFiles: [HuggingFaceDownloadPreviewFile]
     let expectedBytes: Int64?
-}
-
-private struct MiniChatResponsePayload: Decodable {
-    struct Choice: Decodable {
-        struct Message: Decodable {
-            let content: String?
-        }
-        let message: Message?
-    }
-    struct ErrorPayload: Decodable {
-        let message: String?
-    }
-    let choices: [Choice]?
-    let error: ErrorPayload?
 }
 
 private struct PortCheckCacheEntry {
@@ -269,8 +222,10 @@ final class AppViewModel: ObservableObject {
     private let huggingFaceSearchService: HuggingFaceModelSearching
     private let huggingFaceRepositoryFileService: HuggingFaceRepositoryFileListing
     private let hermesAgentConfigService: HermesAgentConfigService
-    private let benchmarkService: BenchmarkService
+    private let benchmarkSessionRunner: BenchmarkSessionRunner
     private let agenticBenchmarkService: AgenticBenchmarkService
+    private let testChatService: TestChatService
+    private let modelProfileValidator = ModelProfileValidator()
     private var logBuffer: LogBuffer
     private var memoryMonitorTasks: [ModelConfig.ID: Task<Void, Never>] = [:]
     private var systemUsageMonitorTask: Task<Void, Never>?
@@ -376,7 +331,9 @@ final class AppViewModel: ObservableObject {
         huggingFaceRepositoryFileService: HuggingFaceRepositoryFileListing? = nil,
         hermesAgentConfigService: HermesAgentConfigService? = nil,
         benchmarkService: BenchmarkService? = nil,
-        agenticBenchmarkService: AgenticBenchmarkService? = nil
+        benchmarkSessionRunner: BenchmarkSessionRunner? = nil,
+        agenticBenchmarkService: AgenticBenchmarkService? = nil,
+        testChatService: TestChatService? = nil
     ) {
         self.settingsStore = settingsStore ?? SettingsStore()
         self.portChecker = portChecker ?? PortChecker()
@@ -400,8 +357,10 @@ final class AppViewModel: ObservableObject {
         self.huggingFaceSearchService = huggingFaceSearchService ?? HuggingFaceSearchService()
         self.huggingFaceRepositoryFileService = huggingFaceRepositoryFileService ?? HuggingFaceRepositoryFileService()
         self.hermesAgentConfigService = hermesAgentConfigService ?? HermesAgentConfigService()
-        self.benchmarkService = benchmarkService ?? BenchmarkService()
+        self.benchmarkSessionRunner = benchmarkSessionRunner
+            ?? BenchmarkSessionRunner(service: benchmarkService ?? BenchmarkService())
         self.agenticBenchmarkService = agenticBenchmarkService ?? AgenticBenchmarkService()
+        self.testChatService = testChatService ?? TestChatService()
         let initialLogBuffer = LogBuffer(initialLines: Self.initialLogLines)
         let initialLogEntries = initialLogBuffer.entries
         self.logBuffer = initialLogBuffer
@@ -2474,7 +2433,7 @@ final class AppViewModel: ObservableObject {
         let managedProcessID = selectedModel.flatMap { processRegistry.processIdentifier(for: $0.id) }
         let chipName = systemProfilerHardwareInfo["Chip"] ?? "Apple Silicon"
         let memoryText = systemProfilerHardwareInfo["Memory"] ?? Self.formatMemoryGigabytes(Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824)
-        let service = benchmarkService
+        let sessionRunner = benchmarkSessionRunner
         let preset = settings.benchmarkPreset
         let benchmarkModel = selectedModel
         let serverExecutablePath = benchmarkModel.map(executablePath(for:)) ?? settings.mlxServerExecutablePath
@@ -2509,23 +2468,26 @@ final class AppViewModel: ObservableObject {
         appendLog("[benchmark] \(preset.rawValue) benchmark started: \(targetBaseURL), samples=\(preset.sampleCount)")
 
         Task {
-            let startedAt = Date()
-            var samples: [BenchmarkResult] = []
-            if preset.usesWarmup {
-                appendLog("[benchmark] warm-up started; this request is excluded from measured samples.")
-                let warmupSucceeded = await service.warmUp(configuration: configuration)
-                appendLog("[benchmark] warm-up \(warmupSucceeded ? "completed" : "did not complete cleanly"); measured samples will continue.")
-            }
-            for index in 1...preset.sampleCount {
-                guard !Task.isCancelled else { break }
-                benchmarkSampleIndex = index
-                let result = await service.run(configuration: configuration)
-                samples.append(result)
-                benchmarkHistory.insert(result, at: 0)
-                appendLog("[benchmark] sample \(index)/\(preset.sampleCount) \(result.phase.rawValue.lowercased()): \(result.message)")
+            let outcome = await sessionRunner.run(
+                configuration: configuration,
+                preset: preset,
+                executionFingerprint: executionFingerprint
+            ) { event in
+                switch event {
+                case .warmUpStarted:
+                    appendLog("[benchmark] warm-up started; this request is excluded from measured samples.")
+                case let .warmUpCompleted(succeeded):
+                    appendLog("[benchmark] warm-up \(succeeded ? "completed" : "did not complete cleanly"); measured samples will continue.")
+                case let .sampleStarted(index, _):
+                    benchmarkSampleIndex = index
+                case let .sampleCompleted(index, total, result):
+                    benchmarkHistory.insert(result, at: 0)
+                    appendLog("[benchmark] sample \(index)/\(total) \(result.phase.rawValue.lowercased()): \(result.message)")
+                }
             }
 
-            guard !samples.isEmpty else {
+            guard let session = outcome.session,
+                  let benchmarkResult = outcome.representativeResult else {
                 latestSpeedTestMessage = Self.localizedText(
                     language: settings.uiLanguage,
                     english: "Benchmark was cancelled before a sample completed.",
@@ -2537,16 +2499,7 @@ final class AppViewModel: ObservableObject {
                 return
             }
 
-            let session = BenchmarkSessionResult(
-                profileID: profileID,
-                modelID: modelID,
-                selectedProfileName: selectedProfileName,
-                preset: preset,
-                executionFingerprint: executionFingerprint,
-                samples: samples
-            )
-            let benchmarkResult = session.representativeResult ?? samples[0]
-            let elapsedMS = Date().timeIntervalSince(startedAt) * 1000
+            let elapsedMS = outcome.elapsedMilliseconds
             latestSpeedTestDurationMS = elapsedMS
             latestSpeedTestMessage = Self.benchmarkSessionSummary(
                 session,
@@ -2618,13 +2571,14 @@ final class AppViewModel: ObservableObject {
             miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Select a model before sending.", japanese: "送信前にモデルを選択してください。")
             return
         }
-        guard let url = Self.chatCompletionsURL(from: baseURL) else {
+        guard TestChatService.chatCompletionsURL(from: baseURL) != nil else {
             miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Invalid base URL.", japanese: "Base URLが無効です。")
             return
         }
 
         let modelID = selectedModelIdentifier
         let targetBaseURL = baseURL
+        let service = testChatService
         miniChatPrompt = ""
         miniChatMessages.append(MiniChatTranscriptMessage(sender: .user, content: prompt))
         isMiniChatRunning = true
@@ -2636,39 +2590,25 @@ final class AppViewModel: ObservableObject {
 
         miniChatTask?.cancel()
         miniChatTask = Task {
-            let startedAt = Date()
             do {
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.timeoutInterval = 60
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                let payload = MiniChatRequestPayload(
-                    model: modelID,
-                    messages: [MiniChatMessagePayload(role: "user", content: prompt)],
-                    stream: false,
-                    maxTokens: 1024,
-                    temperature: 0.7,
-                    stop: ["USER:", "ASSISTANT:"]
+                let result = try await service.send(
+                    baseURL: targetBaseURL,
+                    modelID: modelID,
+                    prompt: prompt
                 )
-                request.httpBody = try JSONEncoder().encode(payload)
-
-                let (data, response) = try await URLSession.shared.data(for: request)
-                let elapsedMS = Date().timeIntervalSince(startedAt) * 1000
-                let statusCode = (response as? HTTPURLResponse)?.statusCode
-                miniChatHTTPStatusText = statusCode.map { "HTTP \($0)" } ?? "-"
+                let elapsedMS = result.durationMilliseconds
+                miniChatHTTPStatusText = result.statusCode.map { "HTTP \($0)" } ?? "-"
                 miniChatDurationText = "\(Int(elapsedMS)) ms"
 
-                let decoded = try? JSONDecoder().decode(MiniChatResponsePayload.self, from: data)
-                if let message = decoded?.error?.message, !message.isEmpty {
+                if let message = result.apiErrorMessage {
                     miniChatResponse = message
                     miniChatMessages.append(MiniChatTranscriptMessage(sender: .system, content: message))
                     miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Request failed.", japanese: "リクエストに失敗しました。")
                     appendLog("[test-chat] failed: \(miniChatHTTPStatusText) \(message)")
                 } else {
-                    let responseText = decoded?.choices?.first?.message?.content?.trimmingCharacters(in: .whitespacesAndNewlines)
-                    miniChatResponse = responseText?.isEmpty == false ? responseText! : Self.fallbackMiniChatResponseText(from: data)
+                    miniChatResponse = result.responseText
                     miniChatMessages.append(MiniChatTranscriptMessage(sender: .assistant, content: miniChatResponse))
-                    if let statusCode, (200..<300).contains(statusCode) {
+                    if let statusCode = result.statusCode, (200..<300).contains(statusCode) {
                         miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Response received.", japanese: "応答を受信しました。")
                     } else {
                         miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Response returned non-success status.", japanese: "成功以外のHTTPステータスが返りました。")
@@ -2721,20 +2661,6 @@ final class AppViewModel: ObservableObject {
         if copyToPasteboard(message.content) {
             miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Copied response.", japanese: "返答をコピーしました。")
         }
-    }
-
-    nonisolated private static func chatCompletionsURL(from baseURL: String) -> URL? {
-        let trimmed = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        return URL(string: "\(trimmed)/chat/completions")
-    }
-
-    nonisolated private static func fallbackMiniChatResponseText(from data: Data) -> String {
-        if let object = try? JSONSerialization.jsonObject(with: data),
-           let prettyData = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted]),
-           let text = String(data: prettyData, encoding: .utf8) {
-            return text
-        }
-        return String(data: data, encoding: .utf8) ?? ""
     }
 
     func checkReadyRequested() {
@@ -3869,7 +3795,7 @@ final class AppViewModel: ObservableObject {
             return false
         }
 
-        switch validatedNewProfileDraft(addProfileDraft) {
+        switch modelProfileValidator.validateNewProfile(addProfileDraft, existingModels: models) {
         case let .valid(newModel):
             let nextModels = models + [newModel]
 
@@ -4268,7 +4194,12 @@ final class AppViewModel: ObservableObject {
 
         let existingModel = models[index]
 
-        switch validatedProfileDraft(profileEditorDraft, existingModel: existingModel) {
+        switch modelProfileValidator.validateProfileEdit(
+            profileEditorDraft,
+            existingModel: existingModel,
+            isRunning: processRegistry.isRunning(existingModel.id),
+            language: settings.uiLanguage
+        ) {
         case let .valid(updatedModel):
             var nextModels = models
             nextModels[index] = updatedModel
@@ -5092,7 +5023,7 @@ final class AppViewModel: ObservableObject {
             return false
         }
 
-        let advancedValidation = validatedAdvancedLaunchOptions(
+        let advancedValidation = modelProfileValidator.validateAdvancedLaunchOptions(
             model.advancedLaunchOptions ?? .empty,
             backend: model.resolvedBackend
         )
@@ -5473,11 +5404,16 @@ final class AppViewModel: ObservableObject {
             )
             appendLog("[\(logPrefix)] managed process is not running.")
             return outcome == .released
-        case let .stopped(processIdentifier, terminationStatus, usedInterrupt):
+        case let .stopped(processIdentifier, terminationStatus, stopMethod):
             stopMemoryMonitoring(for: modelID)
             clearRunningModel(modelID: modelID, logPrefix: logPrefix)
-            if usedInterrupt {
+            switch stopMethod {
+            case .terminate:
+                break
+            case .interrupt:
                 appendLog("[\(logPrefix)] interrupt was sent after graceful timeout for pid \(processIdentifier).")
+            case .kill:
+                appendLog("[\(logPrefix)] force kill was sent after terminate and interrupt timeouts for pid \(processIdentifier).")
             }
             appendLog("[\(logPrefix)] stopped managed pid \(processIdentifier) with status \(terminationStatus).")
 
@@ -5825,193 +5761,6 @@ final class AppViewModel: ObservableObject {
         if memoryHistory.count > 60 {
             memoryHistory.removeFirst(memoryHistory.count - 60)
         }
-    }
-
-    private func validatedProfileDraft(
-        _ draft: ModelProfileDraft,
-        existingModel: ModelConfig
-    ) -> ProfileValidationResult {
-        let modelID = draft.modelID.trimmingCharacters(in: .whitespacesAndNewlines)
-        let displayName = draft.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let host = draft.host.trimmingCharacters(in: .whitespacesAndNewlines)
-        let portText = draft.serverPortText.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !modelID.isEmpty else {
-            return .invalid("Model ID is required.")
-        }
-
-        guard !host.isEmpty else {
-            return .invalid("Host is required.")
-        }
-
-        guard let port = Int(portText), (1...65_535).contains(port) else {
-            return .invalid("Port must be between 1 and 65535.")
-        }
-
-        let advancedValidation = validatedAdvancedLaunchOptions(
-            draft.advancedLaunchOptions,
-            backend: draft.backend
-        )
-        if case let .invalid(message) = advancedValidation {
-            return .invalid(message)
-        }
-
-        guard case let .valid(advancedLaunchOptions) = advancedValidation else {
-            return .invalid("Advanced Launch Options validation failed.")
-        }
-
-        let changesRuntimeTarget = modelID != existingModel.modelID
-            || draft.backend != existingModel.resolvedBackend
-            || host != existingModel.host
-            || port != existingModel.serverPort
-            || advancedLaunchOptions != existingModel.advancedLaunchOptions?.normalized()
-
-        if processRegistry.isRunning(existingModel.id) && changesRuntimeTarget {
-            return .invalid(Self.localizedText(
-                language: settings.uiLanguage,
-                english: "Stop this model before changing its model path, backend, host, port, or advanced launch options.",
-                japanese: "このモデルを停止してから、モデルパス、バックエンド、Host、Port、詳細起動オプションを変更してください。"
-            ))
-        }
-
-        var updatedModel = existingModel
-        updatedModel.displayName = displayName.isEmpty ? modelID : displayName
-        updatedModel.modelID = modelID
-        updatedModel.host = host
-        updatedModel.serverPort = port
-        updatedModel.enableThinking = draft.enableThinking
-        updatedModel.notes = draft.notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        updatedModel.advancedLaunchOptions = advancedLaunchOptions
-        updatedModel.backend = draft.backend
-        return .valid(updatedModel)
-    }
-
-    private func validatedNewProfileDraft(_ draft: ModelProfileDraft) -> ProfileValidationResult {
-        let modelID = draft.modelID.trimmingCharacters(in: .whitespacesAndNewlines)
-        let displayName = draft.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let host = draft.host.trimmingCharacters(in: .whitespacesAndNewlines)
-        let portText = draft.serverPortText.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !modelID.isEmpty else {
-            return .invalid("Model ID is required.")
-        }
-
-        guard !host.isEmpty else {
-            return .invalid("Host is required.")
-        }
-
-        guard let port = Int(portText), (1...65_535).contains(port) else {
-            return .invalid("Port must be between 1 and 65535.")
-        }
-
-        guard !models.contains(where: { $0.modelID == modelID }) else {
-            return .invalid("A model profile with this Model ID already exists.")
-        }
-
-        let advancedValidation = validatedAdvancedLaunchOptions(
-            draft.advancedLaunchOptions,
-            backend: draft.backend
-        )
-        if case let .invalid(message) = advancedValidation {
-            return .invalid(message)
-        }
-
-        guard case let .valid(advancedLaunchOptions) = advancedValidation else {
-            return .invalid("Advanced Launch Options validation failed.")
-        }
-
-        let localName = modelID.split(separator: "/").last.map(String.init) ?? modelID
-        return .valid(
-            ModelConfig(
-                modelID: modelID,
-                displayName: displayName.isEmpty ? modelID : displayName,
-                family: "Custom",
-                quantization: "User configured",
-                localName: localName,
-                host: host,
-                serverPort: port,
-                enableThinking: draft.enableThinking,
-                notes: draft.notes.trimmingCharacters(in: .whitespacesAndNewlines),
-                advancedLaunchOptions: advancedLaunchOptions,
-                backend: draft.backend
-            )
-        )
-    }
-
-    private func validatedAdvancedLaunchOptions(
-        _ options: AdvancedLaunchOptions,
-        backend: InferenceBackend
-    ) -> AdvancedLaunchOptionsValidationResult {
-        guard let normalizedOptions = options.normalized() else {
-            return .valid(nil)
-        }
-
-        let boundedDoubleFields: [(String, String?)] = [
-            ("Default Temperature", normalizedOptions.defaultTemperature),
-            ("Default Top P", normalizedOptions.defaultTopP),
-            ("Default Min P", normalizedOptions.defaultMinP)
-        ]
-
-        for (label, value) in boundedDoubleFields {
-            guard let value else {
-                continue
-            }
-
-            guard let doubleValue = Double(value), (0...1).contains(doubleValue) else {
-                return .invalid("\(label) must be between 0 and 1.")
-            }
-        }
-
-        let positiveIntegerFields: [(String, String?)] = [
-            ("Default Top K", normalizedOptions.defaultTopK),
-            ("Default Max Tokens", normalizedOptions.defaultMaxTokens),
-            ("Decode Concurrency", normalizedOptions.decodeConcurrency),
-            ("Prompt Concurrency", normalizedOptions.promptConcurrency),
-            ("Prefill Step Size", normalizedOptions.prefillStepSize),
-            ("Prompt Cache Size", normalizedOptions.promptCacheSize),
-            ("Prompt Cache Bytes", normalizedOptions.promptCacheBytes)
-        ]
-
-        for (label, value) in positiveIntegerFields {
-            guard let value else {
-                continue
-            }
-
-            guard let integerValue = Int(value), integerValue > 0 else {
-                return .invalid("\(label) must be a positive integer.")
-            }
-        }
-
-        if let chatTemplateArgs = normalizedOptions.chatTemplateArgs {
-            guard backend == .mlxLM else {
-                return .invalid("Chat Template Args are supported by mlx-lm profiles only.")
-            }
-            guard let data = chatTemplateArgs.data(using: .utf8) else {
-                return .invalid("Chat Template Args must be valid JSON.")
-            }
-
-            do {
-                _ = try JSONSerialization.jsonObject(with: data)
-            } catch {
-                return .invalid("Chat Template Args must be valid JSON.")
-            }
-        }
-
-        if backend == .rapidMLX,
-           let logLevel = normalizedOptions.logLevel,
-           !["DEBUG", "INFO", "WARNING", "ERROR"].contains(logLevel.uppercased()) {
-            return .invalid("Rapid-MLX Log Level must be DEBUG, INFO, WARNING, or ERROR.")
-        }
-
-        if let rawExtraArgs = normalizedOptions.rawExtraArgs {
-            do {
-                _ = try ShellArgumentParser.parse(rawExtraArgs)
-            } catch {
-                return .invalid(error.localizedDescription)
-            }
-        }
-
-        return .valid(normalizedOptions)
     }
 
     private var connectionConfigBuilder: ConnectionConfigBuilder {

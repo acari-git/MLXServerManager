@@ -29,7 +29,8 @@ This document lists the current known limitations for MLX Server Manager. Older 
 - Hugging Face search is a lightweight convenience surface, not a full model-card browser, ranking engine, or recommendation system.
 - Hugging Face downloads are explicit user actions through the configured local environment and Hugging Face CLI path detection.
 - Downloads do not silently start a server.
-- Downloads do not delete model files, mutate Hugging Face cache, or clean partial files automatically.
+- The download workflow does not delete model files, mutate Hugging Face cache, or clean partial files automatically.
+- Profile deletion can separately remove one matching Hugging Face hub cache only after explicit destructive confirmation; it never removes a local model folder and is not a general cache manager.
 - The app does not persist Hugging Face access tokens or API credentials.
 - The app does not manage private-model authentication beyond the user's existing local tooling.
 - Auto-add after a successful download creates or updates local profile metadata; it does not bundle or copy model weights into Git or release assets.
@@ -57,6 +58,7 @@ This document lists the current known limitations for MLX Server Manager. Older 
 - App-managed profiles can run concurrently when each uses a distinct available endpoint.
 - Lifecycle, PID, runtime state, and memory measurements are tracked per managed profile.
 - Runtime-affecting edits remain locked while that profile is running.
+- Quit exits the app directly rather than running the managed Stop workflow. Use each model's Stop action first when an explicit, observed shutdown is required.
 
 ## Readiness, Benchmarks, and Inference
 
@@ -87,10 +89,10 @@ This document lists the current known limitations for MLX Server Manager. Older 
 
 - Direct Mode is the only supported mode.
 - Proxy mode is not implemented.
-- Chat UI is not implemented.
+- A general-purpose Chat UI is not implemented. Test Chat is limited to a single-message endpoint response diagnostic.
 - LAN Web UI is not implemented.
 - App Intents are not implemented.
-- Auto unload is not implemented; current controls keep Stop manual and explicit.
-- Model file deletion is not implemented.
-- Hugging Face cache deletion is not implemented.
+- Automatic unload is optional and configured per profile; it is not a request-aware proxy idle detector.
+- Local model-folder deletion is not implemented.
+- Broad Hugging Face cache browsing or cleanup is not implemented; only the explicitly confirmed matching-cache action described above is supported.
 - RAG, embedding management, and tool-call translation are not implemented.

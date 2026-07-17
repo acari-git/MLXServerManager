@@ -21,6 +21,7 @@ nonisolated enum HermesAgentConfigServiceError: LocalizedError, Equatable {
     case configFileNotFound(String)
     case configPathIsDirectory(String)
     case unreadableConfig(String)
+    case unsupportedTabIndentation(line: Int)
     case backupNotFound(String)
 
     var errorDescription: String? {
@@ -33,6 +34,8 @@ nonisolated enum HermesAgentConfigServiceError: LocalizedError, Equatable {
             "Hermes Agent config path is a directory: \(path)"
         case let .unreadableConfig(path):
             "Hermes Agent config file could not be read as UTF-8 text: \(path)"
+        case let .unsupportedTabIndentation(line):
+            "Hermes Agent config uses a tab for YAML indentation on line \(line). Replace indentation tabs with spaces before applying changes."
         case let .backupNotFound(path):
             "Hermes Agent backup file was not found for: \(path)"
         }
@@ -65,7 +68,7 @@ nonisolated struct HermesAgentConfigService {
             throw HermesAgentConfigServiceError.unreadableConfig(configURL.path)
         }
 
-        let update = Self.updatedConfigText(originalText, connection: connection)
+        let update = try Self.updatedConfigText(originalText, connection: connection)
         guard update.text != originalText else {
             return HermesAgentConfigUpdateResult(
                 configURL: configURL,
@@ -102,7 +105,11 @@ nonisolated struct HermesAgentConfigService {
     static func updatedConfigText(
         _ text: String,
         connection: HermesAgentConnectionSettings
-    ) -> (text: String, changedKeys: [String]) {
+    ) throws -> (text: String, changedKeys: [String]) {
+        if let line = firstTabIndentedLine(in: text) {
+            throw HermesAgentConfigServiceError.unsupportedTabIndentation(line: line)
+        }
+
         let hadFinalNewline = text.hasSuffix("\n")
         var lines = text.components(separatedBy: "\n")
         if hadFinalNewline {
@@ -262,6 +269,16 @@ nonisolated struct HermesAgentConfigService {
 
     private static func leadingSpaceCount(_ line: String) -> Int {
         line.prefix(while: { $0 == " " }).count
+    }
+
+    private static func firstTabIndentedLine(in text: String) -> Int? {
+        for (offset, line) in text.components(separatedBy: "\n").enumerated() {
+            let indentation = line.prefix(while: { $0 == " " || $0 == "\t" })
+            if indentation.contains("\t") {
+                return offset + 1
+            }
+        }
+        return nil
     }
 
     private static var backupDateFormatter: DateFormatter {

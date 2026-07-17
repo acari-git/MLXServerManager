@@ -80,13 +80,13 @@ final class HermesAgentConfigServiceTests: XCTestCase {
         XCTAssertEqual(try String(contentsOf: configURL, encoding: .utf8), original)
     }
 
-    func testUpdatedConfigTextAddsModelSectionWhenMissing() {
+    func testUpdatedConfigTextAddsModelSectionWhenMissing() throws {
         let original = """
         agent:
           max_turns: 60
         """
 
-        let update = HermesAgentConfigService.updatedConfigText(
+        let update = try HermesAgentConfigService.updatedConfigText(
             original,
             connection: HermesAgentConnectionSettings(
                 baseURL: "http://127.0.0.1:8080/v1",
@@ -97,5 +97,39 @@ final class HermesAgentConfigServiceTests: XCTestCase {
 
         XCTAssertTrue(update.text.hasPrefix("model:\n  default: 'model-a'\n  provider: 'custom'\n  base_url: 'http://127.0.0.1:8080/v1'\n  api_key: ''\n\nagent:"))
         XCTAssertEqual(update.changedKeys, ["default", "provider", "base_url", "api_key"])
+    }
+
+    func testApplyRejectsTabIndentedYamlWithoutChangingTheFile() throws {
+        let temporaryDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MLXServerManagerTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
+
+        let configURL = temporaryDirectory.appendingPathComponent("config.yaml")
+        let original = "model:\n\tdefault: old-model\nagent:\n  max_turns: 60\n"
+        try original.write(to: configURL, atomically: true, encoding: .utf8)
+
+        let service = HermesAgentConfigService()
+        XCTAssertThrowsError(
+            try service.apply(
+                connection: HermesAgentConnectionSettings(
+                    baseURL: "http://127.0.0.1:8080/v1",
+                    modelID: "model-a",
+                    apiKey: "not-required-local"
+                ),
+                configPath: configURL.path
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? HermesAgentConfigServiceError,
+                .unsupportedTabIndentation(line: 2)
+            )
+        }
+
+        XCTAssertEqual(try String(contentsOf: configURL, encoding: .utf8), original)
+        XCTAssertEqual(
+            try FileManager.default.contentsOfDirectory(atPath: temporaryDirectory.path),
+            ["config.yaml"]
+        )
     }
 }

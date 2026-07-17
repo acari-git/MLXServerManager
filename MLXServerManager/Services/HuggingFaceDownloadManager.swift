@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 struct HuggingFaceDownloadRequest: Equatable {
@@ -61,14 +62,22 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
     private var activeProcess: Process?
     private var stdoutPipe: Pipe?
     private var stderrPipe: Pipe?
+    private var cancellationEscalationTask: Task<Void, Never>?
+    private var cancellationRequestedProcessIdentifier: Int32?
     private let lineBuffer = LineStreamBuffer(maximumLinesPerLabel: 1_000)
+    private let cancellationGracePeriodNanoseconds: UInt64
+    private let cancellationInterruptPeriodNanoseconds: UInt64
 
     init(
         fileManager: FileManager = .default,
-        environment: [String: String] = ProcessInfo.processInfo.environment
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        cancellationGracePeriod: TimeInterval = 1,
+        cancellationInterruptPeriod: TimeInterval = 1
     ) {
         self.fileManager = fileManager
         self.environment = environment
+        self.cancellationGracePeriodNanoseconds = Self.nanoseconds(for: cancellationGracePeriod)
+        self.cancellationInterruptPeriodNanoseconds = Self.nanoseconds(for: cancellationInterruptPeriod)
     }
 
     func download(
@@ -125,6 +134,7 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
         lineBuffer.reset()
+        cancellationRequestedProcessIdentifier = nil
         activeProcess = process
         self.stdoutPipe = stdoutPipe
         self.stderrPipe = stderrPipe
@@ -135,10 +145,13 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
             process.terminationHandler = { [weak self] process in
                 let status = process.terminationStatus
                 Task { @MainActor [weak self] in
+                    let wasCancelled = self?.cancellationRequestedProcessIdentifier == process.processIdentifier
                     self?.flushPendingOutput(outputHandler: outputHandler)
                     self?.clearIfMatching(process)
 
-                    if status == 0 {
+                    if wasCancelled {
+                        continuation.resume(throwing: HuggingFaceDownloadError.cancelled)
+                    } else if status == 0 {
                         continuation.resume(
                             returning: HuggingFaceDownloadResult(
                                 repositoryID: request.repositoryID,
@@ -168,7 +181,33 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
     }
 
     func cancel() {
-        activeProcess?.terminate()
+        guard let process = activeProcess, process.isRunning else {
+            return
+        }
+
+        cancellationRequestedProcessIdentifier = process.processIdentifier
+        cancellationEscalationTask?.cancel()
+        process.terminate()
+
+        cancellationEscalationTask = Task { @MainActor [weak self, process] in
+            guard let self else { return }
+            await waitForCancellationPeriod(cancellationGracePeriodNanoseconds)
+            guard !Task.isCancelled,
+                  activeProcess === process,
+                  process.isRunning else {
+                return
+            }
+
+            process.interrupt()
+            await waitForCancellationPeriod(cancellationInterruptPeriodNanoseconds)
+            guard !Task.isCancelled,
+                  activeProcess === process,
+                  process.isRunning else {
+                return
+            }
+
+            Darwin.kill(process.processIdentifier, SIGKILL)
+        }
     }
 
     private func configurePipe(
@@ -263,10 +302,25 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
         guard activeProcess === process else {
             return
         }
+        cancellationEscalationTask?.cancel()
+        cancellationEscalationTask = nil
         stdoutPipe?.fileHandleForReading.readabilityHandler = nil
         stderrPipe?.fileHandleForReading.readabilityHandler = nil
+        try? stdoutPipe?.fileHandleForReading.close()
+        try? stderrPipe?.fileHandleForReading.close()
         activeProcess = nil
         stdoutPipe = nil
         stderrPipe = nil
+        cancellationRequestedProcessIdentifier = nil
+    }
+
+    private func waitForCancellationPeriod(_ nanoseconds: UInt64) async {
+        guard nanoseconds > 0 else { return }
+        try? await Task.sleep(nanoseconds: nanoseconds)
+    }
+
+    nonisolated private static func nanoseconds(for interval: TimeInterval) -> UInt64 {
+        guard interval > 0 else { return 0 }
+        return UInt64(min(interval, TimeInterval(UInt64.max) / 1_000_000_000) * 1_000_000_000)
     }
 }

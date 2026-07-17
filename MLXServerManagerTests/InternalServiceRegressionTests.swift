@@ -34,6 +34,24 @@ final class InternalServiceRegressionTests: XCTestCase {
         XCTAssertEqual(buffer.flush(label: "stdout"), ["next"])
     }
 
+    func testLineStreamBufferFlushHonorsMaximumLineCount() {
+        let buffer = LineStreamBuffer(maximumLinesPerLabel: 1)
+
+        XCTAssertEqual(buffer.consume("first\nsecond", label: "stdout"), ["first"])
+        XCTAssertEqual(buffer.flush(label: "stdout"), [])
+    }
+
+    func testLineStreamBufferBoundsAnUnterminatedLine() {
+        let buffer = LineStreamBuffer(maximumCharactersPerLine: 8)
+
+        XCTAssertEqual(buffer.consume("0123456789", label: "stdout"), [])
+        let lines = buffer.flush(label: "stdout")
+
+        XCTAssertEqual(lines.count, 1)
+        XCTAssertTrue(lines[0].contains("2 characters omitted"))
+        XCTAssertTrue(lines[0].hasSuffix("23456789"))
+    }
+
     func testLaunchArgumentsUseQuotedRawExtraArgumentParsing() {
         let request = ModelLaunchRequest(
             executablePath: "/usr/bin/mlx_lm.server",

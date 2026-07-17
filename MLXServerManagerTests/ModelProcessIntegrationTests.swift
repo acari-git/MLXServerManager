@@ -90,6 +90,41 @@ final class ModelProcessIntegrationTests: XCTestCase {
         XCTAssertFalse(registry.isAnyProcessRunning)
     }
 
+    func testStopForceKillsAnOwnedProcessThatIgnoresTerminateAndInterrupt() async throws {
+        let fixture = try ProcessFixture(
+            script: """
+            #!/bin/sh
+            trap '' TERM INT
+            echo "ready"
+            while true; do sleep 0.05; done
+            """
+        )
+        defer { fixture.remove() }
+
+        let started = expectation(description: "process installed signal handlers")
+        let manager = ModelProcessManager()
+        let launch = try manager.start(
+            request: Self.request(executablePath: fixture.url.path, modelID: "stubborn", port: 8301),
+            outputHandler: { line in
+                if line.contains("ready") { started.fulfill() }
+            },
+            terminationHandler: { _ in }
+        )
+
+        await fulfillment(of: [started], timeout: 3)
+        let result = await manager.stop(gracefulTimeout: 0.1, interruptTimeout: 0.1)
+
+        guard case let .stopped(processIdentifier, terminationStatus, stopMethod) = result else {
+            return XCTFail("Expected the stubborn process to be force stopped, got \(result).")
+        }
+        XCTAssertEqual(processIdentifier, launch.processIdentifier)
+        XCTAssertEqual(terminationStatus, SIGKILL)
+        XCTAssertEqual(stopMethod, .kill)
+        XCTAssertNil(manager.managedProcessIdentifier)
+        XCTAssertEqual(Darwin.kill(processIdentifier, 0), -1)
+        XCTAssertEqual(errno, ESRCH)
+    }
+
     func testPortCheckerReportsAnActualListeningSocketAsBusy() throws {
         let socket = try ListeningSocket()
         defer { socket.closeSocket() }

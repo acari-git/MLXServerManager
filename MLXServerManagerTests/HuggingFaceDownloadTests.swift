@@ -86,6 +86,70 @@ final class HuggingFaceDownloadTests: XCTestCase {
         XCTAssertTrue(candidates.contains("/custom/bin/hf"))
     }
 
+    @MainActor
+    func testCancellationCompletesAndManagerCanBeReused() async throws {
+        let temporaryDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MLXServerManagerHFTests-\(UUID().uuidString)", isDirectory: true)
+        let executableURL = temporaryDirectory.appendingPathComponent(".local/bin/hf")
+        let destinationURL = temporaryDirectory.appendingPathComponent("model", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: executableURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
+
+        let blockingScript = """
+        #!/bin/sh
+        trap '' TERM INT
+        while true; do sleep 0.05; done
+        """
+        try Data(blockingScript.utf8).write(to: executableURL, options: .atomic)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: executableURL.path
+        )
+
+        let manager = HuggingFaceDownloadManager(
+            environment: ["HOME": temporaryDirectory.path, "PATH": ""],
+            cancellationGracePeriod: 0.05,
+            cancellationInterruptPeriod: 0.05
+        )
+        let request = HuggingFaceDownloadRequest(
+            repositoryID: "owner/model",
+            destinationPath: destinationURL.path,
+            revision: "main",
+            includePatterns: [],
+            excludePatterns: [],
+            authorizationValue: nil
+        )
+
+        let downloadTask = Task {
+            try await manager.download(request: request, outputHandler: { _ in })
+        }
+        try await Task.sleep(nanoseconds: 100_000_000)
+        manager.cancel()
+
+        do {
+            _ = try await downloadTask.value
+            XCTFail("Expected the cancelled download to throw.")
+        } catch {
+            XCTAssertEqual(error as? HuggingFaceDownloadError, .cancelled)
+        }
+
+        let successfulScript = """
+        #!/bin/sh
+        exit 0
+        """
+        try Data(successfulScript.utf8).write(to: executableURL, options: .atomic)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: executableURL.path
+        )
+
+        let result = try await manager.download(request: request, outputHandler: { _ in })
+        XCTAssertEqual(result.terminationStatus, 0)
+    }
+
     private func success(_ result: Result<HuggingFaceModelReference, HuggingFaceModelReferenceError>) throws -> HuggingFaceModelReference {
         switch result {
         case let .success(reference):

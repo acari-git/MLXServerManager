@@ -133,11 +133,11 @@ Recommended local defaults:
 
 ## Managed Server Flow
 
-Managed Server means MLX Server Manager started the `mlx_lm.server` process.
+Managed Server means MLX Server Manager started the configured supported backend process.
 
 Flow:
 
-1. Set `mlx_lm.server executable path`.
+1. Set the supported backend executable path in Settings.
 2. Select a Model Profile.
 3. Press Start.
 4. Wait for Ready.
@@ -152,7 +152,7 @@ Managed server boundaries:
 - Memory display is available only for the managed process.
 - Logs are app-captured managed process logs and app-side status logs.
 - Readiness uses `/v1/models`.
-- The app does not send inference requests.
+- The app does not send inference requests automatically. Test Chat, Benchmark, and Agent Readiness send requests directly to the selected endpoint only when the user explicitly runs them.
 
 ## External Server Flow
 

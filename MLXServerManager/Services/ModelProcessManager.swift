@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 nonisolated struct ModelLaunchRequest: Equatable {
@@ -33,9 +34,15 @@ nonisolated struct ModelLaunchResult: Equatable {
     let commandSummary: String
 }
 
+nonisolated enum ModelStopMethod: Equatable {
+    case terminate
+    case interrupt
+    case kill
+}
+
 nonisolated enum ModelStopResult: Equatable {
     case notRunning
-    case stopped(processIdentifier: Int32, terminationStatus: Int32, usedInterrupt: Bool)
+    case stopped(processIdentifier: Int32, terminationStatus: Int32, stopMethod: ModelStopMethod)
     case timedOut(processIdentifier: Int32)
 }
 
@@ -139,6 +146,8 @@ final class ModelProcessManager: ModelProcessManaging {
         } catch {
             stdoutPipe.fileHandleForReading.readabilityHandler = nil
             stderrPipe.fileHandleForReading.readabilityHandler = nil
+            try? stdoutPipe.fileHandleForReading.close()
+            try? stderrPipe.fileHandleForReading.close()
             throw ModelProcessManagerError.launchFailed(error.localizedDescription)
         }
 
@@ -266,7 +275,7 @@ final class ModelProcessManager: ModelProcessManaging {
             return .stopped(
                 processIdentifier: processIdentifier,
                 terminationStatus: terminationStatus,
-                usedInterrupt: false
+                stopMethod: .terminate
             )
         }
 
@@ -280,7 +289,21 @@ final class ModelProcessManager: ModelProcessManaging {
             return .stopped(
                 processIdentifier: processIdentifier,
                 terminationStatus: terminationStatus,
-                usedInterrupt: true
+                stopMethod: .interrupt
+            )
+        }
+
+        if process.isRunning {
+            Darwin.kill(processIdentifier, SIGKILL)
+        }
+
+        if await waitForExit(process, timeout: interruptTimeout) {
+            let terminationStatus = process.terminationStatus
+            clearManagedProcessIfMatching(process)
+            return .stopped(
+                processIdentifier: processIdentifier,
+                terminationStatus: terminationStatus,
+                stopMethod: .kill
             )
         }
 
@@ -341,6 +364,8 @@ final class ModelProcessManager: ModelProcessManaging {
 
         stdoutPipe?.fileHandleForReading.readabilityHandler = nil
         stderrPipe?.fileHandleForReading.readabilityHandler = nil
+        try? stdoutPipe?.fileHandleForReading.close()
+        try? stderrPipe?.fileHandleForReading.close()
         self.process = nil
         stdoutPipe = nil
         stderrPipe = nil
