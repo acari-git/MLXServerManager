@@ -229,6 +229,7 @@ final class AppViewModel: ObservableObject {
     private let agenticBenchmarkService: AgenticBenchmarkService
     private let testChatService: TestChatService
     private let modelProfileValidator = ModelProfileValidator()
+    private let modelStartPreflightEvaluator = ModelStartPreflightEvaluator()
     private var logBuffer: LogBuffer
     private var memoryMonitorTasks: [ModelConfig.ID: Task<Void, Never>] = [:]
     private var systemUsageMonitorTask: Task<Void, Never>?
@@ -854,31 +855,29 @@ final class AppViewModel: ObservableObject {
         knownPortCheckResult: PortCheckResult? = nil
     ) -> String? {
         let executablePath = executablePath(for: model).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !executablePath.isEmpty,
-              FileManager.default.isExecutableFile(atPath: executablePath) else {
-            return executableSafetyText
-        }
-
-        let modelSafety = modelIdentitySafetyText(for: model)
-        if modelSafety.localizedCaseInsensitiveContains("Missing") {
-            return modelSafety
-        }
-
-        if let conflict = managedEndpointConflict(for: model) {
-            return Self.localizedText(
-                language: settings.uiLanguage,
-                english: "Server port: Used by loaded model \(conflict.model.displayName) (pid \(conflict.endpoint.processIdentifier))",
-                japanese: "サーバーポート: ロード済みモデル \(conflict.model.displayName) が使用中です (pid \(conflict.endpoint.processIdentifier))"
-            )
+        if let issue = staticStartPreflightIssue(for: model, executablePath: executablePath) {
+            return issue.blockingMessage(language: settings.uiLanguage)
         }
 
         let portCheckResult = knownPortCheckResult ?? cachedPortCheck(host: model.host, port: model.serverPort)
-        switch portCheckResult {
-        case .available:
-            return nil
-        default:
-            return "Server port: \(portSafetyText(for: portCheckResult))"
+        return modelStartPreflightEvaluator.evaluatePort(portCheckResult)?
+            .blockingMessage(language: settings.uiLanguage)
+    }
+
+    private func staticStartPreflightIssue(
+        for model: ModelConfig,
+        executablePath: String
+    ) -> ModelStartPreflightIssue? {
+        if let issue = modelStartPreflightEvaluator.evaluateLocal(
+            model: model,
+            executablePath: executablePath
+        ) {
+            return issue
         }
+        return modelStartPreflightEvaluator.evaluateManagedEndpoint(
+            model: model,
+            managedEndpointConflict: managedEndpointConflict(for: model)
+        )
     }
 
     var canStartSelectedModel: Bool {
@@ -5132,37 +5131,13 @@ final class AppViewModel: ObservableObject {
         }
 
         let executablePath = executablePath(for: model).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !executablePath.isEmpty else {
-            let message = "\(model.resolvedBackend.localizedTitle(language: settings.uiLanguage)) executable path is not configured. Set it in Settings before starting."
-            setRuntimeState(.error(message: message), for: model.id)
-            appendLog("[\(logPrefix)] preflight failed: \(message)")
-            return false
-        }
-
-        guard FileManager.default.isExecutableFile(atPath: executablePath) else {
-            let message = "\(model.resolvedBackend.localizedTitle(language: settings.uiLanguage)) executable was not found or is not executable: \(ModelAvailabilityPathFormatter.compact(path: executablePath))."
-            setRuntimeState(.error(message: message), for: model.id)
-            appendLog("[\(logPrefix)] preflight failed: \(message)")
-            return false
-        }
-
-        if let localPath = ModelAvailabilityPathFormatter.localPathCandidate(for: model) {
-            var isDirectory = ObjCBool(false)
-            guard FileManager.default.fileExists(atPath: localPath, isDirectory: &isDirectory), isDirectory.boolValue else {
-                let message = "Model path is missing: \(ModelAvailabilityPathFormatter.compact(path: localPath))."
+        if let issue = staticStartPreflightIssue(for: model, executablePath: executablePath) {
+            let message = issue.launchMessage(language: settings.uiLanguage)
+            if issue.isManagedEndpointConflict {
+                setRuntimeState(.portBusy(host: host, port: port), for: model.id)
+            } else {
                 setRuntimeState(.error(message: message), for: model.id)
-                appendLog("[\(logPrefix)] preflight failed: \(message)")
-                return false
             }
-        }
-
-        if let conflict = managedEndpointConflict(for: model) {
-            let message = Self.localizedText(
-                language: settings.uiLanguage,
-                english: "The endpoint \(host):\(port) is already used by loaded model \(conflict.model.displayName) (pid \(conflict.endpoint.processIdentifier)). Choose another port.",
-                japanese: "\(host):\(port) はロード済みモデル \(conflict.model.displayName) (pid \(conflict.endpoint.processIdentifier)) が使用中です。別のポートを選択してください。"
-            )
-            setRuntimeState(.portBusy(host: host, port: port), for: model.id)
             appendLog("[\(logPrefix)] preflight failed: \(message)")
             return false
         }
@@ -5261,7 +5236,7 @@ final class AppViewModel: ObservableObject {
 
     private func managedEndpointConflict(
         for model: ModelConfig
-    ) -> (model: ModelConfig, endpoint: ManagedProcessEndpoint)? {
+    ) -> ManagedModelEndpointConflict? {
         guard let endpoint = processRegistry.runningEndpoint(
             host: model.host,
             port: model.serverPort,
@@ -5271,7 +5246,10 @@ final class AppViewModel: ObservableObject {
             return nil
         }
 
-        return (owner, endpoint)
+        return ManagedModelEndpointConflict(
+            modelDisplayName: owner.displayName,
+            processIdentifier: endpoint.processIdentifier
+        )
     }
 
     private func loadSettings() {
