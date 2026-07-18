@@ -511,6 +511,68 @@ final class AppViewModel: ObservableObject {
         models
     }
 
+    func modelListRowStates(from models: [ModelConfig]) -> [ModelListRowState] {
+        models.map(makeModelListRowState(for:))
+    }
+
+    private func makeModelListRowState(for model: ModelConfig) -> ModelListRowState {
+        let isRunning = runningModelIDs.contains(model.id)
+        let modelRuntimeState = runtimeState(for: model)
+        let hasRuntimeContext = isRunning || runtimeStatesByModelID[model.id] != nil
+        let isTransitioning = Self.isTransitioningRuntimeState(
+            modelRuntimeState,
+            hasRuntimeContext: hasRuntimeContext
+        )
+        let isLoaded = isRunning && !isTransitioning
+        let portCheckResult = isRunning
+            ? nil
+            : cachedPortCheck(host: model.host, port: model.serverPort)
+        let isPortBusy: Bool
+        if let portCheckResult, case .busy = portCheckResult {
+            isPortBusy = true
+        } else {
+            isPortBusy = false
+        }
+        let canUseStatusAction = isRunning
+            ? processRegistry.processIdentifier(for: model.id) != nil
+            : blockingStartIssue(for: model, knownPortCheckResult: portCheckResult) == nil
+        let sizeGigabytes = modelSizeGigabytes(for: model)
+        let displayedMemoryGigabytes = isRunning ? memoryUsageByModelID[model.id] : nil
+        let memorySortValue = memoryUsageByModelID[model.id] ?? -1
+        let isAutoUnloadEnabled = autoUnloadEnabledByModelID[model.id] ?? false
+        let autoUnloadMinutes = autoUnloadMinutesByModelID[model.id] ?? 30
+
+        return ModelListRowState(
+            model: model,
+            sizeText: sizeGigabytes.map(Self.formatMemoryGigabytes) ?? "-",
+            memoryText: displayedMemoryGigabytes.map(Self.formatMemoryGigabytes) ?? "-",
+            normalStatusText: interactiveStatusText(
+                isHovered: false,
+                isPortBusy: isPortBusy,
+                isRunning: isRunning,
+                runtimeState: modelRuntimeState
+            ),
+            hoveredStatusText: interactiveStatusText(
+                isHovered: true,
+                isPortBusy: isPortBusy,
+                isRunning: isRunning,
+                runtimeState: modelRuntimeState
+            ),
+            isTransitioning: isTransitioning,
+            isLoaded: isLoaded,
+            isPortBusy: isPortBusy,
+            canUseStatusAction: canUseStatusAction,
+            isRecentlyAdded: lastAddedDownloadedModelID == model.id,
+            nameSortValue: model.displayName,
+            sizeSortValue: sizeGigabytes ?? -1,
+            statusSortValue: isTransitioning ? 0 : (isRunning ? 1 : (isPortBusy ? 2 : 3)),
+            endpointSortValue: "\(model.host):\(String(format: "%05d", model.serverPort))",
+            memorySortValue: memorySortValue,
+            autoUnloadSortValue: isAutoUnloadEnabled ? autoUnloadMinutes : Int.max,
+            reasoningSortValue: model.enableThinking ? 1 : 0
+        )
+    }
+
     private func refreshDefaultUserFacingMessagesForCurrentLanguage() {
         let language = settings.uiLanguage
         huggingFaceCLIPath = Self.notCheckedText(language: language)
@@ -787,7 +849,10 @@ final class AppViewModel: ObservableObject {
         return blockingStartIssue(for: selectedModel)
     }
 
-    private func blockingStartIssue(for model: ModelConfig) -> String? {
+    private func blockingStartIssue(
+        for model: ModelConfig,
+        knownPortCheckResult: PortCheckResult? = nil
+    ) -> String? {
         let executablePath = executablePath(for: model).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !executablePath.isEmpty,
               FileManager.default.isExecutableFile(atPath: executablePath) else {
@@ -807,11 +872,12 @@ final class AppViewModel: ObservableObject {
             )
         }
 
-        switch cachedPortCheck(host: model.host, port: model.serverPort) {
+        let portCheckResult = knownPortCheckResult ?? cachedPortCheck(host: model.host, port: model.serverPort)
+        switch portCheckResult {
         case .available:
             return nil
         default:
-            return "Server port: \(portSafetyText(host: model.host, port: model.serverPort))"
+            return "Server port: \(portSafetyText(for: portCheckResult))"
         }
     }
 
@@ -971,7 +1037,11 @@ final class AppViewModel: ObservableObject {
     }
 
     private func portSafetyText(host: String, port: Int) -> String {
-        switch cachedPortCheck(host: host, port: port) {
+        portSafetyText(for: cachedPortCheck(host: host, port: port))
+    }
+
+    private func portSafetyText(for result: PortCheckResult) -> String {
+        switch result {
         case .available:
             return Self.localizedText(language: settings.uiLanguage, english: "Port available", japanese: "利用可能")
         case let .busy(_, _, pid):
@@ -1766,8 +1836,24 @@ final class AppViewModel: ObservableObject {
 
     func interactiveStatusText(for model: ModelConfig, isHovered: Bool, isPortBusy knownPortBusy: Bool? = nil) -> String {
         let modelRuntimeState = runtimeState(for: model)
+        let isRunning = runningModelIDs.contains(model.id)
+        let isPortBusy = knownPortBusy ?? isModelPortBusy(for: model)
+        return interactiveStatusText(
+            isHovered: isHovered,
+            isPortBusy: isPortBusy,
+            isRunning: isRunning,
+            runtimeState: modelRuntimeState
+        )
+    }
+
+    private func interactiveStatusText(
+        isHovered: Bool,
+        isPortBusy: Bool,
+        isRunning: Bool,
+        runtimeState modelRuntimeState: ModelRuntimeState
+    ) -> String {
         if settings.uiLanguage.resolved == .english {
-            if runningModelIDs.contains(model.id) {
+            if isRunning {
                 switch modelRuntimeState {
                 case .starting, .loading, .checkingReady:
                     return "Loading"
@@ -1777,12 +1863,12 @@ final class AppViewModel: ObservableObject {
                     return isHovered ? "Unload" : "Loaded"
                 }
             }
-            if knownPortBusy ?? isModelPortBusy(for: model) {
+            if isPortBusy {
                 return "Port Busy"
             }
             return isHovered ? "Load" : "Ready"
         }
-        if runningModelIDs.contains(model.id) {
+        if isRunning {
             switch modelRuntimeState {
             case .starting, .loading, .checkingReady:
                 return "ロード中"
@@ -1793,7 +1879,7 @@ final class AppViewModel: ObservableObject {
             }
         }
 
-        if knownPortBusy ?? isModelPortBusy(for: model) {
+        if isPortBusy {
             return "ポート使用中"
         }
         return isHovered ? "ロード" : "準備完了"
@@ -1824,8 +1910,18 @@ final class AppViewModel: ObservableObject {
     }
 
     func isModelTransitioning(_ model: ModelConfig) -> Bool {
-        guard runningModelIDs.contains(model.id) || runtimeStatesByModelID[model.id] != nil else { return false }
-        switch runtimeState(for: model) {
+        Self.isTransitioningRuntimeState(
+            runtimeState(for: model),
+            hasRuntimeContext: runningModelIDs.contains(model.id) || runtimeStatesByModelID[model.id] != nil
+        )
+    }
+
+    private static func isTransitioningRuntimeState(
+        _ runtimeState: ModelRuntimeState,
+        hasRuntimeContext: Bool
+    ) -> Bool {
+        guard hasRuntimeContext else { return false }
+        switch runtimeState {
         case .starting, .loading, .checkingReady, .stopping:
             return true
         default:

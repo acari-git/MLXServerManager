@@ -30,47 +30,7 @@ struct IntegratedWorkspaceView: View {
 
     private var selectedModel: ModelConfig? { viewModel.selectedModel }
     private var isSelectedRunning: Bool { selectedModel.map(viewModel.isModelRunning) ?? false }
-    private func modelRows(from models: [ModelConfig]) -> [ModelTableRow] {
-        models.map { model in
-            let sizeText = viewModel.modelSizeText(for: model)
-            let memoryText = viewModel.integratedMemoryText(for: model)
-            let isTransitioning = viewModel.isModelTransitioning(model)
-            let isLoaded = viewModel.isModelLoaded(model)
-            let isPortBusy = viewModel.isModelPortBusy(for: model)
-            let canUseStatusAction = viewModel.canUseStatusAction(for: model)
-            let statusSortValue: Int
-            if isTransitioning {
-                statusSortValue = 0
-            } else if viewModel.isModelRunning(model) {
-                statusSortValue = 1
-            } else if isPortBusy {
-                statusSortValue = 2
-            } else {
-                statusSortValue = 3
-            }
-            return ModelTableRow(
-                model: model,
-                sizeText: sizeText,
-                memoryText: memoryText,
-                normalStatusText: viewModel.interactiveStatusText(for: model, isHovered: false, isPortBusy: isPortBusy),
-                hoveredStatusText: viewModel.interactiveStatusText(for: model, isHovered: true, isPortBusy: isPortBusy),
-                isTransitioning: isTransitioning,
-                isLoaded: isLoaded,
-                isPortBusy: isPortBusy,
-                canUseStatusAction: canUseStatusAction,
-                isRecentlyAdded: viewModel.isLastAddedDownloadedModel(model),
-                nameSortValue: model.displayName,
-                sizeSortValue: viewModel.modelSizeSortValue(for: model),
-                statusSortValue: statusSortValue,
-                endpointSortValue: viewModel.endpointSortValue(for: model),
-                memorySortValue: viewModel.integratedMemorySortValue(for: model),
-                autoUnloadSortValue: viewModel.autoUnloadTableSortValue(for: model),
-                reasoningSortValue: viewModel.reasoningSortValue(for: model)
-            )
-        }
-    }
-
-    private func sortedModelRows(from rows: [ModelTableRow]) -> [ModelTableRow] {
+    private func sortedModelRows(from rows: [ModelListRowState]) -> [ModelListRowState] {
         guard let column = modelTableSortColumn else {
             return rows
         }
@@ -325,8 +285,8 @@ struct IntegratedWorkspaceView: View {
         case reasoning
 
         func isOrderedBefore(
-            _ lhs: ModelTableRow,
-            _ rhs: ModelTableRow,
+            _ lhs: ModelListRowState,
+            _ rhs: ModelListRowState,
             order: SortOrder
         ) -> Bool {
             switch self {
@@ -824,7 +784,7 @@ struct IntegratedWorkspaceView: View {
 
             Divider()
 
-            let rows = sortedModelRows(from: modelRows(from: viewModel.visibleModels))
+            let rows = sortedModelRows(from: viewModel.modelListRowStates(from: viewModel.visibleModels))
             if rows.isEmpty {
                 modelEmptyState
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -842,7 +802,7 @@ struct IntegratedWorkspaceView: View {
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
-    private func modelTable(rows: [ModelTableRow], availableWidth: CGFloat, allowsWidthAnimation: Bool = false) -> some View {
+    private func modelTable(rows: [ModelListRowState], availableWidth: CGFloat, allowsWidthAnimation: Bool = false) -> some View {
         ScrollView(.vertical) {
             LazyVStack(alignment: .leading, spacing: 10) {
                 if availableWidth >= 850 {
@@ -987,7 +947,7 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
-    private func lightweightModelRow(for row: ModelTableRow, availableWidth: CGFloat) -> some View {
+    private func lightweightModelRow(for row: ModelListRowState, availableWidth: CGFloat) -> some View {
         let model = row.model
         let isSelected = viewModel.selectedModelID == model.id
         return singleLineModelCard(for: row, availableWidth: availableWidth)
@@ -1015,7 +975,7 @@ struct IntegratedWorkspaceView: View {
         .accessibilityIdentifier("integrated-model-row-\(model.id)")
     }
 
-    private func singleLineModelCard(for row: ModelTableRow, availableWidth: CGFloat) -> some View {
+    private func singleLineModelCard(for row: ModelListRowState, availableWidth: CGFloat) -> some View {
         let showsFullMetadata = availableWidth >= 840
         let showsMediumMetadata = availableWidth >= 640
         let showsStatusAction = availableWidth >= 380
@@ -1051,7 +1011,7 @@ struct IntegratedWorkspaceView: View {
         .frame(minHeight: 40)
     }
 
-    private func modelCardTitle(for row: ModelTableRow) -> some View {
+    private func modelCardTitle(for row: ModelListRowState) -> some View {
         let model = row.model
         return HStack(alignment: .top, spacing: 8) {
             modelStatusIndicator(for: row)
@@ -1080,7 +1040,7 @@ struct IntegratedWorkspaceView: View {
         }
     }
 
-    private func modelStatusIndicator(for row: ModelTableRow) -> some View {
+    private func modelStatusIndicator(for row: ModelListRowState) -> some View {
         Circle()
             .fill(modelStatusIndicatorColor(for: row))
             .frame(width: 8, height: 8)
@@ -1094,7 +1054,7 @@ struct IntegratedWorkspaceView: View {
             .accessibilityLabel(viewModel.integratedStatusText(for: model))
     }
 
-    private func modelStatusIndicatorColor(for row: ModelTableRow) -> Color {
+    private func modelStatusIndicatorColor(for row: ModelListRowState) -> Color {
         if row.isTransitioning {
             return .orange
         }
@@ -1200,7 +1160,7 @@ struct IntegratedWorkspaceView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func lightweightStatusActionButton(for row: ModelTableRow) -> some View {
+    private func lightweightStatusActionButton(for row: ModelListRowState) -> some View {
         let model = row.model
         let isInteractive = !row.isTransitioning && row.canUseStatusAction
         let isHovered = hoveredStatusModelID == model.id
@@ -3007,29 +2967,5 @@ private struct InspectorVisualEffectBackground: NSViewRepresentable {
         nsView.blendingMode = .behindWindow
         nsView.state = .active
         nsView.isEmphasized = false
-    }
-}
-
-private struct ModelTableRow: Identifiable {
-    let model: ModelConfig
-    let sizeText: String
-    let memoryText: String
-    let normalStatusText: String
-    let hoveredStatusText: String
-    let isTransitioning: Bool
-    let isLoaded: Bool
-    let isPortBusy: Bool
-    let canUseStatusAction: Bool
-    let isRecentlyAdded: Bool
-    let nameSortValue: String
-    let sizeSortValue: Double
-    let statusSortValue: Int
-    let endpointSortValue: String
-    let memorySortValue: Double
-    let autoUnloadSortValue: Int
-    let reasoningSortValue: Int
-
-    var id: ModelConfig.ID {
-        model.id
     }
 }

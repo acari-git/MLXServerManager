@@ -251,5 +251,20 @@ final class ModelOperationsSafetyTests: XCTestCase {
         XCTAssertEqual(viewModel.autoUnloadTableSortValue(for: largeModel), Int.max)
         XCTAssertEqual(viewModel.reasoningSortValue(for: smallModel), 0)
         XCTAssertEqual(viewModel.reasoningSortValue(for: largeModel), 1)
+
+        let rowStates = viewModel.modelListRowStates(from: [smallModel, largeModel])
+        XCTAssertEqual(rowStates.map(\.id), [smallModel.id, largeModel.id])
+        XCTAssertEqual(rowStates[0].sizeSortValue, viewModel.modelSizeSortValue(for: smallModel))
+        XCTAssertEqual(rowStates[1].sizeSortValue, viewModel.modelSizeSortValue(for: largeModel))
+        XCTAssertEqual(rowStates[0].endpointSortValue, viewModel.endpointSortValue(for: smallModel))
+        XCTAssertEqual(rowStates[1].endpointSortValue, viewModel.endpointSortValue(for: largeModel))
+        XCTAssertEqual(rowStates[0].autoUnloadSortValue, 45)
+        XCTAssertEqual(rowStates[1].autoUnloadSortValue, Int.max)
+        XCTAssertEqual(rowStates[0].reasoningSortValue, 0)
+        XCTAssertEqual(rowStates[1].reasoningSortValue, 1)
+        XCTAssertEqual(rowStates[0].memoryText, "-")
+        XCTAssertEqual(rowStates[1].memoryText, "-")
+        XCTAssertFalse(rowStates[0].isTransitioning)
+        XCTAssertFalse(rowStates[1].isTransitioning)
     }
 }
