@@ -211,8 +211,7 @@ final class AppViewModel: ObservableObject {
 
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
-    private let readyChecker: ReadyChecker
-    private let processRegistry: ModelProcessRegistry
+    private let serverLifecycleCoordinator: ServerLifecycleCoordinator
     private let memoryMonitor: MemoryMonitor
     private let systemMemorySnapshotProvider: () -> SystemMemorySnapshot
     private let availablePortFinder: AvailablePortFinder
@@ -345,8 +344,11 @@ final class AppViewModel: ObservableObject {
         )
         self.settingsStore = settingsStore ?? SettingsStore()
         self.portChecker = portChecker ?? PortChecker()
-        self.readyChecker = readyChecker ?? ReadyChecker()
-        self.processRegistry = ModelProcessRegistry(initialManager: processManager)
+        let resolvedReadyChecker = readyChecker ?? ReadyChecker()
+        self.serverLifecycleCoordinator = ServerLifecycleCoordinator(
+            processRegistry: ModelProcessRegistry(initialManager: processManager),
+            readyChecker: resolvedReadyChecker
+        )
         let resolvedMemoryMonitor = memoryMonitor ?? MemoryMonitor()
         self.memoryMonitor = resolvedMemoryMonitor
         self.systemMemorySnapshotProvider = systemMemorySnapshotProvider
@@ -355,7 +357,7 @@ final class AppViewModel: ObservableObject {
         self.setupDiagnostics = setupDiagnostics ?? SetupDiagnostics(
             settingsStore: self.settingsStore,
             portChecker: self.portChecker,
-            readyChecker: self.readyChecker
+            readyChecker: resolvedReadyChecker
         )
         self.modelProfileExportService = modelProfileExportService ?? ModelProfileExportService()
         self.modelProfileImportPreviewService = modelProfileImportPreviewService ?? ModelProfileImportPreviewService()
@@ -535,7 +537,7 @@ final class AppViewModel: ObservableObject {
             isPortBusy = false
         }
         let canUseStatusAction = isRunning
-            ? processRegistry.processIdentifier(for: model.id) != nil
+            ? serverLifecycleCoordinator.processIdentifier(for: model.id) != nil
             : blockingStartIssue(for: model, knownPortCheckResult: portCheckResult) == nil
         let sizeGigabytes = modelSizeGigabytes(for: model)
         let displayedMemoryGigabytes = isRunning ? memoryUsageByModelID[model.id] : nil
@@ -602,7 +604,7 @@ final class AppViewModel: ObservableObject {
     func startRequested(for model: ModelConfig) {
         selectedModelID = model.id
 
-        if processRegistry.processIdentifier(for: model.id) == nil {
+        if serverLifecycleCoordinator.processIdentifier(for: model.id) == nil {
             let assessment = memorySafetyAssessment(for: model)
             if assessment.requiresConfirmation {
                 pendingMemoryRiskModelID = model.id
@@ -1930,7 +1932,7 @@ final class AppViewModel: ObservableObject {
 
     func canUseStatusAction(for model: ModelConfig) -> Bool {
         if runningModelIDs.contains(model.id) {
-            return processRegistry.processIdentifier(for: model.id) != nil
+            return serverLifecycleCoordinator.processIdentifier(for: model.id) != nil
         }
 
         return canStartModel(model)
@@ -2328,17 +2330,17 @@ final class AppViewModel: ObservableObject {
     }
 
     var isManagedProcessRunning: Bool {
-        processRegistry.isAnyProcessRunning
+        serverLifecycleCoordinator.isAnyProcessRunning
     }
 
     var isSelectedModelManagedProcessRunning: Bool {
-        selectedModelID.map { processRegistry.isRunning($0) } ?? false
+        selectedModelID.map { serverLifecycleCoordinator.isRunning($0) } ?? false
     }
 
     var isProfileEditorRuntimeLocked: Bool {
         let originalModelID = profileEditorDraft.originalModelID
         guard !originalModelID.isEmpty else { return false }
-        return processRegistry.isRunning(originalModelID)
+        return serverLifecycleCoordinator.isRunning(originalModelID)
     }
 
     var isExternalServerDetected: Bool {
@@ -2399,7 +2401,7 @@ final class AppViewModel: ObservableObject {
     }
 
     private func refreshRunningProjection() {
-        runningModelIDs = processRegistry.runningProfileIDs
+        runningModelIDs = serverLifecycleCoordinator.runningProfileIDs
         if let selectedModelID, runningModelIDs.contains(selectedModelID) {
             runningModelID = selectedModelID
         } else {
@@ -2472,7 +2474,7 @@ final class AppViewModel: ObservableObject {
     }
 
     private func requestStop(for model: ModelConfig, logPrefix: String) {
-        guard let processIdentifier = processRegistry.processIdentifier(for: model.id) else {
+        guard let processIdentifier = serverLifecycleCoordinator.processIdentifier(for: model.id) else {
             clearRunningModel(modelID: model.id, logPrefix: logPrefix)
             appendLog("[\(logPrefix)] managed process is not running for \(model.displayName).")
             return
@@ -2482,7 +2484,7 @@ final class AppViewModel: ObservableObject {
         appendLog("[\(logPrefix)] requested for managed pid \(processIdentifier) (\(model.displayName))")
 
         Task {
-            let result = await processRegistry.stop(profileID: model.id)
+            let result = await serverLifecycleCoordinator.stop(profileID: model.id)
             _ = await handleStopResult(
                 result,
                 modelID: model.id,
@@ -2509,11 +2511,11 @@ final class AppViewModel: ObservableObject {
         appendLog("[restart] requested for \(selectedModel.modelID) at \(selectedModel.host):\(selectedModel.serverPort)")
 
         Task {
-            if let processIdentifier = processRegistry.processIdentifier(for: selectedModel.id) {
+            if let processIdentifier = serverLifecycleCoordinator.processIdentifier(for: selectedModel.id) {
                 setRuntimeState(.stopping(processIdentifier: processIdentifier), for: selectedModel.id)
                 appendLog("[restart] stopping managed pid \(processIdentifier)")
 
-                let stopResult = await processRegistry.stop(profileID: selectedModel.id)
+                let stopResult = await serverLifecycleCoordinator.stop(profileID: selectedModel.id)
                 let didStop = await handleStopResult(
                     stopResult,
                     modelID: selectedModel.id,
@@ -2580,7 +2582,7 @@ final class AppViewModel: ObservableObject {
         }
         let modelID = selectedModelIdentifier
         let targetBaseURL = baseURL
-        let managedProcessID = selectedModel.flatMap { processRegistry.processIdentifier(for: $0.id) }
+        let managedProcessID = selectedModel.flatMap { serverLifecycleCoordinator.processIdentifier(for: $0.id) }
         let chipName = systemProfilerHardwareInfo["Chip"] ?? "Apple Silicon"
         let memoryText = systemProfilerHardwareInfo["Memory"] ?? Self.formatMemoryGigabytes(Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824)
         let sessionRunner = benchmarkSessionRunner
@@ -2816,7 +2818,7 @@ final class AppViewModel: ObservableObject {
         appendLog("[ready] checking: http://\(host):\(port)/v1/models")
 
         Task {
-            let result = await readyChecker.check(
+            let result = await serverLifecycleCoordinator.checkReady(
                 host: host,
                 port: port,
                 expectedModelID: selectedModelIdentifier
@@ -3558,7 +3560,7 @@ final class AppViewModel: ObservableObject {
             let results = await setupDiagnostics.run(
                 settings: settings,
                 selectedModel: selectedModel,
-                managedProcessIdentifier: selectedModel.flatMap { processRegistry.processIdentifier(for: $0.id) }
+                managedProcessIdentifier: selectedModel.flatMap { serverLifecycleCoordinator.processIdentifier(for: $0.id) }
             )
 
             diagnosticsResults = results
@@ -4026,7 +4028,7 @@ final class AppViewModel: ObservableObject {
             return
         }
 
-        guard !processRegistry.isRunning(pendingDeleteModelID) else {
+        guard !serverLifecycleCoordinator.isRunning(pendingDeleteModelID) else {
             let message = Self.localizedText(language: settings.uiLanguage, english: "Stop this model before deleting its profile.", japanese: "このモデルを停止してからプロファイルを削除してください。")
             profileDeletionMessage = message
             isDeleteProfileConfirmationPresented = false
@@ -4343,7 +4345,7 @@ final class AppViewModel: ObservableObject {
         switch modelProfileValidator.validateProfileEdit(
             profileEditorDraft,
             existingModel: existingModel,
-            isRunning: processRegistry.isRunning(existingModel.id),
+            isRunning: serverLifecycleCoordinator.isRunning(existingModel.id),
             language: settings.uiLanguage
         ) {
         case let .valid(updatedModel):
@@ -4703,7 +4705,7 @@ final class AppViewModel: ObservableObject {
         appendLog("[external] forgot adopted external server. External process was not modified.")
 
         if let selectedModelID,
-           let processIdentifier = processRegistry.processIdentifier(for: selectedModelID) {
+           let processIdentifier = serverLifecycleCoordinator.processIdentifier(for: selectedModelID) {
             let endpoint = endpointForCurrentRuntimeState()
             runtimeState = .ready(
                 host: endpoint.host,
@@ -5107,7 +5109,7 @@ final class AppViewModel: ObservableObject {
     private func startManagedServer(model: ModelConfig, logPrefix: String) async -> Bool {
         let host = model.host
         let port = model.serverPort
-        if let processIdentifier = processRegistry.processIdentifier(for: model.id) {
+        if let processIdentifier = serverLifecycleCoordinator.processIdentifier(for: model.id) {
             let message = "A managed inference server process is already running with pid \(processIdentifier)."
             setRuntimeState(.ready(
                 host: host,
@@ -5186,7 +5188,7 @@ final class AppViewModel: ObservableObject {
         setRuntimeState(.starting(host: host, port: port), for: model.id)
 
         do {
-            let launchResult = try processRegistry.start(
+            let launchResult = try serverLifecycleCoordinator.start(
                 profileID: model.id,
                 request: request,
                 outputHandler: { [weak self] line in
@@ -5237,7 +5239,7 @@ final class AppViewModel: ObservableObject {
     private func managedEndpointConflict(
         for model: ModelConfig
     ) -> ManagedModelEndpointConflict? {
-        guard let endpoint = processRegistry.runningEndpoint(
+        guard let endpoint = serverLifecycleCoordinator.runningEndpoint(
             host: model.host,
             port: model.serverPort,
             excluding: model.id
@@ -5328,7 +5330,7 @@ final class AppViewModel: ObservableObject {
                 runtimeState = .ready(
                     host: fallbackHost,
                     port: fallbackPort,
-                    processIdentifier: selectedModel.flatMap { processRegistry.processIdentifier(for: $0.id) }
+                    processIdentifier: selectedModel.flatMap { serverLifecycleCoordinator.processIdentifier(for: $0.id) }
                 )
             }
             appendLog("[ready] ready: \(url.absoluteString) returned HTTP \(statusCode)")
@@ -5376,64 +5378,72 @@ final class AppViewModel: ObservableObject {
         modelID: ModelConfig.ID,
         expectedModelID: String
     ) async -> Bool {
-        appendLog("[ready] waiting for http://\(host):\(port)/v1/models")
-
-        for attempt in 1...10 {
-            guard processRegistry.processIdentifier(for: modelID) == processIdentifier else {
-                appendLog("[ready] wait ended because managed process is no longer running.")
-                return false
-            }
-
-            if case .stopping = runtimeStatesByModelID[modelID] {
-                appendLog("[ready] wait cancelled because stop was requested.")
-                return false
-            }
-
-            let result = await readyChecker.check(
-                host: host,
-                port: port,
-                expectedModelID: expectedModelID
-            )
-
-            switch result {
-            case let .ready(url, statusCode):
-                guard processRegistry.processIdentifier(for: modelID) == processIdentifier else {
-                    appendLog("[ready] ready response ignored because managed process is no longer running.")
-                    return false
+        let outcome = await serverLifecycleCoordinator.waitForReadyAfterStart(
+            profileID: modelID,
+            host: host,
+            port: port,
+            processIdentifier: processIdentifier,
+            expectedModelID: expectedModelID,
+            isStopRequested: { [weak self] in
+                guard let self else { return true }
+                if case .stopping = self.runtimeStatesByModelID[modelID] {
+                    return true
                 }
-
-                setRuntimeState(.ready(
+                return false
+            },
+            eventHandler: { [weak self] event in
+                self?.handleReadyWaitEvent(
+                    event,
+                    modelID: modelID,
                     host: host,
                     port: port,
                     processIdentifier: processIdentifier
-                ), for: modelID)
-                appendLog("[ready] ready after start: \(url.absoluteString) returned HTTP \(statusCode)")
-                return true
-            case let .notReady(url, statusCode):
-                appendLog("[ready] attempt \(attempt) not ready: \(url.absoluteString) returned HTTP \(statusCode)")
-            case let .invalidInput(message):
-                setRuntimeState(.readyCheckFailed(host: host, port: port, message: message), for: modelID)
-                appendLog("[ready] ready check failed: \(message)")
-                return false
-            case let .failed(url, message):
-                appendLog("[ready] attempt \(attempt) failed for \(url?.absoluteString ?? "\(host):\(port)"): \(message)")
-            case let .timedOut(url):
-                appendLog("[ready] attempt \(attempt) timed out: \(url.absoluteString)")
+                )
             }
+        )
+        return outcome.isReady
+    }
 
-            do {
-                try await Task.sleep(nanoseconds: 1_000_000_000)
-            } catch {
-                setRuntimeState(.unknown(message: "Ready wait was cancelled."), for: modelID)
-                appendLog("[ready] wait cancelled.")
-                return false
-            }
+    private func handleReadyWaitEvent(
+        _ event: ServerReadyWaitEvent,
+        modelID: ModelConfig.ID,
+        host: String,
+        port: Int,
+        processIdentifier: Int32
+    ) {
+        switch event {
+        case .waiting:
+            appendLog("[ready] waiting for http://\(host):\(port)/v1/models")
+        case .processNoLongerRunning:
+            appendLog("[ready] wait ended because managed process is no longer running.")
+        case .stopRequested:
+            appendLog("[ready] wait cancelled because stop was requested.")
+        case .readyResponseIgnored:
+            appendLog("[ready] ready response ignored because managed process is no longer running.")
+        case let .ready(url, statusCode):
+            setRuntimeState(.ready(
+                host: host,
+                port: port,
+                processIdentifier: processIdentifier
+            ), for: modelID)
+            appendLog("[ready] ready after start: \(url.absoluteString) returned HTTP \(statusCode)")
+        case let .notReady(attempt, url, statusCode):
+            appendLog("[ready] attempt \(attempt) not ready: \(url.absoluteString) returned HTTP \(statusCode)")
+        case let .invalidInput(message):
+            setRuntimeState(.readyCheckFailed(host: host, port: port, message: message), for: modelID)
+            appendLog("[ready] ready check failed: \(message)")
+        case let .failed(attempt, url, message):
+            appendLog("[ready] attempt \(attempt) failed for \(url?.absoluteString ?? "\(host):\(port)"): \(message)")
+        case let .timedOut(attempt, url):
+            appendLog("[ready] attempt \(attempt) timed out: \(url.absoluteString)")
+        case .cancelled:
+            setRuntimeState(.unknown(message: "Ready wait was cancelled."), for: modelID)
+            appendLog("[ready] wait cancelled.")
+        case .exhausted:
+            let message = "Ready check did not succeed after launch."
+            setRuntimeState(.unknown(message: message), for: modelID)
+            appendLog("[ready] \(message)")
         }
-
-        let message = "Ready check did not succeed after launch."
-        setRuntimeState(.unknown(message: message), for: modelID)
-        appendLog("[ready] \(message)")
-        return false
     }
 
     private func handleStopResult(
@@ -5623,7 +5633,7 @@ final class AppViewModel: ObservableObject {
         let baseURL = "http://\(host):\(port)/v1"
         appendLog("[\(logPrefix)] checking for external OpenAI-compatible server at \(baseURL)/models")
 
-        let result = await readyChecker.check(host: host, port: port)
+        let result = await serverLifecycleCoordinator.checkReady(host: host, port: port)
 
         switch result {
         case let .ready(url, statusCode):
@@ -5765,7 +5775,7 @@ final class AppViewModel: ObservableObject {
         modelID: ModelConfig.ID,
         processIdentifier: Int32
     ) -> Bool {
-        guard processRegistry.processIdentifier(for: modelID) == processIdentifier else {
+        guard serverLifecycleCoordinator.processIdentifier(for: modelID) == processIdentifier else {
             memoryUsageByModelID[modelID] = nil
             memoryBreakdownByModelID[modelID] = nil
             refreshAggregateMemoryProjection()
