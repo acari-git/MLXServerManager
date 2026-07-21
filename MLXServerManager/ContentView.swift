@@ -32,9 +32,18 @@ struct ContentView: View {
                     )
                     .padding(16)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if let message = viewModel.profileDeletionMessage {
+                    ProfileDeletionMessageSnackbar(
+                        message: message,
+                        language: viewModel.settings.uiLanguage,
+                        onDismiss: viewModel.dismissProfileDeletionMessage
+                    )
+                    .padding(16)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             .animation(.spring(response: 0.30, dampingFraction: 0.88), value: viewModel.profileDeletionUndoState?.id)
+            .animation(.spring(response: 0.30, dampingFraction: 0.88), value: viewModel.profileDeletionMessage)
         .confirmationDialog(
             t("Delete Model Profile?", "モデルプロファイルを削除しますか？"),
             isPresented: $viewModel.isDeleteProfileConfirmationPresented,
@@ -58,6 +67,19 @@ struct ContentView: View {
             ))
         }
         .alert(
+            viewModel.networkExposureConfirmationTitle,
+            isPresented: $viewModel.isNetworkExposureStartConfirmationPresented
+        ) {
+            Button(t("Start Anyway", "このまま起動"), role: .destructive) {
+                viewModel.confirmNetworkExposureStart()
+            }
+            Button(strings.text(.cancel), role: .cancel) {
+                viewModel.cancelNetworkExposureStart()
+            }
+        } message: {
+            Text(viewModel.networkExposureConfirmationDetail)
+        }
+        .alert(
             viewModel.memoryRiskConfirmationTitle,
             isPresented: $viewModel.isMemoryRiskStartConfirmationPresented
         ) {
@@ -78,9 +100,7 @@ struct ContentView: View {
                 draft: $viewModel.profileEditorDraft,
                 title: t("Edit Model Profile", "モデルプロファイルを編集"),
                 saveButtonTitle: t("Save Profile", "プロファイルを保存"),
-                noticeMessage: viewModel.isProfileEditorRuntimeLocked
-                    ? t("Runtime fields are locked while the managed server is running.", "管理中サーバーの実行中はランタイム項目を編集できません。")
-                    : nil,
+                noticeMessage: viewModel.profileEditorNoticeMessage,
                 message: viewModel.profileEditorMessage,
                 runtimeFieldsLocked: viewModel.isProfileEditorRuntimeLocked,
                 kvCacheEnvironment: viewModel.profileEditorKVCacheEnvironment,
@@ -169,6 +189,10 @@ private struct ProfileDeletionUndoSnackbar: View {
                 Button(t("Undo", "元に戻す"), action: onUndo)
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
+                    .accessibilityHint(t(
+                        "Restore the deleted model profile.",
+                        "削除したモデルプロファイルを復元します。"
+                    ))
 
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
@@ -176,6 +200,7 @@ private struct ProfileDeletionUndoSnackbar: View {
                 }
                 .buttonStyle(.borderless)
                 .help(t("Dismiss", "閉じる"))
+                .accessibilityLabel(t("Dismiss", "閉じる"))
             }
 
             TimelineView(.periodic(from: .now, by: 0.05)) { context in
@@ -183,6 +208,14 @@ private struct ProfileDeletionUndoSnackbar: View {
                 ProgressView(value: min(max(remaining / 4, 0), 1))
                     .progressViewStyle(.linear)
                     .tint(.accentColor)
+                    .accessibilityLabel(t(
+                        "Time remaining to undo deletion",
+                        "削除を元に戻せる残り時間"
+                    ))
+                    .accessibilityValue(t(
+                        "About \(Int(ceil(remaining))) seconds",
+                        "約\(Int(ceil(remaining)))秒"
+                    ))
             }
         }
         .padding(12)
@@ -197,6 +230,49 @@ private struct ProfileDeletionUndoSnackbar: View {
         )
         .shadow(color: .black.opacity(0.22), radius: 14, y: 6)
         .accessibilityElement(children: .contain)
+    }
+}
+
+private struct ProfileDeletionMessageSnackbar: View {
+    let message: String
+    let language: AppLanguage
+    let onDismiss: () -> Void
+
+    private var strings: AppLocalization {
+        AppLocalization(language: language)
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "info.circle")
+                .foregroundStyle(.secondary)
+
+            Text(message)
+                .font(.callout)
+                .lineLimit(4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.borderless)
+            .help(strings.text(english: "Dismiss", japanese: "閉じる"))
+            .accessibilityLabel(strings.text(english: "Dismiss", japanese: "閉じる"))
+        }
+        .padding(12)
+        .frame(width: 360)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.75), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.22), radius: 14, y: 6)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("profile-deletion-message")
     }
 }
 

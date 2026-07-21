@@ -90,7 +90,7 @@ final class MultiModelMemoryAdvisorTests: XCTestCase {
 
 @MainActor
 final class MultiModelMemoryStartFlowTests: XCTestCase {
-    func testCriticalAssessmentRequiresExplicitConfirmationBeforeStart() throws {
+    func testCriticalAssessmentRequiresExplicitConfirmationBeforeStart() async throws {
         let temporaryDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("MLXServerManagerMemoryStartTests-\(UUID().uuidString)", isDirectory: true)
         let modelDirectory = temporaryDirectory.appendingPathComponent("model", isDirectory: true)
@@ -145,6 +145,10 @@ final class MultiModelMemoryStartFlowTests: XCTestCase {
         )
 
         viewModel.startRequested(for: model)
+
+        for _ in 0..<100 where !viewModel.isMemoryRiskStartConfirmationPresented {
+            try await Task.sleep(for: .milliseconds(10))
+        }
 
         XCTAssertTrue(viewModel.isMemoryRiskStartConfirmationPresented)
         XCTAssertEqual(viewModel.pendingMemoryRiskAssessment?.level, .critical)

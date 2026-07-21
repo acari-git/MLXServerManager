@@ -215,11 +215,61 @@ final class ModelProcessRegistryTests: XCTestCase {
         XCTAssertEqual(registry.runningProfileIDs, ["second"])
     }
 
+    func testDelayedTerminationFromPreviousLaunchDoesNotRemoveRestartedProfile() throws {
+        let manager = FakeModelProcessManager(processIdentifier: 101)
+        let registry = ModelProcessRegistry(managerFactory: { manager })
+        var deliveredTerminations: [(launch: String, status: Int32)] = []
+
+        _ = try registry.start(
+            profileID: "first",
+            request: Self.request(modelID: "first", host: "127.0.0.1", port: 8000),
+            outputHandler: { _ in },
+            terminationHandler: { status in
+                deliveredTerminations.append(("previous", status))
+            }
+        )
+
+        manager.prepareNextStart(processIdentifier: 202)
+        _ = try registry.start(
+            profileID: "first",
+            request: Self.request(modelID: "first", host: "localhost", port: 8100),
+            outputHandler: { _ in },
+            terminationHandler: { status in
+                deliveredTerminations.append(("current", status))
+            }
+        )
+
+        manager.deliverTermination(forLaunchAt: 0, status: 0)
+
+        XCTAssertTrue(deliveredTerminations.isEmpty)
+        XCTAssertEqual(registry.processIdentifier(for: "first"), 202)
+        XCTAssertEqual(
+            registry.runningEndpoint(host: "127.0.0.1", port: 8100),
+            ManagedProcessEndpoint(
+                profileID: "first",
+                host: "localhost",
+                port: 8100,
+                processIdentifier: 202
+            )
+        )
+
+        manager.deliverTermination(forLaunchAt: 1, status: 9)
+
+        XCTAssertEqual(deliveredTerminations.count, 1)
+        XCTAssertEqual(deliveredTerminations.first?.launch, "current")
+        XCTAssertEqual(deliveredTerminations.first?.status, 9)
+        XCTAssertNil(registry.processIdentifier(for: "first"))
+    }
+
     private static func request(modelID: String, port: Int) -> ModelLaunchRequest {
+        request(modelID: modelID, host: "127.0.0.1", port: port)
+    }
+
+    private static func request(modelID: String, host: String, port: Int) -> ModelLaunchRequest {
         ModelLaunchRequest(
             executablePath: "/usr/bin/true",
             modelID: modelID,
-            host: "127.0.0.1",
+            host: host,
             port: port,
             enableThinking: false,
             advancedLaunchOptions: nil
@@ -229,7 +279,8 @@ final class ModelProcessRegistryTests: XCTestCase {
 
 private final class FakeModelProcessManager: ModelProcessManaging {
     private(set) var managedProcessIdentifier: Int32?
-    private var terminationHandler: (@MainActor @Sendable (Int32) -> Void)?
+    private var nextProcessIdentifier: Int32?
+    private var terminationHandlers: [@MainActor @Sendable (Int32) -> Void] = []
 
     init(processIdentifier: Int32) {
         managedProcessIdentifier = processIdentifier
@@ -240,7 +291,11 @@ private final class FakeModelProcessManager: ModelProcessManaging {
         outputHandler: @escaping @Sendable (String) -> Void,
         terminationHandler: @escaping @MainActor @Sendable (Int32) -> Void
     ) throws -> ModelLaunchResult {
-        self.terminationHandler = terminationHandler
+        if let nextProcessIdentifier {
+            managedProcessIdentifier = nextProcessIdentifier
+            self.nextProcessIdentifier = nil
+        }
+        terminationHandlers.append(terminationHandler)
         guard let managedProcessIdentifier else {
             throw ModelProcessManagerError.launchFailed("No fake process identifier.")
         }
@@ -268,6 +323,16 @@ private final class FakeModelProcessManager: ModelProcessManaging {
     @MainActor
     func terminate(status: Int32) {
         managedProcessIdentifier = nil
-        terminationHandler?(status)
+        terminationHandlers.last?(status)
+    }
+
+    func prepareNextStart(processIdentifier: Int32) {
+        managedProcessIdentifier = nil
+        nextProcessIdentifier = processIdentifier
+    }
+
+    @MainActor
+    func deliverTermination(forLaunchAt index: Int, status: Int32) {
+        terminationHandlers[index](status)
     }
 }

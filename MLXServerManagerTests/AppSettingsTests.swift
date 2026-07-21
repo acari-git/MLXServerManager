@@ -149,7 +149,7 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(loaded.models.map(\.modelID), [replacement.modelID])
     }
 
-    func testCorruptedCombinedSnapshotFallsBackToLegacyFiles() throws {
+    func testCorruptedCombinedSnapshotRecoversFromAuthoritativeBackupInsteadOfLegacyFiles() throws {
         let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
         defer {
             if let url = try? store.settingsDirectoryURL {
@@ -160,11 +160,365 @@ final class AppSettingsTests: XCTestCase {
         var settings = AppSettings.defaults
         settings.defaultPort = 8444
         try store.save(settings: settings, models: ModelConfig.defaults)
+
+        var staleSettings = AppSettings.defaults
+        staleSettings.defaultPort = 9_999
+        try JSONEncoder().encode(staleSettings).write(to: store.settingsFileURL, options: [.atomic])
         try Data("not-json".utf8).write(to: store.stateSnapshotFileURL, options: [.atomic])
 
         let loaded = try store.load()
         XCTAssertEqual(loaded.settings.defaultPort, 8444)
         XCTAssertEqual(loaded.models.map(\.modelID), ModelConfig.defaults.map(\.modelID))
+        XCTAssertNotNil(loaded.recoveryNotice)
+
+        let repaired = try store.load()
+        XCTAssertEqual(repaired.settings.defaultPort, 8444)
+        XCTAssertNil(repaired.recoveryNotice)
+    }
+
+    func testCorruptedAuthoritativeStateWithoutBackupDoesNotLoadStaleLegacyMirrors() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
+        defer {
+            if let url = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        let model = ModelConfig(
+            modelID: "owner/recoverable-model",
+            displayName: "Recoverable",
+            family: "Test",
+            quantization: "4bit",
+            localName: "recoverable-model",
+            host: "127.0.0.1",
+            serverPort: 8_444,
+            enableThinking: false,
+            notes: ""
+        )
+        try store.save(settings: .defaults, models: [model])
+        try Data("not-json".utf8).write(to: store.stateSnapshotFileURL, options: [.atomic])
+        try FileManager.default.removeItem(at: store.stateSnapshotBackupFileURL)
+
+        XCTAssertThrowsError(try store.load()) { error in
+            guard case SettingsStoreError.authoritativeStateCorrupted = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+        }
+    }
+
+    func testCorruptedAuthoritativeStateAndBackupDoesNotLoadLegacyMirrors() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
+        defer {
+            if let url = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        var settings = AppSettings.defaults
+        settings.defaultPort = 8_555
+        try store.save(settings: settings, models: ModelConfig.defaults)
+        try Data("not-json".utf8).write(to: store.stateSnapshotFileURL, options: [.atomic])
+        try Data("also-not-json".utf8).write(to: store.stateSnapshotBackupFileURL, options: [.atomic])
+
+        XCTAssertThrowsError(try store.load()) { error in
+            guard case SettingsStoreError.authoritativeStateCorrupted = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+        }
+    }
+
+    func testFailedLoadBlocksLaterSaveWithoutChangingAuthoritativeFiles() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
+        defer {
+            if let url = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        try store.save(settings: .defaults, models: ModelConfig.defaults)
+        let corruptState = Data("not-json".utf8)
+        let corruptBackup = Data("also-not-json".utf8)
+        try corruptState.write(to: store.stateSnapshotFileURL, options: [.atomic])
+        try corruptBackup.write(to: store.stateSnapshotBackupFileURL, options: [.atomic])
+
+        XCTAssertThrowsError(try store.load())
+
+        var replacementSettings = AppSettings.defaults
+        replacementSettings.defaultPort = 9_999
+        XCTAssertThrowsError(
+            try store.save(settings: replacementSettings, models: [])
+        ) { error in
+            guard case SettingsStoreError.saveBlockedAfterLoadFailure = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+        }
+
+        XCTAssertEqual(try Data(contentsOf: store.stateSnapshotFileURL), corruptState)
+        XCTAssertEqual(try Data(contentsOf: store.stateSnapshotBackupFileURL), corruptBackup)
+    }
+
+    func testWriteBlockRemainsLatchedAcrossStoreInstancesAfterFilesAreExternallyRepaired() throws {
+        let appDirectoryName = "MLXServerManagerTests-\(UUID().uuidString)"
+        let store = SettingsStore(appDirectoryName: appDirectoryName)
+        defer {
+            if let url = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        var originalSettings = AppSettings.defaults
+        originalSettings.defaultPort = 8_123
+        try store.save(settings: originalSettings, models: ModelConfig.defaults)
+        let validState = try Data(contentsOf: store.stateSnapshotFileURL)
+        let validBackup = try Data(contentsOf: store.stateSnapshotBackupFileURL)
+        try Data("not-json".utf8).write(to: store.stateSnapshotFileURL, options: [.atomic])
+        try Data("also-not-json".utf8).write(to: store.stateSnapshotBackupFileURL, options: [.atomic])
+        XCTAssertThrowsError(try store.load())
+
+        try validState.write(to: store.stateSnapshotFileURL, options: [.atomic])
+        try validBackup.write(to: store.stateSnapshotBackupFileURL, options: [.atomic])
+        XCTAssertEqual(try store.load().settings.defaultPort, 8_123)
+        XCTAssertThrowsError(try store.save(settings: .defaults, models: [])) { error in
+            guard case SettingsStoreError.saveBlockedAfterLoadFailure = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+        }
+
+        let secondStore = SettingsStore(appDirectoryName: appDirectoryName)
+        XCTAssertEqual(try secondStore.load().settings.defaultPort, 8_123)
+        XCTAssertThrowsError(try secondStore.save(settings: .defaults, models: [])) { error in
+            guard case SettingsStoreError.saveBlockedAfterLoadFailure = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+        }
+    }
+
+    func testCorruptedLegacySettingsBlocksSaveAndPreservesLegacyFiles() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
+        defer {
+            if let url = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+        try FileManager.default.createDirectory(
+            at: store.settingsDirectoryURL,
+            withIntermediateDirectories: true
+        )
+        let corruptSettings = Data("not-json".utf8)
+        let validModels = try JSONEncoder().encode(ModelConfig.defaults)
+        try corruptSettings.write(to: store.settingsFileURL)
+        try validModels.write(to: store.modelsFileURL)
+
+        XCTAssertThrowsError(try store.load())
+        XCTAssertThrowsError(try store.save(settings: .defaults, models: [])) { error in
+            guard case SettingsStoreError.saveBlockedAfterLoadFailure = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+        }
+        XCTAssertEqual(try Data(contentsOf: store.settingsFileURL), corruptSettings)
+        XCTAssertEqual(try Data(contentsOf: store.modelsFileURL), validModels)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: try store.stateSnapshotFileURL.path))
+    }
+
+    func testCorruptedLegacyModelsBlocksSaveAndPreservesLegacyFiles() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
+        defer {
+            if let url = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+        try FileManager.default.createDirectory(
+            at: store.settingsDirectoryURL,
+            withIntermediateDirectories: true
+        )
+        let validSettings = try JSONEncoder().encode(AppSettings.defaults)
+        let corruptModels = Data("not-json".utf8)
+        try validSettings.write(to: store.settingsFileURL)
+        try corruptModels.write(to: store.modelsFileURL)
+
+        XCTAssertThrowsError(try store.load())
+        XCTAssertThrowsError(try store.save(settings: .defaults, models: [])) { error in
+            guard case SettingsStoreError.saveBlockedAfterLoadFailure = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+        }
+        XCTAssertEqual(try Data(contentsOf: store.settingsFileURL), validSettings)
+        XCTAssertEqual(try Data(contentsOf: store.modelsFileURL), corruptModels)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: try store.stateSnapshotFileURL.path))
+    }
+
+    func testSettingsTransactionsSerializeSaveAndFailedLoad() throws {
+        let coordinator = SettingsStoreTransactionCoordinator()
+        let saveStarted = DispatchSemaphore(value: 0)
+        let allowSaveToFinish = DispatchSemaphore(value: 0)
+        let loadStarted = DispatchSemaphore(value: 0)
+        let saveFinished = expectation(description: "save finished")
+        let loadFinished = expectation(description: "load finished")
+
+        DispatchQueue.global().async {
+            _ = try? coordinator.performSave {
+                saveStarted.signal()
+                allowSaveToFinish.wait()
+            }
+            saveFinished.fulfill()
+        }
+        XCTAssertEqual(saveStarted.wait(timeout: .now() + 2), .success)
+
+        DispatchQueue.global().async {
+            do {
+                let _: Void = try coordinator.performLoad {
+                    loadStarted.signal()
+                    throw NSError(domain: "AppSettingsTests", code: 1)
+                }
+            } catch {
+                // The failed read is the state transition under test.
+            }
+            loadFinished.fulfill()
+        }
+        XCTAssertEqual(loadStarted.wait(timeout: .now() + 0.05), .timedOut)
+        allowSaveToFinish.signal()
+        wait(for: [saveFinished, loadFinished], timeout: 2)
+        XCTAssertEqual(loadStarted.wait(timeout: .now()), .success)
+
+        XCTAssertThrowsError(try coordinator.performSave {}) { error in
+            guard case SettingsStoreError.saveBlockedAfterLoadFailure = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+        }
+    }
+
+    func testLegacyMirrorsLoadWhenNoAuthoritativeStateExists() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
+        defer {
+            if let url = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        try FileManager.default.createDirectory(
+            at: store.settingsDirectoryURL,
+            withIntermediateDirectories: true
+        )
+        var settings = AppSettings.defaults
+        settings.defaultPort = 8_555
+        let model = ModelConfig(
+            modelID: "owner/legacy-model",
+            displayName: "Legacy",
+            family: "Test",
+            quantization: "4bit",
+            localName: "legacy-model",
+            host: "127.0.0.1",
+            serverPort: 8_555,
+            enableThinking: false,
+            notes: ""
+        )
+        try JSONEncoder().encode(settings).write(to: store.settingsFileURL, options: [.atomic])
+        try JSONEncoder().encode([model]).write(to: store.modelsFileURL, options: [.atomic])
+
+        let loaded = try store.load()
+
+        XCTAssertEqual(loaded.settings.defaultPort, 8_555)
+        XCTAssertEqual(loaded.models.map(\.modelID), [model.modelID])
+        XCTAssertFalse(loaded.usedDefaults)
+        XCTAssertNil(loaded.recoveryNotice)
+    }
+
+    func testMissingPrimarySnapshotRecoversFromBackup() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
+        defer {
+            if let url = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        var settings = AppSettings.defaults
+        settings.defaultPort = 8_777
+        try store.save(settings: settings, models: ModelConfig.defaults)
+        try FileManager.default.removeItem(at: store.stateSnapshotFileURL)
+
+        let loaded = try store.load()
+
+        XCTAssertEqual(loaded.settings.defaultPort, 8_777)
+        XCTAssertNotNil(loaded.recoveryNotice)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: try store.stateSnapshotFileURL.path))
+    }
+
+    func testMirrorWriteFailureIsNonfatalAfterAuthoritativeSnapshotIsSaved() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
+        defer {
+            if let url = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        try FileManager.default.createDirectory(
+            at: store.settingsFileURL,
+            withIntermediateDirectories: true
+        )
+        var settings = AppSettings.defaults
+        settings.defaultPort = 8_666
+
+        let outcome = try store.save(settings: settings, models: ModelConfig.defaults)
+        let loaded = try store.load()
+
+        XCTAssertTrue(outcome.hasWarnings)
+        XCTAssertEqual(outcome.mirrorWarnings.count, 1)
+        XCTAssertTrue(outcome.mirrorWarnings[0].hasPrefix("settings.json:"))
+        XCTAssertEqual(loaded.settings.defaultPort, 8_666)
+        XCTAssertEqual(loaded.models, ModelConfig.defaults)
+    }
+
+    func testBackupWriteFailureIsReportedWithoutInvalidatingPrimarySnapshot() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
+        defer {
+            if let url = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        try FileManager.default.createDirectory(
+            at: store.stateSnapshotBackupFileURL,
+            withIntermediateDirectories: true
+        )
+        var settings = AppSettings.defaults
+        settings.defaultPort = 8_888
+
+        let outcome = try store.save(settings: settings, models: ModelConfig.defaults)
+        let loaded = try store.load()
+
+        XCTAssertTrue(outcome.hasWarnings)
+        XCTAssertEqual(outcome.recoveryWarnings.count, 1)
+        XCTAssertTrue(outcome.recoveryWarnings[0].hasPrefix("settings-state.backup.json:"))
+        XCTAssertEqual(loaded.settings.defaultPort, 8_888)
+    }
+
+    func testUnsupportedAuthoritativeSchemaDoesNotFallBackOrOverwriteState() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
+        defer {
+            if let url = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        try store.save(settings: .defaults, models: ModelConfig.defaults)
+        var json = String(decoding: try Data(contentsOf: store.stateSnapshotFileURL), as: UTF8.self)
+        json = json.replacingOccurrences(of: "\"schemaVersion\" : 1", with: "\"schemaVersion\" : 999")
+        try Data(json.utf8).write(to: store.stateSnapshotFileURL, options: [.atomic])
+
+        XCTAssertThrowsError(try store.load()) { error in
+            guard case SettingsStoreError.unsupportedStateSchemaVersion(999) = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+        }
+
+        let futureState = try Data(contentsOf: store.stateSnapshotFileURL)
+        XCTAssertTrue(String(decoding: futureState, as: UTF8.self).contains("999"))
+        XCTAssertThrowsError(try store.save(settings: .defaults, models: [])) { error in
+            guard case SettingsStoreError.saveBlockedAfterLoadFailure = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+        }
+        XCTAssertEqual(try Data(contentsOf: store.stateSnapshotFileURL), futureState)
     }
 
     func testSettingsStorePersistsBenchmarkResultsSeparately() throws {

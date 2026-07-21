@@ -49,8 +49,10 @@ struct SettingsSurfaceView: View {
     }
 
     private func saveDraftSettings() {
-        viewModel.settings = draftSettings
-        viewModel.saveSettingsRequested()
-        savedSettingsSnapshot = draftSettings
+        if viewModel.saveSettingsRequested(draftSettings) {
+            savedSettingsSnapshot = draftSettings
+        } else {
+            viewModel.settings = savedSettingsSnapshot
+        }
     }
 }

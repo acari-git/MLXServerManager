@@ -53,7 +53,8 @@ final class LaunchCommandBuilderTests: XCTestCase {
         )
 
         XCTAssertTrue(command.contains("--chat-template-args '{\"enable_thinking\":false}'"))
-        XCTAssertTrue(command.contains("--temperature 0.2"))
+        XCTAssertTrue(command.contains("--temp 0.2"))
+        XCTAssertFalse(command.contains("--temperature"))
         XCTAssertTrue(command.contains("--top-p 0.9"))
         XCTAssertTrue(command.contains("--trust-remote-code"))
     }

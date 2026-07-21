@@ -75,6 +75,45 @@ final class ModelStartPreflightEvaluatorTests: XCTestCase {
         XCTAssertNil(issue)
     }
 
+    func testContentValidationBlocksIncompleteLocalModel() throws {
+        let modelDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: modelDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: modelDirectory) }
+
+        let issue = evaluator.evaluateLocal(
+            model: makeModel(modelID: modelDirectory.path),
+            executablePath: "/usr/bin/true",
+            validateModelContents: true
+        )
+
+        XCTAssertEqual(
+            issue,
+            .incompleteModelDirectory(path: modelDirectory.path, issue: .missingConfiguration)
+        )
+        XCTAssertTrue(issue?.launchMessage(language: .japanese).contains("config.json") == true)
+    }
+
+    func testContentValidationAllowsCompleteLocalModel() throws {
+        let modelDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: modelDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: modelDirectory) }
+        try Data(#"{"model_type":"test"}"#.utf8)
+            .write(to: modelDirectory.appendingPathComponent("config.json"))
+        try Data(#"{"version":"1.0"}"#.utf8)
+            .write(to: modelDirectory.appendingPathComponent("tokenizer.json"))
+        try Data([1]).write(to: modelDirectory.appendingPathComponent("model.safetensors"))
+
+        let issue = evaluator.evaluateLocal(
+            model: makeModel(modelID: modelDirectory.path),
+            executablePath: "/usr/bin/true",
+            validateModelContents: true
+        )
+
+        XCTAssertNil(issue)
+    }
+
     func testBusyPortRetainsLocalizedDiagnostic() {
         let issue = evaluator.evaluate(
             model: makeModel(modelID: "owner/model"),

@@ -85,10 +85,28 @@ protocol ModelProcessManaging: AnyObject {
 }
 
 final class ModelProcessManager: ModelProcessManaging {
+    private static let minimumForcedTerminationReapTimeout: TimeInterval = 1
+
+    private struct ProcessCompletionState {
+        let process: Process
+        let stdoutPipe: Pipe
+        let stderrPipe: Pipe
+        let lineBuffer: LineStreamBuffer
+        let outputHandler: @Sendable (String) -> Void
+        let terminationHandler: @MainActor @Sendable (Int32) -> Void
+        var terminationStatus: Int32?
+        var stdoutReachedEOF = false
+        var stderrReachedEOF = false
+    }
+
     private var process: Process?
-    private var stdoutPipe: Pipe?
-    private var stderrPipe: Pipe?
-    private let lineBuffer = LineStreamBuffer(maximumLinesPerLabel: 200)
+    private var completionStates: [ObjectIdentifier: ProcessCompletionState] = [:]
+    private var outputDrainTimeoutTasks: [ObjectIdentifier: Task<Void, Never>] = [:]
+    private let outputDrainTimeoutNanoseconds: UInt64
+
+    init(outputDrainTimeout: TimeInterval = 2) {
+        outputDrainTimeoutNanoseconds = Self.nanoseconds(for: outputDrainTimeout)
+    }
 
     var managedProcessIdentifier: Int32? {
         guard let process, process.isRunning else {
@@ -126,34 +144,47 @@ final class ModelProcessManager: ModelProcessManaging {
 
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
+        let lineBuffer = LineStreamBuffer(maximumLinesPerLabel: 200)
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
-        lineBuffer.reset()
-        configurePipe(stdoutPipe, label: "stdout", outputHandler: outputHandler)
-        configurePipe(stderrPipe, label: "stderr", outputHandler: outputHandler)
+        let processIdentifier = ObjectIdentifier(process)
+        completionStates[processIdentifier] = ProcessCompletionState(
+            process: process,
+            stdoutPipe: stdoutPipe,
+            stderrPipe: stderrPipe,
+            lineBuffer: lineBuffer,
+            outputHandler: outputHandler,
+            terminationHandler: terminationHandler
+        )
+        self.process = process
+        configurePipe(
+            stdoutPipe,
+            process: process,
+            lineBuffer: lineBuffer,
+            label: "stdout",
+            outputHandler: outputHandler
+        )
+        configurePipe(
+            stderrPipe,
+            process: process,
+            lineBuffer: lineBuffer,
+            label: "stderr",
+            outputHandler: outputHandler
+        )
 
         process.terminationHandler = { [weak self] process in
             let terminationStatus = process.terminationStatus
-            Task { @MainActor in
-                self?.flushPendingOutput(outputHandler: outputHandler)
-                self?.clearManagedProcessIfMatching(process)
-                terminationHandler(terminationStatus)
+            Task { @MainActor [weak self, process] in
+                self?.recordTermination(status: terminationStatus, for: process)
             }
         }
 
         do {
             try process.run()
         } catch {
-            stdoutPipe.fileHandleForReading.readabilityHandler = nil
-            stderrPipe.fileHandleForReading.readabilityHandler = nil
-            try? stdoutPipe.fileHandleForReading.close()
-            try? stderrPipe.fileHandleForReading.close()
+            discardCompletionState(for: process)
             throw ModelProcessManagerError.launchFailed(error.localizedDescription)
         }
-
-        self.process = process
-        self.stdoutPipe = stdoutPipe
-        self.stderrPipe = stderrPipe
 
         return ModelLaunchResult(
             processIdentifier: process.processIdentifier,
@@ -187,7 +218,7 @@ final class ModelProcessManager: ModelProcessManaging {
         guard let advancedOptions else {
             return arguments
         }
-        appendValue(advancedOptions.defaultTemperature, flag: "--temperature", to: &arguments)
+        appendValue(advancedOptions.defaultTemperature, flag: "--temp", to: &arguments)
         appendValue(advancedOptions.defaultTopP, flag: "--top-p", to: &arguments)
         appendValue(advancedOptions.defaultTopK, flag: "--top-k", to: &arguments)
         appendValue(advancedOptions.defaultMinP, flag: "--min-p", to: &arguments)
@@ -202,7 +233,10 @@ final class ModelProcessManager: ModelProcessManaging {
 
         if let rawExtraArgs = advancedOptions.rawExtraArgs,
            let parsedArguments = try? ShellArgumentParser.parse(rawExtraArgs) {
-            arguments.append(contentsOf: parsedArguments)
+            arguments.append(contentsOf: ManagedLaunchArgumentPolicy.removingForbiddenArguments(
+                from: parsedArguments,
+                backend: .mlxLM
+            ))
         }
 
         return arguments
@@ -241,7 +275,10 @@ final class ModelProcessManager: ModelProcessManaging {
 
         if let rawExtraArgs = options.rawExtraArgs,
            let parsedArguments = try? ShellArgumentParser.parse(rawExtraArgs) {
-            arguments.append(contentsOf: parsedArguments)
+            arguments.append(contentsOf: ManagedLaunchArgumentPolicy.removingForbiddenArguments(
+                from: parsedArguments,
+                backend: .rapidMLX
+            ))
         }
 
         return arguments
@@ -262,7 +299,6 @@ final class ModelProcessManager: ModelProcessManaging {
         }
 
         guard process.isRunning else {
-            clearManagedProcessIfMatching(process)
             return .notRunning
         }
 
@@ -271,7 +307,6 @@ final class ModelProcessManager: ModelProcessManaging {
 
         if await waitForExit(process, timeout: gracefulTimeout) {
             let terminationStatus = process.terminationStatus
-            clearManagedProcessIfMatching(process)
             return .stopped(
                 processIdentifier: processIdentifier,
                 terminationStatus: terminationStatus,
@@ -285,7 +320,6 @@ final class ModelProcessManager: ModelProcessManaging {
 
         if await waitForExit(process, timeout: interruptTimeout) {
             let terminationStatus = process.terminationStatus
-            clearManagedProcessIfMatching(process)
             return .stopped(
                 processIdentifier: processIdentifier,
                 terminationStatus: terminationStatus,
@@ -297,9 +331,12 @@ final class ModelProcessManager: ModelProcessManaging {
             Darwin.kill(processIdentifier, SIGKILL)
         }
 
-        if await waitForExit(process, timeout: interruptTimeout) {
+        let forcedTerminationReapTimeout = max(
+            interruptTimeout,
+            Self.minimumForcedTerminationReapTimeout
+        )
+        if await waitForExit(process, timeout: forcedTerminationReapTimeout) {
             let terminationStatus = process.terminationStatus
-            clearManagedProcessIfMatching(process)
             return .stopped(
                 processIdentifier: processIdentifier,
                 terminationStatus: terminationStatus,
@@ -312,6 +349,8 @@ final class ModelProcessManager: ModelProcessManaging {
 
     private func configurePipe(
         _ pipe: Pipe,
+        process: Process,
+        lineBuffer: LineStreamBuffer,
         label: String,
         outputHandler: @escaping @Sendable (String) -> Void
     ) {
@@ -322,6 +361,9 @@ final class ModelProcessManager: ModelProcessManaging {
             if data.isEmpty {
                 for line in lineBuffer.flush(label: label) {
                     outputHandler("[process:\(label)] \(line)")
+                }
+                Task { @MainActor [weak self, process] in
+                    self?.recordPipeEOF(label: label, for: process)
                 }
                 return
             }
@@ -335,40 +377,119 @@ final class ModelProcessManager: ModelProcessManaging {
         }
     }
 
-    private func flushPendingOutput(outputHandler: @escaping @Sendable (String) -> Void) {
+    private func recordTermination(status: Int32, for process: Process) {
+        let identifier = ObjectIdentifier(process)
+        guard var state = completionStates[identifier],
+              state.process === process else {
+            return
+        }
+
+        state.terminationStatus = status
+        completionStates[identifier] = state
+        scheduleOutputDrainTimeout(for: process)
+        completeProcessIfReady(process)
+    }
+
+    private func recordPipeEOF(label: String, for process: Process) {
+        let identifier = ObjectIdentifier(process)
+        guard var state = completionStates[identifier],
+              state.process === process else {
+            return
+        }
+
+        switch label {
+        case "stdout":
+            state.stdoutReachedEOF = true
+        case "stderr":
+            state.stderrReachedEOF = true
+        default:
+            return
+        }
+        completionStates[identifier] = state
+        completeProcessIfReady(process)
+    }
+
+    private func completeProcessIfReady(_ process: Process, allowMissingEOF: Bool = false) {
+        let identifier = ObjectIdentifier(process)
+        guard let state = completionStates[identifier],
+              state.process === process,
+              let terminationStatus = state.terminationStatus,
+              allowMissingEOF || (state.stdoutReachedEOF && state.stderrReachedEOF) else {
+            return
+        }
+
+        flushPendingOutput(state)
+        discardCompletionState(for: process)
+        state.terminationHandler(terminationStatus)
+    }
+
+    private func scheduleOutputDrainTimeout(for process: Process) {
+        let identifier = ObjectIdentifier(process)
+        outputDrainTimeoutTasks[identifier]?.cancel()
+        outputDrainTimeoutTasks[identifier] = Task { @MainActor [weak self, process] in
+            guard let self else { return }
+            if outputDrainTimeoutNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: outputDrainTimeoutNanoseconds)
+            }
+            guard !Task.isCancelled else { return }
+            completeProcessIfReady(process, allowMissingEOF: true)
+        }
+    }
+
+    private func flushPendingOutput(_ state: ProcessCompletionState) {
         for label in ["stdout", "stderr"] {
-            for line in lineBuffer.flush(label: label) {
-                outputHandler("[process:\(label)] \(line)")
+            for line in state.lineBuffer.flush(label: label) {
+                state.outputHandler("[process:\(label)] \(line)")
             }
         }
     }
 
     private func waitForExit(_ process: Process, timeout: TimeInterval) async -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
+        let deadline = Date().addingTimeInterval(max(timeout, 0))
 
-        while process.isRunning, Date() < deadline {
-            do {
-                try await Task.sleep(nanoseconds: 100_000_000)
-            } catch {
-                return !process.isRunning
+        while process.isRunning {
+            let remainingInterval = deadline.timeIntervalSinceNow
+            guard remainingInterval > 0 else {
+                break
             }
+
+            let pollingInterval = min(remainingInterval, 0.1)
+            await Self.sleepIgnoringCancellation(
+                nanoseconds: Self.nanoseconds(for: pollingInterval)
+            )
         }
 
         return !process.isRunning
     }
 
-    private func clearManagedProcessIfMatching(_ process: Process) {
-        guard self.process === process else {
-            return
-        }
+    nonisolated private static func sleepIgnoringCancellation(nanoseconds: UInt64) async {
+        guard nanoseconds > 0 else { return }
+        await Task.detached {
+            do {
+                try await Task.sleep(nanoseconds: nanoseconds)
+            } catch {
+                // Detached tasks do not inherit the caller's cancellation. This catch is defensive.
+            }
+        }.value
+    }
 
-        stdoutPipe?.fileHandleForReading.readabilityHandler = nil
-        stderrPipe?.fileHandleForReading.readabilityHandler = nil
-        try? stdoutPipe?.fileHandleForReading.close()
-        try? stderrPipe?.fileHandleForReading.close()
-        self.process = nil
-        stdoutPipe = nil
-        stderrPipe = nil
+    private func discardCompletionState(for process: Process) {
+        let identifier = ObjectIdentifier(process)
+        outputDrainTimeoutTasks.removeValue(forKey: identifier)?.cancel()
+        if let state = completionStates.removeValue(forKey: identifier) {
+            state.stdoutPipe.fileHandleForReading.readabilityHandler = nil
+            state.stderrPipe.fileHandleForReading.readabilityHandler = nil
+            try? state.stdoutPipe.fileHandleForReading.close()
+            try? state.stderrPipe.fileHandleForReading.close()
+        }
+        if self.process === process {
+            self.process = nil
+        }
+    }
+
+    nonisolated private static func nanoseconds(for interval: TimeInterval) -> UInt64 {
+        guard interval > 0 else { return 0 }
+        return UInt64(min(interval, TimeInterval(UInt64.max) / 1_000_000_000) * 1_000_000_000)
     }
 
     nonisolated private static func thinkingChatTemplateArgs(isEnabled: Bool) -> String? {

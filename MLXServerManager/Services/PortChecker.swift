@@ -24,11 +24,30 @@ nonisolated struct PortChecker {
 
         let socketDescriptor = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)
         guard socketDescriptor >= 0 else {
-            return .failed(host: host, port: port, message: errorMessage(prefix: "socket failed"))
+            let errorCode = errno
+            return .failed(
+                host: host,
+                port: port,
+                message: errorMessage(prefix: "socket failed", errorCode: errorCode)
+            )
         }
 
         defer {
             close(socketDescriptor)
+        }
+
+        var reuseAddress: Int32 = 1
+        let socketOptionResult = withUnsafePointer(to: &reuseAddress) { pointer in
+            setsockopt(
+                socketDescriptor,
+                SOL_SOCKET,
+                SO_REUSEADDR,
+                pointer,
+                socklen_t(MemoryLayout<Int32>.size)
+            )
+        }
+        guard socketOptionResult == 0 else {
+            return resultForSocketOptionFailure(host: host, port: port, errorCode: errno)
         }
 
         let bindResult = withUnsafePointer(to: &address) { pointer in
@@ -42,11 +61,15 @@ nonisolated struct PortChecker {
         }
 
         guard bindResult == 0 else {
-            return .busy(host: host, port: port, pid: nil)
+            return resultForBindFailure(host: host, port: port, errorCode: errno)
         }
 
         guard listen(socketDescriptor, 1) == 0 else {
-            return .busy(host: host, port: port, pid: nil)
+            return .failed(
+                host: host,
+                port: port,
+                message: errorMessage(prefix: "listen failed", errorCode: errno)
+            )
         }
 
         return .available(host: host, port: port)
@@ -71,7 +94,26 @@ nonisolated struct PortChecker {
     }
 
 
-    private func errorMessage(prefix: String) -> String {
-        "\(prefix): \(String(cString: strerror(errno)))"
+    func resultForSocketOptionFailure(host: String, port: Int, errorCode: Int32) -> PortCheckResult {
+        .failed(
+            host: host,
+            port: port,
+            message: errorMessage(prefix: "setsockopt SO_REUSEADDR failed", errorCode: errorCode)
+        )
+    }
+
+    func resultForBindFailure(host: String, port: Int, errorCode: Int32) -> PortCheckResult {
+        if errorCode == EADDRINUSE {
+            return .busy(host: host, port: port, pid: nil)
+        }
+        return .failed(
+            host: host,
+            port: port,
+            message: errorMessage(prefix: "bind failed", errorCode: errorCode)
+        )
+    }
+
+    private func errorMessage(prefix: String, errorCode: Int32) -> String {
+        "\(prefix): \(String(cString: strerror(errorCode)))"
     }
 }

@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 nonisolated struct HermesAgentConnectionSettings: Equatable {
@@ -21,6 +22,9 @@ nonisolated enum HermesAgentConfigServiceError: LocalizedError, Equatable {
     case configFileNotFound(String)
     case configPathIsDirectory(String)
     case unreadableConfig(String)
+    case unreadableBackup(String)
+    case restoreVerificationFailed(String)
+    case configChangedDuringRestore(String)
     case unsupportedTabIndentation(line: Int)
     case backupNotFound(String)
 
@@ -34,6 +38,12 @@ nonisolated enum HermesAgentConfigServiceError: LocalizedError, Equatable {
             "Hermes Agent config path is a directory: \(path)"
         case let .unreadableConfig(path):
             "Hermes Agent config file could not be read as UTF-8 text: \(path)"
+        case let .unreadableBackup(path):
+            "Hermes Agent backup file could not be read as UTF-8 text: \(path)"
+        case let .restoreVerificationFailed(path):
+            "Hermes Agent restore data could not be verified: \(path)"
+        case let .configChangedDuringRestore(path):
+            "Hermes Agent config changed while the restore was being prepared: \(path)"
         case let .unsupportedTabIndentation(line):
             "Hermes Agent config uses a tab for YAML indentation on line \(line). Replace indentation tabs with spaces before applying changes."
         case let .backupNotFound(path):
@@ -43,8 +53,22 @@ nonisolated enum HermesAgentConfigServiceError: LocalizedError, Equatable {
 }
 
 nonisolated struct HermesAgentConfigService {
-    var fileManager: FileManager = .default
-    var dateProvider: () -> Date = Date.init
+    var fileManager: FileManager
+    var dateProvider: () -> Date
+    private var dataReader: (URL) throws -> Data
+    private var atomicReplacer: ((URL, URL) throws -> Void)?
+
+    init(
+        fileManager: FileManager = .default,
+        dateProvider: @escaping () -> Date = Date.init,
+        dataReader: @escaping (URL) throws -> Data = { try Data(contentsOf: $0) },
+        atomicReplacer: ((URL, URL) throws -> Void)? = nil
+    ) {
+        self.fileManager = fileManager
+        self.dateProvider = dateProvider
+        self.dataReader = dataReader
+        self.atomicReplacer = atomicReplacer
+    }
 
     func apply(
         connection: HermesAgentConnectionSettings,
@@ -214,29 +238,99 @@ nonisolated struct HermesAgentConfigService {
         let prefix = "\(configURL.lastPathComponent).mlxservermanager-backup-"
         let backupURLs = try fileManager.contentsOfDirectory(
             at: directoryURL,
-            includingPropertiesForKeys: [.contentModificationDateKey],
+            includingPropertiesForKeys: [
+                .contentModificationDateKey,
+                .isRegularFileKey,
+                .isSymbolicLinkKey
+            ],
             options: [.skipsHiddenFiles]
         )
-            .filter { $0.lastPathComponent.hasPrefix(prefix) }
-            .sorted { left, right in
-                let leftDate = (try? left.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
-                let rightDate = (try? right.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
-                return leftDate > rightDate
+            .compactMap { url -> (url: URL, date: Date)? in
+                guard url.lastPathComponent.hasPrefix(prefix),
+                      let values = try? url.resourceValues(forKeys: [
+                          .contentModificationDateKey,
+                          .isRegularFileKey,
+                          .isSymbolicLinkKey
+                      ]),
+                      values.isRegularFile == true,
+                      values.isSymbolicLink != true else {
+                    return nil
+                }
+                return (url, values.contentModificationDate ?? .distantPast)
             }
+            .sorted { $0.date > $1.date }
+            .map(\.url)
 
         guard let latestBackupURL = backupURLs.first else {
             throw HermesAgentConfigServiceError.backupNotFound(configURL.path)
         }
 
-        if fileManager.fileExists(atPath: configURL.path) {
+        let backupData: Data
+        do {
+            backupData = try dataReader(latestBackupURL)
+        } catch {
+            throw HermesAgentConfigServiceError.unreadableBackup(latestBackupURL.path)
+        }
+        guard String(data: backupData, encoding: .utf8) != nil else {
+            throw HermesAgentConfigServiceError.unreadableBackup(latestBackupURL.path)
+        }
+
+        let stagingURL = directoryURL.appendingPathComponent(
+            ".\(configURL.lastPathComponent).mlxservermanager-restore-\(UUID().uuidString)",
+            isDirectory: false
+        )
+        defer {
+            if fileManager.fileExists(atPath: stagingURL.path) {
+                try? fileManager.removeItem(at: stagingURL)
+            }
+        }
+        try backupData.write(to: stagingURL, options: [.atomic])
+        guard try dataReader(stagingURL) == backupData else {
+            throw HermesAgentConfigServiceError.restoreVerificationFailed(latestBackupURL.path)
+        }
+
+        var configIsDirectory = ObjCBool(false)
+        let configExists = fileManager.fileExists(
+            atPath: configURL.path,
+            isDirectory: &configIsDirectory
+        )
+        guard !configExists || !configIsDirectory.boolValue else {
+            throw HermesAgentConfigServiceError.configPathIsDirectory(configURL.path)
+        }
+
+        if configExists {
+            let originalConfigData = try dataReader(configURL)
             let safetyBackupURL = try makeBackupURL(for: configURL)
             try fileManager.copyItem(at: configURL, to: safetyBackupURL)
+            guard try dataReader(safetyBackupURL) == originalConfigData else {
+                throw HermesAgentConfigServiceError.restoreVerificationFailed(safetyBackupURL.path)
+            }
+            guard try dataReader(configURL) == originalConfigData else {
+                throw HermesAgentConfigServiceError.configChangedDuringRestore(configURL.path)
+            }
         }
-        if fileManager.fileExists(atPath: configURL.path) {
-            try fileManager.removeItem(at: configURL)
+        if let atomicReplacer {
+            try atomicReplacer(stagingURL, configURL)
+        } else {
+            try Self.replaceAtomically(stagingURL, destinationURL: configURL)
         }
-        try fileManager.copyItem(at: latestBackupURL, to: configURL)
         return latestBackupURL
+    }
+
+    private static func replaceAtomically(_ sourceURL: URL, destinationURL: URL) throws {
+        let result = sourceURL.path.withCString { sourcePath in
+            destinationURL.path.withCString { destinationPath in
+                Darwin.rename(sourcePath, destinationPath)
+            }
+        }
+        guard result == 0 else {
+            let errorCode = errno
+            throw NSError(
+                domain: NSPOSIXErrorDomain,
+                code: Int(errorCode),
+                userInfo: [NSFilePathErrorKey: destinationURL.path]
+            )
+        }
     }
 
     private func makeBackupURL(for configURL: URL) throws -> URL {

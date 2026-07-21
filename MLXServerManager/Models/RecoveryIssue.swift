@@ -20,6 +20,7 @@ enum RecoveryIssueCategory: String, Codable, CaseIterable, Hashable {
     case huggingFaceAccess
     case network
     case destination
+    case profileRegistration
     case unknown
 
     var title: String {
@@ -36,6 +37,7 @@ enum RecoveryIssueCategory: String, Codable, CaseIterable, Hashable {
         case .huggingFaceAccess: "HF Access / Gated Model"
         case .network: "Network Error"
         case .destination: "Destination Error"
+        case .profileRegistration: "Profile Add Failed"
         case .unknown: "Unknown Issue"
         }
     }
@@ -52,17 +54,37 @@ struct RecoveryAction: Identifiable, Hashable {
         case runDiagnostics
         case runReadyCheck
         case retryDownload
+        case retryProfileRegistration
         case restoreDownloadForm
         case copyURL
         case copyTroubleshooting
         case copySafety
     }
 
-    var id: String { kind.rawValue }
+    var id: String {
+        [kind.rawValue, downloadQueueEntryID?.uuidString]
+            .compactMap { $0 }
+            .joined(separator: ":")
+    }
     let kind: Kind
     let title: String
     let detail: String
     let isPrimary: Bool
+    let downloadQueueEntryID: UUID?
+
+    init(
+        kind: Kind,
+        title: String,
+        detail: String,
+        isPrimary: Bool,
+        downloadQueueEntryID: UUID? = nil
+    ) {
+        self.kind = kind
+        self.title = title
+        self.detail = detail
+        self.isPrimary = isPrimary
+        self.downloadQueueEntryID = downloadQueueEntryID
+    }
 }
 
 struct RecoveryIssue: Identifiable, Hashable {

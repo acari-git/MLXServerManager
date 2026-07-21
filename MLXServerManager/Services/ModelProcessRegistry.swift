@@ -100,19 +100,14 @@ final class ModelProcessRegistry {
             throw ModelProcessRegistryError.endpointAlreadyManaged(endpoint)
         }
 
-        let entry: Entry
-        if let existingEntry = entries[profileID] {
-            entry = existingEntry
-        } else {
-            let manager = makeManager()
-            entry = Entry(
-                token: UUID(),
-                manager: manager,
-                host: request.host,
-                port: request.port
-            )
-            entries[profileID] = entry
-        }
+        let manager = entries[profileID]?.manager ?? makeManager()
+        let entry = Entry(
+            token: UUID(),
+            manager: manager,
+            host: request.host,
+            port: request.port
+        )
+        entries[profileID] = entry
 
         do {
             return try entry.manager.start(
@@ -120,9 +115,8 @@ final class ModelProcessRegistry {
                 outputHandler: outputHandler,
                 terminationHandler: { [weak self] terminationStatus in
                     guard let self else { return }
-                    if self.entries[profileID]?.token == entry.token {
-                        self.entries[profileID] = nil
-                    }
+                    guard self.entries[profileID]?.token == entry.token else { return }
+                    self.entries[profileID] = nil
                     terminationHandler(terminationStatus)
                 }
             )

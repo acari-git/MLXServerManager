@@ -1,6 +1,7 @@
 import Foundation
 
 nonisolated struct HuggingFaceDownloadFileSelection: Equatable, Sendable {
+    let usesSelectedPreviewFiles: Bool
     let filteredFiles: [HuggingFaceDownloadPreviewFile]
     let selectedFiles: [HuggingFaceDownloadPreviewFile]
     let downloadFiles: [HuggingFaceDownloadPreviewFile]
@@ -14,6 +15,10 @@ nonisolated struct HuggingFaceDownloadFileSelection: Equatable, Sendable {
 
     var hasUnknownDownloadSize: Bool {
         downloadFiles.contains { $0.size == nil }
+    }
+
+    var hasValidExplicitSelection: Bool {
+        !usesSelectedPreviewFiles || !selectedFiles.isEmpty
     }
 }
 
@@ -37,6 +42,7 @@ nonisolated enum HuggingFaceDownloadFileSelectionPlanner {
         let downloadFiles = draft.useSelectedPreviewFiles ? selectedFiles : filteredFiles
 
         return HuggingFaceDownloadFileSelection(
+            usesSelectedPreviewFiles: draft.useSelectedPreviewFiles,
             filteredFiles: filteredFiles,
             selectedFiles: selectedFiles,
             downloadFiles: downloadFiles,

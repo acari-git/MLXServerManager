@@ -81,6 +81,71 @@ final class InternalServiceRegressionTests: XCTestCase {
         XCTAssertEqual(Array(arguments.suffix(2)), ["--custom-json", #"{"key":"value with spaces"}"#])
     }
 
+    func testMLXLMLaunchArgumentsDiscardManagedRawOverrides() {
+        let request = ModelLaunchRequest(
+            executablePath: "/usr/bin/mlx_lm.server",
+            modelID: "/tmp/managed-model",
+            host: "127.0.0.1",
+            port: 8080,
+            enableThinking: false,
+            advancedLaunchOptions: AdvancedLaunchOptions(
+                rawExtraArgs: "--model other/model --host=0.0.0.0 --port 9000 --safe-flag value"
+            )
+        )
+
+        XCTAssertEqual(
+            ModelProcessManager.launchArguments(for: request),
+            [
+                "--model", "/tmp/managed-model", "--host", "127.0.0.1", "--port", "8080",
+                "--safe-flag", "value"
+            ]
+        )
+    }
+
+    func testRapidMLXLaunchArgumentsDiscardManagedRawOverridesButPreserveOtherArguments() {
+        let request = ModelLaunchRequest(
+            executablePath: "/usr/local/bin/rapid-mlx",
+            backend: .rapidMLX,
+            modelID: "/tmp/managed-model",
+            host: "127.0.0.1",
+            port: 8088,
+            enableThinking: true,
+            advancedLaunchOptions: AdvancedLaunchOptions(
+                rawExtraArgs: "--host 0.0.0.0 --port=9000 --model alternate-model --safe-flag"
+            )
+        )
+
+        XCTAssertEqual(
+            ModelProcessManager.launchArguments(for: request),
+            [
+                "serve", "/tmp/managed-model", "--host", "127.0.0.1", "--port", "8088",
+                "--model", "alternate-model", "--safe-flag"
+            ]
+        )
+    }
+
+    func testMLXLMLaunchArgumentsUseSupportedTemperatureFlag() {
+        let request = ModelLaunchRequest(
+            executablePath: "/usr/bin/mlx_lm.server",
+            modelID: "/tmp/model",
+            host: "127.0.0.1",
+            port: 8080,
+            enableThinking: true,
+            advancedLaunchOptions: AdvancedLaunchOptions(defaultTemperature: "0.2")
+        )
+
+        let arguments = ModelProcessManager.launchArguments(for: request)
+
+        XCTAssertEqual(
+            arguments,
+            [
+                "--model", "/tmp/model", "--host", "127.0.0.1", "--port", "8080",
+                "--chat-template-args", #"{"enable_thinking":true}"#,
+                "--temp", "0.2"
+            ]
+        )
+    }
+
     func testRapidMLXLaunchArgumentsMapSupportedOptions() {
         let request = ModelLaunchRequest(
             executablePath: "/usr/local/bin/rapid-mlx",

@@ -1,10 +1,34 @@
 import Foundation
 
 enum HuggingFaceDownloadQueueScheduler {
+    nonisolated static func pruningTerminalHistory(
+        entries: [HuggingFaceDownloadQueueEntry],
+        maximumTerminalEntries: Int
+    ) -> (entries: [HuggingFaceDownloadQueueEntry], removedIDs: Set<UUID>) {
+        let maximum = max(maximumTerminalEntries, 0)
+        var terminalCount = 0
+        var retainedEntries: [HuggingFaceDownloadQueueEntry] = []
+        var removedIDs: Set<UUID> = []
+
+        for entry in entries {
+            if entry.phase.isTerminal {
+                terminalCount += 1
+                if terminalCount > maximum {
+                    removedIDs.insert(entry.id)
+                    continue
+                }
+            }
+            retainedEntries.append(entry)
+        }
+
+        return (retainedEntries, removedIDs)
+    }
+
     nonisolated static func startableIDs(
         entries: [HuggingFaceDownloadQueueEntry],
         queuedIDs: Set<UUID>,
         activeIDs: Set<UUID>,
+        activeDestinationPaths: Set<String> = [],
         maximumConcurrentDownloads: Int
     ) -> [UUID] {
         let maximum = min(max(maximumConcurrentDownloads, 1), 5)
@@ -13,15 +37,25 @@ enum HuggingFaceDownloadQueueScheduler {
             return []
         }
 
-        return entries
-            .reversed()
-            .filter { entry in
-                queuedIDs.contains(entry.id)
-                    && !activeIDs.contains(entry.id)
-                    && (entry.phase == .waiting || entry.phase == .preparing)
+        var reservedDestinationIdentities = Set(
+            activeDestinationPaths.map { HuggingFaceDownloadPlanner.destinationIdentity(path: $0) }
+        )
+        var startableIDs: [UUID] = []
+
+        for entry in entries.reversed() {
+            guard startableIDs.count < availableSlots,
+                  queuedIDs.contains(entry.id),
+                  !activeIDs.contains(entry.id),
+                  entry.phase == .waiting || entry.phase == .preparing,
+                  reservedDestinationIdentities.insert(
+                      HuggingFaceDownloadPlanner.destinationIdentity(path: entry.destinationPath)
+                  ).inserted else {
+                continue
             }
-            .prefix(availableSlots)
-            .map(\.id)
+            startableIDs.append(entry.id)
+        }
+
+        return startableIDs
     }
 
     nonisolated static func cancellableIDs(

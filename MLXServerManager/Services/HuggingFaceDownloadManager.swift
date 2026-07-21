@@ -57,33 +57,52 @@ protocol HuggingFaceModelDownloading: AnyObject {
 }
 
 final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
+    private struct ProcessCompletionState {
+        let process: Process
+        let request: HuggingFaceDownloadRequest
+        let searchEnvironment: [String: String]
+        let sensitiveOutputValues: [String]
+        let outputHandler: @Sendable (String) -> Void
+        let continuation: CheckedContinuation<HuggingFaceDownloadResult, Error>
+        var terminationStatus: Int32?
+        var stdoutReachedEOF = false
+        var stderrReachedEOF = false
+    }
+
     private let fileManager: FileManager
     private let environment: [String: String]
     private var activeProcess: Process?
     private var stdoutPipe: Pipe?
     private var stderrPipe: Pipe?
+    private var processCompletionState: ProcessCompletionState?
     private var cancellationEscalationTask: Task<Void, Never>?
-    private var cancellationRequestedProcessIdentifier: Int32?
+    private var outputDrainTimeoutTask: Task<Void, Never>?
+    private var cancellationRequestedProcess: Process?
     private let lineBuffer = LineStreamBuffer(maximumLinesPerLabel: 1_000)
     private let cancellationGracePeriodNanoseconds: UInt64
     private let cancellationInterruptPeriodNanoseconds: UInt64
+    private let outputDrainTimeoutNanoseconds: UInt64
 
     init(
         fileManager: FileManager = .default,
         environment: [String: String] = ProcessInfo.processInfo.environment,
         cancellationGracePeriod: TimeInterval = 1,
-        cancellationInterruptPeriod: TimeInterval = 1
+        cancellationInterruptPeriod: TimeInterval = 1,
+        outputDrainTimeout: TimeInterval = 2
     ) {
         self.fileManager = fileManager
         self.environment = environment
         self.cancellationGracePeriodNanoseconds = Self.nanoseconds(for: cancellationGracePeriod)
         self.cancellationInterruptPeriodNanoseconds = Self.nanoseconds(for: cancellationInterruptPeriod)
+        self.outputDrainTimeoutNanoseconds = Self.nanoseconds(for: outputDrainTimeout)
     }
 
     func download(
         request: HuggingFaceDownloadRequest,
         outputHandler: @escaping @Sendable (String) -> Void
     ) async throws -> HuggingFaceDownloadResult {
+        try Self.checkCancellation()
+
         let destinationURL = URL(fileURLWithPath: request.destinationPath, isDirectory: true)
         let parentURL = destinationURL.deletingLastPathComponent()
         let searchEnvironment = environment
@@ -101,6 +120,16 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
             throw HuggingFaceDownloadError.commandNotAvailable(
                 searchedPaths: Self.candidateExecutablePaths(environment: searchEnvironment)
             )
+        }
+
+        do {
+            try HuggingFaceDownloadProvenanceStore(fileManager: fileManager).prepare(
+                destinationURL: destinationURL,
+                repositoryID: request.repositoryID,
+                revision: request.revision
+            )
+        } catch {
+            throw HuggingFaceDownloadError.destinationPreparationFailed(error.localizedDescription)
         }
 
         outputHandler("[hf] using \(resolution.displayPath)")
@@ -121,6 +150,10 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
         if let authorizationValue = request.authorizationValue, !authorizationValue.isEmpty {
             processEnvironment["HF_TOKEN"] = authorizationValue
         }
+        let sensitiveOutputValues = Self.sensitiveOutputValues(
+            authorizationValue: request.authorizationValue,
+            environment: processEnvironment
+        )
         let candidateDirectories = Self.candidateExecutablePaths(environment: searchEnvironment)
             .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
         let path = processEnvironment["PATH", default: ""]
@@ -134,46 +167,52 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
         lineBuffer.reset()
-        cancellationRequestedProcessIdentifier = nil
+        cancellationRequestedProcess = nil
         activeProcess = process
         self.stdoutPipe = stdoutPipe
         self.stderrPipe = stderrPipe
-        configurePipe(stdoutPipe, label: "stdout", outputHandler: outputHandler)
-        configurePipe(stderrPipe, label: "stderr", outputHandler: outputHandler)
+        configurePipe(
+            stdoutPipe,
+            process: process,
+            label: "stdout",
+            sensitiveValues: sensitiveOutputValues,
+            outputHandler: outputHandler
+        )
+        configurePipe(
+            stderrPipe,
+            process: process,
+            label: "stderr",
+            sensitiveValues: sensitiveOutputValues,
+            outputHandler: outputHandler
+        )
+
+        do {
+            try Self.checkCancellation()
+        } catch {
+            clearIfMatching(process)
+            throw error
+        }
 
         return try await withCheckedThrowingContinuation { continuation in
+            processCompletionState = ProcessCompletionState(
+                process: process,
+                request: request,
+                searchEnvironment: searchEnvironment,
+                sensitiveOutputValues: sensitiveOutputValues,
+                outputHandler: outputHandler,
+                continuation: continuation
+            )
             process.terminationHandler = { [weak self] process in
                 let status = process.terminationStatus
                 Task { @MainActor [weak self] in
-                    let wasCancelled = self?.cancellationRequestedProcessIdentifier == process.processIdentifier
-                    self?.flushPendingOutput(outputHandler: outputHandler)
-                    self?.clearIfMatching(process)
-
-                    if wasCancelled {
-                        continuation.resume(throwing: HuggingFaceDownloadError.cancelled)
-                    } else if status == 0 {
-                        continuation.resume(
-                            returning: HuggingFaceDownloadResult(
-                                repositoryID: request.repositoryID,
-                                destinationPath: request.destinationPath,
-                                terminationStatus: status
-                            )
-                        )
-                    } else if status == 127 {
-                        continuation.resume(
-                            throwing: HuggingFaceDownloadError.commandNotAvailable(
-                                searchedPaths: Self.candidateExecutablePaths(environment: searchEnvironment)
-                            )
-                        )
-                    } else {
-                        continuation.resume(throwing: HuggingFaceDownloadError.processFailed(status: status))
-                    }
+                    self?.recordTermination(status: status, for: process)
                 }
             }
 
             do {
                 try process.run()
             } catch {
+                processCompletionState = nil
                 clearIfMatching(process)
                 continuation.resume(throwing: HuggingFaceDownloadError.processLaunchFailed(error.localizedDescription))
             }
@@ -184,9 +223,11 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
         guard let process = activeProcess, process.isRunning else {
             return
         }
+        guard cancellationRequestedProcess !== process else {
+            return
+        }
 
-        cancellationRequestedProcessIdentifier = process.processIdentifier
-        cancellationEscalationTask?.cancel()
+        cancellationRequestedProcess = process
         process.terminate()
 
         cancellationEscalationTask = Task { @MainActor [weak self, process] in
@@ -212,7 +253,9 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
 
     private func configurePipe(
         _ pipe: Pipe,
+        process: Process,
         label: String,
+        sensitiveValues: [String],
         outputHandler: @escaping @Sendable (String) -> Void
     ) {
         pipe.fileHandleForReading.readabilityHandler = { [weak self] fileHandle in
@@ -220,32 +263,156 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
             guard let self else { return }
 
             if data.isEmpty {
-                emit(lineBuffer.flush(label: label), label: label, outputHandler: outputHandler)
+                emit(
+                    lineBuffer.flush(label: label),
+                    label: label,
+                    sensitiveValues: sensitiveValues,
+                    outputHandler: outputHandler
+                )
+                Task { @MainActor [weak self, process] in
+                    self?.recordPipeEOF(label: label, for: process)
+                }
                 return
             }
 
             guard let chunk = String(data: data, encoding: .utf8) else {
                 return
             }
-            emit(lineBuffer.consume(chunk, label: label), label: label, outputHandler: outputHandler)
+            emit(
+                lineBuffer.consume(chunk, label: label),
+                label: label,
+                sensitiveValues: sensitiveValues,
+                outputHandler: outputHandler
+            )
         }
     }
 
-    private func flushPendingOutput(outputHandler: @escaping @Sendable (String) -> Void) {
+    private func recordTermination(status: Int32, for process: Process) {
+        guard var state = processCompletionState,
+              state.process === process else {
+            return
+        }
+
+        state.terminationStatus = status
+        processCompletionState = state
+        scheduleOutputDrainTimeout(for: process)
+        completeProcessIfReady(process)
+    }
+
+    private func recordPipeEOF(label: String, for process: Process) {
+        guard var state = processCompletionState,
+              state.process === process else {
+            return
+        }
+
+        switch label {
+        case "stdout":
+            state.stdoutReachedEOF = true
+        case "stderr":
+            state.stderrReachedEOF = true
+        default:
+            return
+        }
+        processCompletionState = state
+        completeProcessIfReady(process)
+    }
+
+    private func completeProcessIfReady(_ process: Process, allowMissingEOF: Bool = false) {
+        guard let state = processCompletionState,
+              state.process === process,
+              let status = state.terminationStatus,
+              allowMissingEOF || (state.stdoutReachedEOF && state.stderrReachedEOF) else {
+            return
+        }
+
+        processCompletionState = nil
+        let wasCancelled = cancellationRequestedProcess === process
+        flushPendingOutput(
+            sensitiveValues: state.sensitiveOutputValues,
+            outputHandler: state.outputHandler
+        )
+        clearIfMatching(process)
+
+        if wasCancelled {
+            state.continuation.resume(throwing: HuggingFaceDownloadError.cancelled)
+        } else if status == 0 {
+            state.continuation.resume(
+                returning: HuggingFaceDownloadResult(
+                    repositoryID: state.request.repositoryID,
+                    destinationPath: state.request.destinationPath,
+                    terminationStatus: status
+                )
+            )
+        } else if status == 127 {
+            state.continuation.resume(
+                throwing: HuggingFaceDownloadError.commandNotAvailable(
+                    searchedPaths: Self.candidateExecutablePaths(environment: state.searchEnvironment)
+                )
+            )
+        } else {
+            state.continuation.resume(throwing: HuggingFaceDownloadError.processFailed(status: status))
+        }
+    }
+
+    private func scheduleOutputDrainTimeout(for process: Process) {
+        outputDrainTimeoutTask?.cancel()
+        outputDrainTimeoutTask = Task { @MainActor [weak self, process] in
+            guard let self else { return }
+            await waitForCancellationPeriod(outputDrainTimeoutNanoseconds)
+            guard !Task.isCancelled else { return }
+            completeProcessIfReady(process, allowMissingEOF: true)
+        }
+    }
+
+    private func flushPendingOutput(
+        sensitiveValues: [String],
+        outputHandler: @escaping @Sendable (String) -> Void
+    ) {
         for label in ["stdout", "stderr"] {
-            emit(lineBuffer.flush(label: label), label: label, outputHandler: outputHandler)
+            emit(
+                lineBuffer.flush(label: label),
+                label: label,
+                sensitiveValues: sensitiveValues,
+                outputHandler: outputHandler
+            )
         }
     }
 
     nonisolated private func emit(
         _ lines: [String],
         label: String,
+        sensitiveValues: [String],
         outputHandler: @escaping @Sendable (String) -> Void
     ) {
         for line in lines {
-            let sanitized = HuggingFaceDownloadPlanner.sanitizedOutputLine(line)
+            let sanitized = HuggingFaceDownloadPlanner.sanitizedOutputLine(
+                line,
+                sensitiveValues: sensitiveValues
+            )
             guard !sanitized.isEmpty else { continue }
             outputHandler("[hf:\(label)] \(sanitized)")
+        }
+    }
+
+    nonisolated private static func sensitiveOutputValues(
+        authorizationValue: String?,
+        environment: [String: String]
+    ) -> [String] {
+        let values: [String] = [
+            authorizationValue,
+            environment["HF_TOKEN"],
+            environment["HUGGING_FACE_HUB_TOKEN"],
+            environment["HUGGINGFACE_HUB_TOKEN"]
+        ]
+        .compactMap { value -> String? in
+            guard let value else { return nil }
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+
+        return values.reduce(into: [String]()) { result, value in
+            guard !result.contains(value) else { return }
+            result.append(value)
         }
     }
 
@@ -304,6 +471,8 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
         }
         cancellationEscalationTask?.cancel()
         cancellationEscalationTask = nil
+        outputDrainTimeoutTask?.cancel()
+        outputDrainTimeoutTask = nil
         stdoutPipe?.fileHandleForReading.readabilityHandler = nil
         stderrPipe?.fileHandleForReading.readabilityHandler = nil
         try? stdoutPipe?.fileHandleForReading.close()
@@ -311,7 +480,9 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
         activeProcess = nil
         stdoutPipe = nil
         stderrPipe = nil
-        cancellationRequestedProcessIdentifier = nil
+        if cancellationRequestedProcess === process {
+            cancellationRequestedProcess = nil
+        }
     }
 
     private func waitForCancellationPeriod(_ nanoseconds: UInt64) async {
@@ -322,5 +493,11 @@ final class HuggingFaceDownloadManager: HuggingFaceModelDownloading {
     nonisolated private static func nanoseconds(for interval: TimeInterval) -> UInt64 {
         guard interval > 0 else { return 0 }
         return UInt64(min(interval, TimeInterval(UInt64.max) / 1_000_000_000) * 1_000_000_000)
+    }
+
+    nonisolated private static func checkCancellation() throws {
+        guard !Task.isCancelled else {
+            throw HuggingFaceDownloadError.cancelled
+        }
     }
 }

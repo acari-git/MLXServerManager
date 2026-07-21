@@ -100,3 +100,56 @@ enum ShellArgumentParser {
         return arguments
     }
 }
+
+nonisolated enum ManagedLaunchArgumentPolicy {
+    static func firstForbiddenFlag(
+        in arguments: [String],
+        backend: InferenceBackend
+    ) -> String? {
+        arguments.lazy.compactMap { matchingForbiddenFlag(for: $0, backend: backend) }.first
+    }
+
+    static func removingForbiddenArguments(
+        from arguments: [String],
+        backend: InferenceBackend
+    ) -> [String] {
+        var filteredArguments: [String] = []
+        var index = 0
+
+        while index < arguments.count {
+            let argument = arguments[index]
+            guard let forbiddenFlag = matchingForbiddenFlag(for: argument, backend: backend) else {
+                filteredArguments.append(argument)
+                index += 1
+                continue
+            }
+
+            index += 1
+            if argument == forbiddenFlag,
+               index < arguments.count,
+               !arguments[index].hasPrefix("-") {
+                index += 1
+            }
+        }
+
+        return filteredArguments
+    }
+
+    private static func matchingForbiddenFlag(
+        for argument: String,
+        backend: InferenceBackend
+    ) -> String? {
+        forbiddenFlags(for: backend).first { flag in
+            argument == flag || argument.hasPrefix("\(flag)=")
+        }
+    }
+
+    private static func forbiddenFlags(for backend: InferenceBackend) -> [String] {
+        switch backend {
+        case .mlxLM:
+            ["--model", "--host", "--port"]
+        case .rapidMLX:
+            ["--host", "--port"]
+        }
+    }
+}

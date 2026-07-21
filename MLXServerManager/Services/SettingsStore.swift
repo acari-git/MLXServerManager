@@ -4,6 +4,20 @@ nonisolated struct SettingsSnapshot {
     var settings: AppSettings
     var models: [ModelConfig]
     var usedDefaults: Bool
+    var recoveryNotice: String?
+}
+
+nonisolated struct SettingsSaveOutcome: Equatable {
+    let mirrorWarnings: [String]
+    let recoveryWarnings: [String]
+
+    var hasWarnings: Bool {
+        !allWarnings.isEmpty
+    }
+
+    var allWarnings: [String] {
+        recoveryWarnings + mirrorWarnings
+    }
 }
 
 private nonisolated struct PersistedSettingsSnapshot: Codable {
@@ -22,18 +36,112 @@ private nonisolated struct PersistedSettingsSnapshot: Codable {
 
 nonisolated enum SettingsStoreError: LocalizedError {
     case applicationSupportDirectoryUnavailable
+    case authoritativeStateCorrupted
+    case saveBlockedAfterLoadFailure(String)
+    case unsupportedStateSchemaVersion(Int)
 
     var errorDescription: String? {
         switch self {
         case .applicationSupportDirectoryUnavailable:
             "Application Support directory is unavailable."
+        case .authoritativeStateCorrupted:
+            "The authoritative settings state and its recovery backup could not be decoded. Compatibility mirrors were not loaded because they may be stale."
+        case let .saveBlockedAfterLoadFailure(reason):
+            "Saving is blocked because settings failed to load earlier in this app session. Existing files were left unchanged. Restore the settings files or restart the app before saving. Load error: \(reason)"
+        case let .unsupportedStateSchemaVersion(version):
+            "The settings state uses unsupported schema version \(version)."
         }
     }
+}
+
+nonisolated final class SettingsStoreTransactionCoordinator: @unchecked Sendable {
+    private enum State {
+        case unverified
+        case writable
+        case blocked(String)
+    }
+
+    private let lock = NSRecursiveLock()
+    private var state: State = .unverified
+
+    func performLoad<Result>(_ operation: () throws -> Result) throws -> Result {
+        lock.lock()
+        defer { lock.unlock() }
+        do {
+            let result = try operation()
+            if case .unverified = state {
+                state = .writable
+            }
+            return result
+        } catch {
+            state = .blocked(error.localizedDescription)
+            throw error
+        }
+    }
+
+    func performSave<Result>(_ operation: () throws -> Result) throws -> Result {
+        lock.lock()
+        defer { lock.unlock() }
+        try validateSaveLocked()
+        let result = try operation()
+        state = .writable
+        return result
+    }
+
+    func performReadModifyWrite<ReadResult, WriteResult>(
+        read: () throws -> ReadResult,
+        write: (ReadResult) throws -> WriteResult
+    ) throws -> WriteResult {
+        lock.lock()
+        defer { lock.unlock() }
+        try validateSaveLocked()
+
+        let readResult: ReadResult
+        do {
+            readResult = try read()
+        } catch {
+            state = .blocked(error.localizedDescription)
+            throw error
+        }
+
+        let result = try write(readResult)
+        state = .writable
+        return result
+    }
+
+    private func validateSaveLocked() throws {
+        guard case let .blocked(reason) = state else { return }
+        throw SettingsStoreError.saveBlockedAfterLoadFailure(reason)
+    }
+}
+
+private nonisolated final class SettingsStoreCoordinatorRegistry: @unchecked Sendable {
+    static let shared = SettingsStoreCoordinatorRegistry()
+
+    private let lock = NSLock()
+    private var coordinators: [String: SettingsStoreTransactionCoordinator] = [:]
+
+    func coordinator(for key: String) -> SettingsStoreTransactionCoordinator {
+        lock.lock()
+        defer { lock.unlock() }
+        if let coordinator = coordinators[key] {
+            return coordinator
+        }
+        let coordinator = SettingsStoreTransactionCoordinator()
+        coordinators[key] = coordinator
+        return coordinator
+    }
+}
+
+private nonisolated struct LoadedPersistedSettingsSnapshot {
+    let snapshot: PersistedSettingsSnapshot
+    let recoveryNotice: String?
 }
 
 nonisolated struct SettingsStore {
     let fileManager: FileManager
     let appDirectoryName: String
+    private let transactionCoordinator: SettingsStoreTransactionCoordinator
 
     init(
         fileManager: FileManager = .default,
@@ -41,6 +149,16 @@ nonisolated struct SettingsStore {
     ) {
         self.fileManager = fileManager
         self.appDirectoryName = appDirectoryName
+        let directoryKey = fileManager.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first?
+            .appendingPathComponent(appDirectoryName, isDirectory: true)
+            .resolvingSymlinksInPath()
+            .path ?? appDirectoryName
+        self.transactionCoordinator = SettingsStoreCoordinatorRegistry.shared.coordinator(
+            for: directoryKey
+        )
     }
 
     var settingsDirectoryURL: URL {
@@ -74,46 +192,104 @@ nonisolated struct SettingsStore {
         }
     }
 
+    var huggingFaceDownloadRetriesFileURL: URL {
+        get throws {
+            try settingsDirectoryURL.appendingPathComponent("download-retries.json", isDirectory: false)
+        }
+    }
+
     var stateSnapshotFileURL: URL {
         get throws {
             try settingsDirectoryURL.appendingPathComponent("settings-state.json", isDirectory: false)
         }
     }
 
+    var stateSnapshotBackupFileURL: URL {
+        get throws {
+            try settingsDirectoryURL.appendingPathComponent("settings-state.backup.json", isDirectory: false)
+        }
+    }
+
     func load() throws -> SettingsSnapshot {
+        try transactionCoordinator.performLoad {
+            try loadUnlocked()
+        }
+    }
+
+    @discardableResult
+    func save(settings: AppSettings, models: [ModelConfig]) throws -> SettingsSaveOutcome {
+        try transactionCoordinator.performSave {
+            try saveUnlocked(settings: settings, models: models)
+        }
+    }
+
+    @discardableResult
+    func save(models: [ModelConfig]) throws -> SettingsSaveOutcome {
+        try transactionCoordinator.performReadModifyWrite(
+            read: { try loadUnlocked().settings },
+            write: { settings in
+                try saveUnlocked(settings: settings, models: models)
+            }
+        )
+    }
+
+    private func loadUnlocked() throws -> SettingsSnapshot {
         if let persistedSnapshot = try loadPersistedSnapshot() {
-            let models = persistedSnapshot.models.isEmpty ? ModelConfig.defaults : persistedSnapshot.models
+            let models = persistedSnapshot.snapshot.models.isEmpty
+                ? ModelConfig.defaults
+                : persistedSnapshot.snapshot.models
             return SettingsSnapshot(
-                settings: persistedSnapshot.settings,
+                settings: persistedSnapshot.snapshot.settings,
                 models: models,
-                usedDefaults: persistedSnapshot.models.isEmpty
+                usedDefaults: persistedSnapshot.snapshot.models.isEmpty,
+                recoveryNotice: persistedSnapshot.recoveryNotice
             )
         }
 
         let settings = try loadSettings()
         let models = try loadModels()
-
         return SettingsSnapshot(
             settings: settings.value,
             models: models.value,
-            usedDefaults: settings.usedDefault || models.usedDefault
+            usedDefaults: settings.usedDefault || models.usedDefault,
+            recoveryNotice: nil
         )
     }
 
-    func save(settings: AppSettings, models: [ModelConfig]) throws {
+    private func saveUnlocked(
+        settings: AppSettings,
+        models: [ModelConfig]
+    ) throws -> SettingsSaveOutcome {
         try ensureSettingsDirectoryExists()
         let snapshot = PersistedSettingsSnapshot(settings: settings, models: models)
+        let snapshotData = try encoder.encode(snapshot)
 
         // The combined snapshot is the authoritative atomic state. The two legacy
         // files remain as human-readable compatibility mirrors.
-        try save(snapshot, to: try stateSnapshotFileURL)
-        try save(settings, to: try settingsFileURL)
-        try save(models, to: try modelsFileURL)
-    }
+        try snapshotData.write(to: try stateSnapshotFileURL, options: [.atomic])
 
-    func save(models: [ModelConfig]) throws {
-        let currentSettings = try load().settings
-        try save(settings: currentSettings, models: models)
+        var recoveryWarnings: [String] = []
+        do {
+            try snapshotData.write(to: try stateSnapshotBackupFileURL, options: [.atomic])
+        } catch {
+            recoveryWarnings.append("settings-state.backup.json: \(error.localizedDescription)")
+        }
+
+        var mirrorWarnings: [String] = []
+        do {
+            try save(settings, to: try settingsFileURL)
+        } catch {
+            mirrorWarnings.append("settings.json: \(error.localizedDescription)")
+        }
+        do {
+            try save(models, to: try modelsFileURL)
+        } catch {
+            mirrorWarnings.append("models.json: \(error.localizedDescription)")
+        }
+        return SettingsSaveOutcome(
+            mirrorWarnings: mirrorWarnings,
+            recoveryWarnings: recoveryWarnings
+        )
     }
 
     func loadBenchmarkResults() throws -> (value: BenchmarkResultsSnapshot, usedDefault: Bool) {
@@ -131,20 +307,87 @@ nonisolated struct SettingsStore {
         try save(benchmarkResults, to: try benchmarkResultsFileURL)
     }
 
-    private func loadPersistedSnapshot() throws -> PersistedSettingsSnapshot? {
-        let url = try stateSnapshotFileURL
+    func loadHuggingFaceDownloadRetries() throws -> (value: HuggingFaceDownloadRetrySnapshot, usedDefault: Bool) {
+        let url = try huggingFaceDownloadRetriesFileURL
         guard fileManager.fileExists(atPath: url.path) else {
+            return (.empty, true)
+        }
+
+        let data = try Data(contentsOf: url)
+        return (try decoder.decode(HuggingFaceDownloadRetrySnapshot.self, from: data), false)
+    }
+
+    func save(huggingFaceDownloadRetries: HuggingFaceDownloadRetrySnapshot) throws {
+        try ensureSettingsDirectoryExists()
+        try save(huggingFaceDownloadRetries, to: try huggingFaceDownloadRetriesFileURL)
+    }
+
+    private func loadPersistedSnapshot() throws -> LoadedPersistedSettingsSnapshot? {
+        let stateURL = try stateSnapshotFileURL
+        let backupURL = try stateSnapshotBackupFileURL
+        let stateExists = fileManager.fileExists(atPath: stateURL.path)
+        let backupExists = fileManager.fileExists(atPath: backupURL.path)
+
+        guard stateExists || backupExists else {
+            // Compatibility mirrors are consulted only when no authoritative
+            // state has ever been written, which preserves legacy migration.
             return nil
         }
 
-        do {
-            let data = try Data(contentsOf: url)
-            return try decoder.decode(PersistedSettingsSnapshot.self, from: data)
-        } catch {
-            // Recover from an interrupted or externally edited snapshot by using
-            // the legacy mirrors. The next successful save recreates the snapshot.
-            return nil
+        if stateExists {
+            do {
+                return LoadedPersistedSettingsSnapshot(
+                    snapshot: try decodePersistedSnapshot(at: stateURL),
+                    recoveryNotice: nil
+                )
+            } catch let error as SettingsStoreError {
+                throw error
+            } catch is DecodingError {
+                return try recoverPersistedSnapshot(from: backupURL, repairing: stateURL)
+            }
         }
+
+        return try recoverPersistedSnapshot(from: backupURL, repairing: stateURL)
+    }
+
+    private func decodePersistedSnapshot(at url: URL) throws -> PersistedSettingsSnapshot {
+        let data = try Data(contentsOf: url)
+        let snapshot = try decoder.decode(PersistedSettingsSnapshot.self, from: data)
+        guard snapshot.schemaVersion == PersistedSettingsSnapshot.currentSchemaVersion else {
+            throw SettingsStoreError.unsupportedStateSchemaVersion(snapshot.schemaVersion)
+        }
+        return snapshot
+    }
+
+    private func recoverPersistedSnapshot(
+        from backupURL: URL,
+        repairing stateURL: URL
+    ) throws -> LoadedPersistedSettingsSnapshot {
+        guard fileManager.fileExists(atPath: backupURL.path) else {
+            throw SettingsStoreError.authoritativeStateCorrupted
+        }
+
+        let snapshot: PersistedSettingsSnapshot
+        do {
+            snapshot = try decodePersistedSnapshot(at: backupURL)
+        } catch let error as SettingsStoreError {
+            throw error
+        } catch {
+            throw SettingsStoreError.authoritativeStateCorrupted
+        }
+
+        let repairNotice: String
+        do {
+            try save(snapshot, to: stateURL)
+            repairNotice = "Recovered settings-state.json from settings-state.backup.json."
+        } catch {
+            repairNotice = "Loaded settings-state.backup.json, but settings-state.json could not be repaired: \(error.localizedDescription)"
+        }
+
+        return LoadedPersistedSettingsSnapshot(
+            snapshot: snapshot,
+            recoveryNotice: repairNotice
+        )
     }
 
     private func loadSettings() throws -> (value: AppSettings, usedDefault: Bool) {

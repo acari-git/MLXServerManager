@@ -4,6 +4,24 @@ import XCTest
 
 @MainActor
 final class DownloadAndReadyInternalTests: XCTestCase {
+    func testSelectingSearchResultUpdatesDownloadTargetAndDisplayName() {
+        let viewModel = AppViewModel()
+        let result = HuggingFaceSearchResult(
+            id: "owner/selected-model",
+            downloads: 10,
+            likes: 2,
+            lastModified: nil,
+            tags: ["mlx"]
+        )
+
+        viewModel.selectHuggingFaceSearchResult(result)
+
+        XCTAssertEqual(viewModel.selectedHuggingFaceSearchResult, result)
+        XCTAssertEqual(viewModel.huggingFaceDownloadDraft.source, "owner/selected-model")
+        XCTAssertEqual(viewModel.huggingFaceDownloadDraft.displayName, "selected-model")
+        XCTAssertTrue(viewModel.huggingFaceSearchMessage.contains("MLX"))
+    }
+
     func testSearchIgnoresStaleCompletionFromOlderRequest() async throws {
         let service = DelayedSearchService()
         let viewModel = AppViewModel(huggingFaceSearchService: service)
@@ -23,6 +41,25 @@ final class DownloadAndReadyInternalTests: XCTestCase {
         XCTAssertEqual(viewModel.huggingFaceSearchResults.map(\.id), ["owner/new-model"])
         XCTAssertEqual(viewModel.selectedHuggingFaceSearchResult?.id, "owner/new-model")
         XCTAssertEqual(viewModel.huggingFaceDownloadDraft.source, "owner/new-model")
+    }
+
+    func testSearchDoesNotOverwriteSourceEditedWhileRequestIsRunning() async throws {
+        let service = DelayedSearchService()
+        let viewModel = AppViewModel(huggingFaceSearchService: service)
+
+        viewModel.huggingFaceDownloadDraft.source = "owner/old-model"
+        viewModel.huggingFaceSearchQuery = "owner/old-model"
+        viewModel.performHuggingFaceSearchRequested()
+
+        try await Task.sleep(nanoseconds: 20_000_000)
+        viewModel.huggingFaceDownloadDraft.source = "owner/user-edited-model"
+
+        try await Task.sleep(nanoseconds: 300_000_000)
+
+        XCTAssertEqual(viewModel.huggingFaceDownloadDraft.source, "owner/user-edited-model")
+        XCTAssertTrue(viewModel.huggingFaceSearchResults.isEmpty)
+        XCTAssertNil(viewModel.selectedHuggingFaceSearchResult)
+        XCTAssertFalse(viewModel.isHuggingFaceSearching)
     }
 
     func testFilePreviewIgnoresFilesFromPreviouslySelectedModel() async throws {
@@ -45,6 +82,26 @@ final class DownloadAndReadyInternalTests: XCTestCase {
         )
         XCTAssertEqual(viewModel.huggingFaceFilePreview.files.map(\.path), ["new.safetensors"])
         XCTAssertEqual(viewModel.selectedHuggingFacePreviewFileIDs, ["new.safetensors"])
+    }
+
+    func testFilePreviewIsCancelledWhenDraftIdentityChanges() async throws {
+        let service = DelayedRepositoryFileService()
+        let viewModel = AppViewModel(huggingFaceRepositoryFileService: service)
+
+        viewModel.huggingFaceDownloadDraft.source = "owner/old-model"
+        viewModel.previewHuggingFaceFilesRequested()
+
+        try await Task.sleep(nanoseconds: 20_000_000)
+        viewModel.huggingFaceDownloadDraft.source = "owner/user-edited-model"
+        viewModel.huggingFaceDownloadIdentityChanged()
+
+        XCTAssertNil(viewModel.huggingFaceFilePreviewIdentity)
+        XCTAssertFalse(viewModel.huggingFaceFilePreview.isLoading)
+
+        try await Task.sleep(nanoseconds: 300_000_000)
+
+        XCTAssertTrue(viewModel.huggingFaceFilePreview.files.isEmpty)
+        XCTAssertTrue(viewModel.selectedHuggingFacePreviewFileIDs.isEmpty)
     }
 
     func testAutoUnloadSettingsPersistAcrossViewModelReload() throws {
@@ -71,6 +128,45 @@ final class DownloadAndReadyInternalTests: XCTestCase {
         XCTAssertEqual(reloadedViewModel.autoUnloadMinutes(for: reloadedModel), 45)
     }
 
+    func testSavingSettingsPreservesSelectedPreviewFileMode() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerDownloadDraftTests-\(UUID().uuidString)")
+        defer {
+            if let directory = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: directory)
+            }
+        }
+
+        let viewModel = AppViewModel(settingsStore: store)
+        viewModel.huggingFaceDownloadDraft.useSelectedPreviewFiles = true
+
+        viewModel.saveSettingsRequested()
+
+        XCTAssertTrue(viewModel.huggingFaceDownloadDraft.useSelectedPreviewFiles)
+    }
+
+    func testSaveSettingsRequestedReportsAuthoritativeSnapshotFailure() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerSaveFailureTests-\(UUID().uuidString)")
+        defer {
+            if let directory = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: directory)
+            }
+        }
+
+        let viewModel = AppViewModel(settingsStore: store)
+        try FileManager.default.createDirectory(
+            at: store.stateSnapshotFileURL,
+            withIntermediateDirectories: true
+        )
+
+        let originalSettings = viewModel.settings
+        var candidate = originalSettings
+        candidate.defaultPort = 9_999
+
+        XCTAssertFalse(viewModel.saveSettingsRequested(candidate))
+        XCTAssertEqual(viewModel.settings, originalSettings)
+        XCTAssertTrue(viewModel.logText.contains("[settings] Failed to save settings:"))
+    }
+
     func testFilePreviewUsesCredentialStoreToken() async throws {
         let service = DelayedRepositoryFileService()
         let credentialStore = StaticCredentialStore(value: "hf_test_token")
@@ -85,6 +181,47 @@ final class DownloadAndReadyInternalTests: XCTestCase {
         try await Task.sleep(nanoseconds: 100_000_000)
 
         XCTAssertEqual(service.lastToken, "hf_test_token")
+    }
+
+    func testDownloadStorageAssessmentUsesPartialFileAtResolvedDestination() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let destination = root
+            .appendingPathComponent("owner", isDirectory: true)
+            .appendingPathComponent("new-model", isDirectory: true)
+        try HuggingFaceDownloadProvenanceStore().prepare(
+            destinationURL: destination,
+            repositoryID: "owner/new-model",
+            revision: "main"
+        )
+        try Data(repeating: 1, count: 7).write(
+            to: destination.appendingPathComponent("new.safetensors")
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let viewModel = AppViewModel(
+            huggingFaceRepositoryFileService: DelayedRepositoryFileService(),
+            downloadStorageCapacityProvider: InternalTestDownloadStorageCapacityProvider(capacity: 2)
+        )
+        viewModel.selectHuggingFaceSearchResult(
+            HuggingFaceSearchResult(
+                id: "owner/new-model",
+                downloads: 1,
+                likes: 1,
+                lastModified: nil,
+                tags: ["mlx"]
+            )
+        )
+        viewModel.huggingFaceDownloadDraft.saveDirectory = root.path
+        viewModel.previewHuggingFaceFilesRequested()
+
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        let assessment = try XCTUnwrap(viewModel.huggingFaceDownloadStorageAssessment)
+        XCTAssertEqual(assessment.kind, .insufficient)
+        XCTAssertEqual(assessment.requirement.knownRemainingBytes, 3)
+        XCTAssertEqual(assessment.availableCapacityBytes, 2)
+        XCTAssertTrue(assessment.blocksDownload)
     }
 
     func testProgressMeasurerCountsOnlyExpectedCompletedFiles() throws {
@@ -182,6 +319,81 @@ final class DownloadAndReadyInternalTests: XCTestCase {
         )
     }
 
+    func testQueueSchedulerSerializesSharedDestinationsWithoutBlockingOtherJobs() {
+        let activeID = UUID()
+        let oldestSharedID = UUID()
+        let newestSharedID = UUID()
+        let otherID = UUID()
+        let sharedDestination = "/tmp/shared-model"
+        let entries = [
+            makeQueueEntry(id: newestSharedID, phase: .waiting, destinationPath: sharedDestination),
+            makeQueueEntry(id: otherID, phase: .waiting, destinationPath: "/tmp/other-model"),
+            makeQueueEntry(id: oldestSharedID, phase: .waiting, destinationPath: sharedDestination),
+            makeQueueEntry(id: activeID, phase: .downloading, destinationPath: "/tmp/active-model")
+        ]
+        let queuedIDs = Set([oldestSharedID, newestSharedID, otherID])
+
+        XCTAssertEqual(
+            HuggingFaceDownloadQueueScheduler.startableIDs(
+                entries: entries,
+                queuedIDs: queuedIDs,
+                activeIDs: [activeID],
+                activeDestinationPaths: ["/tmp/active-model"],
+                maximumConcurrentDownloads: 3
+            ),
+            [oldestSharedID, otherID]
+        )
+
+        XCTAssertEqual(
+            HuggingFaceDownloadQueueScheduler.startableIDs(
+                entries: entries,
+                queuedIDs: queuedIDs,
+                activeIDs: [activeID],
+                activeDestinationPaths: [sharedDestination],
+                maximumConcurrentDownloads: 3
+            ),
+            [otherID]
+        )
+    }
+
+    func testQueueSchedulerSerializesAliasedDestinationPaths() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MLXServerManagerQueueAlias-\(UUID().uuidString)", isDirectory: true)
+        let realDirectory = root.appendingPathComponent("real", isDirectory: true)
+        let aliasDirectory = root.appendingPathComponent("alias", isDirectory: true)
+        try FileManager.default.createDirectory(at: realDirectory, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: aliasDirectory, withDestinationURL: realDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let oldestID = UUID()
+        let newestID = UUID()
+        let realDestination = realDirectory.appendingPathComponent("model", isDirectory: true).path
+        let aliasedDestination = aliasDirectory.appendingPathComponent("model", isDirectory: true).path
+        let entries = [
+            makeQueueEntry(id: newestID, phase: .waiting, destinationPath: aliasedDestination),
+            makeQueueEntry(id: oldestID, phase: .waiting, destinationPath: realDestination)
+        ]
+
+        XCTAssertEqual(
+            HuggingFaceDownloadQueueScheduler.startableIDs(
+                entries: entries,
+                queuedIDs: [oldestID, newestID],
+                activeIDs: [],
+                maximumConcurrentDownloads: 2
+            ),
+            [oldestID]
+        )
+        XCTAssertTrue(
+            HuggingFaceDownloadQueueScheduler.startableIDs(
+                entries: entries,
+                queuedIDs: [newestID],
+                activeIDs: [],
+                activeDestinationPaths: [realDestination],
+                maximumConcurrentDownloads: 2
+            ).isEmpty
+        )
+    }
+
     func testQueueSchedulerSupportsIndividualCancellation() {
         let waitingID = UUID()
         let activeID = UUID()
@@ -209,6 +421,27 @@ final class DownloadAndReadyInternalTests: XCTestCase {
                 requestedID: completedID
             ).isEmpty
         )
+    }
+
+    func testQueueHistoryPruningKeepsAllActiveAndNewestTerminalEntries() {
+        let activeID = UUID()
+        let newestTerminalID = UUID()
+        let secondTerminalID = UUID()
+        let removedTerminalID = UUID()
+        let entries = [
+            makeQueueEntry(id: activeID, phase: .downloading),
+            makeQueueEntry(id: newestTerminalID, phase: .failed),
+            makeQueueEntry(id: secondTerminalID, phase: .completed),
+            makeQueueEntry(id: removedTerminalID, phase: .cancelled)
+        ]
+
+        let result = HuggingFaceDownloadQueueScheduler.pruningTerminalHistory(
+            entries: entries,
+            maximumTerminalEntries: 2
+        )
+
+        XCTAssertEqual(result.entries.map(\.id), [activeID, newestTerminalID, secondTerminalID])
+        XCTAssertEqual(result.removedIDs, [removedTerminalID])
     }
 
     func testQueueFileProgressDoesNotInventCurrentFile() {
@@ -271,11 +504,54 @@ final class DownloadAndReadyInternalTests: XCTestCase {
         XCTAssertTrue(message.contains("expected model"))
     }
 
-    private func makeQueueEntry(id: UUID, phase: HuggingFaceDownloadPhase) -> HuggingFaceDownloadQueueEntry {
+    func testManualReadyCheckResultStaysWithOriginalModelAfterSelectionChanges() async throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerReadyGenerationTests-\(UUID().uuidString)")
+        defer {
+            if let directory = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: directory)
+            }
+        }
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [DelayedReadyURLProtocol.self]
+        let checker = ReadyChecker(timeout: 1, session: URLSession(configuration: configuration))
+        let viewModel = AppViewModel(settingsStore: store, readyChecker: checker)
+        var firstModel = ModelConfig.defaults[0]
+        firstModel.modelID = "owner/first-model"
+        firstModel.displayName = "First"
+        firstModel.serverPort = 18080
+        var secondModel = ModelConfig.defaults[0]
+        secondModel.modelID = "owner/second-model"
+        secondModel.displayName = "Second"
+        secondModel.serverPort = 18081
+        viewModel.models = [firstModel, secondModel]
+        viewModel.selectedModelID = firstModel.id
+        DelayedReadyURLProtocol.response = .init(
+            delay: 0.15,
+            statusCode: 200,
+            body: #"{"object":"list","data":[{"id":"owner/first-model"}]}"#
+        )
+
+        viewModel.checkReadyRequested()
+        viewModel.selectedModelID = secondModel.id
+        try await Task.sleep(nanoseconds: 300_000_000)
+
+        guard case .ready = viewModel.runtimeState(for: firstModel) else {
+            return XCTFail("Expected the first model to receive its ready result.")
+        }
+        XCTAssertEqual(viewModel.runtimeState(for: secondModel), .stopped)
+        XCTAssertEqual(viewModel.selectedModelID, secondModel.id)
+    }
+
+    private func makeQueueEntry(
+        id: UUID,
+        phase: HuggingFaceDownloadPhase,
+        destinationPath: String? = nil
+    ) -> HuggingFaceDownloadQueueEntry {
         HuggingFaceDownloadQueueEntry(
             id: id,
             repositoryID: "owner/model-\(id.uuidString)",
-            destinationPath: "/tmp/model-\(id.uuidString)",
+            destinationPath: destinationPath ?? "/tmp/model-\(id.uuidString)",
             phase: phase,
             message: "test",
             fileCount: nil,
@@ -341,6 +617,14 @@ private final class StaticCredentialStore: HuggingFaceCredentialStoring {
     func deleteValue() {}
 }
 
+private struct InternalTestDownloadStorageCapacityProvider: DownloadStorageCapacityProviding {
+    let capacity: Int64?
+
+    func availableCapacityForImportantUsage(at destinationDirectoryURL: URL) -> Int64? {
+        capacity
+    }
+}
+
 private final class MockReadyURLProtocol: URLProtocol {
     struct Response {
         let statusCode: Int
@@ -366,4 +650,41 @@ private final class MockReadyURLProtocol: URLProtocol {
     }
 
     override func stopLoading() {}
+}
+
+private final class DelayedReadyURLProtocol: URLProtocol {
+    struct Response {
+        let delay: TimeInterval
+        let statusCode: Int
+        let body: String
+    }
+
+    nonisolated(unsafe) static var response = Response(delay: 0, statusCode: 500, body: "")
+    private var pendingWorkItem: DispatchWorkItem?
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        let response = Self.response
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self, self.pendingWorkItem?.isCancelled == false else { return }
+            let httpResponse = HTTPURLResponse(
+                url: request.url!,
+                statusCode: response.statusCode,
+                httpVersion: "HTTP/1.1",
+                headerFields: ["Content-Type": "application/json"]
+            )!
+            client?.urlProtocol(self, didReceive: httpResponse, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: Data(response.body.utf8))
+            client?.urlProtocolDidFinishLoading(self)
+        }
+        pendingWorkItem = workItem
+        DispatchQueue.global().asyncAfter(deadline: .now() + response.delay, execute: workItem)
+    }
+
+    override func stopLoading() {
+        pendingWorkItem?.cancel()
+        pendingWorkItem = nil
+    }
 }

@@ -12,10 +12,7 @@ struct MLXLMVersionProvider {
             return nil
         }
 
-        let timeout = timeout
-        return await Task.detached(priority: .utility) {
-            Self.runVersionCommand(executablePath: trimmedPath, timeout: timeout)
-        }.value
+        return await Self.runVersionCommand(executablePath: trimmedPath, timeout: timeout)
     }
 
     func version(executablePath: String, backend: InferenceBackend) async -> String? {
@@ -44,32 +41,19 @@ struct MLXLMVersionProvider {
     private nonisolated static func runVersionCommand(
         executablePath: String,
         timeout: TimeInterval
-    ) -> String? {
-        let process = Process()
-        let pipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: executablePath)
-        process.arguments = ["--version"]
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        do {
-            try process.run()
-        } catch {
+    ) async -> String? {
+        guard let result = await ShortLivedProcessRunner.runAsync(
+            executablePath: executablePath,
+            arguments: ["--version"],
+            timeout: timeout
+        ), !result.timedOut, !result.cancelled else {
             return nil
         }
 
-        let deadline = Date().addingTimeInterval(timeout)
-        while process.isRunning && Date() < deadline {
-            Thread.sleep(forTimeInterval: 0.05)
-        }
-
-        guard !process.isRunning else {
-            process.terminate()
-            return nil
-        }
-
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        guard let output = String(data: data, encoding: .utf8) else {
+        var combinedOutput = result.standardOutput
+        combinedOutput.append(Data("\n".utf8))
+        combinedOutput.append(result.standardError)
+        guard let output = String(data: combinedOutput, encoding: .utf8) else {
             return nil
         }
         return normalizedVersionOutput(output)

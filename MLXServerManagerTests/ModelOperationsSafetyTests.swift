@@ -3,6 +3,34 @@ import XCTest
 
 @MainActor
 final class ModelOperationsSafetyTests: XCTestCase {
+    func testFailedAuthoritativeSaveDoesNotPublishModelOrSettingsMutations() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
+        defer {
+            if let directory = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: directory)
+            }
+        }
+        let viewModel = AppViewModel(settingsStore: store)
+        guard let model = viewModel.models.first else {
+            return XCTFail("Expected a default model")
+        }
+        let originalReasoning = model.enableThinking
+        let originalSettings = viewModel.settings
+
+        try FileManager.default.createDirectory(
+            at: store.stateSnapshotFileURL,
+            withIntermediateDirectories: true
+        )
+
+        viewModel.toggleReasoning(for: model, isEnabled: !originalReasoning)
+        viewModel.setAutoUnloadEnabled(true, for: model)
+        viewModel.setBenchmarkPreset(.detailed)
+
+        XCTAssertEqual(viewModel.models.first(where: { $0.id == model.id })?.enableThinking, originalReasoning)
+        XCTAssertEqual(viewModel.settings, originalSettings)
+        XCTAssertFalse(viewModel.isAutoUnloadEnabled(for: model))
+    }
+
     func testDuplicateProfileWarningDetectsDuplicateEndpoint() throws {
         let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
         let first = ModelConfig(
@@ -196,9 +224,116 @@ final class ModelOperationsSafetyTests: XCTestCase {
 
         XCTAssertEqual(viewModel.models.map(\.id), [second.id])
         XCTAssertNil(viewModel.profileDeletionUndoState)
+        XCTAssertNotNil(viewModel.profileDeletionMessage)
+
+        viewModel.dismissProfileDeletionMessage()
+
+        XCTAssertNil(viewModel.profileDeletionMessage)
     }
 
-    func testModelTableSortValuesReflectDisplayedColumns() throws {
+    func testCacheDeletionPublishesProfileChangeBeforeBackgroundDeletionCompletes() async throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerAsyncCacheDeleteTests-\(UUID().uuidString)")
+        defer {
+            if let directory = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: directory)
+            }
+        }
+
+        let first = reorderModel(id: "owner/model-a", port: 8_221)
+        let second = reorderModel(id: "owner/model-b", port: 8_222)
+        try store.save(settings: .defaults, models: [first, second])
+        let viewModel = AppViewModel(
+            settingsStore: store,
+            huggingFaceCacheDeletionService: DelayedCacheDeletionService(
+                delayNanoseconds: 80_000_000,
+                outcome: .deleted
+            )
+        )
+        viewModel.settings.uiLanguage = .english
+
+        viewModel.deleteProfileRequested(for: first)
+        viewModel.confirmDeleteProfile(deleteHuggingFaceCache: true)
+
+        XCTAssertEqual(viewModel.models.map(\.id), [second.id])
+        XCTAssertNil(viewModel.profileDeletionUndoState)
+        XCTAssertTrue(viewModel.profileDeletionMessage?.contains("Deleting") == true)
+
+        let completedMessage = "Profile and matching Hugging Face cache were deleted."
+        for _ in 0..<100 where viewModel.profileDeletionMessage != completedMessage {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        XCTAssertEqual(viewModel.profileDeletionMessage, completedMessage)
+    }
+
+    func testModelReorderMovesUpDownAndPersistsOrder() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerReorderTests-\(UUID().uuidString)")
+        defer {
+            if let directory = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: directory)
+            }
+        }
+        let models = [
+            reorderModel(id: "owner/a", port: 8_301),
+            reorderModel(id: "owner/b", port: 8_302),
+            reorderModel(id: "owner/c", port: 8_303)
+        ]
+        try store.save(settings: .defaults, models: models)
+        let viewModel = AppViewModel(settingsStore: store)
+
+        XCTAssertFalse(viewModel.canMoveModelUp(withID: models[0].id))
+        XCTAssertFalse(viewModel.canMoveModelDown(withID: models[2].id))
+
+        viewModel.moveModelDown(withID: models[0].id)
+        XCTAssertEqual(viewModel.models.map(\.id), [models[1].id, models[0].id, models[2].id])
+
+        viewModel.moveModelUp(withID: models[2].id)
+        XCTAssertEqual(viewModel.models.map(\.id), [models[1].id, models[2].id, models[0].id])
+
+        let reloaded = AppViewModel(settingsStore: store)
+        XCTAssertEqual(reloaded.models.map(\.id), [models[1].id, models[2].id, models[0].id])
+    }
+
+    func testModelReorderDoesNotChangeMemoryOrderWhenPersistenceFails() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerReorderFailureTests-\(UUID().uuidString)")
+        defer {
+            if let directory = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: directory)
+            }
+        }
+        let models = [
+            reorderModel(id: "owner/a", port: 8_311),
+            reorderModel(id: "owner/b", port: 8_312)
+        ]
+        try store.save(settings: .defaults, models: models)
+        let viewModel = AppViewModel(settingsStore: store)
+        try FileManager.default.removeItem(at: store.stateSnapshotFileURL)
+        try FileManager.default.createDirectory(
+            at: store.stateSnapshotFileURL,
+            withIntermediateDirectories: true
+        )
+
+        viewModel.moveModelDown(withID: models[0].id)
+
+        XCTAssertEqual(viewModel.models.map(\.id), models.map(\.id))
+        XCTAssertTrue(viewModel.logText.contains("failed to save model order"))
+    }
+
+    private func reorderModel(id: String, port: Int) -> ModelConfig {
+        ModelConfig(
+            modelID: id,
+            displayName: id,
+            family: "Test",
+            quantization: "4bit",
+            localName: id,
+            host: "127.0.0.1",
+            serverPort: port,
+            enableThinking: false,
+            notes: ""
+        )
+    }
+
+    func testModelTableSortValuesReflectDisplayedColumns() async throws {
         let temporaryDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("MLXServerManagerTests-\(UUID().uuidString)", isDirectory: true)
         let smallModelDirectory = temporaryDirectory.appendingPathComponent("small-model", isDirectory: true)
@@ -244,6 +379,13 @@ final class ModelOperationsSafetyTests: XCTestCase {
         viewModel.setAutoUnloadEnabled(true, for: smallModel)
         viewModel.setAutoUnloadMinutes(45, for: smallModel)
 
+        _ = viewModel.modelSizeSortValue(for: smallModel)
+        _ = viewModel.modelSizeSortValue(for: largeModel)
+        for _ in 0..<100 where viewModel.modelSizeSortValue(for: smallModel) < 0
+            || viewModel.modelSizeSortValue(for: largeModel) < 0 {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
         XCTAssertLessThan(viewModel.modelSizeSortValue(for: smallModel), viewModel.modelSizeSortValue(for: largeModel))
         XCTAssertLessThan(viewModel.endpointSortValue(for: largeModel), viewModel.endpointSortValue(for: smallModel))
         XCTAssertEqual(viewModel.integratedMemorySortValue(for: smallModel), -1)
@@ -266,5 +408,15 @@ final class ModelOperationsSafetyTests: XCTestCase {
         XCTAssertEqual(rowStates[1].memoryText, "-")
         XCTAssertFalse(rowStates[0].isTransitioning)
         XCTAssertFalse(rowStates[1].isTransitioning)
+    }
+}
+
+private struct DelayedCacheDeletionService: HuggingFaceCacheDeleting {
+    let delayNanoseconds: UInt64
+    let outcome: HuggingFaceCacheDeletionOutcome
+
+    func deleteCache(at cacheURL: URL) async -> HuggingFaceCacheDeletionOutcome {
+        try? await Task.sleep(nanoseconds: delayNanoseconds)
+        return outcome
     }
 }

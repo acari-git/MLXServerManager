@@ -132,6 +132,41 @@ final class ModelProfileValidatorTests: XCTestCase {
         )
     }
 
+    func testAdvancedOptionsRejectManagedRawArgumentsForEachBackendAndSyntax() throws {
+        let mlxCases = [
+            ("--model other/model", "--model"),
+            ("--host 0.0.0.0", "--host"),
+            ("--port 9000", "--port"),
+            ("--port=9000", "--port")
+        ]
+
+        for (rawExtraArgs, forbiddenFlag) in mlxCases {
+            var options = AdvancedLaunchOptions.empty
+            options.rawExtraArgs = rawExtraArgs
+            XCTAssertEqual(
+                invalidMessage(from: validator.validateAdvancedLaunchOptions(options, backend: .mlxLM)),
+                "Raw Extra Args must not override the managed argument \(forbiddenFlag)."
+            )
+        }
+
+        for rawExtraArgs in ["--host 0.0.0.0", "--port=9000"] {
+            var options = AdvancedLaunchOptions.empty
+            options.rawExtraArgs = rawExtraArgs
+            let forbiddenFlag = rawExtraArgs.hasPrefix("--host") ? "--host" : "--port"
+            XCTAssertEqual(
+                invalidMessage(from: validator.validateAdvancedLaunchOptions(options, backend: .rapidMLX)),
+                "Raw Extra Args must not override the managed argument \(forbiddenFlag)."
+            )
+        }
+
+        var rapidOptions = AdvancedLaunchOptions.empty
+        rapidOptions.rawExtraArgs = "--model alternate-model"
+        let validated = try validAdvancedOptions(
+            from: validator.validateAdvancedLaunchOptions(rapidOptions, backend: .rapidMLX)
+        )
+        XCTAssertEqual(validated?.rawExtraArgs, "--model alternate-model")
+    }
+
     func testAdvancedOptionsRejectInvalidRapidMLXLogLevelAndRawArguments() {
         var options = AdvancedLaunchOptions.empty
         options.logLevel = "TRACE"

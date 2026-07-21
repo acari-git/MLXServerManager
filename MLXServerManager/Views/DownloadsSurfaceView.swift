@@ -116,6 +116,9 @@ struct DownloadsSurfaceView: View {
                         viewModel.huggingFaceSearchQuery = viewModel.huggingFaceDownloadDraft.source
                         viewModel.performHuggingFaceSearchRequested()
                     }
+                    .onChange(of: viewModel.huggingFaceDownloadDraft.source) { _, _ in
+                        viewModel.huggingFaceDownloadIdentityChanged()
+                    }
 
                     Button {
                         viewModel.huggingFaceSearchQuery = viewModel.huggingFaceDownloadDraft.source
@@ -166,39 +169,46 @@ struct DownloadsSurfaceView: View {
     }
 
     private func searchResultRow(_ result: HuggingFaceSearchResult) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: viewModel.selectedHuggingFaceSearchResult?.id == result.id ? "checkmark.seal.fill" : "circle")
-                .foregroundStyle(viewModel.selectedHuggingFaceSearchResult?.id == result.id ? Color.green : Color.secondary)
-                .padding(.top, 2)
-                .help(t("Verified download target", "確認済みのダウンロード対象"))
+        Button {
+            viewModel.selectHuggingFaceSearchResult(result)
+        } label: {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: viewModel.selectedHuggingFaceSearchResult?.id == result.id ? "checkmark.seal.fill" : "circle")
+                    .foregroundStyle(viewModel.selectedHuggingFaceSearchResult?.id == result.id ? Color.green : Color.secondary)
+                    .padding(.top, 2)
 
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(result.id)
-                        .font(.caption.weight(.semibold))
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(result.id)
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(1)
+                        Spacer()
+                        Text(result.compatibility.badgeText)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(result.isSupportedForDownload ? Color.green : Color.red)
+                    }
+                    Text(result.qualitySummary)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
-                    Spacer()
-                    Text(result.compatibility.badgeText)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(result.isSupportedForDownload ? Color.green : Color.red)
+                    Text(result.selectionMessage(language: viewModel.settings.uiLanguage))
+                        .font(.caption2)
+                        .foregroundStyle(result.isSupportedForDownload ? Color.secondary : Color.red)
+                        .lineLimit(2)
                 }
-                Text(result.qualitySummary)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                Text(result.selectionMessage(language: viewModel.settings.uiLanguage))
-                    .font(.caption2)
-                    .foregroundStyle(result.isSupportedForDownload ? Color.secondary : Color.red)
-                    .lineLimit(2)
             }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(nsColor: .controlBackgroundColor).opacity(0.26), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.16), lineWidth: 1)
+            )
         }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.26), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.16), lineWidth: 1)
-        )
+        .buttonStyle(.plain)
+        .help(t("Select this download target", "このダウンロード対象を選択"))
+        .accessibilityLabel(result.id)
+        .accessibilityHint(t("Select this model as the download target", "このモデルをダウンロード対象として選択します"))
     }
 
     private var downloadReviewContent: some View {
@@ -212,7 +222,7 @@ struct DownloadsSurfaceView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(!viewModel.canStartHuggingFaceDownload)
 
-                Button(strings.text(.retry)) { viewModel.retryHuggingFaceDownloadRequested() }
+                Button(viewModel.huggingFaceDownloadRetryTitle()) { viewModel.retryHuggingFaceDownloadRequested() }
                     .disabled(!viewModel.canRetryHuggingFaceDownload)
 
                 Button(strings.text(.cancel)) { viewModel.cancelHuggingFaceDownloadRequested() }
@@ -253,6 +263,25 @@ struct DownloadsSurfaceView: View {
                         .disabled(viewModel.selectedHuggingFacePreviewFileIDs.isEmpty)
                 }
 
+                if let storageAssessment = viewModel.huggingFaceDownloadStorageAssessment {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(storageAssessment.title(language: viewModel.settings.uiLanguage))
+                                .font(.caption.weight(.semibold))
+                            Text(storageAssessment.detail(language: viewModel.settings.uiLanguage))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                    } icon: {
+                        Image(systemName: storageAssessment.blocksDownload
+                            ? "externaldrive.badge.exclamationmark"
+                            : "externaldrive.badge.checkmark")
+                            .foregroundStyle(storageAssessment.blocksDownload ? Color.red : Color.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+
                 if !selection.filteredFiles.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         ForEach(selection.filteredFiles.prefix(10)) { file in
@@ -272,6 +301,10 @@ struct DownloadsSurfaceView: View {
                                 )
                                 .toggleStyle(.checkbox)
                                 .labelsHidden()
+                                .accessibilityLabel(file.path)
+                                .accessibilityHint(
+                                    t("File size: \(file.compactSize)", "ファイルサイズ: \(file.compactSize)")
+                                )
                                 Text(file.path)
                                     .font(.caption2.monospaced())
                                     .lineLimit(1)
@@ -383,11 +416,20 @@ struct DownloadsSurfaceView: View {
             subtitle: t("Recent and queued model download jobs.", "直近またはキュー内のモデルダウンロードです。")
         ) {
             VStack(alignment: .leading, spacing: 12) {
-                ForEach(viewModel.huggingFaceDownloadQueue.prefix(8)) { entry in
+                ForEach(recentDownloadEntries) { entry in
                     queueRow(entry)
                 }
             }
         }
+    }
+
+    private var recentDownloadEntries: [HuggingFaceDownloadQueueEntry] {
+        let recentEntries = Array(viewModel.huggingFaceDownloadQueue.prefix(8))
+        let recentIDs = Set(recentEntries.map(\.id))
+        let olderRetryableEntries = viewModel.huggingFaceDownloadQueue.filter { entry in
+            !recentIDs.contains(entry.id) && viewModel.canRetryHuggingFaceDownload(id: entry.id)
+        }
+        return recentEntries + olderRetryableEntries
     }
 
     private func queueRow(_ entry: HuggingFaceDownloadQueueEntry) -> some View {
@@ -406,6 +448,14 @@ struct DownloadsSurfaceView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
             queueProgressView(for: entry)
+            if (entry.phase == .failed || entry.phase == .cancelled),
+               !entry.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(entry.message)
+                    .font(.caption2)
+                    .foregroundStyle(entry.phase == .failed ? Color.red : Color.secondary)
+                    .lineLimit(3)
+                    .accessibilityLabel(t("Download result", "ダウンロード結果") + ": " + entry.message)
+            }
             HStack(spacing: 8) {
                 progressMetricPill(title: t("Files", "ファイル"), value: entry.fileProgressText)
                 progressMetricPill(title: t("Total", "全体"), value: entry.capacityProgressText)
@@ -413,6 +463,11 @@ struct DownloadsSurfaceView: View {
             }
             HStack(spacing: 10) {
                 Button(t("Restore", "復元")) { viewModel.restoreHuggingFaceDownloadForm(from: entry) }
+                if viewModel.canRetryHuggingFaceDownload(id: entry.id) {
+                    Button(viewModel.huggingFaceDownloadRetryTitle(id: entry.id)) {
+                        viewModel.retryHuggingFaceDownload(id: entry.id)
+                    }
+                }
                 Button(t("Copy URL", "URLをコピー")) { viewModel.copyHuggingFaceDownloadURL(from: entry) }
                 Spacer()
             }

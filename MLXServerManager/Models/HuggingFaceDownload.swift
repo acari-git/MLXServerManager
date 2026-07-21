@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated struct HuggingFaceModelReference: Equatable {
+nonisolated struct HuggingFaceModelReference: Codable, Equatable {
     let repositoryID: String
     let owner: String
     let name: String
@@ -106,7 +106,7 @@ nonisolated enum HuggingFaceModelReferenceError: LocalizedError, Equatable {
     }
 }
 
-nonisolated struct HuggingFaceDownloadDraft: Equatable {
+nonisolated struct HuggingFaceDownloadDraft: Codable, Equatable {
     var source: String
     var revision: String
     var includePatterns: String
@@ -152,10 +152,15 @@ nonisolated struct HuggingFaceDownloadPreview: Equatable {
         case let .success(reference):
             let destinationPath = HuggingFaceDownloadPlanner.destinationPath(
                 baseDirectory: draft.saveDirectory,
-                repositoryName: reference.name
+                reference: reference
             )
             let compactPath = destinationPath.map { ModelAvailabilityPathFormatter.compact(path: $0) } ?? "Invalid save directory"
-            let destinationState = HuggingFaceDownloadPlanner.destinationState(path: destinationPath)
+            let revision = draft.revision.trimmingCharacters(in: .whitespacesAndNewlines)
+            let destinationState = HuggingFaceDownloadPlanner.destinationState(
+                path: destinationPath,
+                repositoryID: reference.repositoryID,
+                revision: revision.isEmpty ? "main" : revision
+            )
             let displayName = draft.displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? reference.name
                 : draft.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -183,7 +188,7 @@ nonisolated struct HuggingFaceDownloadPreview: Equatable {
     }
 }
 
-nonisolated enum HuggingFaceDownloadPhase: Equatable {
+nonisolated enum HuggingFaceDownloadPhase: String, Codable, Equatable {
     case waiting
     case preparing
     case downloading
@@ -226,7 +231,7 @@ nonisolated enum HuggingFaceDownloadPhase: Equatable {
     }
 }
 
-struct HuggingFaceDownloadQueueEntry: Identifiable, Equatable {
+nonisolated struct HuggingFaceDownloadQueueEntry: Codable, Identifiable, Equatable {
     let id: UUID
     let repositoryID: String
     let destinationPath: String
@@ -295,6 +300,31 @@ struct HuggingFaceDownloadStatus: Equatable {
 }
 
 nonisolated struct HuggingFaceDownloadPlanner {
+    static func destinationIdentity(path: String) -> String {
+        var existingAncestor = URL(fileURLWithPath: path, isDirectory: true)
+            .standardizedFileURL
+        var missingPathComponents: [String] = []
+
+        while !FileManager.default.fileExists(atPath: existingAncestor.path) {
+            let parent = existingAncestor.deletingLastPathComponent()
+            guard parent.path != existingAncestor.path else {
+                break
+            }
+            missingPathComponents.append(existingAncestor.lastPathComponent)
+            existingAncestor = parent
+        }
+
+        var resolvedURL = existingAncestor.resolvingSymlinksInPath()
+        for component in missingPathComponents.reversed() {
+            resolvedURL.appendPathComponent(component, isDirectory: true)
+        }
+        return resolvedURL.standardizedFileURL.path
+    }
+
+    static func destinationsMatch(_ lhs: String, _ rhs: String) -> Bool {
+        destinationIdentity(path: lhs) == destinationIdentity(path: rhs)
+    }
+
     static func destinationState(path: String?) -> (note: String, message: String, canUse: Bool) {
         guard let path else {
             return ("No local destination.", "Save directory is not a local path.", false)
@@ -320,14 +350,66 @@ nonisolated struct HuggingFaceDownloadPlanner {
         )
     }
 
-    static func destinationPath(baseDirectory: String, repositoryName: String) -> String? {
+    static func destinationState(
+        path: String?,
+        repositoryID: String,
+        revision: String
+    ) -> (note: String, message: String, canUse: Bool) {
+        guard let path else {
+            return ("No local destination.", "Save directory is not a local path.", false)
+        }
+
+        let destinationURL = URL(fileURLWithPath: path, isDirectory: true).standardizedFileURL
+        let inspection = HuggingFaceDownloadProvenanceStore().inspect(
+            destinationURL: destinationURL,
+            repositoryID: repositoryID,
+            revision: revision
+        )
+        switch inspection {
+        case .newDestination:
+            return ("Destination will be created.", "Ready to download.", true)
+        case .emptyDirectory:
+            return ("Destination is empty and will be assigned to this model.", "Ready to download.", true)
+        case .matchingSource:
+            return (
+                "Destination source matches. Download will update or resume this folder.",
+                "Ready to resume or update existing destination.",
+                true
+            )
+        case let .blocked(error):
+            let message = error.localizedDescription
+            return (message, message, false)
+        }
+    }
+
+    static func destinationPath(
+        baseDirectory: String,
+        reference: HuggingFaceModelReference
+    ) -> String? {
         guard let basePath = expandedLocalPath(from: baseDirectory) else {
             return nil
         }
 
         return URL(fileURLWithPath: basePath, isDirectory: true)
-            .appendingPathComponent(repositoryName, isDirectory: true)
+            .appendingPathComponent(reference.owner, isDirectory: true)
+            .appendingPathComponent(reference.name, isDirectory: true)
             .standardizedFileURL
+            .path
+    }
+
+    static func baseDirectory(
+        forDestinationPath destinationPath: String,
+        repositoryID: String
+    ) -> String {
+        let destinationURL = URL(fileURLWithPath: destinationPath, isDirectory: true).standardizedFileURL
+        guard case let .success(reference) = HuggingFaceModelReference.parse(repositoryID),
+              destinationURL.lastPathComponent == reference.name,
+              destinationURL.deletingLastPathComponent().lastPathComponent == reference.owner else {
+            return destinationURL.deletingLastPathComponent().path
+        }
+        return destinationURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
             .path
     }
 
@@ -374,11 +456,32 @@ nonisolated struct HuggingFaceDownloadPlanner {
         return percent / 100
     }
 
-    nonisolated static func sanitizedOutputLine(_ line: String) -> String {
+    nonisolated static func sanitizedOutputLine(
+        _ line: String,
+        sensitiveValues: [String] = []
+    ) -> String {
         let scalarView = line.unicodeScalars.filter { scalar in
             scalar.value >= 32 || scalar == "\n" || scalar == "\t"
         }
-        return String(String.UnicodeScalarView(scalarView))
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        var sanitized = String(String.UnicodeScalarView(scalarView))
+
+        for value in sensitiveValues {
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            sanitized = sanitized.replacingOccurrences(of: trimmed, with: "[REDACTED]")
+        }
+
+        sanitized = sanitized.replacingOccurrences(
+            of: #"(?i)\bBearer[ \t]+[^\s,;]+"#,
+            with: "Bearer [REDACTED]",
+            options: .regularExpression
+        )
+        sanitized = sanitized.replacingOccurrences(
+            of: #"\bhf_[A-Za-z0-9][A-Za-z0-9_-]{9,}\b"#,
+            with: "[REDACTED]",
+            options: .regularExpression
+        )
+
+        return sanitized.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

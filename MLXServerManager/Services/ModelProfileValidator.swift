@@ -168,7 +168,13 @@ nonisolated struct ModelProfileValidator {
 
         if let rawExtraArgs = normalizedOptions.rawExtraArgs {
             do {
-                _ = try ShellArgumentParser.parse(rawExtraArgs)
+                let parsedArguments = try ShellArgumentParser.parse(rawExtraArgs)
+                if let forbiddenFlag = ManagedLaunchArgumentPolicy.firstForbiddenFlag(
+                    in: parsedArguments,
+                    backend: backend
+                ) {
+                    return .invalid("Raw Extra Args must not override the managed argument \(forbiddenFlag).")
+                }
             } catch {
                 return .invalid(error.localizedDescription)
             }

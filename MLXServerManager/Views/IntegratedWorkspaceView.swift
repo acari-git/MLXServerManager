@@ -537,6 +537,10 @@ struct IntegratedWorkspaceView: View {
 
             memoryUsageBar
 
+            if viewModel.shouldShowRuntimeMemoryHeadroomWarning {
+                runtimeMemoryHeadroomWarning
+            }
+
             VStack(alignment: .leading, spacing: 12) {
                 memoryLegendRow(
                     color: .blue,
@@ -602,6 +606,32 @@ struct IntegratedWorkspaceView: View {
             .clipShape(Capsule())
         }
         .frame(height: 7)
+    }
+
+    private var runtimeMemoryHeadroomWarning: some View {
+        let assessment = viewModel.runtimeMemoryHeadroomAssessment
+        return VStack(alignment: .leading, spacing: 4) {
+            Label(
+                assessment.title(language: viewModel.settings.uiLanguage),
+                systemImage: AppSymbol.warning
+            )
+            .font(.callout.weight(.semibold))
+            .foregroundStyle(assessment.level == .critical ? .red : .orange)
+
+            Text(assessment.detail(language: viewModel.settings.uiLanguage))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let actionText = viewModel.runtimeMemoryProtectionActionText {
+                Text(actionText)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.leading, 22)
+        .accessibilityElement(children: .combine)
     }
 
     private func memoryLegendRow(color: Color, label: String, value: String) -> some View {
@@ -817,6 +847,14 @@ struct IntegratedWorkspaceView: View {
                     lightweightModelRow(for: row, availableWidth: max(0, availableWidth - 28))
                         .frame(width: max(0, availableWidth - 28), alignment: .leading)
                 }
+
+                Color.clear
+                    .frame(height: 24)
+                    .contentShape(Rectangle())
+                    .onDrop(of: [.plainText], isTargeted: nil) { providers in
+                        moveDroppedModelToEnd(providers)
+                    }
+                    .accessibilityHidden(true)
             }
             .frame(width: max(0, availableWidth - 28), alignment: .leading)
             .padding(.horizontal, 14)
@@ -950,28 +988,44 @@ struct IntegratedWorkspaceView: View {
     private func lightweightModelRow(for row: ModelListRowState, availableWidth: CGFloat) -> some View {
         let model = row.model
         let isSelected = viewModel.selectedModelID == model.id
-        return singleLineModelCard(for: row, availableWidth: availableWidth)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isSelected ? Color.accentColor.opacity(0.16) : Color(nsColor: .controlBackgroundColor).opacity(0.55))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(isSelected ? Color.accentColor.opacity(0.38) : Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 1)
-        )
-        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    viewModel.selectedModelID = model.id
-                }
-        )
-        .onDrop(of: [.plainText], isTargeted: nil) { providers in
-            moveDroppedModel(providers, before: model)
+        let card = singleLineModelCard(for: row, availableWidth: availableWidth)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(isSelected ? Color.accentColor.opacity(0.16) : Color(nsColor: .controlBackgroundColor).opacity(0.55))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(isSelected ? Color.accentColor.opacity(0.38) : Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+        return Group {
+            if modelTableSortColumn == nil {
+                card
+                    .onDrag {
+                        viewModel.selectedModelID = model.id
+                        return NSItemProvider(object: model.id as NSString)
+                    }
+                    .onDrop(of: [.plainText], isTargeted: nil) { providers in
+                        moveDroppedModel(providers, before: model)
+                    }
+            } else {
+                card
+            }
         }
+        .onTapGesture {
+            viewModel.selectedModelID = model.id
+        }
+        .accessibilityValue(isSelected ? t("Selected", "選択中") : t("Not selected", "未選択"))
+        .accessibilityAction(named: Text(t("Select model", "モデルを選択"))) {
+            viewModel.selectedModelID = model.id
+        }
+        .accessibilityHint(modelTableSortColumn == nil
+            ? t("Drag to reorder this model profile.", "ドラッグしてモデルプロファイルの順番を変更します。")
+            : t("Clear sorting before reordering model profiles.", "モデルプロファイルを並べ替えるにはソートを解除します。"))
         .accessibilityIdentifier("integrated-model-row-\(model.id)")
     }
 
@@ -996,7 +1050,7 @@ struct IntegratedWorkspaceView: View {
             }
 
             if showsFullMetadata {
-                endpointValueText(host: "127.0.0.1", port: row.model.serverPort)
+                endpointValueText(host: row.model.host, port: row.model.serverPort)
                     .frame(width: 132, alignment: .leading)
             }
 
@@ -1110,6 +1164,24 @@ struct IntegratedWorkspaceView: View {
 
             Divider()
 
+            Button {
+                modelTableSortColumn = nil
+                viewModel.moveModelUp(withID: model.id)
+            } label: {
+                Label(t("Move Up", "上へ移動"), systemImage: "arrow.up")
+            }
+            .disabled(!viewModel.canMoveModelUp(withID: model.id))
+
+            Button {
+                modelTableSortColumn = nil
+                viewModel.moveModelDown(withID: model.id)
+            } label: {
+                Label(t("Move Down", "下へ移動"), systemImage: "arrow.down")
+            }
+            .disabled(!viewModel.canMoveModelDown(withID: model.id))
+
+            Divider()
+
             Button(role: .destructive) {
                 viewModel.deleteProfileRequested(for: model)
             } label: {
@@ -1192,6 +1264,8 @@ struct IntegratedWorkspaceView: View {
         }
         .buttonStyle(.plain)
         .disabled(!isInteractive)
+        .help(row.hoveredStatusText)
+        .accessibilityLabel(row.hoveredStatusText)
         .onHover { isHovering in
             hoveredStatusModelID = isHovering ? model.id : (hoveredStatusModelID == model.id ? nil : hoveredStatusModelID)
         }
@@ -1232,6 +1306,8 @@ struct IntegratedWorkspaceView: View {
         }
         .buttonStyle(.plain)
         .disabled(!isInteractive)
+        .help(viewModel.interactiveStatusText(for: model, isHovered: true, isPortBusy: isPortBusy))
+        .accessibilityLabel(viewModel.interactiveStatusText(for: model, isHovered: true, isPortBusy: isPortBusy))
         .onHover { isHovering in
             hoveredStatusModelID = isHovering ? model.id : (hoveredStatusModelID == model.id ? nil : hoveredStatusModelID)
         }
@@ -2068,6 +2144,9 @@ struct IntegratedWorkspaceView: View {
     }
 
     private func moveDroppedModel(_ providers: [NSItemProvider], before targetModel: ModelConfig) -> Bool {
+        guard modelTableSortColumn == nil else {
+            return false
+        }
         guard let provider = providers.first(where: { $0.canLoadObject(ofClass: NSString.self) }) else {
             return false
         }
@@ -2080,7 +2159,6 @@ struct IntegratedWorkspaceView: View {
             }
 
             Task { @MainActor in
-                modelTableSortColumn = nil
                 viewModel.moveModel(withID: draggedModelID, before: targetModelID)
             }
         }
@@ -2088,6 +2166,9 @@ struct IntegratedWorkspaceView: View {
     }
 
     private func moveDroppedModelToEnd(_ providers: [NSItemProvider]) -> Bool {
+        guard modelTableSortColumn == nil else {
+            return false
+        }
         guard let provider = providers.first(where: { $0.canLoadObject(ofClass: NSString.self) }) else {
             return false
         }
@@ -2098,7 +2179,6 @@ struct IntegratedWorkspaceView: View {
             }
 
             Task { @MainActor in
-                modelTableSortColumn = nil
                 viewModel.moveModelToEnd(withID: draggedModelID)
             }
         }
@@ -2328,7 +2408,7 @@ struct IntegratedWorkspaceView: View {
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
-                        ForEach(viewModel.visibleLogEntries.prefix(16)) { entry in
+                        ForEach(viewModel.visibleLogEntries.suffix(16)) { entry in
                             LogEntryRow(entry: entry)
                         }
                     }

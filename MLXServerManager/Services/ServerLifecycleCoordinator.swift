@@ -27,6 +27,29 @@ nonisolated enum ServerReadyWaitOutcome: Equatable {
     }
 }
 
+nonisolated enum ServerPortReleaseOutcome: Equatable {
+    case released
+    case busy
+    case failed
+}
+
+nonisolated enum ServerStopEvent: Equatable {
+    case processResult(ModelStopResult)
+    case checkingPortRelease
+    case portCheck(result: PortCheckResult, announceBusy: Bool)
+    case portReleaseWaitCancelled
+    case portReleaseWaitExhausted
+    case managedProcessNotRunning
+}
+
+nonisolated enum ServerStopOutcome: Equatable {
+    case released
+    case busy
+    case failed
+    case timedOut(processIdentifier: Int32)
+    case cancelled
+}
+
 @MainActor
 final class ServerLifecycleCoordinator {
     typealias ReadyCheckOperation = @MainActor (
@@ -34,6 +57,7 @@ final class ServerLifecycleCoordinator {
         _ port: Int,
         _ expectedModelID: String?
     ) async -> ReadyCheckResult
+    typealias PortCheckOperation = @MainActor (_ host: String, _ port: Int) -> PortCheckResult
     typealias SleepOperation = @MainActor (_ nanoseconds: UInt64) async throws -> Void
 
     private let processRegistry: ModelProcessRegistry
@@ -41,12 +65,20 @@ final class ServerLifecycleCoordinator {
     private let readyRetryDelayNanoseconds: UInt64
     private let readyCheckOperation: ReadyCheckOperation
     private let sleepOperation: SleepOperation
+    private let maximumPortReleaseAttempts: Int
+    private let shortPortReleaseDelayNanoseconds: UInt64
+    private let longPortReleaseDelayNanoseconds: UInt64
+    private let longPortReleaseDelayStartAttempt: Int
 
     init(
         processRegistry: ModelProcessRegistry,
         readyChecker: ReadyChecker? = nil,
         maximumReadyAttempts: Int = 10,
         readyRetryDelayNanoseconds: UInt64 = 1_000_000_000,
+        maximumPortReleaseAttempts: Int = 40,
+        shortPortReleaseDelayNanoseconds: UInt64 = 100_000_000,
+        longPortReleaseDelayNanoseconds: UInt64 = 250_000_000,
+        longPortReleaseDelayStartAttempt: Int = 20,
         readyCheckOperation: ReadyCheckOperation? = nil,
         sleepOperation: SleepOperation? = nil
     ) {
@@ -65,6 +97,10 @@ final class ServerLifecycleCoordinator {
                 )
             }
         }
+        self.maximumPortReleaseAttempts = max(maximumPortReleaseAttempts, 1)
+        self.shortPortReleaseDelayNanoseconds = shortPortReleaseDelayNanoseconds
+        self.longPortReleaseDelayNanoseconds = longPortReleaseDelayNanoseconds
+        self.longPortReleaseDelayStartAttempt = max(longPortReleaseDelayStartAttempt, 0)
         self.sleepOperation = sleepOperation ?? { nanoseconds in
             try await Task.sleep(nanoseconds: nanoseconds)
         }
@@ -132,6 +168,66 @@ final class ServerLifecycleCoordinator {
         await readyCheckOperation(host, port, expectedModelID)
     }
 
+    func checkPortRelease(
+        host: String,
+        port: Int,
+        announceBusy: Bool,
+        portCheckOperation: PortCheckOperation,
+        eventHandler: (ServerStopEvent) -> Void
+    ) -> ServerPortReleaseOutcome {
+        let result = portCheckOperation(host, port)
+        eventHandler(.portCheck(result: result, announceBusy: announceBusy))
+
+        switch result {
+        case .available:
+            return .released
+        case .busy:
+            return .busy
+        case .invalidInput, .failed:
+            return .failed
+        }
+    }
+
+    func stopAndWaitForPortRelease(
+        profileID: ModelConfig.ID,
+        host: String,
+        port: Int,
+        gracefulTimeout: TimeInterval = 5,
+        interruptTimeout: TimeInterval = 2,
+        portCheckOperation: PortCheckOperation,
+        eventHandler: (ServerStopEvent) -> Void
+    ) async -> ServerStopOutcome {
+        let result = await stop(
+            profileID: profileID,
+            gracefulTimeout: gracefulTimeout,
+            interruptTimeout: interruptTimeout
+        )
+        eventHandler(.processResult(result))
+
+        switch result {
+        case .notRunning:
+            let outcome = checkPortRelease(
+                host: host,
+                port: port,
+                announceBusy: true,
+                portCheckOperation: portCheckOperation,
+                eventHandler: eventHandler
+            )
+            eventHandler(.managedProcessNotRunning)
+            return Self.stopOutcome(for: outcome)
+        case .stopped:
+            eventHandler(.checkingPortRelease)
+            return await waitForPortRelease(
+                host: host,
+                port: port,
+                portCheckOperation: portCheckOperation,
+                eventHandler: eventHandler
+            )
+        case let .timedOut(processIdentifier):
+            return .timedOut(processIdentifier: processIdentifier)
+        }
+    }
+
     func waitForReadyAfterStart(
         profileID: ModelConfig.ID,
         host: String,
@@ -185,5 +281,60 @@ final class ServerLifecycleCoordinator {
 
         eventHandler(.exhausted)
         return .exhausted
+    }
+
+    private func waitForPortRelease(
+        host: String,
+        port: Int,
+        portCheckOperation: PortCheckOperation,
+        eventHandler: (ServerStopEvent) -> Void
+    ) async -> ServerStopOutcome {
+        for attempt in 0..<maximumPortReleaseAttempts {
+            let outcome = checkPortRelease(
+                host: host,
+                port: port,
+                announceBusy: attempt == 0,
+                portCheckOperation: portCheckOperation,
+                eventHandler: eventHandler
+            )
+
+            switch outcome {
+            case .released:
+                return .released
+            case .failed:
+                return .failed
+            case .busy:
+                break
+            }
+
+            guard attempt < maximumPortReleaseAttempts - 1 else {
+                eventHandler(.portReleaseWaitExhausted)
+                return .busy
+            }
+
+            let delayNanoseconds = attempt < longPortReleaseDelayStartAttempt
+                ? shortPortReleaseDelayNanoseconds
+                : longPortReleaseDelayNanoseconds
+            do {
+                try await sleepOperation(delayNanoseconds)
+            } catch {
+                eventHandler(.portReleaseWaitCancelled)
+                return .cancelled
+            }
+        }
+
+        eventHandler(.portReleaseWaitExhausted)
+        return .busy
+    }
+
+    private static func stopOutcome(for outcome: ServerPortReleaseOutcome) -> ServerStopOutcome {
+        switch outcome {
+        case .released:
+            .released
+        case .busy:
+            .busy
+        case .failed:
+            .failed
+        }
     }
 }
