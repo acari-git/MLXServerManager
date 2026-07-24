@@ -1,6 +1,6 @@
 import Foundation
 
-enum DiagnosticsStatus: String, Hashable {
+nonisolated enum DiagnosticsStatus: String, Hashable, Sendable {
     case pass
     case warning
     case fail
@@ -10,7 +10,7 @@ enum DiagnosticsStatus: String, Hashable {
     }
 }
 
-struct DiagnosticsResult: Identifiable, Hashable {
+nonisolated struct DiagnosticsResult: Identifiable, Hashable, Sendable {
     let id: UUID
     let check: DiagnosticsCheck
     let status: DiagnosticsStatus

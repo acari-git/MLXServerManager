@@ -298,25 +298,22 @@ Asset:
 - MLXServerManager-v1.0.0-unsigned.zip
 
 Stable scope:
-- v1.0 Stable Release.
-- Direct Mode: OpenAI-compatible client -> mlx_lm.server.
-- Start, Stop, and Restart for the app-managed mlx_lm.server process.
-- Port Check and Ready Check via /v1/models.
-- Settings save and restore.
-- Model profile add, edit, delete, and switching with Restart required.
-- Setup Diagnostics and diagnostics summary copy.
-- Readable Logs and Copy Logs.
-- Menu bar quick actions.
-- OpenAI-compatible connection settings copy.
+- Direct Mode: OpenAI-compatible client -> selected managed backend or adopted external endpoint.
+- Independent app-managed `mlx_lm.server` and Rapid-MLX processes per profile.
+- Multiple concurrent managed profiles when endpoints do not conflict.
+- Start, Stop, Restart, Port Check, and Ready Check via `/v1/models`.
+- Model profile add, edit, delete, import/export, backend selection, and launch options.
+- Explicit Hugging Face search/download, diagnostics, benchmarks, Test Chat, logs, memory visibility, and Hermes Agent configuration.
+- Menu bar quick actions and OpenAI-compatible connection settings copy.
 
 Known limitations:
 - This is an unsigned local-use macOS app bundle.
 - The app is not notarized and is not signed with Developer ID.
 - macOS Gatekeeper may warn when opening the app.
-- Models are not bundled.
-- The app does not bundle mlx-lm, model files, Hugging Face cache, runtime settings, logs, or secrets.
-- Users must configure mlx_lm.server executable path in the app UI.
-- The app does not proxy inference traffic, does not provide Chat UI, and does not execute /v1/chat/completions.
+- Models and server runtimes are not bundled.
+- The app does not bundle `mlx-lm`, Rapid-MLX, model files, Hugging Face cache, runtime settings, logs, or secrets.
+- Users must configure a working executable path for each backend they use.
+- The app does not proxy inference traffic or provide a general-purpose Chat UI. Test Chat and benchmark requests are explicit, direct calls to the selected endpoint.
 
 Safety:
 - Stop and Restart target only the process started by this app.

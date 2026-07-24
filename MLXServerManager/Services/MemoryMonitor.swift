@@ -1,7 +1,7 @@
 import Darwin
 import Foundation
 
-struct MemoryUsageSnapshot: Equatable, Sendable {
+nonisolated struct MemoryUsageSnapshot: Equatable, Sendable {
     let processIdentifier: Int32
     let rssKilobytes: Int64
 
@@ -10,7 +10,7 @@ struct MemoryUsageSnapshot: Equatable, Sendable {
     }
 }
 
-struct SystemMemorySnapshot: Equatable, Sendable {
+nonisolated struct SystemMemorySnapshot: Equatable, Sendable {
     let totalBytes: UInt64
     let availableBytes: UInt64?
 
@@ -29,7 +29,7 @@ struct SystemMemorySnapshot: Equatable, Sendable {
     }
 }
 
-struct MemoryBreakdownSnapshot: Equatable, Sendable {
+nonisolated struct MemoryBreakdownSnapshot: Equatable, Sendable {
     let processIdentifier: Int32
     let rssKilobytes: Int64
     let system: SystemMemorySnapshot
@@ -69,21 +69,21 @@ struct MemoryBreakdownSnapshot: Equatable, Sendable {
     }
 }
 
-enum MemoryMonitorResult: Equatable, Sendable {
+nonisolated enum MemoryMonitorResult: Equatable, Sendable {
     case usage(MemoryUsageSnapshot)
     case notRunning(processIdentifier: Int32)
     case invalidInput(String)
     case failed(processIdentifier: Int32, message: String)
 }
 
-enum MemoryBreakdownMonitorResult: Equatable, Sendable {
+nonisolated enum MemoryBreakdownMonitorResult: Equatable, Sendable {
     case usage(MemoryBreakdownSnapshot)
     case notRunning(processIdentifier: Int32)
     case invalidInput(String)
     case failed(processIdentifier: Int32, message: String)
 }
 
-struct MemoryMonitor: Sendable {
+nonisolated struct MemoryMonitor: Sendable {
     nonisolated init() {}
 
     nonisolated func currentUsage(processIdentifier: Int32) async -> MemoryMonitorResult {

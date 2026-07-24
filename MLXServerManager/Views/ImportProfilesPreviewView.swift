@@ -497,7 +497,7 @@ struct ImportProfilesPreviewView: View {
                 HStack(alignment: .top, spacing: 6) {
                     Image(systemName: iconName(for: message.severity))
                         .foregroundStyle(color(for: message.severity))
-                    Text(message.message)
+                    Text(message.localizedMessage(language: language))
                         .foregroundStyle(message.severity == .error ? .red : .primary)
                 }
                 .font(.caption)
@@ -515,7 +515,7 @@ struct ImportProfilesPreviewView: View {
             .red
         }
 
-        return Text(status.rawValue)
+        return Text(status.localizedTitle(language: language))
             .font(.caption.weight(.semibold))
             .foregroundStyle(color)
     }

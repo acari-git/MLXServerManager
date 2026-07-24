@@ -48,6 +48,28 @@ final class EnglishModeVisibleTextTests: XCTestCase {
         XCTAssertTrue(invalid.isEmpty, invalid.joined(separator: "\n"))
     }
 
+    func testJapaneseModeUsesLocalizedSafetyRuntimeAndDownloadText() {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerJapaneseTests-\(UUID().uuidString)")
+        defer {
+            if let directory = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: directory)
+            }
+        }
+        let viewModel = AppViewModel(settingsStore: store)
+        var settings = viewModel.settings
+        settings.uiLanguage = .japanese
+        XCTAssertTrue(viewModel.saveSettingsRequested(settings))
+
+        XCTAssertTrue(viewModel.selectedModelSafetyRows.allSatisfy { Self.hasCJK($0.0) })
+        XCTAssertTrue(Self.hasCJK(viewModel.selectedModelSafetySummary))
+        XCTAssertTrue(Self.hasCJK(viewModel.startActionReason))
+        XCTAssertTrue(Self.hasCJK(viewModel.stopDisabledReason))
+        XCTAssertTrue(Self.hasCJK(viewModel.restartDisabledReason))
+        XCTAssertTrue(Self.hasCJK(viewModel.menuBarTitle))
+        XCTAssertTrue(Self.hasCJK(viewModel.huggingFaceDownloadStatus.message))
+        XCTAssertFalse(viewModel.huggingFaceDownloadStatus.message.contains("Paste a Hugging Face"))
+    }
+
     private static func hasCJK(_ text: String) -> Bool {
         text.unicodeScalars.contains { scalar in
             (0x3040...0x30FF).contains(Int(scalar.value)) || (0x4E00...0x9FFF).contains(Int(scalar.value))

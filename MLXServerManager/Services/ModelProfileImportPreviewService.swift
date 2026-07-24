@@ -10,12 +10,96 @@ struct ImportValidationMessage: Identifiable, Hashable {
     let id = UUID()
     let severity: ImportValidationSeverity
     let message: String
+
+    func localizedMessage(language: AppLanguage) -> String {
+        guard language.resolved == .japanese else {
+            return message
+        }
+
+        let exactMessages: [String: String] = [
+            "Review selected profile metadata before import.": "インポート前に、選択したプロファイルのメタデータを確認してください。",
+            "Shared profile JSON is metadata only. Rename is available for profile-name conflicts; Replace requires one unambiguous target and explicit confirmation.": "共有プロファイルJSONにはメタデータのみが含まれます。プロファイル名の競合にはリネームを使用できます。置換には対象が1件に確定していることと明示的な確認が必要です。",
+            "schemaVersion is required. No profiles were imported.": "schemaVersionが必要です。プロファイルはインポートされませんでした。",
+            "The import file must contain a profiles array.": "インポートファイルにはprofiles配列が必要です。",
+            "Profile entry must be a JSON object.": "プロファイル項目はJSONオブジェクトである必要があります。",
+            "Backend must be mlx-lm or rapid-mlx.": "バックエンドはmlx-lmまたはrapid-mlxである必要があります。",
+            "Profile name is required.": "プロファイル名が必要です。",
+            "Model ID is required.": "Model IDが必要です。",
+            "Host is required.": "ホストが必要です。",
+            "Host is invalid.": "ホストが無効です。",
+            "Port must be between 1 and 65535.": "ポートは1から65535の範囲で指定してください。",
+            "Profile name conflict detected. Skip is the default; Rename or confirmed Replace is available before import.": "プロファイル名の競合を検出しました。既定ではスキップします。インポート前にリネームまたは確認付きの置換を選択できます。",
+            "Profile name conflict detected. Skip is the default; Rename is available before import.": "プロファイル名の競合を検出しました。既定ではスキップします。インポート前にリネームを選択できます。",
+            "Conflict maps to one existing profile. Skip is the default; Replace is available with confirmation.": "競合対象は既存プロファイル1件に確定しています。既定ではスキップします。確認後に置換を選択できます。",
+            "Conflict detected. Replace target is ambiguous or unsupported, so this profile remains skipped.": "競合を検出しました。置換対象が曖昧または未対応のため、このプロファイルはスキップされます。",
+            "Profile metadata is valid for preview.": "プロファイルのメタデータはプレビュー可能です。",
+            "Chat Template Args are supported by mlx-lm profiles only.": "Chat Template Argsはmlx-lmプロファイルでのみ使用できます。",
+            "Chat Template Args must be valid JSON.": "Chat Template Argsは有効なJSONである必要があります。",
+            "Rapid-MLX Log Level must be DEBUG, INFO, WARNING, or ERROR.": "Rapid-MLX Log LevelはDEBUG、INFO、WARNING、ERRORのいずれかである必要があります。",
+            "This profile includes raw extra server arguments. Review them before starting a managed server.": "このプロファイルには生の追加サーバー引数が含まれています。管理サーバーを起動する前に確認してください。",
+            "Advanced Launch Options must be a JSON object when present.": "詳細起動オプションを指定する場合はJSONオブジェクトである必要があります。",
+            "Advanced Launch Options contain unknown field(s). They are treated as data only and ignored.": "詳細起動オプションに不明なフィールドがあります。データとしてのみ扱い、無視します。"
+        ]
+        if let localized = exactMessages[message] {
+            return localized
+        }
+
+        if message.hasPrefix("This file uses schemaVersion ") {
+            return message
+                .replacingOccurrences(of: "This file uses schemaVersion ", with: "このファイルのschemaVersionは")
+                .replacingOccurrences(of: ", but this version of MLX Server Manager supports schemaVersion 1 only. No profiles were imported.", with: "ですが、このバージョンのMLX Server ManagerはschemaVersion 1のみ対応しています。プロファイルはインポートされませんでした。")
+        }
+        if message.hasPrefix("The app field is ") {
+            return message
+                .replacingOccurrences(of: "The app field is ", with: "appフィールドは")
+                .replacingOccurrences(of: ". Expected MLXServerManager. Review this file before future import.", with: "です。MLXServerManagerが想定されています。インポート前にこのファイルを確認してください。")
+        }
+        if message.hasSuffix(" must be between 0 and 1.") {
+            return message.replacingOccurrences(of: " must be between 0 and 1.", with: "は0から1の範囲で指定してください。")
+        }
+        if message.hasSuffix(" must be a positive integer.") {
+            return message.replacingOccurrences(of: " must be a positive integer.", with: "は正の整数で指定してください。")
+        }
+        if message.contains(" contains secret-looking field(s). They are ignored by preview and will not be imported.") {
+            return message.replacingOccurrences(
+                of: " contains secret-looking field(s). They are ignored by preview and will not be imported.",
+                with: "にシークレットと思われるフィールドがあります。プレビューでは無視され、インポートされません。"
+            )
+        }
+        if message.contains(" contains local path or executable path field(s). They are ignored by preview and will not be imported.") {
+            return message.replacingOccurrences(
+                of: " contains local path or executable path field(s). They are ignored by preview and will not be imported.",
+                with: "にローカルパスまたは実行ファイルパスのフィールドがあります。プレビューでは無視され、インポートされません。"
+            )
+        }
+        if message.contains(" contains unknown field(s). They are treated as data only and ignored.") {
+            return message.replacingOccurrences(
+                of: " contains unknown field(s). They are treated as data only and ignored.",
+                with: "に不明なフィールドがあります。データとしてのみ扱い、無視します。"
+            )
+        }
+        return message
+    }
 }
 
 enum ImportProfileValidationStatus: String, Hashable {
     case valid = "Valid"
     case warning = "Warning"
     case invalid = "Invalid"
+
+    func localizedTitle(language: AppLanguage) -> String {
+        guard language.resolved == .japanese else {
+            return rawValue
+        }
+        switch self {
+        case .valid:
+            return "有効"
+        case .warning:
+            return "警告"
+        case .invalid:
+            return "無効"
+        }
+    }
 }
 
 enum ImportProfileConflictKind: String, Hashable {

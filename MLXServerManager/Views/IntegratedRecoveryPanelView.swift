@@ -35,14 +35,14 @@ struct IntegratedRecoveryPanelView: View {
                 Label(t("Recovery", "復旧"), systemImage: iconName)
                     .font(.headline)
                 Spacer()
-                Text(issue.severity.rawValue)
+                Text(issue.severity.localizedTitle(language: language))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(severityColor)
             }
 
-            Text(issue.title)
+            Text(issue.localizedTitle(language: language))
                 .font(.callout.weight(.semibold))
-            Text(issue.detail)
+            Text(issue.localizedDetail(language: language))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -82,9 +82,9 @@ struct IntegratedRecoveryPanelView: View {
             onAction(action)
         } label: {
             VStack(alignment: .leading, spacing: 2) {
-                Text(action.title)
+                Text(action.localizedTitle(language: language))
                     .font(.caption.weight(.semibold))
-                Text(action.detail)
+                Text(action.localizedDetail(language: language))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

@@ -16,7 +16,7 @@ nonisolated struct HuggingFaceDownloadPreviewFile: Codable, Identifiable, Equata
     }
 }
 
-struct HuggingFaceDownloadFilePreviewState: Equatable {
+nonisolated struct HuggingFaceDownloadFilePreviewState: Equatable, Sendable {
     var isLoading: Bool
     var message: String
     var files: [HuggingFaceDownloadPreviewFile]

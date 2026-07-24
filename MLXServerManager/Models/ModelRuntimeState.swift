@@ -1,6 +1,6 @@
 import Foundation
 
-enum ModelRuntimeState: Hashable {
+nonisolated enum ModelRuntimeState: Hashable, Sendable {
     case stopped
     case starting(host: String, port: Int)
     case loading(host: String, port: Int, processIdentifier: Int32)
@@ -13,6 +13,7 @@ enum ModelRuntimeState: Hashable {
     case portCheckFailed(host: String, port: Int, message: String)
     case checkingReady(host: String, port: Int)
     case ready(host: String, port: Int, processIdentifier: Int32?)
+    case degraded(host: String, port: Int, processIdentifier: Int32?, message: String)
     case readyCheckFailed(host: String, port: Int, message: String)
     case error(message: String)
     case unknown(message: String)
@@ -43,12 +44,55 @@ enum ModelRuntimeState: Hashable {
             "Checking Ready"
         case .ready:
             "Ready"
+        case .degraded:
+            "Degraded"
         case .readyCheckFailed:
             "Ready Check Failed"
         case .error:
             "Error"
         case .unknown:
             "Unknown"
+        }
+    }
+
+    func localizedTitle(language: AppLanguage) -> String {
+        guard language.resolved == .japanese else {
+            return title
+        }
+
+        switch self {
+        case .stopped:
+            return "停止"
+        case .starting:
+            return "起動中"
+        case .loading:
+            return "ロード中"
+        case .stopping:
+            return "停止中"
+        case .checkingPort:
+            return "ポート確認中"
+        case .portAvailable:
+            return "ポート利用可能"
+        case .portBusy:
+            return "ポート使用中"
+        case .externalServerDetected:
+            return "外部サーバー検出"
+        case .adoptedExternalServer:
+            return "外部サーバー採用済み"
+        case .portCheckFailed:
+            return "ポート確認失敗"
+        case .checkingReady:
+            return "Ready確認中"
+        case .ready:
+            return "準備完了"
+        case .degraded:
+            return "異常"
+        case .readyCheckFailed:
+            return "Ready確認失敗"
+        case .error:
+            return "エラー"
+        case .unknown:
+            return "不明"
         }
     }
 
@@ -81,6 +125,12 @@ enum ModelRuntimeState: Hashable {
                 "OpenAI-compatible endpoint is responding at \(host):\(port). Managed pid \(processIdentifier)."
             } else {
                 "OpenAI-compatible endpoint is responding at \(host):\(port)."
+            }
+        case let .degraded(host, port, processIdentifier, message):
+            if let processIdentifier {
+                "\(message) Managed pid \(processIdentifier) remains active at \(host):\(port)."
+            } else {
+                "\(message) The managed endpoint remains active at \(host):\(port)."
             }
         case let .readyCheckFailed(host, port, message):
             "Ready check failed for \(host):\(port): \(message)"
@@ -121,12 +171,59 @@ enum ModelRuntimeState: Hashable {
             } else {
                 "\(host):\(port)"
             }
+        case let .degraded(host, port, processIdentifier, _):
+            if let processIdentifier {
+                "\(host):\(port), pid \(processIdentifier), degraded"
+            } else {
+                "\(host):\(port), degraded"
+            }
         case let .readyCheckFailed(host, port, _):
             "\(host):\(port)"
         case .error:
             "Action failed"
         case .unknown:
             "Check logs"
+        }
+    }
+
+    func localizedBadgeDetail(language: AppLanguage) -> String {
+        guard language.resolved == .japanese else {
+            return badgeDetail
+        }
+
+        switch self {
+        case .stopped:
+            return "プロセス未接続"
+        case let .starting(host, port),
+             let .checkingPort(host, port),
+             let .portAvailable(host, port),
+             let .portBusy(host, port),
+             let .portCheckFailed(host, port, _),
+             let .checkingReady(host, port),
+             let .readyCheckFailed(host, port, _):
+            return "\(host):\(port)"
+        case let .loading(host, port, processIdentifier):
+            return "\(host):\(port), pid \(processIdentifier)"
+        case let .stopping(processIdentifier):
+            return "pid \(processIdentifier)"
+        case let .externalServerDetected(host, port, _, _):
+            return "\(host):\(port), 外部"
+        case let .adoptedExternalServer(host, port, _, _):
+            return "\(host):\(port), 採用済み外部"
+        case let .ready(host, port, processIdentifier):
+            if let processIdentifier {
+                return "\(host):\(port), pid \(processIdentifier)"
+            }
+            return "\(host):\(port)"
+        case let .degraded(host, port, processIdentifier, _):
+            if let processIdentifier {
+                return "\(host):\(port), pid \(processIdentifier), 異常"
+            }
+            return "\(host):\(port), 異常"
+        case .error:
+            return "操作失敗"
+        case .unknown:
+            return "ログを確認"
         }
     }
 
@@ -140,8 +237,27 @@ enum ModelRuntimeState: Hashable {
             "ready"
         case .stopping:
             "stopping"
-        case .portBusy, .portCheckFailed, .readyCheckFailed, .error, .unknown:
+        case .degraded, .portBusy, .portCheckFailed, .readyCheckFailed, .error, .unknown:
             "failed"
+        }
+    }
+
+    func localizedMenuBarStatus(language: AppLanguage) -> String {
+        guard language.resolved == .japanese else {
+            return menuBarStatus
+        }
+
+        switch self {
+        case .stopped, .portAvailable:
+            return "停止"
+        case .starting, .loading, .checkingPort, .checkingReady:
+            return "起動中"
+        case .ready, .externalServerDetected, .adoptedExternalServer:
+            return "準備完了"
+        case .stopping:
+            return "停止中"
+        case .degraded, .portBusy, .portCheckFailed, .readyCheckFailed, .error, .unknown:
+            return "失敗"
         }
     }
 
@@ -163,6 +279,14 @@ enum ModelRuntimeState: Hashable {
 
     var isExternalServerContext: Bool {
         isExternalServerDetected || isAdoptedExternalServer
+    }
+
+    var isDegraded: Bool {
+        if case .degraded = self {
+            return true
+        }
+
+        return false
     }
 
 }

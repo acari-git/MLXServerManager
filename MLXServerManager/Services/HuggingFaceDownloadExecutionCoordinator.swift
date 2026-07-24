@@ -109,6 +109,12 @@ final class HuggingFaceDownloadExecutionCoordinator {
         let progressIntervalNanoseconds = self.progressIntervalNanoseconds
         let progressSnapshotOperation = self.progressSnapshotOperation
         let sleepOperation = self.sleepOperation
+        let (outputStream, outputContinuation) = AsyncStream.makeStream(of: String.self)
+        let outputDeliveryTask = Task {
+            for await line in outputStream {
+                outputHandler(line)
+            }
+        }
 
         let progressTask = Task { [weak self] in
             var lastBytes: Int64 = 0
@@ -156,9 +162,7 @@ final class HuggingFaceDownloadExecutionCoordinator {
                     let result = try await manager.download(
                         request: request,
                         outputHandler: { line in
-                            Task { @MainActor in
-                                outputHandler(line)
-                            }
+                            outputContinuation.yield(line)
                         }
                     )
                     outcome = .succeeded(result)
@@ -167,6 +171,8 @@ final class HuggingFaceDownloadExecutionCoordinator {
                 }
             }
 
+            outputContinuation.finish()
+            await outputDeliveryTask.value
             self?.complete(
                 id: id,
                 generation: generation,

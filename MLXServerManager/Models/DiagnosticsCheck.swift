@@ -1,6 +1,6 @@
 import Foundation
 
-enum DiagnosticsCheck: String, CaseIterable, Hashable {
+nonisolated enum DiagnosticsCheck: String, CaseIterable, Hashable, Sendable {
     case executablePathConfigured
     case executablePathExists
     case executablePathExecutable

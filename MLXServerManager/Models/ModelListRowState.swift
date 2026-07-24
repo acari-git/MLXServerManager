@@ -8,6 +8,7 @@ nonisolated struct ModelListRowState: Identifiable, Equatable {
     let hoveredStatusText: String
     let isTransitioning: Bool
     let isLoaded: Bool
+    let isDegraded: Bool
     let isPortBusy: Bool
     let canUseStatusAction: Bool
     let isRecentlyAdded: Bool

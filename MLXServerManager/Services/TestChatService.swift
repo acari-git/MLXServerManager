@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated struct TestChatServiceResult: Equatable {
+nonisolated struct TestChatServiceResult: Equatable, Sendable {
     let responseText: String
     let apiErrorMessage: String?
     let statusCode: Int?
@@ -11,9 +11,16 @@ nonisolated enum TestChatServiceError: Error, Equatable {
     case invalidBaseURL
 }
 
-nonisolated struct TestChatService {
+nonisolated struct TestChatService: Sendable {
+    typealias SendOperation = @Sendable (
+        _ baseURL: String,
+        _ modelID: String,
+        _ prompt: String
+    ) async throws -> TestChatServiceResult
+
     private let session: URLSession
     private let timeout: TimeInterval
+    private let sendOperation: SendOperation?
 
     init(
         session: URLSession = .shared,
@@ -21,6 +28,13 @@ nonisolated struct TestChatService {
     ) {
         self.session = session
         self.timeout = timeout
+        self.sendOperation = nil
+    }
+
+    init(sendOperation: @escaping SendOperation) {
+        self.session = .shared
+        self.timeout = 60
+        self.sendOperation = sendOperation
     }
 
     func send(
@@ -28,6 +42,10 @@ nonisolated struct TestChatService {
         modelID: String,
         prompt: String
     ) async throws -> TestChatServiceResult {
+        if let sendOperation {
+            return try await sendOperation(baseURL, modelID, prompt)
+        }
+
         guard let url = Self.chatCompletionsURL(from: baseURL) else {
             throw TestChatServiceError.invalidBaseURL
         }
@@ -54,7 +72,12 @@ nonisolated struct TestChatService {
         let decoded = try? JSONDecoder().decode(TestChatResponsePayload.self, from: data)
         let apiErrorMessage = decoded?.error?.message?.trimmingCharacters(in: .whitespacesAndNewlines)
         let content = decoded?.choices?.first?.message?.content?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let responseText = content?.isEmpty == false ? content! : Self.fallbackResponseText(from: data)
+        let responseText: String
+        if let content, !content.isEmpty {
+            responseText = content
+        } else {
+            responseText = Self.fallbackResponseText(from: data)
+        }
 
         return TestChatServiceResult(
             responseText: responseText,

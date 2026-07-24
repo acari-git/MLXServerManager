@@ -425,7 +425,10 @@ nonisolated struct BenchmarkSpeedMetrics: Codable, Equatable {
     }
 
     var finishReasonText: String {
-        finishReason?.isEmpty == false ? finishReason! : "-"
+        guard let finishReason, !finishReason.isEmpty else {
+            return "-"
+        }
+        return finishReason
     }
 
     func localizedFinishReasonText(language: AppLanguage) -> String {
@@ -765,7 +768,7 @@ nonisolated struct BenchmarkResult: Codable, Identifiable, Equatable {
         return lines.joined(separator: "\n")
     }
 
-    private func localizedMessage(language: AppLanguage) -> String {
+    func localizedMessage(language: AppLanguage) -> String {
         guard language.resolved == .japanese else {
             return message
         }

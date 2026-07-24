@@ -14,7 +14,6 @@ final class LocalizationDirectStringTests: XCTestCase {
     private static let allowedKeys: Set<String> = [
         "IntegratedWorkspaceView.swift|Text|SYSTEM",
         "IntegratedWorkspaceView.swift|Text|MLX Server Manager",
-        "IntegratedWorkspaceView.swift|Text|Version 24.0.0",
         "IntegratedWorkspaceView.swift|Text|127.0.0.1",
         "IntegratedWorkspaceView.swift|Toggle|",
         "IntegratedWorkspaceView.swift|Text|Direct Mode",

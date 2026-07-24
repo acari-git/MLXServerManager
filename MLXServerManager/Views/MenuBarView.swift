@@ -22,7 +22,7 @@ struct MenuBarView: View {
             Text(menuBarTitle)
                 .font(.headline)
 
-            Text(viewModel.runtimeState.badgeDetail)
+            Text(viewModel.runtimeState.localizedBadgeDetail(language: viewModel.settings.uiLanguage))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -37,6 +37,7 @@ struct MenuBarView: View {
             Button(strings.text(.start)) {
                 viewModel.startRequested()
             }
+            .disabled(!viewModel.canStartSelectedModel)
 
             Button(strings.text(.stop)) {
                 viewModel.stopRequested()
@@ -63,6 +64,7 @@ struct MenuBarView: View {
             Button(strings.text(.runDiagnostics)) {
                 viewModel.runDiagnosticsRequested()
             }
+            .disabled(viewModel.isDiagnosticsRunning)
 
             Divider()
 

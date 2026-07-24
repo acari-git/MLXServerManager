@@ -1,6 +1,6 @@
 import Foundation
 
-struct LogEntry: Identifiable, Hashable {
+nonisolated struct LogEntry: Identifiable, Hashable, Sendable {
     let id: UUID
     let timestamp: Date
     let category: String

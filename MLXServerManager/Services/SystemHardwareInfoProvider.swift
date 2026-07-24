@@ -1,10 +1,10 @@
 import Foundation
 
-protocol SystemHardwareInfoProviding: Sendable {
+nonisolated protocol SystemHardwareInfoProviding: Sendable {
     func loadHardwareInfo() async -> [String: String]
 }
 
-actor SystemHardwareInfoProvider: SystemHardwareInfoProviding {
+nonisolated final class SystemHardwareInfoProvider: SystemHardwareInfoProviding, @unchecked Sendable {
     private let executablePath: String
     private let arguments: [String]
     private let timeout: TimeInterval
@@ -38,7 +38,7 @@ actor SystemHardwareInfoProvider: SystemHardwareInfoProviding {
         return Self.parseSystemProfilerHardwareInfo(output)
     }
 
-    nonisolated static func parseSystemProfilerHardwareInfo(_ output: String) -> [String: String] {
+    static func parseSystemProfilerHardwareInfo(_ output: String) -> [String: String] {
         var result: [String: String] = [:]
         var isHardwareSection = false
         var isDisplaysSection = false

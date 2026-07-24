@@ -29,18 +29,6 @@ struct ModelProfileImportSelectionUpdate: Equatable {
     }
 }
 
-struct MemoryHistorySample: Equatable, Sendable {
-    let usedFraction: Double
-    let managedProcessFraction: Double
-    let timestamp: Date
-}
-
-struct SystemUsageHistorySample: Equatable, Sendable {
-    let cpuFraction: Double
-    let gpuFraction: Double?
-    let timestamp: Date
-}
-
 struct ProfileDeletionUndoState: Identifiable, Equatable {
     let id: UUID
     let modelID: ModelConfig.ID
@@ -55,18 +43,6 @@ private struct ProfileDeletionUndoPayload {
     let previousSelectedModelID: ModelConfig.ID?
     let autoUnloadEnabled: Bool?
     let autoUnloadMinutes: Int?
-}
-
-struct MiniChatTranscriptMessage: Identifiable, Equatable {
-    enum Sender: Equatable {
-        case user
-        case assistant
-        case system
-    }
-
-    let id = UUID()
-    let sender: Sender
-    let content: String
 }
 
 private struct PortCheckCacheEntry {
@@ -116,48 +92,73 @@ final class AppViewModel: ObservableObject {
             handleSelectedModelChange(from: oldValue)
         }
     }
-    @Published private(set) var runningModelID: ModelConfig.ID?
-    @Published private(set) var runningModelIDs: Set<ModelConfig.ID> = []
-    @Published private(set) var managedServerStartedAt: Date?
-    @Published private(set) var managedServerStartedAtByModelID: [ModelConfig.ID: Date] = [:]
-    @Published private(set) var runtimeState: ModelRuntimeState = .stopped {
-        didSet {
-            guard !isProjectingSelectedRuntime,
-                  let selectedModelID else { return }
-            runtimeStatesByModelID[selectedModelID] = runtimeState
+    @Published private var runtimeViewState: RuntimeViewState = .empty
+    var runningModelID: ModelConfig.ID? { runtimeViewState.runningModelID }
+    var runningModelIDs: Set<ModelConfig.ID> { runtimeViewState.runningModelIDs }
+    var managedServerStartedAt: Date? { runtimeViewState.managedServerStartedAt }
+    var managedServerStartedAtByModelID: [ModelConfig.ID: Date] { runtimeViewState.managedServerStartedAtByModelID }
+    private(set) var runtimeState: ModelRuntimeState {
+        get { runtimeViewState.selectedRuntimeState }
+        set {
+            var nextState = runtimeViewState
+            nextState.setSelectedRuntimeState(newValue, selectedModelID: selectedModelID)
+            guard nextState != runtimeViewState else {
+                return
+            }
+            runtimeViewState = nextState
         }
     }
-    @Published private(set) var runtimeStatesByModelID: [ModelConfig.ID: ModelRuntimeState] = [:]
-    @Published private(set) var memoryUsageGB: Double?
-    @Published private(set) var memoryUsageByModelID: [ModelConfig.ID: Double] = [:]
-    @Published private(set) var memoryBreakdown: MemoryBreakdownSnapshot?
-    @Published private(set) var memoryBreakdownByModelID: [ModelConfig.ID: MemoryBreakdownSnapshot] = [:]
-    @Published private(set) var systemMemorySnapshot: SystemMemorySnapshot?
-    @Published private(set) var runtimeMemoryProtectionState: RuntimeMemoryProtectionState = .normal
-    @Published private(set) var memoryHistory: [MemoryHistorySample] = []
-    @Published private(set) var cpuUsagePercent: Double?
-    @Published private(set) var gpuUsagePercent: Double?
-    @Published private(set) var systemUsageHistory: [SystemUsageHistorySample] = []
+    var runtimeStatesByModelID: [ModelConfig.ID: ModelRuntimeState] { runtimeViewState.runtimeStatesByModelID }
+    @Published private var monitoringViewState: MonitoringViewState = .empty
+    var memoryUsageGB: Double? { monitoringViewState.memoryUsageGB }
+    var memoryUsageByModelID: [ModelConfig.ID: Double] { monitoringViewState.memoryUsageByModelID }
+    var memoryBreakdown: MemoryBreakdownSnapshot? { monitoringViewState.memoryBreakdown }
+    var memoryBreakdownByModelID: [ModelConfig.ID: MemoryBreakdownSnapshot] { monitoringViewState.memoryBreakdownByModelID }
+    var systemMemorySnapshot: SystemMemorySnapshot? { monitoringViewState.systemMemorySnapshot }
+    var runtimeMemoryProtectionState: RuntimeMemoryProtectionState { monitoringViewState.runtimeMemoryProtectionState }
+    var memoryHistory: [MemoryHistorySample] { monitoringViewState.memoryHistory }
+    var cpuUsagePercent: Double? { monitoringViewState.cpuUsagePercent }
+    var gpuUsagePercent: Double? { monitoringViewState.gpuUsagePercent }
+    var systemUsageHistory: [SystemUsageHistorySample] { monitoringViewState.systemUsageHistory }
     @Published var autoUnloadEnabledByModelID: [ModelConfig.ID: Bool] = [:]
     @Published var autoUnloadMinutesByModelID: [ModelConfig.ID: Int] = [:]
-    @Published private(set) var logText: String
-    @Published private(set) var logEntries: [LogEntry]
+    @Published private var logViewState: LogViewState
+    var logText: String { logViewState.text }
+    var logEntries: [LogEntry] { logViewState.entries }
     @Published var logCategoryFilter = "All" {
         didSet {
-            refreshLogDerivedState()
+            logViewState = logStateCoordinator.setFilter(logCategoryFilter)
         }
     }
-    @Published private(set) var diagnosticsResults: [DiagnosticsResult] = []
-    @Published private(set) var diagnosticsDidRun = false
+    @Published private var diagnosticsViewState: DiagnosticsViewState = .notRun
+    var diagnosticsResults: [DiagnosticsResult] { diagnosticsViewState.results }
+    var diagnosticsDidRun: Bool { diagnosticsViewState.didRun }
+    var isDiagnosticsRunning: Bool { diagnosticsViewState.isRunning }
     @Published private var selectedModelAvailabilitySummary: ModelAvailabilitySummary = .noSelection
-    @Published var profileEditorDraft: ModelProfileDraft = .empty
-    @Published private(set) var isProfileEditorPresented = false
-    @Published private(set) var profileEditorMessage: String?
-    @Published private(set) var profileEditorPortSuggestionMessage: String?
-    @Published var addProfileDraft: ModelProfileDraft = .empty
-    @Published private(set) var isAddProfilePresented = false
-    @Published private(set) var addProfileMessage: String?
-    @Published private(set) var addProfilePortSuggestionMessage: String?
+    @Published private var profileEditorViewState: ProfileFormViewState = .hidden
+    var profileEditorDraft: ModelProfileDraft {
+        get { profileEditorViewState.draft }
+        set {
+            updateProfileEditorViewState { state in
+                state.setDraft(newValue)
+            }
+        }
+    }
+    var isProfileEditorPresented: Bool { profileEditorViewState.isPresented }
+    var profileEditorMessage: String? { profileEditorViewState.message }
+    var profileEditorPortSuggestionMessage: String? { profileEditorViewState.portSuggestionMessage }
+    @Published private var addProfileViewState: ProfileFormViewState = .hidden
+    var addProfileDraft: ModelProfileDraft {
+        get { addProfileViewState.draft }
+        set {
+            updateAddProfileViewState { state in
+                state.setDraft(newValue)
+            }
+        }
+    }
+    var isAddProfilePresented: Bool { addProfileViewState.isPresented }
+    var addProfileMessage: String? { addProfileViewState.message }
+    var addProfilePortSuggestionMessage: String? { addProfileViewState.portSuggestionMessage }
     @Published var isDeleteProfileConfirmationPresented = false
     @Published var isNetworkExposureStartConfirmationPresented = false
     @Published var isMemoryRiskStartConfirmationPresented = false
@@ -173,13 +174,15 @@ final class AppViewModel: ObservableObject {
         defaultHost: AppSettings.defaults.defaultHost,
         defaultPort: AppSettings.defaults.defaultPort
     )
-    @Published private(set) var huggingFaceDownloadStatus: HuggingFaceDownloadStatus = .waiting
-    @Published private(set) var huggingFaceDownloadQueue: [HuggingFaceDownloadQueueEntry] = []
+    @Published private(set) var huggingFaceDownloadViewState: HuggingFaceDownloadViewState = .waiting
+    var huggingFaceDownloadStatus: HuggingFaceDownloadStatus { huggingFaceDownloadViewState.status }
+    var huggingFaceDownloadQueue: [HuggingFaceDownloadQueueEntry] { huggingFaceDownloadViewState.entries }
     @Published private(set) var lastAddedDownloadedModelID: ModelConfig.ID?
     @Published private(set) var downloadCompletionMarkerDate: Date?
-    @Published private(set) var huggingFaceFilePreview: HuggingFaceDownloadFilePreviewState = .waiting
-    @Published private(set) var huggingFaceFilePreviewIdentity: HuggingFaceFilePreviewIdentity?
-    @Published var selectedHuggingFacePreviewFileIDs: Set<String> = []
+    @Published private var huggingFaceFilePreviewViewState: HuggingFaceFilePreviewViewState = .waiting
+    var huggingFaceFilePreview: HuggingFaceDownloadFilePreviewState { huggingFaceFilePreviewViewState.preview }
+    var huggingFaceFilePreviewIdentity: HuggingFaceFilePreviewIdentity? { huggingFaceFilePreviewViewState.identity }
+    var selectedHuggingFacePreviewFileIDs: Set<String> { huggingFaceFilePreviewViewState.selectedFileIDs }
     @Published private(set) var isHuggingFaceCLIAvailable = false
     @Published private(set) var huggingFaceCLIPath = AppViewModel.notCheckedText(language: .system)
     @Published private(set) var huggingFaceCLIMessage = AppViewModel.defaultHuggingFaceCLIMessage(language: .system)
@@ -191,21 +194,39 @@ final class AppViewModel: ObservableObject {
     @Published var localModelPortText = String(AppSettings.defaults.defaultPort)
     @Published var localModelEnableThinking = false
     @Published private(set) var localModelMessage = AppViewModel.defaultLocalModelMessage(language: .system)
-    @Published var huggingFaceSearchQuery = ""
+    @Published private var huggingFaceSearchViewState = HuggingFaceSearchViewState.initial(
+        message: AppViewModel.defaultHuggingFaceSearchMessage(language: .system)
+    )
+    var huggingFaceSearchQuery: String {
+        get { huggingFaceSearchViewState.query }
+        set {
+            updateHuggingFaceSearchViewState { state in
+                state.setQuery(newValue)
+            }
+        }
+    }
     @Published var showOnlyMLXLikelySearchResults = false
-    @Published private(set) var huggingFaceSearchMessage = AppViewModel.defaultHuggingFaceSearchMessage(language: .system)
-    @Published private(set) var huggingFaceSearchResults: [HuggingFaceSearchResult] = []
+    var huggingFaceSearchMessage: String { huggingFaceSearchViewState.message }
+    var huggingFaceSearchResults: [HuggingFaceSearchResult] { huggingFaceSearchViewState.results }
     @Published private(set) var systemProfilerHardwareInfo: [String: String] = [:]
-    @Published private(set) var selectedHuggingFaceSearchResult: HuggingFaceSearchResult?
-    @Published private(set) var isHuggingFaceSearching = false
+    var selectedHuggingFaceSearchResult: HuggingFaceSearchResult? { huggingFaceSearchViewState.selectedResult }
+    var isHuggingFaceSearching: Bool { huggingFaceSearchViewState.isSearching }
     @Published private var benchmarkViewState: BenchmarkViewState
-    @Published var miniChatPrompt = ""
-    @Published private(set) var miniChatMessages: [MiniChatTranscriptMessage] = []
-    @Published private(set) var miniChatResponse = ""
-    @Published private(set) var miniChatStatus = "Ready."
-    @Published private(set) var miniChatHTTPStatusText = "-"
-    @Published private(set) var miniChatDurationText = "-"
-    @Published private(set) var isMiniChatRunning = false
+    @Published private var miniChatViewState: MiniChatViewState = .ready
+    var miniChatPrompt: String {
+        get { miniChatViewState.prompt }
+        set {
+            updateMiniChatViewState { state in
+                state.setPrompt(newValue)
+            }
+        }
+    }
+    var miniChatMessages: [MiniChatTranscriptMessage] { miniChatViewState.messages }
+    var miniChatResponse: String { miniChatViewState.response }
+    var miniChatStatus: String { miniChatViewState.status }
+    var miniChatHTTPStatusText: String { miniChatViewState.httpStatusText }
+    var miniChatDurationText: String { miniChatViewState.durationText }
+    var isMiniChatRunning: Bool { miniChatViewState.isRunning }
     @Published private(set) var hermesAgentConfigMessage = AppViewModel.defaultHermesAgentConfigMessage(language: .system)
     @Published private(set) var runtimeEvents: [RuntimeEvent] = []
 
@@ -236,16 +257,23 @@ final class AppViewModel: ObservableObject {
     private let benchmarkSessionRunner: BenchmarkSessionRunner
     private let agenticBenchmarkService: AgenticBenchmarkService
     private let testChatService: TestChatService
+    private let mlxLMServerCapabilityProvider: any MLXLMServerCapabilityProviding
+    private let managedServerRuntimeFaultDetector = ManagedServerRuntimeFaultDetector()
     private let modelProfileValidator = ModelProfileValidator()
     private let localModelIntegrityChecker: any LocalModelIntegrityChecking
     private let modelStartPreflightEvaluator: ModelStartPreflightEvaluator
-    private var logBuffer: LogBuffer
+    private var logStateCoordinator: LogStateCoordinator
     private var queuedHuggingFaceDownloads: [UUID: HuggingFaceDownloadJob] = [:]
     private var huggingFaceDownloadRetryStore = HuggingFaceDownloadRetryStore()
     private var huggingFaceDownloadOutputLinesByID: [UUID: [String]] = [:]
+    private var pendingHuggingFaceOutputBatches: [UUID: HuggingFaceOutputBatch] = [:]
+    private var huggingFaceOutputFlushTasks: [UUID: Task<Void, Never>] = [:]
     private var primaryHuggingFaceDownloadID: UUID?
     private static let maximumTerminalHuggingFaceDownloadHistory = 50
+    private static let maximumVisibleHuggingFaceOutputLines = 24
+    private static let huggingFaceOutputFlushDelayNanoseconds: UInt64 = 120_000_000
     private var miniChatTask: Task<Void, Never>?
+    private var activeMiniChatGeneration: UUID?
     private var pendingDeleteModelID: ModelConfig.ID?
     private var pendingNetworkExposureModelID: ModelConfig.ID?
     private var pendingMemoryRiskModelID: ModelConfig.ID?
@@ -258,18 +286,19 @@ final class AppViewModel: ObservableObject {
     private var modelSizeEstimationTasks: [String: Task<Double?, Never>] = [:]
     private var modelSizeEstimationGenerations: [String: UUID] = [:]
     private var modelStartPreparations: [ModelConfig.ID: ActiveModelStartPreparation] = [:]
+    private var managedStartTasks: [ModelConfig.ID: ActiveModelStartPreparation] = [:]
     private var portCheckCache: [String: PortCheckCacheEntry] = [:]
     private var profileEditorPortSuggestionEndpointKey: String?
     private var addProfilePortSuggestionEndpointKey: String?
     private var systemInfoRowsCache: [AppLanguage: SystemInfoRowsCacheEntry] = [:]
     private var systemHardwareInfoTask: Task<Void, Never>?
-    private var logCategoryFilterOptionsCache: [String]
-    private var visibleLogEntriesCache: [LogEntry]
-    private var latestImportantLogEntryCache: LogEntry?
     private var benchmarkComparisonProjectionCacheEntry: BenchmarkComparisonProjectionCacheEntry?
-    private var isProjectingSelectedRuntime = false
     private var runtimeMemoryEmergencyGuard = RuntimeMemoryEmergencyGuard()
     private var manualReadyCheckGeneration = 0
+    private var activeDiagnosticsGeneration: UUID?
+    private var diagnosticsTask: Task<Void, Never>?
+    private var managedServerOutputGenerations: [ModelConfig.ID: UUID] = [:]
+    private var managedServerRuntimeFaults: [ModelConfig.ID: ManagedServerRuntimeFault] = [:]
 
     private static let initialLogLines = [
         "[info] MLX Server Manager UI loaded.",
@@ -282,6 +311,21 @@ final class AppViewModel: ObservableObject {
 
     private static func localizedText(language: AppLanguage, english: String, japanese: String) -> String {
         AppLocalization(language: language).text(english: english, japanese: japanese)
+    }
+
+    private static func waitingHuggingFaceDownloadStatus(language: AppLanguage) -> HuggingFaceDownloadStatus {
+        HuggingFaceDownloadStatus(
+            phase: .waiting,
+            message: localizedText(
+                language: language,
+                english: "Paste a Hugging Face model ID or URL, then press Download.",
+                japanese: "Hugging FaceのModel IDまたはURLを貼り付けて、ダウンロードを押してください。"
+            ),
+            repositoryID: nil,
+            destinationPath: nil,
+            progress: nil,
+            outputLines: []
+        )
     }
 
     private static func defaultHuggingFaceCLIMessage(language: AppLanguage) -> String {
@@ -332,7 +376,7 @@ final class AppViewModel: ObservableObject {
         settingsStore: SettingsStore? = nil,
         portChecker: PortChecker? = nil,
         readyChecker: ReadyChecker? = nil,
-        processManager: ModelProcessManager? = nil,
+        processManager: (any ModelProcessManaging)? = nil,
         memoryMonitor: MemoryMonitor? = nil,
         modelStorageEstimateOperation: (@Sendable (String?) -> Double?)? = nil,
         systemMemorySnapshotProvider: (() -> SystemMemorySnapshot)? = nil,
@@ -353,7 +397,8 @@ final class AppViewModel: ObservableObject {
         benchmarkService: BenchmarkService? = nil,
         benchmarkSessionRunner: BenchmarkSessionRunner? = nil,
         agenticBenchmarkService: AgenticBenchmarkService? = nil,
-        testChatService: TestChatService? = nil
+        testChatService: TestChatService? = nil,
+        mlxLMServerCapabilityProvider: (any MLXLMServerCapabilityProviding)? = nil
     ) {
         self.benchmarkViewState = BenchmarkViewState(
             latestSpeedTestMessage: Self.defaultSpeedTestMessage(language: .system)
@@ -406,14 +451,10 @@ final class AppViewModel: ObservableObject {
             ?? BenchmarkSessionRunner(service: benchmarkService ?? BenchmarkService())
         self.agenticBenchmarkService = agenticBenchmarkService ?? AgenticBenchmarkService()
         self.testChatService = testChatService ?? TestChatService()
-        let initialLogBuffer = LogBuffer(initialLines: Self.initialLogLines)
-        let initialLogEntries = initialLogBuffer.entries
-        self.logBuffer = initialLogBuffer
-        self.logText = initialLogBuffer.text
-        self.logEntries = initialLogEntries
-        self.logCategoryFilterOptionsCache = Self.makeLogCategoryFilterOptions(from: initialLogEntries)
-        self.visibleLogEntriesCache = initialLogEntries
-        self.latestImportantLogEntryCache = Self.findLatestImportantLogEntry(in: initialLogEntries)
+        self.mlxLMServerCapabilityProvider = mlxLMServerCapabilityProvider ?? MLXLMServerCapabilityProvider()
+        let initialLogStateCoordinator = LogStateCoordinator(initialLines: Self.initialLogLines)
+        self.logStateCoordinator = initialLogStateCoordinator
+        self.logViewState = initialLogStateCoordinator.state
         loadSettings()
         loadPersistedHuggingFaceDownloadRetries()
         refreshDefaultUserFacingMessagesForCurrentLanguage()
@@ -563,7 +604,8 @@ final class AppViewModel: ObservableObject {
             modelRuntimeState,
             hasRuntimeContext: hasRuntimeContext
         )
-        let isLoaded = isRunning && !isTransitioning
+        let isDegraded = isRunning && modelRuntimeState.isDegraded
+        let isLoaded = isRunning && !isTransitioning && !isDegraded
         let portCheckResult = isRunning
             ? nil
             : cachedPortCheck(host: model.host, port: model.serverPort)
@@ -600,12 +642,13 @@ final class AppViewModel: ObservableObject {
             ),
             isTransitioning: isTransitioning,
             isLoaded: isLoaded,
+            isDegraded: isDegraded,
             isPortBusy: isPortBusy,
             canUseStatusAction: canUseStatusAction,
             isRecentlyAdded: lastAddedDownloadedModelID == model.id,
             nameSortValue: model.displayName,
             sizeSortValue: sizeGigabytes ?? -1,
-            statusSortValue: isTransitioning ? 0 : (isRunning ? 1 : (isPortBusy ? 2 : 3)),
+            statusSortValue: isTransitioning ? 0 : (isDegraded ? 1 : (isRunning ? 2 : (isPortBusy ? 3 : 4))),
             endpointSortValue: "\(model.host):\(String(format: "%05d", model.serverPort))",
             memorySortValue: memorySortValue,
             autoUnloadSortValue: isAutoUnloadEnabled ? autoUnloadMinutes : Int.max,
@@ -618,9 +661,14 @@ final class AppViewModel: ObservableObject {
         huggingFaceCLIPath = Self.notCheckedText(language: language)
         huggingFaceCLIMessage = Self.defaultHuggingFaceCLIMessage(language: language)
         localModelMessage = Self.defaultLocalModelMessage(language: language)
-        huggingFaceSearchMessage = Self.defaultHuggingFaceSearchMessage(language: language)
+        updateHuggingFaceSearchViewState { state in
+            state.setMessage(Self.defaultHuggingFaceSearchMessage(language: language))
+        }
         benchmarkViewState.setLatestSpeedTestMessage(Self.defaultSpeedTestMessage(language: language))
         hermesAgentConfigMessage = Self.defaultHermesAgentConfigMessage(language: language)
+        if huggingFaceDownloadQueue.isEmpty, huggingFaceDownloadStatus.phase == .waiting {
+            setHuggingFaceDownloadStatus(Self.waitingHuggingFaceDownloadStatus(language: language))
+        }
     }
 
     func toggleReasoning(for model: ModelConfig, isEnabled: Bool) {
@@ -645,6 +693,10 @@ final class AppViewModel: ObservableObject {
         selectedModelID = model.id
 
         guard !blockManagedLaunchDuringRuntimeMemoryEmergency(logPrefix: "start") else {
+            return
+        }
+        guard canRequestManagedStart(for: model) else {
+            appendLog("[start] ignored duplicate or unavailable start request for \(model.displayName).")
             return
         }
 
@@ -695,7 +747,11 @@ final class AppViewModel: ObservableObject {
             return
         }
 
-        modelStartPreparations[model.id]?.task.cancel()
+        guard modelStartPreparations[model.id] == nil,
+              managedStartTasks[model.id] == nil else {
+            appendLog("[start] ignored because start preparation is already active for \(model.displayName).")
+            return
+        }
 
         let generation = UUID()
         let task = Task { [weak self] in
@@ -765,6 +821,33 @@ final class AppViewModel: ObservableObject {
         preparation.task.cancel()
     }
 
+    private func removeManagedStartTask(modelID: ModelConfig.ID, generation: UUID) {
+        guard managedStartTasks[modelID]?.generation == generation else {
+            return
+        }
+        managedStartTasks[modelID] = nil
+    }
+
+    private func cancelManagedStartTask(modelID: ModelConfig.ID) {
+        guard let operation = managedStartTasks.removeValue(forKey: modelID) else {
+            return
+        }
+        operation.task.cancel()
+    }
+
+    private func canRequestManagedStart(for model: ModelConfig) -> Bool {
+        guard models.contains(model),
+              serverLifecycleCoordinator.processIdentifier(for: model.id) == nil,
+              !runningModelIDs.contains(model.id),
+              modelStartPreparations[model.id] == nil,
+              managedStartTasks[model.id] == nil,
+              pendingNetworkExposureModelID != model.id,
+              pendingMemoryRiskModelID != model.id else {
+            return false
+        }
+        return !isModelTransitioning(model)
+    }
+
     func confirmMemoryRiskStart() {
         guard let modelID = pendingMemoryRiskModelID,
               let model = models.first(where: { $0.id == modelID }) else {
@@ -821,6 +904,12 @@ final class AppViewModel: ObservableObject {
         let managedMemory = runningModelIDs.reduce(0.0) { partialResult, modelID in
             partialResult + max(memoryUsageByModelID[modelID] ?? 0, 0)
         }
+        let cacheSafeMode = kvCacheSafeModeResult(
+            for: model,
+            options: model.advancedLaunchOptions,
+            candidateModelGigabytes: candidateModelGigabytes,
+            systemMemory: systemMemory
+        )
 
         return MultiModelMemoryAdvisor.assess(
             environment: MultiModelMemoryEnvironment(
@@ -829,8 +918,28 @@ final class AppViewModel: ObservableObject {
                 managedMemoryGigabytes: managedMemory,
                 runningModelCount: runningModelIDs.count,
                 candidateModelGigabytes: candidateModelGigabytes,
-                candidateCacheBytes: model.advancedLaunchOptions?.normalized()?.promptCacheBytes.flatMap(UInt64.init)
+                candidateCacheBytes: cacheSafeMode.advancedLaunchOptions?
+                    .promptCacheBytes
+                    .flatMap(UInt64.init)
             )
+        )
+    }
+
+    private func kvCacheSafeModeResult(
+        for model: ModelConfig,
+        options: AdvancedLaunchOptions?,
+        candidateModelGigabytes: Double?,
+        systemMemory: SystemMemorySnapshot
+    ) -> KVCacheSafeModeResult {
+        KVCacheSafeMode.apply(
+            options: options,
+            environment: KVCacheEnvironment(
+                totalMemoryGigabytes: systemMemory.totalGigabytes,
+                availableMemoryGigabytes: systemMemory.availableGigabytes,
+                modelStorageGigabytes: candidateModelGigabytes,
+                isModelLoaded: runningModelIDs.contains(model.id)
+            ),
+            backend: model.resolvedBackend
         )
     }
 
@@ -838,10 +947,29 @@ final class AppViewModel: ObservableObject {
         guard !blockManagedLaunchDuringRuntimeMemoryEmergency(logPrefix: "start") else {
             return
         }
-
-        Task {
-            _ = await startManagedServer(model: model, logPrefix: "start")
+        guard managedStartTasks[model.id] == nil,
+              serverLifecycleCoordinator.processIdentifier(for: model.id) == nil else {
+            appendLog("[start] ignored because a managed start is already active for \(model.displayName).")
+            return
         }
+
+        setRuntimeState(.starting(host: model.host, port: model.serverPort), for: model.id)
+        let generation = UUID()
+        let task = Task { [weak self] in
+            guard let self else { return }
+            defer {
+                self.removeManagedStartTask(modelID: model.id, generation: generation)
+            }
+            guard !Task.isCancelled else {
+                self.setRuntimeState(.stopped, for: model.id)
+                return
+            }
+            _ = await self.startManagedServer(model: model, logPrefix: "start")
+        }
+        managedStartTasks[model.id] = ActiveModelStartPreparation(
+            generation: generation,
+            task: task
+        )
     }
 
     private func clearPendingMemoryRiskStart() {
@@ -1043,6 +1171,7 @@ final class AppViewModel: ObservableObject {
     var speedTestDisabledReason: String {
         if isSpeedTestRunning { return Self.localizedText(language: settings.uiLanguage, english: "Benchmark is already running.", japanese: "ベンチマークはすでに実行中です。") }
         if isAgenticBenchmarkRunning { return Self.localizedText(language: settings.uiLanguage, english: "Agent Readiness is already running.", japanese: "Agent Readinessはすでに実行中です。") }
+        if runtimeState.isDegraded { return Self.localizedText(language: settings.uiLanguage, english: "The generation worker stopped. Restart the model before running Benchmark.", japanese: "生成ワーカーが停止しています。モデルを再起動してからベンチマークを実行してください。") }
         if !connectionTargetSummary.isActiveTarget { return Self.localizedText(language: settings.uiLanguage, english: "Start or adopt a server before running Benchmark.", japanese: "ベンチマーク前にサーバーを起動するか採用してください。") }
         return Self.localizedText(language: settings.uiLanguage, english: "Ready.", japanese: "準備完了。")
     }
@@ -1054,12 +1183,15 @@ final class AppViewModel: ObservableObject {
     var agenticBenchmarkDisabledReason: String {
         if isAgenticBenchmarkRunning { return Self.localizedText(language: settings.uiLanguage, english: "Agent Readiness is already running.", japanese: "Agent Readinessはすでに実行中です。") }
         if isSpeedTestRunning { return Self.localizedText(language: settings.uiLanguage, english: "Benchmark v1 is already running.", japanese: "Benchmark v1はすでに実行中です。") }
+        if runtimeState.isDegraded { return Self.localizedText(language: settings.uiLanguage, english: "The generation worker stopped. Restart the model before running Agent Readiness.", japanese: "生成ワーカーが停止しています。モデルを再起動してからAgent Readinessを実行してください。") }
         if !connectionTargetSummary.isActiveTarget { return Self.localizedText(language: settings.uiLanguage, english: "Start or adopt a server before running Agent Readiness.", japanese: "Agent Readiness前にサーバーを起動するか採用してください。") }
         return Self.localizedText(language: settings.uiLanguage, english: "Runs virtual tool tasks without external dependencies.", japanese: "外部依存なしで仮想ツールタスクを実行します。")
     }
 
     var stopDisabledReason: String {
-        canStopManagedServer ? "Ready." : "No managed server is running."
+        canStopManagedServer
+            ? Self.localizedText(language: settings.uiLanguage, english: "Ready.", japanese: "実行可能です。")
+            : Self.localizedText(language: settings.uiLanguage, english: "No managed server is running.", japanese: "管理中サーバーは実行されていません。")
     }
 
     var restartDisabledReason: String {
@@ -1067,8 +1199,12 @@ final class AppViewModel: ObservableObject {
             return runtimeMemoryEmergencyBlockingMessage
         }
         return canRestartManagedServer
-            ? "Ready."
-            : "Start a managed server before Restart. External server context cannot be restarted here."
+            ? Self.localizedText(language: settings.uiLanguage, english: "Ready.", japanese: "実行可能です。")
+            : Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Start a managed server before Restart. External server context cannot be restarted here.",
+                japanese: "再起動する前に管理サーバーを起動してください。外部サーバーはここから再起動できません。"
+            )
     }
 
     var selectedBlockingStartIssue: String? {
@@ -1112,6 +1248,28 @@ final class AppViewModel: ObservableObject {
         )
     }
 
+    private func mlxLMCapabilityPreflightIssue(
+        for request: ModelLaunchRequest,
+        logPrefix: String
+    ) async -> ModelStartPreflightIssue? {
+        let requestedFlags = MLXLMServerCapabilities.requestedOptionalFlags(for: request)
+        guard !requestedFlags.isEmpty else {
+            return nil
+        }
+
+        switch await mlxLMServerCapabilityProvider.capabilities(executablePath: request.executablePath) {
+        case let .available(capabilities):
+            let unsupportedFlags = capabilities.unsupportedFlags(from: requestedFlags)
+            guard !unsupportedFlags.isEmpty else {
+                return nil
+            }
+            return .unsupportedLaunchOptions(flags: unsupportedFlags)
+        case .unavailable:
+            appendLog("[\(logPrefix)] mlx-lm option capability check was unavailable; continuing without blocking launch.")
+            return nil
+        }
+    }
+
     private var runtimeMemoryEmergencyBlockingMessage: String? {
         guard isRuntimeMemoryEmergencyActive else {
             return nil
@@ -1135,11 +1293,16 @@ final class AppViewModel: ObservableObject {
     }
 
     var canStartSelectedModel: Bool {
-        selectedBlockingStartIssue == nil
+        guard let selectedModel else {
+            return false
+        }
+        return canRequestManagedStart(for: selectedModel)
+            && selectedBlockingStartIssue == nil
     }
 
     var startActionReason: String {
-        selectedBlockingStartIssue ?? "Ready."
+        selectedBlockingStartIssue
+            ?? Self.localizedText(language: settings.uiLanguage, english: "Ready.", japanese: "実行可能です。")
     }
 
     var integratedActionStateSummary: String {
@@ -1148,16 +1311,19 @@ final class AppViewModel: ObservableObject {
         }
 
         return [
-            "Start: \(startActionReason)",
-            "Stop: \(stopDisabledReason)",
-            "Restart: \(restartDisabledReason)",
-            "Benchmark: \(speedTestDisabledReason)"
+            Self.localizedText(language: settings.uiLanguage, english: "Start: \(startActionReason)", japanese: "起動: \(startActionReason)"),
+            Self.localizedText(language: settings.uiLanguage, english: "Stop: \(stopDisabledReason)", japanese: "停止: \(stopDisabledReason)"),
+            Self.localizedText(language: settings.uiLanguage, english: "Restart: \(restartDisabledReason)", japanese: "再起動: \(restartDisabledReason)"),
+            Self.localizedText(language: settings.uiLanguage, english: "Benchmark: \(speedTestDisabledReason)", japanese: "ベンチマーク: \(speedTestDisabledReason)")
         ].joined(separator: "  ")
     }
 
     var selectedModelSafetyRows: [(String, String)] {
         guard let selectedModel else {
-            return [("Selected model", "Missing")]
+            return [(
+                Self.localizedText(language: settings.uiLanguage, english: "Selected model", japanese: "選択モデル"),
+                Self.localizedText(language: settings.uiLanguage, english: "Missing", japanese: "未選択")
+            )]
         }
         if settings.uiLanguage.resolved == .english {
             return [
@@ -1170,12 +1336,12 @@ final class AppViewModel: ObservableObject {
             ]
         }
         return [
-            ("Executable", executableSafetyText),
-            ("Model", modelIdentitySafetyText(for: selectedModel)),
-            ("Server port", portSafetyText(for: selectedModel)),
-            ("Network", networkExposureSafetyText(for: selectedModel)),
-            ("Duplicate", duplicateProfileWarning(for: selectedModel) ?? "OK"),
-            ("Runtime edit", runtimeEditingSafetyText(for: selectedModel))
+            ("実行ファイル", executableSafetyText),
+            ("モデル検証", modelIdentitySafetyText(for: selectedModel)),
+            ("ポート / IPアドレス", portSafetyText(for: selectedModel)),
+            ("ネットワーク公開", networkExposureSafetyText(for: selectedModel)),
+            ("重複確認", duplicateProfileWarning(for: selectedModel) ?? "問題なし"),
+            ("実行中の編集", runtimeEditingSafetyText(for: selectedModel))
         ]
     }
 
@@ -1184,7 +1350,7 @@ final class AppViewModel: ObservableObject {
         if settings.uiLanguage.resolved == .english {
             return warningCount == 0 ? "Safety: no issues" : "Safety: \(warningCount) warning(s)"
         }
-        return warningCount == 0 ? "Safety: OK" : "Safety: \(warningCount) warning(s)"
+        return warningCount == 0 ? "安全性: 問題なし" : "安全性: 警告\(warningCount)件"
     }
 
     var selectedServerPortSafetyText: String {
@@ -1216,9 +1382,21 @@ final class AppViewModel: ObservableObject {
     }
 
     var copyableSafetySummary: String {
-        (["Model Operations Safety", "Runtime: \(runtimeState.title)", "Selected: \(selectedModelIdentifier)"] + selectedModelSafetyRows.map { row in
+        ([
+            Self.localizedText(language: settings.uiLanguage, english: "Model Operations Safety", japanese: "モデル操作の安全性"),
+            Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Runtime: \(runtimeState.localizedTitle(language: .english))",
+                japanese: "ランタイム: \(runtimeState.localizedTitle(language: .japanese))"
+            ),
+            Self.localizedText(language: settings.uiLanguage, english: "Selected: \(selectedModelIdentifier)", japanese: "選択中: \(selectedModelIdentifier)")
+        ] + selectedModelSafetyRows.map { row in
             "\(row.0): \(row.1)"
-        } + ["Recovery: \(failedStartRecoverySummary)"]).joined(separator: "\n")
+        } + [Self.localizedText(
+            language: settings.uiLanguage,
+            english: "Recovery: \(failedStartRecoverySummary)",
+            japanese: "復旧: \(failedStartRecoverySummary)"
+        )]).joined(separator: "\n")
     }
 
     var failedStartRecoverySummary: String {
@@ -1243,9 +1421,9 @@ final class AppViewModel: ObservableObject {
         let executablePath = executablePath(for: selectedModel).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !executablePath.isEmpty else { return Self.localizedText(language: settings.uiLanguage, english: "Missing executable path", japanese: "実行ファイルパスが未設定") }
         if FileManager.default.isExecutableFile(atPath: executablePath) {
-            return settings.uiLanguage.resolved == .english ? "Executable OK" : "OK"
+            return Self.localizedText(language: settings.uiLanguage, english: "Executable OK", japanese: "実行可能")
         }
-        return "Missing or not executable"
+        return Self.localizedText(language: settings.uiLanguage, english: "Missing or not executable", japanese: "未設定または実行不可")
     }
 
     private func executablePath(for model: ModelConfig) -> String {
@@ -1256,10 +1434,12 @@ final class AppViewModel: ObservableObject {
         if let localPath = ModelAvailabilityPathFormatter.localPathCandidate(for: model) {
             var isDirectory = ObjCBool(false)
             return FileManager.default.fileExists(atPath: localPath, isDirectory: &isDirectory) && isDirectory.boolValue
-                ? Self.localizedText(language: settings.uiLanguage, english: "Local path OK", japanese: "OK local path")
-                : Self.localizedText(language: settings.uiLanguage, english: "Missing local path", japanese: "Missing local path")
+                ? Self.localizedText(language: settings.uiLanguage, english: "Local path OK", japanese: "ローカルパスOK")
+                : Self.localizedText(language: settings.uiLanguage, english: "Missing local path", japanese: "ローカルパスなし")
         }
-        return model.modelID.contains("/") ? "Needs review: HF ID" : "Needs review"
+        return model.modelID.contains("/")
+            ? Self.localizedText(language: settings.uiLanguage, english: "Needs review: HF ID", japanese: "要確認: HF ID")
+            : Self.localizedText(language: settings.uiLanguage, english: "Needs review", japanese: "要確認")
     }
 
     private func isSafetyWarning(label: String, value: String) -> Bool {
@@ -1329,7 +1509,9 @@ final class AppViewModel: ObservableObject {
     }
 
     func runtimeEditingSafetyText(for model: ModelConfig) -> String {
-        guard runningModelIDs.contains(model.id) else { return Self.localizedText(language: settings.uiLanguage, english: "Edit safe", japanese: "Ready") }
+        guard runningModelIDs.contains(model.id) else {
+            return Self.localizedText(language: settings.uiLanguage, english: "Edit safe", japanese: "編集可能")
+        }
         return Self.localizedText(language: settings.uiLanguage, english: "Stop before runtime-critical edits", japanese: "ランタイム重要項目の編集前に停止してください")
     }
 
@@ -1534,7 +1716,7 @@ final class AppViewModel: ObservableObject {
         let latest = latestBenchmarkResult?.summary ?? "No benchmark result"
         let mismatch = runtimeSelectionWarning == nil ? "No selected/running mismatch" : "Selected/running mismatch"
         let restart = restartRequired ? "Restart required" : "No restart required"
-        return "\(runtimeState.title) · \(mismatch) · \(restart) · \(latest)"
+        return "\(runtimeState.localizedTitle(language: settings.uiLanguage)) · \(mismatch) · \(restart) · \(latest)"
     }
 
     var benchmarkFailureGuidance: String? {
@@ -1752,9 +1934,13 @@ final class AppViewModel: ObservableObject {
             .map { "\($0.displayName) @ \($0.host):\($0.serverPort)" }
             .joined(separator: ", ")
         return [
-            "Benchmark Troubleshooting",
-            "Runtime: \(runtimeState.title)",
-            "Target: \(connectionTargetSummary.targetType)",
+            Self.localizedText(language: settings.uiLanguage, english: "Benchmark Troubleshooting", japanese: "ベンチマークのトラブルシューティング"),
+            Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Runtime: \(runtimeState.localizedTitle(language: .english))",
+                japanese: "ランタイム: \(runtimeState.localizedTitle(language: .japanese))"
+            ),
+            Self.localizedText(language: settings.uiLanguage, english: "Target: \(connectionTargetSummary.targetType)", japanese: "接続先: \(connectionTargetSummary.targetType)"),
             "Base URL: \(baseURL)",
             "Selected model: \(selectedModelIdentifier)",
             "Running models: \(runningModels.isEmpty ? "Not running" : runningModels)",
@@ -1765,7 +1951,7 @@ final class AppViewModel: ObservableObject {
     }
 
     var logCategoryFilterOptions: [String] {
-        logCategoryFilterOptionsCache
+        logViewState.categoryFilterOptions
     }
 
     func logCategoryFilterLabel(_ category: String) -> String {
@@ -1775,11 +1961,11 @@ final class AppViewModel: ObservableObject {
     }
 
     var visibleLogEntries: [LogEntry] {
-        visibleLogEntriesCache
+        logViewState.visibleEntries
     }
 
     var latestImportantLogEntry: LogEntry? {
-        latestImportantLogEntryCache
+        logViewState.latestImportantEntry
     }
 
     var runtimeSelectionWarning: String? {
@@ -1863,6 +2049,11 @@ final class AppViewModel: ObservableObject {
             ownershipNote = "Connection context only. Not managed by MLX Server Manager."
             readinessSummary = "Ready via /v1/models"
             isActiveTarget = true
+        case .degraded:
+            targetType = "Managed Server (Degraded)"
+            ownershipNote = "Managed by MLX Server Manager. Restart is required before inference."
+            readinessSummary = managedReadinessSummary
+            isActiveTarget = false
         default:
             if isSelectedModelManagedProcessRunning {
                 targetType = "Managed Server"
@@ -2224,6 +2415,8 @@ final class AppViewModel: ObservableObject {
                     return "Loading"
                 case .stopping:
                     return "Unloading"
+                case .degraded:
+                    return isHovered ? "Unload" : "Degraded"
                 default:
                     return isHovered ? "Unload" : "Loaded"
                 }
@@ -2239,6 +2432,8 @@ final class AppViewModel: ObservableObject {
                 return "ロード中"
             case .stopping:
                 return "アンロード中"
+            case .degraded:
+                return isHovered ? "アンロード" : "異常"
             default:
                 return isHovered ? "アンロード" : "ロード済"
             }
@@ -2259,7 +2454,13 @@ final class AppViewModel: ObservableObject {
     }
 
     func isModelLoaded(_ model: ModelConfig) -> Bool {
-        runningModelIDs.contains(model.id) && !isModelTransitioning(model)
+        runningModelIDs.contains(model.id)
+            && !isModelTransitioning(model)
+            && !isModelDegraded(model)
+    }
+
+    func isModelDegraded(_ model: ModelConfig) -> Bool {
+        runningModelIDs.contains(model.id) && runtimeState(for: model).isDegraded
     }
 
     func isModelRunning(_ model: ModelConfig) -> Bool {
@@ -2493,6 +2694,7 @@ final class AppViewModel: ObservableObject {
 
     private func invalidateModelSizeCache(for model: ModelConfig) {
         cancelModelStartPreparation(modelID: model.id)
+        cancelManagedStartTask(modelID: model.id)
         invalidateModelSizeCache(forDirectoryPath: ModelAvailabilityPathFormatter.localPathCandidate(for: model))
     }
 
@@ -2514,6 +2716,10 @@ final class AppViewModel: ObservableObject {
             preparation.task.cancel()
         }
         modelStartPreparations.removeAll()
+        for operation in managedStartTasks.values {
+            operation.task.cancel()
+        }
+        managedStartTasks.removeAll()
         for task in modelSizeEstimationTasks.values {
             task.cancel()
         }
@@ -2660,6 +2866,8 @@ final class AppViewModel: ObservableObject {
         switch runtimeState {
         case .ready:
             "Ready via /v1/models"
+        case .degraded:
+            "Managed generation worker degraded"
         case .starting, .loading:
             "Starting"
         case .checkingReady:
@@ -2731,10 +2939,14 @@ final class AppViewModel: ObservableObject {
 
     var menuBarTitle: String {
         if restartRequired {
-            return Self.localizedText(language: settings.uiLanguage, english: "MLX: \(runtimeState.menuBarStatus) - restart required", japanese: "MLX: \(runtimeState.menuBarStatus) - 再起動が必要")
+            return Self.localizedText(
+                language: settings.uiLanguage,
+                english: "MLX: \(runtimeState.localizedMenuBarStatus(language: .english)) - restart required",
+                japanese: "MLX: \(runtimeState.localizedMenuBarStatus(language: .japanese)) - 再起動が必要"
+            )
         }
 
-        return "MLX: \(runtimeState.menuBarStatus)"
+        return "MLX: \(runtimeState.localizedMenuBarStatus(language: settings.uiLanguage))"
     }
 
     var isManagedProcessRunning: Bool {
@@ -2760,12 +2972,23 @@ final class AppViewModel: ObservableObject {
     }
 
     var canStopManagedServer: Bool {
-        isSelectedModelManagedProcessRunning
+        guard let selectedModel,
+              isSelectedModelManagedProcessRunning else {
+            return false
+        }
+        if case .stopping = runtimeState(for: selectedModel) {
+            return false
+        }
+        return true
     }
 
     var canRestartManagedServer: Bool {
-        isSelectedModelManagedProcessRunning
+        guard let selectedModel else {
+            return false
+        }
+        return isSelectedModelManagedProcessRunning
             && !runtimeState.isExternalServerContext
+            && !isModelTransitioning(selectedModel)
             && !isRuntimeMemoryEmergencyActive
     }
 
@@ -2781,13 +3004,17 @@ final class AppViewModel: ObservableObject {
         runtimeStatesByModelID[model.id] ?? .stopped
     }
 
-    private func setRuntimeState(_ state: ModelRuntimeState, for modelID: ModelConfig.ID) {
-        runtimeStatesByModelID[modelID] = state
-        if selectedModelID == modelID {
-            isProjectingSelectedRuntime = true
-            runtimeState = state
-            isProjectingSelectedRuntime = false
+    func setRuntimeState(_ state: ModelRuntimeState, for modelID: ModelConfig.ID) {
+        var nextState = runtimeViewState
+        nextState.setRuntimeState(
+            state,
+            for: modelID,
+            selectedModelID: selectedModelID
+        )
+        guard nextState != runtimeViewState else {
+            return
         }
+        runtimeViewState = nextState
     }
 
     private func setRuntimeState(_ state: ModelRuntimeState, forOptionalModelID modelID: ModelConfig.ID?) {
@@ -2799,55 +3026,16 @@ final class AppViewModel: ObservableObject {
     }
 
     private func projectSelectedRuntimeState() {
-        isProjectingSelectedRuntime = true
-        if let selectedModelID {
-            runtimeState = runtimeStatesByModelID[selectedModelID] ?? .stopped
-        } else {
-            runtimeState = .stopped
-        }
-        isProjectingSelectedRuntime = false
-        refreshRunningProjection()
-        refreshAggregateMemoryProjection()
-    }
-
-    private func refreshRunningProjection() {
-        runningModelIDs = serverLifecycleCoordinator.runningProfileIDs
-        if let selectedModelID, runningModelIDs.contains(selectedModelID) {
-            runningModelID = selectedModelID
-        } else {
-            runningModelID = models.first(where: { runningModelIDs.contains($0.id) })?.id
-        }
-        managedServerStartedAt = runningModelID.flatMap { managedServerStartedAtByModelID[$0] }
-    }
-
-    private func refreshAggregateMemoryProjection() {
-        memoryUsageGB = memoryUsageByModelID.isEmpty
-            ? nil
-            : memoryUsageByModelID.values.reduce(0, +)
-
-        guard !memoryBreakdownByModelID.isEmpty else {
-            memoryBreakdown = nil
+        var nextState = runtimeViewState
+        nextState.projectSelectedRuntimeState(
+            selectedModelID: selectedModelID,
+            runningProfileIDs: serverLifecycleCoordinator.runningProfileIDs,
+            orderedModelIDs: models.map(\.id)
+        )
+        guard nextState != runtimeViewState else {
             return
         }
-
-        let snapshots = Array(memoryBreakdownByModelID.values)
-        let latestSnapshot = snapshots.max(by: { $0.updatedAt < $1.updatedAt })
-        let rssKilobytes = snapshots.reduce(Int64(0)) { $0 + $1.rssKilobytes }
-        let modelEstimates = snapshots.compactMap(\.modelEstimateGigabytes)
-        memoryBreakdown = latestSnapshot.map { latest in
-            MemoryBreakdownSnapshot(
-                processIdentifier: 0,
-                rssKilobytes: rssKilobytes,
-                system: latest.system,
-                modelEstimateGigabytes: modelEstimates.count == snapshots.count
-                    ? modelEstimates.reduce(0, +)
-                    : nil,
-                modelEstimateSource: modelEstimates.count == snapshots.count
-                    ? "\(snapshots.count) managed model(s)"
-                    : nil,
-                updatedAt: latest.updatedAt
-            )
-        }
+        runtimeViewState = nextState
     }
 
     func startRequested() {
@@ -2893,8 +3081,16 @@ final class AppViewModel: ObservableObject {
     }
 
     private func requestStop(for model: ModelConfig, logPrefix: String) {
+        if case .stopping = runtimeState(for: model) {
+            appendLog("[\(logPrefix)] ignored duplicate stop request for \(model.displayName).")
+            return
+        }
+
+        cancelModelStartPreparation(modelID: model.id)
+        cancelManagedStartTask(modelID: model.id)
         guard let processIdentifier = serverLifecycleCoordinator.processIdentifier(for: model.id) else {
             clearRunningModel(modelID: model.id, logPrefix: logPrefix)
+            setRuntimeState(.stopped, for: model.id)
             appendLog("[\(logPrefix)] managed process is not running for \(model.displayName).")
             return
         }
@@ -2930,26 +3126,31 @@ final class AppViewModel: ObservableObject {
         }
 
         cancelModelStartPreparation(modelID: selectedModel.id)
+        cancelManagedStartTask(modelID: selectedModel.id)
+        guard let processIdentifier = serverLifecycleCoordinator.processIdentifier(for: selectedModel.id) else {
+            appendLog("[restart] unavailable because the selected managed server is not running.")
+            return
+        }
+        guard !isModelTransitioning(selectedModel) else {
+            appendLog("[restart] ignored because a lifecycle transition is already active for \(selectedModel.displayName).")
+            return
+        }
+
         appendLog("[restart] requested for \(selectedModel.modelID) at \(selectedModel.host):\(selectedModel.serverPort)")
+        setRuntimeState(.stopping(processIdentifier: processIdentifier), for: selectedModel.id)
 
         Task {
-            if let processIdentifier = serverLifecycleCoordinator.processIdentifier(for: selectedModel.id) {
-                setRuntimeState(.stopping(processIdentifier: processIdentifier), for: selectedModel.id)
-                appendLog("[restart] stopping managed pid \(processIdentifier)")
+            appendLog("[restart] stopping managed pid \(processIdentifier)")
+            let didStop = await stopManagedServerAndWaitForPortRelease(
+                modelID: selectedModel.id,
+                host: selectedModel.host,
+                port: selectedModel.serverPort,
+                logPrefix: "restart"
+            )
 
-                let didStop = await stopManagedServerAndWaitForPortRelease(
-                    modelID: selectedModel.id,
-                    host: selectedModel.host,
-                    port: selectedModel.serverPort,
-                    logPrefix: "restart"
-                )
-
-                guard didStop else {
-                    appendLog("[restart] cancelled because stop did not complete cleanly.")
-                    return
-                }
-            } else {
-                appendLog("[restart] managed process is not running. Starting a new managed server.")
+            guard didStop else {
+                appendLog("[restart] cancelled because stop did not complete cleanly.")
+                return
             }
 
             _ = await resolvedModelSizeGigabytes(for: selectedModel)
@@ -2968,25 +3169,44 @@ final class AppViewModel: ObservableObject {
     func checkPortRequested() {
         let host = selectedModel?.host ?? settings.defaultHost
         let port = selectedModel?.serverPort ?? settings.defaultPort
-        runtimeState = .checkingPort(host: host, port: port)
+        let degradedState = degradedRuntimeStateToPreserve(
+            modelID: selectedModelID,
+            host: host,
+            port: port
+        )
+        if degradedState == nil {
+            runtimeState = .checkingPort(host: host, port: port)
+        }
 
         switch freshPortCheck(host: host, port: port) {
         case let .available(host, port):
-            runtimeState = .portAvailable(host: host, port: port)
+            if degradedState == nil {
+                runtimeState = .portAvailable(host: host, port: port)
+            }
             appendLog("[port] port available: \(host):\(port)")
         case let .busy(host, port, pid):
-            runtimeState = .portBusy(host: host, port: port)
+            if degradedState == nil {
+                runtimeState = .portBusy(host: host, port: port)
+            }
             if let pid {
                 appendLog("[port] port busy: \(host):\(port) PID=\(pid)")
             } else {
                 appendLog("[port] port busy: \(host):\(port)")
             }
         case let .invalidInput(message):
-            runtimeState = .portCheckFailed(host: host, port: port, message: message)
+            if degradedState == nil {
+                runtimeState = .portCheckFailed(host: host, port: port, message: message)
+            }
             appendLog("[port] port check failed: \(message)")
         case let .failed(host, port, message):
-            runtimeState = .portCheckFailed(host: host, port: port, message: message)
+            if degradedState == nil {
+                runtimeState = .portCheckFailed(host: host, port: port, message: message)
+            }
             appendLog("[port] port check failed for \(host):\(port): \(message)")
+        }
+        if let degradedState {
+            setRuntimeState(degradedState, forOptionalModelID: selectedModelID)
+            appendLog("[runtime-health] port check completed without replacing the degraded state.")
         }
     }
 
@@ -3129,94 +3349,224 @@ final class AppViewModel: ObservableObject {
     }
 
     var canSendMiniChat: Bool {
-        !isMiniChatRunning && !miniChatPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedModel != nil
+        !isMiniChatRunning
+            && !miniChatPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && selectedModel != nil
+            && !runtimeState.isDegraded
+    }
+
+    private func updateMiniChatViewState(
+        _ update: (inout MiniChatViewState) -> Void
+    ) {
+        var nextState = miniChatViewState
+        update(&nextState)
+        guard nextState != miniChatViewState else {
+            return
+        }
+        miniChatViewState = nextState
+    }
+
+    func applyMiniChatRequestStart(
+        prompt: String,
+        status: String
+    ) {
+        updateMiniChatViewState { state in
+            state.beginRequest(prompt: prompt, status: status)
+        }
+    }
+
+    func applyMiniChatRequestCompletion(
+        response: String,
+        sender: MiniChatTranscriptMessage.Sender,
+        status: String,
+        httpStatusText: String,
+        durationText: String
+    ) {
+        updateMiniChatViewState { state in
+            state.completeRequest(
+                response: response,
+                sender: sender,
+                status: status,
+                httpStatusText: httpStatusText,
+                durationText: durationText
+            )
+        }
+    }
+
+    private func setMiniChatStatus(_ status: String) {
+        updateMiniChatViewState { state in
+            state.setStatus(status)
+        }
     }
 
     func sendMiniChatRequested() {
         let prompt = miniChatPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else {
-            miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Enter a test message.", japanese: "テストメッセージを入力してください。")
+            setMiniChatStatus(
+                Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "Enter a test message.",
+                    japanese: "テストメッセージを入力してください。"
+                )
+            )
             return
         }
         guard selectedModel != nil else {
-            miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Select a model before sending.", japanese: "送信前にモデルを選択してください。")
+            setMiniChatStatus(
+                Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "Select a model before sending.",
+                    japanese: "送信前にモデルを選択してください。"
+                )
+            )
+            return
+        }
+        guard !runtimeState.isDegraded else {
+            let message = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "The generation worker stopped. Restart the model before sending a test request.",
+                japanese: "生成ワーカーが停止しています。モデルを再起動してからテストリクエストを送信してください。"
+            )
+            setMiniChatStatus(message)
+            appendLog("[test-chat] skipped: \(message)")
             return
         }
         guard TestChatService.chatCompletionsURL(from: baseURL) != nil else {
-            miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Invalid base URL.", japanese: "Base URLが無効です。")
+            setMiniChatStatus(
+                Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "Invalid base URL.",
+                    japanese: "Base URLが無効です。"
+                )
+            )
             return
         }
 
         let modelID = selectedModelIdentifier
         let targetBaseURL = baseURL
         let service = testChatService
-        miniChatPrompt = ""
-        miniChatMessages.append(MiniChatTranscriptMessage(sender: .user, content: prompt))
-        isMiniChatRunning = true
-        miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Sending test request...", japanese: "テストリクエストを送信中...")
-        miniChatHTTPStatusText = "-"
-        miniChatDurationText = "-"
-        miniChatResponse = ""
+        let generation = UUID()
+        miniChatTask?.cancel()
+        activeMiniChatGeneration = generation
+        applyMiniChatRequestStart(
+            prompt: prompt,
+            status: Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Sending test request...",
+                japanese: "テストリクエストを送信中..."
+            )
+        )
         appendLog("[test-chat] request started: \(targetBaseURL)/chat/completions model=\(modelID)")
 
-        miniChatTask?.cancel()
-        miniChatTask = Task {
+        miniChatTask = Task { [weak self] in
+            guard let self else { return }
             do {
                 let result = try await service.send(
                     baseURL: targetBaseURL,
                     modelID: modelID,
                     prompt: prompt
                 )
-                let elapsedMS = result.durationMilliseconds
-                miniChatHTTPStatusText = result.statusCode.map { "HTTP \($0)" } ?? "-"
-                miniChatDurationText = "\(Int(elapsedMS)) ms"
+                guard activeMiniChatGeneration == generation else {
+                    return
+                }
 
+                let elapsedMS = result.durationMilliseconds
+                let httpStatusText = result.statusCode.map { "HTTP \($0)" } ?? "-"
+                let durationText = "\(Int(elapsedMS)) ms"
                 if let message = result.apiErrorMessage {
-                    miniChatResponse = message
-                    miniChatMessages.append(MiniChatTranscriptMessage(sender: .system, content: message))
-                    miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Request failed.", japanese: "リクエストに失敗しました。")
-                    appendLog("[test-chat] failed: \(miniChatHTTPStatusText) \(message)")
+                    applyMiniChatRequestCompletion(
+                        response: message,
+                        sender: .system,
+                        status: Self.localizedText(
+                            language: settings.uiLanguage,
+                            english: "Request failed.",
+                            japanese: "リクエストに失敗しました。"
+                        ),
+                        httpStatusText: httpStatusText,
+                        durationText: durationText
+                    )
+                    appendLog("[test-chat] failed: \(httpStatusText) \(message)")
                 } else {
-                    miniChatResponse = result.responseText
-                    miniChatMessages.append(MiniChatTranscriptMessage(sender: .assistant, content: miniChatResponse))
+                    let status: String
                     if let statusCode = result.statusCode, (200..<300).contains(statusCode) {
-                        miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Response received.", japanese: "応答を受信しました。")
+                        status = Self.localizedText(
+                            language: settings.uiLanguage,
+                            english: "Response received.",
+                            japanese: "応答を受信しました。"
+                        )
                     } else {
-                        miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Response returned non-success status.", japanese: "成功以外のHTTPステータスが返りました。")
+                        status = Self.localizedText(
+                            language: settings.uiLanguage,
+                            english: "Response returned non-success status.",
+                            japanese: "成功以外のHTTPステータスが返りました。"
+                        )
                     }
-                    appendLog("[test-chat] response received: \(miniChatHTTPStatusText) in \(Int(elapsedMS)) ms.")
+                    applyMiniChatRequestCompletion(
+                        response: result.responseText,
+                        sender: .assistant,
+                        status: status,
+                        httpStatusText: httpStatusText,
+                        durationText: durationText
+                    )
+                    appendLog("[test-chat] response received: \(httpStatusText) in \(Int(elapsedMS)) ms.")
                 }
             } catch is CancellationError {
-                miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Cancelled.", japanese: "キャンセルしました。")
-                miniChatMessages.append(MiniChatTranscriptMessage(sender: .system, content: miniChatStatus))
+                guard activeMiniChatGeneration == generation else {
+                    return
+                }
+                let status = Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "Cancelled.",
+                    japanese: "キャンセルしました。"
+                )
+                updateMiniChatViewState { state in
+                    state.cancelRequest(status: status, appendTranscript: true)
+                }
                 appendLog("[test-chat] cancelled.")
             } catch {
-                miniChatHTTPStatusText = "-"
-                miniChatDurationText = "-"
-                miniChatResponse = error.localizedDescription
-                miniChatMessages.append(MiniChatTranscriptMessage(sender: .system, content: miniChatResponse))
-                miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Request failed.", japanese: "リクエストに失敗しました。")
+                guard activeMiniChatGeneration == generation else {
+                    return
+                }
+                updateMiniChatViewState { state in
+                    state.failRequest(
+                        message: error.localizedDescription,
+                        status: Self.localizedText(
+                            language: self.settings.uiLanguage,
+                            english: "Request failed.",
+                            japanese: "リクエストに失敗しました。"
+                        )
+                    )
+                }
                 appendLog("[test-chat] failed: \(error.localizedDescription)")
             }
-            isMiniChatRunning = false
+
+            guard activeMiniChatGeneration == generation else {
+                return
+            }
+            activeMiniChatGeneration = nil
+            miniChatTask = nil
         }
     }
 
     func cancelMiniChatRequested() {
+        activeMiniChatGeneration = nil
         miniChatTask?.cancel()
         miniChatTask = nil
-        isMiniChatRunning = false
-        miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Cancelled.", japanese: "キャンセルしました。")
+        let status = Self.localizedText(
+            language: settings.uiLanguage,
+            english: "Cancelled.",
+            japanese: "キャンセルしました。"
+        )
+        updateMiniChatViewState { state in
+            state.cancelRequest(status: status, appendTranscript: false)
+        }
         appendLog("[test-chat] cancelled by user.")
     }
 
     func clearMiniChatRequested() {
-        miniChatPrompt = ""
-        miniChatMessages = []
-        miniChatResponse = ""
-        miniChatStatus = "Ready."
-        miniChatHTTPStatusText = "-"
-        miniChatDurationText = "-"
+        updateMiniChatViewState { state in
+            state.clearConversation()
+        }
     }
 
     func copyMiniChatResponseRequested() {
@@ -3230,7 +3580,13 @@ final class AppViewModel: ObservableObject {
             return
         }
         if copyToPasteboard(message.content) {
-            miniChatStatus = Self.localizedText(language: settings.uiLanguage, english: "Copied response.", japanese: "返答をコピーしました。")
+            setMiniChatStatus(
+                Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "Copied response.",
+                    japanese: "返答をコピーしました。"
+                )
+            )
         }
     }
 
@@ -3400,11 +3756,24 @@ final class AppViewModel: ObservableObject {
         appendLog("[profile] local model folder selected: \(ModelAvailabilityPathFormatter.compact(path: url.path)).")
     }
 
+    func updateHuggingFaceFilePreviewViewState(
+        _ update: (inout HuggingFaceFilePreviewViewState) -> Void
+    ) {
+        var nextState = huggingFaceFilePreviewViewState
+        update(&nextState)
+        guard nextState != huggingFaceFilePreviewViewState else {
+            return
+        }
+        huggingFaceFilePreviewViewState = nextState
+    }
+
     func previewHuggingFaceFilesRequested() {
         let preview = huggingFaceDownloadPreview
         guard let reference = preview.reference else {
-            invalidateHuggingFaceFilePreview()
-            huggingFaceFilePreview = HuggingFaceDownloadFilePreviewState(isLoading: false, message: preview.message, files: [])
+            huggingFaceRequestCoordinator.cancel(.filePreview)
+            updateHuggingFaceFilePreviewViewState { state in
+                state.reject(message: preview.localizedMessage(language: settings.uiLanguage))
+            }
             return
         }
 
@@ -3417,15 +3786,16 @@ final class AppViewModel: ObservableObject {
     }
 
     func toggleHuggingFacePreviewFile(_ file: HuggingFaceDownloadPreviewFile) {
-        if selectedHuggingFacePreviewFileIDs.contains(file.id) {
-            selectedHuggingFacePreviewFileIDs.remove(file.id)
-        } else {
-            selectedHuggingFacePreviewFileIDs.insert(file.id)
+        updateHuggingFaceFilePreviewViewState { state in
+            state.toggle(fileID: file.id)
         }
     }
 
     func selectAllHuggingFacePreviewFiles() {
-        selectedHuggingFacePreviewFileIDs = Set(huggingFaceDownloadFileSelection.filteredFiles.map(\.id))
+        let fileIDs = Set(huggingFaceDownloadFileSelection.filteredFiles.map(\.id))
+        updateHuggingFaceFilePreviewViewState { state in
+            state.select(fileIDs: fileIDs)
+        }
     }
 
     func applyHuggingFaceMLXPreset() {
@@ -3447,20 +3817,23 @@ final class AppViewModel: ObservableObject {
     }
 
     func clearHuggingFacePreviewSelection() {
-        selectedHuggingFacePreviewFileIDs = []
+        updateHuggingFaceFilePreviewViewState { state in
+            state.clearSelection()
+        }
     }
 
     private func requestHuggingFaceFilePreview(
         identity: HuggingFaceFilePreviewIdentity,
         completion: (() -> Void)? = nil
     ) {
-        huggingFaceFilePreviewIdentity = identity
-        huggingFaceFilePreview = HuggingFaceDownloadFilePreviewState(
-            isLoading: true,
-            message: Self.localizedText(language: settings.uiLanguage, english: "Fetching file list...", japanese: "ファイル一覧を取得中..."),
-            files: []
+        let loadingMessage = Self.localizedText(
+            language: settings.uiLanguage,
+            english: "Fetching file list...",
+            japanese: "ファイル一覧を取得中..."
         )
-        selectedHuggingFacePreviewFileIDs = []
+        updateHuggingFaceFilePreviewViewState { state in
+            state.begin(identity: identity, message: loadingMessage)
+        }
 
         let repositoryFileService = huggingFaceRepositoryFileService
         let credential = huggingFaceCredentialStore.readValue()
@@ -3479,14 +3852,20 @@ final class AppViewModel: ObservableObject {
                     return
                 }
 
-                self.huggingFaceFilePreview = HuggingFaceDownloadFilePreviewState(
-                    isLoading: false,
-                    message: files.isEmpty
-                        ? Self.localizedText(language: self.settings.uiLanguage, english: "No downloadable files found.", japanese: "ダウンロード対象ファイルが見つかりません。")
-                        : Self.localizedText(language: self.settings.uiLanguage, english: "File list is ready.", japanese: "ファイル一覧を取得しました。"),
-                    files: files
-                )
-                self.selectedHuggingFacePreviewFileIDs = Set(files.map(\.id))
+                let message = files.isEmpty
+                    ? Self.localizedText(
+                        language: self.settings.uiLanguage,
+                        english: "No downloadable files found.",
+                        japanese: "ダウンロード対象ファイルが見つかりません。"
+                    )
+                    : Self.localizedText(
+                        language: self.settings.uiLanguage,
+                        english: "File list is ready.",
+                        japanese: "ファイル一覧を取得しました。"
+                    )
+                self.updateHuggingFaceFilePreviewViewState { state in
+                    state.complete(files: files, message: message)
+                }
                 self.appendLog("[hf] preview fetched \(files.count) files for \(identity.repositoryID) at \(identity.revision).")
                 completion?()
             } catch is CancellationError {
@@ -3498,8 +3877,9 @@ final class AppViewModel: ObservableObject {
                       self.currentHuggingFaceDraftIdentity == identity else {
                     return
                 }
-                self.huggingFaceFilePreview = HuggingFaceDownloadFilePreviewState(isLoading: false, message: error.localizedDescription, files: [])
-                self.selectedHuggingFacePreviewFileIDs = []
+                self.updateHuggingFaceFilePreviewViewState { state in
+                    state.fail(message: error.localizedDescription)
+                }
                 self.appendLog("[hf] preview failed for \(identity.repositoryID) at \(identity.revision): \(error.localizedDescription)")
             }
         }
@@ -3507,9 +3887,9 @@ final class AppViewModel: ObservableObject {
 
     private func invalidateHuggingFaceFilePreview() {
         huggingFaceRequestCoordinator.cancel(.filePreview)
-        huggingFaceFilePreviewIdentity = nil
-        huggingFaceFilePreview = .waiting
-        selectedHuggingFacePreviewFileIDs = []
+        updateHuggingFaceFilePreviewViewState { state in
+            state.reset()
+        }
     }
 
     func huggingFaceDownloadIdentityChanged() {
@@ -3528,7 +3908,9 @@ final class AppViewModel: ObservableObject {
         if huggingFaceDownloadQueue.contains(where: { !$0.phase.isTerminal }) {
             refreshAggregateHuggingFaceDownloadStatus()
         } else {
-            huggingFaceDownloadStatus = .waiting
+            setHuggingFaceDownloadStatus(
+                Self.waitingHuggingFaceDownloadStatus(language: settings.uiLanguage)
+            )
         }
     }
 
@@ -3552,13 +3934,15 @@ final class AppViewModel: ObservableObject {
     func startHuggingFaceDownloadRequested() {
         refreshHuggingFaceCLIStatus(logResult: false)
         guard isHuggingFaceCLIAvailable else {
-            huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
-                phase: .failed,
-                message: huggingFaceCLIMessage,
-                repositoryID: nil,
-                destinationPath: nil,
-                progress: nil,
-                outputLines: []
+            setHuggingFaceDownloadStatus(
+                HuggingFaceDownloadStatus(
+                    phase: .failed,
+                    message: huggingFaceCLIMessage,
+                    repositoryID: nil,
+                    destinationPath: nil,
+                    progress: nil,
+                    outputLines: []
+                )
             )
             appendLog("[hf] download not started: hf CLI is not available.")
             return
@@ -3568,27 +3952,35 @@ final class AppViewModel: ObservableObject {
         let preview = huggingFaceDownloadPreview
         guard let reference = preview.reference,
               let destinationPath = preview.destinationPath else {
-            huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
-                phase: .failed,
-                message: downloadReadinessMessage(previewMessage: preview.message),
-                repositoryID: nil,
-                destinationPath: nil,
-                progress: nil,
-                outputLines: []
+            setHuggingFaceDownloadStatus(
+                HuggingFaceDownloadStatus(
+                    phase: .failed,
+                    message: downloadReadinessMessage(
+                        previewMessage: preview.localizedMessage(language: settings.uiLanguage)
+                    ),
+                    repositoryID: nil,
+                    destinationPath: nil,
+                    progress: nil,
+                    outputLines: []
+                )
             )
             appendLog("[hf] download not started: \(preview.message)")
             return
         }
 
         guard canStartHuggingFaceDownload else {
-            let readinessMessage = downloadReadinessMessage(previewMessage: preview.message)
-            huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
-                phase: .failed,
-                message: readinessMessage,
-                repositoryID: reference.repositoryID,
-                destinationPath: destinationPath,
-                progress: nil,
-                outputLines: []
+            let readinessMessage = downloadReadinessMessage(
+                previewMessage: preview.localizedMessage(language: settings.uiLanguage)
+            )
+            setHuggingFaceDownloadStatus(
+                HuggingFaceDownloadStatus(
+                    phase: .failed,
+                    message: readinessMessage,
+                    repositoryID: reference.repositoryID,
+                    destinationPath: destinationPath,
+                    progress: nil,
+                    outputLines: []
+                )
             )
             appendLog("[hf] download blocked for \(reference.repositoryID): \(readinessMessage)")
             return
@@ -3606,13 +3998,15 @@ final class AppViewModel: ObservableObject {
         if let storageAssessment = makeHuggingFaceDownloadStorageAssessment(forceRefresh: true),
            storageAssessment.blocksDownload {
             let message = "\(storageAssessment.title(language: settings.uiLanguage)) \(storageAssessment.detail(language: settings.uiLanguage))"
-            huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
-                phase: .failed,
-                message: message,
-                repositoryID: reference.repositoryID,
-                destinationPath: destinationPath,
-                progress: nil,
-                outputLines: []
+            setHuggingFaceDownloadStatus(
+                HuggingFaceDownloadStatus(
+                    phase: .failed,
+                    message: message,
+                    repositoryID: reference.repositoryID,
+                    destinationPath: destinationPath,
+                    progress: nil,
+                    outputLines: []
+                )
             )
             appendLog("[hf] download blocked: insufficient storage for \(reference.repositoryID).")
             return
@@ -3621,20 +4015,21 @@ final class AppViewModel: ObservableObject {
         let canStartImmediately = huggingFaceDownloadExecutionCoordinator.activeCount < settings.maxConcurrentModelDownloads
             && !isHuggingFaceDownloadDestinationReserved(destinationPath)
         let entryPhase: HuggingFaceDownloadPhase = canStartImmediately ? .preparing : .waiting
-        huggingFaceDownloadQueue.insert(
+        insertHuggingFaceDownloadQueueEntry(
             HuggingFaceDownloadQueueEntry(
                 id: queueEntryID,
                 repositoryID: reference.repositoryID,
                 destinationPath: destinationPath,
                 phase: entryPhase,
-                message: entryPhase == .waiting ? "Waiting for an available download slot." : "Preparing",
+                message: entryPhase == .waiting
+                    ? Self.localizedText(language: settings.uiLanguage, english: "Waiting for an available download slot.", japanese: "ダウンロードの空きを待っています。")
+                    : Self.localizedText(language: settings.uiLanguage, english: "Preparing", japanese: "準備中"),
                 fileCount: expectedDownloadFiles.isEmpty ? nil : expectedDownloadFiles.count,
                 downloadedFileCount: nil,
                 downloadedBytes: nil,
                 totalBytes: expectedDownloadBytes,
                 speedBytesPerSecond: nil
-            ),
-            at: 0
+            )
         )
         let job = HuggingFaceDownloadJob(
             id: queueEntryID,
@@ -3732,17 +4127,19 @@ final class AppViewModel: ObservableObject {
             return true
         }
 
-        huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
-            phase: .preparing,
-            message: Self.localizedText(
-                language: settings.uiLanguage,
-                english: "Preparing file list before download...",
-                japanese: "ダウンロード前にファイル一覧を取得しています..."
-            ),
-            repositoryID: reference.repositoryID,
-            destinationPath: destinationPath,
-            progress: nil,
-            outputLines: []
+        setHuggingFaceDownloadStatus(
+            HuggingFaceDownloadStatus(
+                phase: .preparing,
+                message: Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "Preparing file list before download...",
+                    japanese: "ダウンロード前にファイル一覧を取得しています..."
+                ),
+                repositoryID: reference.repositoryID,
+                destinationPath: destinationPath,
+                progress: nil,
+                outputLines: []
+            )
         )
 
         if huggingFaceFilePreview.isLoading,
@@ -3759,17 +4156,19 @@ final class AppViewModel: ObservableObject {
             }
 
             guard !self.huggingFaceDownloadFileSelection.filteredFiles.isEmpty else {
-                self.huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
-                    phase: .failed,
-                    message: Self.localizedText(
-                        language: self.settings.uiLanguage,
-                        english: "No downloadable files were found. Choose another model or check the repository.",
-                        japanese: "ダウンロード対象ファイルが見つかりません。別のモデルを選ぶか、リポジトリを確認してください。"
-                    ),
-                    repositoryID: reference.repositoryID,
-                    destinationPath: destinationPath,
-                    progress: nil,
-                    outputLines: []
+                self.setHuggingFaceDownloadStatus(
+                    HuggingFaceDownloadStatus(
+                        phase: .failed,
+                        message: Self.localizedText(
+                            language: self.settings.uiLanguage,
+                            english: "No downloadable files were found. Choose another model or check the repository.",
+                            japanese: "ダウンロード対象ファイルが見つかりません。別のモデルを選ぶか、リポジトリを確認してください。"
+                        ),
+                        repositoryID: reference.repositoryID,
+                        destinationPath: destinationPath,
+                        progress: nil,
+                        outputLines: []
+                    )
                 )
                 return
             }
@@ -3818,13 +4217,19 @@ final class AppViewModel: ObservableObject {
             repositoryID: entry.repositoryID
         )
         huggingFaceDownloadDraft.displayName = destinationURL.lastPathComponent
-        huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
-            phase: .waiting,
-            message: "Restored download form from queue entry. Review it, then press Download or Retry.",
-            repositoryID: entry.repositoryID,
-            destinationPath: entry.destinationPath,
-            progress: nil,
-            outputLines: []
+        setHuggingFaceDownloadStatus(
+            HuggingFaceDownloadStatus(
+                phase: .waiting,
+                message: Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "Restored download form from queue entry. Review it, then press Download or Retry.",
+                    japanese: "キュー項目からダウンロードフォームを復元しました。内容を確認して、ダウンロードまたは再試行を押してください。"
+                ),
+                repositoryID: entry.repositoryID,
+                destinationPath: entry.destinationPath,
+                progress: nil,
+                outputLines: []
+            )
         )
         appendLog("[hf] restored download form from queue entry: \(entry.repositoryID)")
     }
@@ -3900,22 +4305,25 @@ final class AppViewModel: ObservableObject {
         let canStartImmediately = huggingFaceDownloadExecutionCoordinator.activeCount < settings.maxConcurrentModelDownloads
             && !isHuggingFaceDownloadDestinationReserved(job.destinationPath)
         let entryPhase: HuggingFaceDownloadPhase = canStartImmediately ? .preparing : .waiting
-        huggingFaceDownloadQueue.insert(
+        insertHuggingFaceDownloadQueueEntry(
             HuggingFaceDownloadQueueEntry(
                 id: job.id,
                 repositoryID: job.reference.repositoryID,
                 destinationPath: job.destinationPath,
                 phase: entryPhase,
                 message: entryPhase == .waiting
-                    ? "Waiting for an available download slot."
-                    : "Preparing retry from the original download settings.",
+                    ? Self.localizedText(language: settings.uiLanguage, english: "Waiting for an available download slot.", japanese: "ダウンロードの空きを待っています。")
+                    : Self.localizedText(
+                        language: settings.uiLanguage,
+                        english: "Preparing retry from the original download settings.",
+                        japanese: "元のダウンロード設定で再試行を準備しています。"
+                    ),
                 fileCount: job.expectedFiles.isEmpty ? nil : job.expectedFiles.count,
                 downloadedFileCount: nil,
                 downloadedBytes: nil,
                 totalBytes: job.expectedBytes,
                 speedBytesPerSecond: nil
-            ),
-            at: 0
+            )
         )
         queuedHuggingFaceDownloads[job.id] = job
         recordHuggingFaceDownloadRetry(job)
@@ -3940,20 +4348,23 @@ final class AppViewModel: ObservableObject {
     }
 
     private func retryDownloadedHuggingFaceModelProfile(_ job: HuggingFaceDownloadJob) {
-        huggingFaceDownloadQueue.insert(
+        insertHuggingFaceDownloadQueueEntry(
             HuggingFaceDownloadQueueEntry(
                 id: job.id,
                 repositoryID: job.reference.repositoryID,
                 destinationPath: job.destinationPath,
                 phase: .finalizing,
-                message: "Retrying model profile registration without downloading again.",
+                message: Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "Retrying model profile registration without downloading again.",
+                    japanese: "再ダウンロードせずにモデルプロファイル登録を再試行しています。"
+                ),
                 fileCount: job.expectedFiles.isEmpty ? nil : job.expectedFiles.count,
                 downloadedFileCount: job.expectedFiles.isEmpty ? nil : job.expectedFiles.count,
                 downloadedBytes: job.expectedBytes,
                 totalBytes: job.expectedBytes,
                 speedBytesPerSecond: nil
-            ),
-            at: 0
+            )
         )
         downloadCompletionMarkerDate = nil
         refreshAggregateHuggingFaceDownloadStatus()
@@ -3962,7 +4373,11 @@ final class AppViewModel: ObservableObject {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: job.destinationPath, isDirectory: &isDirectory),
               isDirectory.boolValue else {
-            let message = "Downloaded model folder no longer exists. Retry the download."
+            let message = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Downloaded model folder no longer exists. Retry the download.",
+                japanese: "ダウンロード済みモデルのフォルダが存在しません。ダウンロードを再試行してください。"
+            )
             updateHuggingFaceQueueEntry(job.id, phase: .failed, message: message)
             recordHuggingFaceDownloadRetry(job, kind: .download)
             appendLog("[hf] profile retry requires a new download because the local folder is missing.")
@@ -3992,8 +4407,16 @@ final class AppViewModel: ObservableObject {
             job.id,
             phase: .completed,
             message: job.draft.autoSelectAfterAdd
-                ? "Download already completed. Added to model list and selected without downloading again."
-                : "Download already completed. Added to model list without downloading again.",
+                ? Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "Download already completed. Added to model list and selected without downloading again.",
+                    japanese: "ダウンロード済みです。再ダウンロードせずにモデル一覧へ追加し、選択しました。"
+                )
+                : Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "Download already completed. Added to model list without downloading again.",
+                    japanese: "ダウンロード済みです。再ダウンロードせずにモデル一覧へ追加しました。"
+                ),
             progress: 1
         )
         discardHuggingFaceDownloadRetry(queueEntryID: job.id)
@@ -4033,7 +4456,11 @@ final class AppViewModel: ObservableObject {
                 updateHuggingFaceQueueEntry(
                     id,
                     phase: .cancelled,
-                    message: "Download cancelled. The model was not added."
+                    message: Self.localizedText(
+                        language: settings.uiLanguage,
+                        english: "Download cancelled. The model was not added.",
+                        japanese: "ダウンロードをキャンセルしました。モデルは追加されていません。"
+                    )
                 )
                 if let job = queuedHuggingFaceDownloads[id] {
                     recordHuggingFaceDownloadRetry(job)
@@ -4054,7 +4481,9 @@ final class AppViewModel: ObservableObject {
             return
         }
 
-        huggingFaceDownloadStatus = .waiting
+        setHuggingFaceDownloadStatus(
+            Self.waitingHuggingFaceDownloadStatus(language: settings.uiLanguage)
+        )
     }
 
     func refreshHuggingFaceCLIRequested() {
@@ -4091,26 +4520,54 @@ final class AppViewModel: ObservableObject {
         }
     }
 
+    func updateHuggingFaceSearchViewState(
+        _ update: (inout HuggingFaceSearchViewState) -> Void
+    ) {
+        var nextState = huggingFaceSearchViewState
+        update(&nextState)
+        guard nextState != huggingFaceSearchViewState else {
+            return
+        }
+        huggingFaceSearchViewState = nextState
+    }
+
+    private func applyHuggingFaceSearchResultToDownloadDraft(_ result: HuggingFaceSearchResult) {
+        let previousIdentity = currentHuggingFaceDraftIdentity
+        huggingFaceDownloadDraft.source = result.id
+        huggingFaceDownloadDraft.displayName = result.name
+        if previousIdentity != currentHuggingFaceDraftIdentity {
+            invalidateHuggingFaceFilePreview()
+        }
+    }
+
     func performHuggingFaceSearchRequested() {
         let query = huggingFaceSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         huggingFaceRequestCoordinator.cancel(.search)
 
         guard !query.isEmpty else {
-            huggingFaceSearchResults = []
-            selectedHuggingFaceSearchResult = nil
+            updateHuggingFaceSearchViewState { state in
+                state.resetForEmptyQuery(
+                    message: Self.localizedText(
+                        language: settings.uiLanguage,
+                        english: "Enter a search term before searching.",
+                        japanese: "検索前に検索語を入力してください。"
+                    )
+                )
+            }
             invalidateHuggingFaceFilePreview()
-            isHuggingFaceSearching = false
-            huggingFaceSearchMessage = Self.localizedText(
-                language: settings.uiLanguage,
-                english: "Enter a search term before searching.",
-                japanese: "検索前に検索語を入力してください。"
-            )
             appendLog("[hf] search skipped: empty query.")
             return
         }
 
-        isHuggingFaceSearching = true
-        huggingFaceSearchMessage = Self.localizedText(language: settings.uiLanguage, english: "Searching Hugging Face for: \(query)", japanese: "Hugging Faceを検索中: \(query)")
+        updateHuggingFaceSearchViewState { state in
+            state.beginSearch(
+                message: Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "Searching Hugging Face for: \(query)",
+                    japanese: "Hugging Faceを検索中: \(query)"
+                )
+            )
+        }
         appendLog("[hf] search started: \(query)")
 
         let searchService = huggingFaceSearchService
@@ -4118,7 +4575,9 @@ final class AppViewModel: ObservableObject {
             defer {
                 if let self,
                    self.huggingFaceRequestCoordinator.isCurrent(.search, generation: generation) {
-                    self.isHuggingFaceSearching = false
+                    self.updateHuggingFaceSearchViewState { state in
+                        state.finishSearch()
+                    }
                 }
             }
 
@@ -4132,22 +4591,35 @@ final class AppViewModel: ObservableObject {
                     return
                 }
 
-                self.huggingFaceSearchResults = results
-                if let exactResult = results.first(where: { $0.id.caseInsensitiveCompare(query) == .orderedSame }) ?? results.first {
-                    self.selectHuggingFaceSearchResult(exactResult)
-                    self.huggingFaceSearchMessage = Self.localizedText(
-                        language: self.settings.uiLanguage,
-                        english: "Selected search result. Review the details, then press Download.",
-                        japanese: "検索結果を選択しました。内容を確認してからダウンロードしてください。"
-                    )
+                if let selectedResult = results.first(where: {
+                    $0.id.caseInsensitiveCompare(query) == .orderedSame
+                }) ?? results.first {
+                    self.applyHuggingFaceSearchResultToDownloadDraft(selectedResult)
+                    self.updateHuggingFaceSearchViewState { state in
+                        state.completeSearch(
+                            results: results,
+                            selectedResult: selectedResult,
+                            message: Self.localizedText(
+                                language: self.settings.uiLanguage,
+                                english: "Selected search result. Review the details, then press Download.",
+                                japanese: "検索結果を選択しました。内容を確認してからダウンロードしてください。"
+                            )
+                        )
+                    }
+                    self.appendLog("[hf] search result selected for download: \(selectedResult.id) — \(selectedResult.qualitySummary)")
                 } else {
-                    self.selectedHuggingFaceSearchResult = nil
                     self.invalidateHuggingFaceFilePreview()
-                    self.huggingFaceSearchMessage = Self.localizedText(
-                        language: self.settings.uiLanguage,
-                        english: "No matching models found. Try another query or paste an exact ID / URL.",
-                        japanese: "一致するモデルが見つかりません。別の語句で検索するか、正確なModel ID / URLを貼り付けてください。"
-                    )
+                    self.updateHuggingFaceSearchViewState { state in
+                        state.completeSearch(
+                            results: results,
+                            selectedResult: nil,
+                            message: Self.localizedText(
+                                language: self.settings.uiLanguage,
+                                english: "No matching models found. Try another query or paste an exact ID / URL.",
+                                japanese: "一致するモデルが見つかりません。別の語句で検索するか、正確なModel ID / URLを貼り付けてください。"
+                            )
+                        )
+                    }
                 }
                 self.appendLog("[hf] search completed with \(results.count) results.")
             } catch is CancellationError {
@@ -4158,24 +4630,23 @@ final class AppViewModel: ObservableObject {
                       self.huggingFaceDownloadDraft.source.trimmingCharacters(in: .whitespacesAndNewlines) == query else {
                     return
                 }
-                self.huggingFaceSearchResults = []
-                self.selectedHuggingFaceSearchResult = nil
                 self.invalidateHuggingFaceFilePreview()
-                self.huggingFaceSearchMessage = error.localizedDescription
+                self.updateHuggingFaceSearchViewState { state in
+                    state.failSearch(message: error.localizedDescription)
+                }
                 self.appendLog("[hf] search failed: \(error.localizedDescription)")
             }
         }
     }
 
     func selectHuggingFaceSearchResult(_ result: HuggingFaceSearchResult) {
-        let previousIdentity = currentHuggingFaceDraftIdentity
-        selectedHuggingFaceSearchResult = result
-        huggingFaceDownloadDraft.source = result.id
-        huggingFaceDownloadDraft.displayName = result.name
-        if previousIdentity != currentHuggingFaceDraftIdentity {
-            invalidateHuggingFaceFilePreview()
+        applyHuggingFaceSearchResultToDownloadDraft(result)
+        updateHuggingFaceSearchViewState { state in
+            state.selectResult(
+                result,
+                message: result.selectionMessage(language: settings.uiLanguage)
+            )
         }
-        huggingFaceSearchMessage = result.selectionMessage(language: settings.uiLanguage)
         appendLog("[hf] search result selected for download: \(result.id) — \(result.qualitySummary)")
     }
 
@@ -4284,29 +4755,119 @@ final class AppViewModel: ObservableObject {
 
     func runDiagnosticsRequested() {
         let selectedModel = selectedModel
-        let host = selectedModel?.host ?? settings.defaultHost
-        let port = selectedModel?.serverPort ?? settings.defaultPort
-
+        let diagnosticSettings = settings
+        let host = selectedModel?.host ?? diagnosticSettings.defaultHost
+        let port = selectedModel?.serverPort ?? diagnosticSettings.defaultPort
+        let targetModelID = selectedModel?.id
+        let managedProcessIdentifier = selectedModel.flatMap {
+            serverLifecycleCoordinator.processIdentifier(for: $0.id)
+        }
+        diagnosticsTask?.cancel()
+        let generation = UUID()
+        activeDiagnosticsGeneration = generation
+        updateDiagnosticsViewState { state in
+            state.beginRun()
+        }
         appendLog("[diagnostics] running setup diagnostics for \(host):\(port)")
 
-        Task {
-            let results = await setupDiagnostics.run(
-                settings: settings,
+        diagnosticsTask = Task { [weak self] in
+            guard let self else { return }
+            let results = await self.setupDiagnostics.run(
+                settings: diagnosticSettings,
                 selectedModel: selectedModel,
-                managedProcessIdentifier: selectedModel.flatMap { serverLifecycleCoordinator.processIdentifier(for: $0.id) }
+                managedProcessIdentifier: managedProcessIdentifier
             )
 
-            diagnosticsResults = results
-            diagnosticsDidRun = true
-
-            for result in results {
-                appendLog(result.logLine)
+            guard !Task.isCancelled,
+                  self.activeDiagnosticsGeneration == generation else {
+                return
+            }
+            guard self.matchesCurrentDiagnosticsTarget(
+                modelID: targetModelID,
+                host: host,
+                port: port
+            ) else {
+                self.cancelDiagnostics(
+                    reason: "the diagnostic connection target changed"
+                )
+                return
+            }
+            self.activeDiagnosticsGeneration = nil
+            self.diagnosticsTask = nil
+            self.updateDiagnosticsViewState { state in
+                state.completeRun(with: results)
             }
 
             let failedCount = results.filter { $0.status == .fail }.count
             let warningCount = results.filter { $0.status == .warning }.count
-            appendLog("[diagnostics] completed with \(failedCount) failure(s), \(warningCount) warning(s).")
+            self.appendLogs(
+                results.map(\.logLine) + [
+                    "[diagnostics] completed with \(failedCount) failure(s), \(warningCount) warning(s)."
+                ]
+            )
         }
+    }
+
+    private func matchesCurrentDiagnosticsTarget(
+        modelID: ModelConfig.ID?,
+        host: String,
+        port: Int
+    ) -> Bool {
+        guard selectedModelID == modelID else {
+            return false
+        }
+
+        if let selectedModel {
+            return selectedModel.host == host && selectedModel.serverPort == port
+        }
+
+        return settings.defaultHost == host && settings.defaultPort == port
+    }
+
+    private func cancelDiagnostics(reason: String) {
+        let hadActiveRun = activeDiagnosticsGeneration != nil || diagnosticsViewState.isRunning
+        activeDiagnosticsGeneration = nil
+        diagnosticsTask?.cancel()
+        diagnosticsTask = nil
+        updateDiagnosticsViewState { state in
+            state.reset()
+        }
+        if hadActiveRun {
+            appendLog("[diagnostics] cancelled because \(reason).")
+        }
+    }
+
+    func updateDiagnosticsViewState(
+        _ update: (inout DiagnosticsViewState) -> Void
+    ) {
+        var nextState = diagnosticsViewState
+        update(&nextState)
+        guard nextState != diagnosticsViewState else {
+            return
+        }
+        diagnosticsViewState = nextState
+    }
+
+    func updateProfileEditorViewState(
+        _ update: (inout ProfileFormViewState) -> Void
+    ) {
+        var nextState = profileEditorViewState
+        update(&nextState)
+        guard nextState != profileEditorViewState else {
+            return
+        }
+        profileEditorViewState = nextState
+    }
+
+    func updateAddProfileViewState(
+        _ update: (inout ProfileFormViewState) -> Void
+    ) {
+        var nextState = addProfileViewState
+        update(&nextState)
+        guard nextState != addProfileViewState else {
+            return
+        }
+        addProfileViewState = nextState
     }
 
     func editProfileRequested(for model: ModelConfig) {
@@ -4316,44 +4877,79 @@ final class AppViewModel: ObservableObject {
 
     func editProfileRequested() {
         guard let selectedModel else {
-            profileEditorMessage = Self.localizedText(language: settings.uiLanguage, english: "No model is selected.", japanese: "モデルが選択されていません。")
+            updateProfileEditorViewState { state in
+                state.setMessage(Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "No model is selected.",
+                    japanese: "モデルが選択されていません。"
+                ))
+            }
             appendLog("[profile] edit failed: No model is selected.")
             return
         }
 
-        addProfileDraft = .empty
-        addProfileMessage = nil
-        clearAddProfilePortSuggestion()
-        isAddProfilePresented = false
-        profileEditorDraft = ModelProfileDraft(model: selectedModel)
-        profileEditorMessage = nil
-        clearProfileEditorPortSuggestion()
-        isProfileEditorPresented = true
+        addProfilePortSuggestionEndpointKey = nil
+        updateAddProfileViewState { $0.dismiss() }
+        profileEditorPortSuggestionEndpointKey = nil
+        updateProfileEditorViewState { state in
+            state.present(draft: ModelProfileDraft(model: selectedModel))
+        }
         appendLog("[profile] editing \(selectedModel.modelID)")
     }
 
     func cancelProfileEditing() {
-        clearProfileEditorPortSuggestion()
-        profileEditorDraft = .empty
-        profileEditorMessage = nil
-        isProfileEditorPresented = false
+        profileEditorPortSuggestionEndpointKey = nil
+        updateProfileEditorViewState { $0.dismiss() }
         appendLog("[profile] edit cancelled.")
     }
 
     func addProfileRequested() {
-        clearProfileEditorPortSuggestion()
-        profileEditorDraft = .empty
-        profileEditorMessage = nil
-        isProfileEditorPresented = false
-        clearAddProfilePortSuggestion()
-        addProfileDraft = ModelProfileDraft.newProfile(
+        profileEditorPortSuggestionEndpointKey = nil
+        updateProfileEditorViewState { $0.dismiss() }
+        addProfilePortSuggestionEndpointKey = nil
+
+        var draft = ModelProfileDraft.newProfile(
             defaultHost: settings.defaultHost,
             defaultPort: settings.defaultPort
         )
-        addProfileMessage = nil
-        suggestAvailablePortForAddProfile()
-        isAddProfilePresented = true
-        appendLog("[profile] adding new model profile.")
+        let host = draft.host.trimmingCharacters(in: .whitespacesAndNewlines)
+        let requestedPort = normalizedPortSuggestionInput(draft.serverPortText)
+        let reservedPorts = reservedPorts(on: host)
+        let suggestedPort = availablePortFinder.firstAvailablePort(
+            host: host,
+            preferredPort: requestedPort,
+            reservedPorts: reservedPorts
+        )
+        let portSuggestionMessage: String
+        let suggestionLogLine: String
+        if let suggestedPort {
+            draft.serverPortText = String(suggestedPort)
+            addProfilePortSuggestionEndpointKey = Self.portCheckCacheKey(host: host, port: suggestedPort)
+            portSuggestionMessage = availablePortSuggestionMessage(
+                requestedPort: requestedPort,
+                availablePort: suggestedPort
+            )
+            suggestionLogLine = "[profile] available port suggestion: \(host):\(suggestedPort)."
+        } else {
+            let upperBound = min(requestedPort + 99, 65_535)
+            addProfilePortSuggestionEndpointKey = Self.portCheckCacheKey(host: host, port: requestedPort)
+            portSuggestionMessage = noAvailablePortSuggestionMessage(
+                requestedPort: requestedPort,
+                upperBound: upperBound
+            )
+            suggestionLogLine = "[profile] no available port suggestion found for \(host) from \(requestedPort)."
+        }
+
+        updateAddProfileViewState { state in
+            state.present(
+                draft: draft,
+                portSuggestionMessage: portSuggestionMessage
+            )
+        }
+        appendLogs([
+            suggestionLogLine,
+            "[profile] adding new model profile."
+        ])
     }
 
     var profileEditorNoticeMessage: String? {
@@ -4401,34 +4997,42 @@ final class AppViewModel: ObservableObject {
 
         let host = profileEditorDraft.host.trimmingCharacters(in: .whitespacesAndNewlines)
         let requestedPort = normalizedPortSuggestionInput(profileEditorDraft.serverPortText)
-        profileEditorPortSuggestionEndpointKey = Self.portCheckCacheKey(host: host, port: requestedPort)
-        profileEditorDraft.serverPortText = String(requestedPort)
         let reservedPorts = reservedPorts(
             on: host,
             excludingModelID: profileEditorDraft.originalModelID
         )
-
-        guard let port = availablePortFinder.firstAvailablePort(
+        let suggestedPort = availablePortFinder.firstAvailablePort(
             host: host,
             preferredPort: requestedPort,
             reservedPorts: reservedPorts
-        ) else {
-            let upperBound = min(requestedPort + 99, 65_535)
-            profileEditorPortSuggestionMessage = noAvailablePortSuggestionMessage(
-                requestedPort: requestedPort,
-                upperBound: upperBound
-            )
-            appendLog("[profile] no available port suggestion found for edited profile at \(host) from \(requestedPort).")
-            return
-        }
-
-        profileEditorPortSuggestionEndpointKey = Self.portCheckCacheKey(host: host, port: port)
-        profileEditorDraft.serverPortText = String(port)
-        profileEditorPortSuggestionMessage = availablePortSuggestionMessage(
-            requestedPort: requestedPort,
-            availablePort: port
         )
-        appendLog("[profile] available port suggestion for edited profile: \(host):\(port).")
+
+        if let suggestedPort {
+            profileEditorPortSuggestionEndpointKey = Self.portCheckCacheKey(host: host, port: suggestedPort)
+            updateProfileEditorViewState { state in
+                state.applyPortSuggestion(
+                    portText: String(suggestedPort),
+                    message: availablePortSuggestionMessage(
+                        requestedPort: requestedPort,
+                        availablePort: suggestedPort
+                    )
+                )
+            }
+            appendLog("[profile] available port suggestion for edited profile: \(host):\(suggestedPort).")
+        } else {
+            let upperBound = min(requestedPort + 99, 65_535)
+            profileEditorPortSuggestionEndpointKey = Self.portCheckCacheKey(host: host, port: requestedPort)
+            updateProfileEditorViewState { state in
+                state.applyPortSuggestion(
+                    portText: String(requestedPort),
+                    message: noAvailablePortSuggestionMessage(
+                        requestedPort: requestedPort,
+                        upperBound: upperBound
+                    )
+                )
+            }
+            appendLog("[profile] no available port suggestion found for edited profile at \(host) from \(requestedPort).")
+        }
     }
 
     func profileEditorEndpointInputChanged() {
@@ -4445,37 +5049,47 @@ final class AppViewModel: ObservableObject {
 
     private func clearProfileEditorPortSuggestion() {
         profileEditorPortSuggestionEndpointKey = nil
-        profileEditorPortSuggestionMessage = nil
+        updateProfileEditorViewState { state in
+            state.setPortSuggestionMessage(nil)
+        }
     }
 
     func suggestAvailablePortForAddProfile() {
         let host = addProfileDraft.host.trimmingCharacters(in: .whitespacesAndNewlines)
         let requestedPort = normalizedPortSuggestionInput(addProfileDraft.serverPortText)
-        addProfilePortSuggestionEndpointKey = Self.portCheckCacheKey(host: host, port: requestedPort)
-        addProfileDraft.serverPortText = String(requestedPort)
         let reservedPorts = reservedPorts(on: host)
-
-        guard let port = availablePortFinder.firstAvailablePort(
+        let suggestedPort = availablePortFinder.firstAvailablePort(
             host: host,
             preferredPort: requestedPort,
             reservedPorts: reservedPorts
-        ) else {
-            let upperBound = min(requestedPort + 99, 65_535)
-            addProfilePortSuggestionMessage = noAvailablePortSuggestionMessage(
-                requestedPort: requestedPort,
-                upperBound: upperBound
-            )
-            appendLog("[profile] no available port suggestion found for \(host) from \(requestedPort).")
-            return
-        }
-
-        addProfilePortSuggestionEndpointKey = Self.portCheckCacheKey(host: host, port: port)
-        addProfileDraft.serverPortText = String(port)
-        addProfilePortSuggestionMessage = availablePortSuggestionMessage(
-            requestedPort: requestedPort,
-            availablePort: port
         )
-        appendLog("[profile] available port suggestion: \(host):\(port).")
+
+        if let suggestedPort {
+            addProfilePortSuggestionEndpointKey = Self.portCheckCacheKey(host: host, port: suggestedPort)
+            updateAddProfileViewState { state in
+                state.applyPortSuggestion(
+                    portText: String(suggestedPort),
+                    message: availablePortSuggestionMessage(
+                        requestedPort: requestedPort,
+                        availablePort: suggestedPort
+                    )
+                )
+            }
+            appendLog("[profile] available port suggestion: \(host):\(suggestedPort).")
+        } else {
+            let upperBound = min(requestedPort + 99, 65_535)
+            addProfilePortSuggestionEndpointKey = Self.portCheckCacheKey(host: host, port: requestedPort)
+            updateAddProfileViewState { state in
+                state.applyPortSuggestion(
+                    portText: String(requestedPort),
+                    message: noAvailablePortSuggestionMessage(
+                        requestedPort: requestedPort,
+                        upperBound: upperBound
+                    )
+                )
+            }
+            appendLog("[profile] no available port suggestion found for \(host) from \(requestedPort).")
+        }
     }
 
     func addProfileEndpointInputChanged() {
@@ -4492,7 +5106,9 @@ final class AppViewModel: ObservableObject {
 
     private func clearAddProfilePortSuggestion() {
         addProfilePortSuggestionEndpointKey = nil
-        addProfilePortSuggestionMessage = nil
+        updateAddProfileViewState { state in
+            state.setPortSuggestionMessage(nil)
+        }
     }
 
     private func normalizedPortSuggestionInput(_ portText: String) -> Int {
@@ -4695,10 +5311,8 @@ final class AppViewModel: ObservableObject {
     }
 
     func cancelAddProfile() {
-        clearAddProfilePortSuggestion()
-        addProfileDraft = .empty
-        addProfileMessage = nil
-        isAddProfilePresented = false
+        addProfilePortSuggestionEndpointKey = nil
+        updateAddProfileViewState { $0.dismiss() }
         appendLog("[profile] add cancelled.")
     }
 
@@ -4717,22 +5331,24 @@ final class AppViewModel: ObservableObject {
                 invalidateModelSizeCache(for: newModel)
                 invalidatePortCheckCache()
                 models = nextModels
-                clearAddProfilePortSuggestion()
-                addProfileDraft = .empty
-                addProfileMessage = nil
-                isAddProfilePresented = false
+                addProfilePortSuggestionEndpointKey = nil
+                updateAddProfileViewState { $0.dismiss() }
 
                 selectedModelID = newModel.id
                 appendLog("[profile] added and selected \(newModel.modelID). Existing managed servers were not changed.")
                 appendSettingsSaveWarnings(outcome)
                 return true
             } catch {
-                addProfileMessage = error.localizedDescription
+                updateAddProfileViewState { state in
+                    state.setMessage(error.localizedDescription)
+                }
                 appendLog("[profile] add failed: \(error.localizedDescription)")
                 return false
             }
         case let .invalid(message):
-            addProfileMessage = message
+            updateAddProfileViewState { state in
+                state.setMessage(message)
+            }
             appendLog("[profile] add failed: \(message)")
             return false
         }
@@ -4851,12 +5467,10 @@ final class AppViewModel: ObservableObject {
                 appendLog("[profile] deleted \(deletedModel.modelID) from models.json.")
             }
 
-            profileEditorDraft = .empty
-            profileEditorMessage = nil
-            isProfileEditorPresented = false
-            addProfileDraft = .empty
-            addProfileMessage = nil
-            isAddProfilePresented = false
+            profileEditorPortSuggestionEndpointKey = nil
+            updateProfileEditorViewState { $0.dismiss() }
+            addProfilePortSuggestionEndpointKey = nil
+            updateAddProfileViewState { $0.dismiss() }
 
             if deleteHuggingFaceCache {
                 clearProfileDeletionUndo()
@@ -5133,7 +5747,9 @@ final class AppViewModel: ObservableObject {
 
         guard let index = models.firstIndex(where: { $0.modelID == profileEditorDraft.originalModelID }) else {
             let message = "Selected model profile no longer exists."
-            profileEditorMessage = message
+            updateProfileEditorViewState { state in
+                state.setMessage(message)
+            }
             appendLog("[profile] save failed: \(message)")
             return false
         }
@@ -5164,25 +5780,32 @@ final class AppViewModel: ObservableObject {
                 invalidateModelSizeCache(for: existingModel)
                 invalidateModelSizeCache(for: updatedModel)
                 invalidatePortCheckCache()
+                if selectedModelID == existingModel.id,
+                   (existingModel.host != updatedModel.host
+                       || existingModel.serverPort != updatedModel.serverPort) {
+                    cancelDiagnostics(reason: "the selected model connection target changed")
+                }
                 settings = nextSettings
                 autoUnloadEnabledByModelID = nextSettings.autoUnloadEnabledByModelID
                 autoUnloadMinutesByModelID = nextSettings.autoUnloadMinutesByModelID
                 models = nextModels
                 selectedModelID = updatedModel.id
-                profileEditorDraft = ModelProfileDraft(model: updatedModel)
-                profileEditorMessage = nil
-                clearProfileEditorPortSuggestion()
-                isProfileEditorPresented = false
+                profileEditorPortSuggestionEndpointKey = nil
+                updateProfileEditorViewState { $0.dismiss() }
                 appendLog("[profile] saved \(updatedModel.modelID) to models.json.")
                 appendSettingsSaveWarnings(outcome)
                 return true
             } catch {
-                profileEditorMessage = error.localizedDescription
+                updateProfileEditorViewState { state in
+                    state.setMessage(error.localizedDescription)
+                }
                 appendLog("[profile] save failed: \(error.localizedDescription)")
                 return false
             }
         case let .invalid(message):
-            profileEditorMessage = message
+            updateProfileEditorViewState { state in
+                state.setMessage(message)
+            }
             appendLog("[profile] save failed: \(message)")
             return false
         }
@@ -5333,15 +5956,25 @@ final class AppViewModel: ObservableObject {
     var copyableTroubleshootingSummary: String {
         let recentLogs = visibleLogEntries.suffix(20).map { $0.line }.joined(separator: "\n")
         return [
-            "MLX Server Manager Troubleshooting Summary",
-            "Runtime: \(runtimeState.title)",
-            "Target: \(connectionTargetSummary.baseURL)",
-            "Selected model: \(selectedModelIdentifier)",
-            "Recovery: \(currentRecoveryIssue.title) / \(currentRecoveryIssue.detail)",
-            "Safety:",
+            Self.localizedText(language: settings.uiLanguage, english: "MLX Server Manager Troubleshooting Summary", japanese: "MLX Server Manager トラブルシューティング概要"),
+            Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Runtime: \(runtimeState.localizedTitle(language: .english))",
+                japanese: "ランタイム: \(runtimeState.localizedTitle(language: .japanese))"
+            ),
+            Self.localizedText(language: settings.uiLanguage, english: "Target: \(connectionTargetSummary.baseURL)", japanese: "接続先: \(connectionTargetSummary.baseURL)"),
+            Self.localizedText(language: settings.uiLanguage, english: "Selected model: \(selectedModelIdentifier)", japanese: "選択モデル: \(selectedModelIdentifier)"),
+            Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Recovery: \(currentRecoveryIssue.localizedTitle(language: .english)) / \(currentRecoveryIssue.localizedDetail(language: .english))",
+                japanese: "復旧: \(currentRecoveryIssue.localizedTitle(language: .japanese)) / \(currentRecoveryIssue.localizedDetail(language: .japanese))"
+            ),
+            Self.localizedText(language: settings.uiLanguage, english: "Safety:", japanese: "安全性:"),
             copyableSafetySummary,
-            "Recent logs:",
-            recentLogs.isEmpty ? "No logs" : recentLogs
+            Self.localizedText(language: settings.uiLanguage, english: "Recent logs:", japanese: "最近のログ:"),
+            recentLogs.isEmpty
+                ? Self.localizedText(language: settings.uiLanguage, english: "No logs", japanese: "ログなし")
+                : recentLogs
         ].joined(separator: "\n")
     }
 
@@ -5448,18 +6081,16 @@ final class AppViewModel: ObservableObject {
     }
 
     func clearLogsRequested() {
-        logBuffer.clear()
-        syncLogText()
-        appendLog("[info] logs cleared")
+        logViewState = logStateCoordinator.clear(replacementLine: "[info] logs cleared")
     }
 
     func copyLogsRequested() {
-        guard !logBuffer.isEmpty else {
+        guard !logStateCoordinator.isEmpty else {
             appendLog("[warning] No logs to copy.")
             return
         }
 
-        if copyToPasteboard(logBuffer.text) {
+        if copyToPasteboard(logStateCoordinator.text) {
             appendLog("[info] copied logs to clipboard")
         } else {
             appendLog("[error] failed to copy logs to clipboard")
@@ -5541,7 +6172,11 @@ final class AppViewModel: ObservableObject {
         updateHuggingFaceQueueEntry(
             job.id,
             phase: .preparing,
-            message: "Preparing destination: \(ModelAvailabilityPathFormatter.compact(path: job.destinationPath))"
+            message: Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Preparing destination: \(ModelAvailabilityPathFormatter.compact(path: job.destinationPath))",
+                japanese: "保存先を準備中: \(ModelAvailabilityPathFormatter.compact(path: job.destinationPath))"
+            )
         )
         appendLog("[hf] starting Hugging Face download for \(job.reference.repositoryID).")
         let manager = huggingFaceDownloadManagerFactory()
@@ -5578,7 +6213,11 @@ final class AppViewModel: ObservableObject {
         )
 
         guard didStart else {
-            let message = "A download is already active for this queue entry or destination."
+            let message = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "A download is already active for this queue entry or destination.",
+                japanese: "このキュー項目または保存先では、すでにダウンロードが実行中です。"
+            )
             updateHuggingFaceQueueEntry(job.id, phase: .failed, message: message)
             recordHuggingFaceDownloadRetry(job)
             queuedHuggingFaceDownloads[job.id] = nil
@@ -5592,10 +6231,16 @@ final class AppViewModel: ObservableObject {
         job: HuggingFaceDownloadJob,
         completion: HuggingFaceDownloadExecutionCoordinator.Completion
     ) {
+        flushPendingHuggingFaceOutput(queueEntryID: job.id)
+
         switch completion.outcome {
         case let .succeeded(result):
             guard !completion.cancellationRequested else {
-                updateHuggingFaceQueueEntry(job.id, phase: .cancelled, message: "Cancelled")
+                updateHuggingFaceQueueEntry(
+                    job.id,
+                    phase: .cancelled,
+                    message: Self.localizedText(language: settings.uiLanguage, english: "Cancelled", japanese: "キャンセル済み")
+                )
                 appendLog("[hf] download cancelled for \(job.reference.repositoryID).")
                 recordHuggingFaceDownloadRetry(job)
                 finishHuggingFaceDownload(job.id)
@@ -5606,7 +6251,11 @@ final class AppViewModel: ObservableObject {
             updateHuggingFaceQueueEntry(
                 job.id,
                 phase: .finalizing,
-                message: "Finalizing downloaded model profile...",
+                message: Self.localizedText(
+                    language: settings.uiLanguage,
+                    english: "Finalizing downloaded model profile...",
+                    japanese: "ダウンロード済みモデルのプロファイルを仕上げています..."
+                ),
                 progress: 1
             )
 
@@ -5651,7 +6300,11 @@ final class AppViewModel: ObservableObject {
                 updateHuggingFaceQueueEntry(
                     job.id,
                     phase: .cancelled,
-                    message: "Download cancelled. The model was not added."
+                    message: Self.localizedText(
+                        language: settings.uiLanguage,
+                        english: "Download cancelled. The model was not added.",
+                        japanese: "ダウンロードをキャンセルしました。モデルは追加されていません。"
+                    )
                 )
                 appendLog("[hf] download cancelled for \(job.reference.repositoryID).")
             } else {
@@ -5685,6 +6338,7 @@ final class AppViewModel: ObservableObject {
     }
 
     private func finishHuggingFaceDownload(_ id: UUID) {
+        discardPendingHuggingFaceOutput(queueEntryID: id)
         queuedHuggingFaceDownloads[id] = nil
         huggingFaceDownloadOutputLinesByID[id] = nil
         if primaryHuggingFaceDownloadID == id {
@@ -5740,125 +6394,241 @@ final class AppViewModel: ObservableObject {
         return message
     }
 
-    private func updateHuggingFaceQueueEntry(_ id: UUID, phase: HuggingFaceDownloadPhase, message: String, progress: Double? = nil) {
-        guard let index = huggingFaceDownloadQueue.firstIndex(where: { $0.id == id }) else {
+    private func setHuggingFaceDownloadStatus(_ status: HuggingFaceDownloadStatus) {
+        var nextState = huggingFaceDownloadViewState
+        nextState.setStatus(status)
+        guard nextState != huggingFaceDownloadViewState else {
             return
         }
-        huggingFaceDownloadQueue[index].phase = phase
-        huggingFaceDownloadQueue[index].message = message
-        if let progress, let totalBytes = huggingFaceDownloadQueue[index].totalBytes, totalBytes > 0 {
-            huggingFaceDownloadQueue[index].downloadedBytes = Int64(progress * Double(totalBytes))
-        }
-        if phase.isTerminal {
-            pruneHuggingFaceDownloadHistory()
-        }
-        refreshAggregateHuggingFaceDownloadStatus()
+        huggingFaceDownloadViewState = nextState
     }
 
-    private func pruneHuggingFaceDownloadHistory() {
-        let result = HuggingFaceDownloadQueueScheduler.pruningTerminalHistory(
-            entries: huggingFaceDownloadQueue,
-            maximumTerminalEntries: Self.maximumTerminalHuggingFaceDownloadHistory
+    private func insertHuggingFaceDownloadQueueEntry(_ entry: HuggingFaceDownloadQueueEntry) {
+        var nextState = huggingFaceDownloadViewState
+        nextState.insert(entry)
+        primaryHuggingFaceDownloadID = nextState.refreshAggregateStatus(
+            primaryID: primaryHuggingFaceDownloadID,
+            outputLinesByID: huggingFaceDownloadOutputLinesByID
         )
-        guard !result.removedIDs.isEmpty else {
+        huggingFaceDownloadViewState = nextState
+    }
+
+    func replaceHuggingFaceDownloadQueue(
+        _ entries: [HuggingFaceDownloadQueueEntry],
+        refreshAggregateStatus: Bool = true
+    ) {
+        var nextState = huggingFaceDownloadViewState
+        nextState.replaceEntries(entries)
+        if refreshAggregateStatus {
+            primaryHuggingFaceDownloadID = nextState.refreshAggregateStatus(
+                primaryID: primaryHuggingFaceDownloadID,
+                outputLinesByID: huggingFaceDownloadOutputLinesByID
+            )
+        }
+        guard nextState != huggingFaceDownloadViewState else {
+            return
+        }
+        huggingFaceDownloadViewState = nextState
+    }
+
+    private func updateHuggingFaceQueueEntry(
+        _ id: UUID,
+        phase: HuggingFaceDownloadPhase,
+        message: String,
+        progress: Double? = nil
+    ) {
+        var nextState = huggingFaceDownloadViewState
+        guard nextState.updateEntry(
+            id: id,
+            phase: phase,
+            message: message,
+            progress: progress
+        ) else {
             return
         }
 
-        huggingFaceDownloadQueue = result.entries
-        huggingFaceDownloadRetryStore.retain(queueEntryIDs: Set(result.entries.map(\.id)))
-        persistHuggingFaceDownloadRetries()
-        for id in result.removedIDs {
-            queuedHuggingFaceDownloads[id] = nil
-            huggingFaceDownloadOutputLinesByID[id] = nil
+        var removedIDs: Set<UUID> = []
+        if phase.isTerminal {
+            let result = HuggingFaceDownloadQueueScheduler.pruningTerminalHistory(
+                entries: nextState.entries,
+                maximumTerminalEntries: Self.maximumTerminalHuggingFaceDownloadHistory
+            )
+            if !result.removedIDs.isEmpty {
+                nextState.replaceEntries(result.entries)
+                removedIDs = result.removedIDs
+                if let primaryHuggingFaceDownloadID,
+                   removedIDs.contains(primaryHuggingFaceDownloadID) {
+                    self.primaryHuggingFaceDownloadID = nil
+                }
+            }
         }
-        if let primaryHuggingFaceDownloadID,
-           result.removedIDs.contains(primaryHuggingFaceDownloadID) {
-            self.primaryHuggingFaceDownloadID = nil
+
+        primaryHuggingFaceDownloadID = nextState.refreshAggregateStatus(
+            primaryID: primaryHuggingFaceDownloadID,
+            outputLinesByID: huggingFaceDownloadOutputLinesByID
+        )
+        huggingFaceDownloadViewState = nextState
+
+        guard !removedIDs.isEmpty else {
+            return
+        }
+        huggingFaceDownloadRetryStore.retain(queueEntryIDs: Set(nextState.entries.map(\.id)))
+        persistHuggingFaceDownloadRetries()
+        for removedID in removedIDs {
+            discardPendingHuggingFaceOutput(queueEntryID: removedID)
+            queuedHuggingFaceDownloads[removedID] = nil
+            huggingFaceDownloadOutputLinesByID[removedID] = nil
         }
     }
 
     private func refreshAggregateHuggingFaceDownloadStatus() {
-        let primaryEntry = primaryHuggingFaceDownloadID.flatMap { id in
-            huggingFaceDownloadQueue.first(where: { $0.id == id && !$0.phase.isTerminal })
-        }
-        let fallbackEntry = huggingFaceDownloadQueue.first(where: { !$0.phase.isTerminal })
-            ?? huggingFaceDownloadQueue.first
-
-        guard let entry = primaryEntry ?? fallbackEntry else {
-            primaryHuggingFaceDownloadID = nil
+        var nextState = huggingFaceDownloadViewState
+        primaryHuggingFaceDownloadID = nextState.refreshAggregateStatus(
+            primaryID: primaryHuggingFaceDownloadID,
+            outputLinesByID: huggingFaceDownloadOutputLinesByID
+        )
+        guard nextState != huggingFaceDownloadViewState else {
             return
         }
-
-        primaryHuggingFaceDownloadID = entry.id
-        huggingFaceDownloadStatus = HuggingFaceDownloadStatus(
-            phase: entry.phase,
-            message: entry.message,
-            repositoryID: entry.repositoryID,
-            destinationPath: entry.destinationPath,
-            progress: entry.progressFraction,
-            outputLines: huggingFaceDownloadOutputLinesByID[entry.id] ?? []
-        )
+        huggingFaceDownloadViewState = nextState
     }
 
-    private func updateMeasuredHuggingFaceProgress(
+    func updateMeasuredHuggingFaceProgress(
         queueEntryID: UUID,
         downloadedBytes: Int64,
         downloadedFileCount: Int,
         totalBytes: Int64?,
         speedBytesPerSecond: Int64?
     ) {
-        guard let index = huggingFaceDownloadQueue.firstIndex(where: { $0.id == queueEntryID }),
-              !huggingFaceDownloadQueue[index].phase.isTerminal else {
+        var nextState = huggingFaceDownloadViewState
+        guard nextState.updateMeasuredProgress(
+            queueEntryID: queueEntryID,
+            downloadedBytes: downloadedBytes,
+            downloadedFileCount: downloadedFileCount,
+            totalBytes: totalBytes,
+            speedBytesPerSecond: speedBytesPerSecond,
+            language: settings.uiLanguage
+        ) else {
             return
         }
 
-        let safeDownloadedBytes = max(downloadedBytes, 0)
-        huggingFaceDownloadQueue[index].phase = .downloading
-        huggingFaceDownloadQueue[index].downloadedFileCount = min(
-            max(downloadedFileCount, 0),
-            huggingFaceDownloadQueue[index].fileCount ?? max(downloadedFileCount, 0)
+        primaryHuggingFaceDownloadID = nextState.refreshAggregateStatus(
+            primaryID: primaryHuggingFaceDownloadID,
+            outputLinesByID: huggingFaceDownloadOutputLinesByID
         )
-        huggingFaceDownloadQueue[index].speedBytesPerSecond = speedBytesPerSecond
-
-        if let totalBytes, totalBytes > 0 {
-            let clampedDownloadedBytes = min(safeDownloadedBytes, totalBytes)
-            let progress = min(max(Double(clampedDownloadedBytes) / Double(totalBytes), 0), 1)
-            huggingFaceDownloadQueue[index].message = "Downloading... \(Int(progress * 100))%"
-            huggingFaceDownloadQueue[index].downloadedBytes = clampedDownloadedBytes
-            huggingFaceDownloadQueue[index].totalBytes = totalBytes
-        } else {
-            let downloadedText = ByteCountFormatter.string(fromByteCount: safeDownloadedBytes, countStyle: .file)
-            huggingFaceDownloadQueue[index].message = "Downloading... \(downloadedText)"
-            huggingFaceDownloadQueue[index].downloadedBytes = safeDownloadedBytes
-        }
-
-        refreshAggregateHuggingFaceDownloadStatus()
+        huggingFaceDownloadViewState = nextState
     }
 
-    private func appendHuggingFaceOutputLine(_ line: String, queueEntryID: UUID? = nil) {
+    func appendHuggingFaceOutputLine(_ line: String, queueEntryID: UUID? = nil) {
         let sanitizedLine = HuggingFaceDownloadPlanner.sanitizedOutputLine(line)
         guard !sanitizedLine.isEmpty else {
             return
         }
 
-        if let queueEntryID,
-           let queueEntry = huggingFaceDownloadQueue.first(where: { $0.id == queueEntryID }),
-           !queueEntry.phase.isTerminal {
-            var outputLines = huggingFaceDownloadOutputLinesByID[queueEntryID] ?? []
-            outputLines.append(sanitizedLine)
-            if outputLines.count > 24 {
-                outputLines.removeFirst(outputLines.count - 24)
-            }
-            huggingFaceDownloadOutputLinesByID[queueEntryID] = outputLines
+        guard let queueEntryID,
+              let queueEntry = huggingFaceDownloadQueue.first(where: { $0.id == queueEntryID }),
+              !queueEntry.phase.isTerminal else {
+            appendLog(sanitizedLine)
+            return
+        }
 
-            if HuggingFaceDownloadPlanner.progressFraction(from: sanitizedLine) != nil {
-                updateHuggingFaceQueueEntry(queueEntryID, phase: .downloading, message: "Downloading")
-            } else {
-                refreshAggregateHuggingFaceDownloadStatus()
+        var batch = pendingHuggingFaceOutputBatches[queueEntryID] ?? HuggingFaceOutputBatch()
+        batch.append(sanitizedLine)
+        pendingHuggingFaceOutputBatches[queueEntryID] = batch
+
+        if HuggingFaceOutputLinePolicy.requiresImmediateFlush(sanitizedLine) {
+            flushPendingHuggingFaceOutput(queueEntryID: queueEntryID)
+        } else {
+            scheduleHuggingFaceOutputFlush(queueEntryID: queueEntryID)
+        }
+    }
+
+    func flushPendingHuggingFaceOutput(queueEntryID: UUID) {
+        flushPendingHuggingFaceOutput(
+            queueEntryID: queueEntryID,
+            cancelScheduledTask: true
+        )
+    }
+
+    private func scheduleHuggingFaceOutputFlush(queueEntryID: UUID) {
+        guard huggingFaceOutputFlushTasks[queueEntryID] == nil else {
+            return
+        }
+
+        huggingFaceOutputFlushTasks[queueEntryID] = Task { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: Self.huggingFaceOutputFlushDelayNanoseconds)
+            } catch {
+                return
+            }
+
+            guard let self else {
+                return
+            }
+            self.huggingFaceOutputFlushTasks[queueEntryID] = nil
+            self.flushPendingHuggingFaceOutput(
+                queueEntryID: queueEntryID,
+                cancelScheduledTask: false
+            )
+        }
+    }
+
+    private func flushPendingHuggingFaceOutput(
+        queueEntryID: UUID,
+        cancelScheduledTask: Bool
+    ) {
+        if cancelScheduledTask {
+            huggingFaceOutputFlushTasks[queueEntryID]?.cancel()
+            huggingFaceOutputFlushTasks[queueEntryID] = nil
+        }
+
+        guard var batch = pendingHuggingFaceOutputBatches.removeValue(forKey: queueEntryID) else {
+            return
+        }
+        applyHuggingFaceOutputBatch(batch.drain(), queueEntryID: queueEntryID)
+    }
+
+    func applyHuggingFaceOutputBatch(_ lines: [String], queueEntryID: UUID) {
+        guard !lines.isEmpty else {
+            return
+        }
+
+        if let queueEntry = huggingFaceDownloadQueue.first(where: { $0.id == queueEntryID }),
+           !queueEntry.phase.isTerminal {
+            huggingFaceDownloadOutputLinesByID[queueEntryID] = HuggingFaceOutputBatch.boundedHistory(
+                existing: huggingFaceDownloadOutputLinesByID[queueEntryID] ?? [],
+                appending: lines,
+                maximumCount: Self.maximumVisibleHuggingFaceOutputLines
+            )
+
+            var nextState = huggingFaceDownloadViewState
+            if lines.contains(where: { HuggingFaceDownloadPlanner.progressFraction(from: $0) != nil }) {
+                _ = nextState.updateEntry(
+                    id: queueEntryID,
+                    phase: .downloading,
+                    message: Self.localizedText(
+                        language: settings.uiLanguage,
+                        english: "Downloading",
+                        japanese: "ダウンロード中"
+                    )
+                )
+            }
+            primaryHuggingFaceDownloadID = nextState.refreshAggregateStatus(
+                primaryID: primaryHuggingFaceDownloadID,
+                outputLinesByID: huggingFaceDownloadOutputLinesByID
+            )
+            if nextState != huggingFaceDownloadViewState {
+                huggingFaceDownloadViewState = nextState
             }
         }
 
-        appendLog(sanitizedLine)
+        appendLogs(lines)
+    }
+
+    private func discardPendingHuggingFaceOutput(queueEntryID: UUID) {
+        huggingFaceOutputFlushTasks[queueEntryID]?.cancel()
+        huggingFaceOutputFlushTasks[queueEntryID] = nil
+        pendingHuggingFaceOutputBatches[queueEntryID] = nil
     }
 
     private func addDownloadedHuggingFaceModelProfile(
@@ -5925,14 +6695,30 @@ final class AppViewModel: ObservableObject {
 
     private func downloadCompletionMessage(for draft: HuggingFaceDownloadDraft) -> String {
         guard draft.autoAddToModelList else {
-            return "Download completed. Auto-add was disabled."
+            return Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Download completed. Auto-add was disabled.",
+                japanese: "ダウンロードが完了しました。モデル一覧への自動追加は無効です。"
+            )
         }
         return draft.autoSelectAfterAdd
-            ? "Download completed. Added to model list and selected. Ready to start."
-            : "Download completed. Added to model list."
+            ? Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Download completed. Added to model list and selected. Ready to start.",
+                japanese: "ダウンロードが完了しました。モデル一覧へ追加して選択しました。起動できます。"
+            )
+            : Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Download completed. Added to model list.",
+                japanese: "ダウンロードが完了し、モデル一覧へ追加しました。"
+            )
     }
 
     private func startManagedServer(model: ModelConfig, logPrefix: String) async -> Bool {
+        guard !Task.isCancelled else {
+            appendLog("[\(logPrefix)] cancelled before managed launch began.")
+            return false
+        }
         guard !blockManagedLaunchDuringRuntimeMemoryEmergency(logPrefix: logPrefix) else {
             return false
         }
@@ -5978,11 +6764,38 @@ final class AppViewModel: ObservableObject {
             return false
         }
 
-        appendLog("[\(logPrefix)] preflight passed for selected profile.")
-        appendLog("[\(logPrefix)] starting \(model.modelID) at \(host):\(port)")
+        let systemMemory = systemMemorySnapshotProvider()
+        let cacheSafeMode = kvCacheSafeModeResult(
+            for: model,
+            options: advancedLaunchOptions,
+            candidateModelGigabytes: modelSizeGigabytes(for: model),
+            systemMemory: systemMemory
+        )
+        let request = ModelLaunchRequest(
+            executablePath: executablePath,
+            backend: model.resolvedBackend,
+            modelID: model.modelID,
+            host: host,
+            port: port,
+            enableThinking: model.enableThinking,
+            advancedLaunchOptions: cacheSafeMode.advancedLaunchOptions
+        )
+
+        if let issue = await mlxLMCapabilityPreflightIssue(for: request, logPrefix: logPrefix) {
+            let message = issue.launchMessage(language: settings.uiLanguage)
+            setRuntimeState(.error(message: message), for: model.id)
+            appendLog("[\(logPrefix)] preflight failed: \(message)")
+            return false
+        }
+
+        guard !Task.isCancelled,
+              models.first(where: { $0.id == model.id }) == model else {
+            appendLog("[\(logPrefix)] cancelled because the model profile changed during preflight.")
+            return false
+        }
+
         appendLog("[\(logPrefix)] checking port before launch: \(host):\(port)")
         setRuntimeState(.checkingPort(host: host, port: port), for: model.id)
-
         switch freshPortCheck(host: host, port: port) {
         case .available:
             appendLog("[\(logPrefix)] port available: \(host):\(port)")
@@ -6009,26 +6822,34 @@ final class AppViewModel: ObservableObject {
             return false
         }
 
-        let request = ModelLaunchRequest(
-            executablePath: executablePath,
-            backend: model.resolvedBackend,
-            modelID: model.modelID,
-            host: host,
-            port: port,
-            enableThinking: model.enableThinking,
-            advancedLaunchOptions: advancedLaunchOptions
-        )
+        appendLog("[\(logPrefix)] preflight passed for selected profile.")
+        appendLog("[\(logPrefix)] starting \(model.modelID) at \(host):\(port)")
+        if cacheSafeMode.didAdjust {
+            appendLog("[cache-safe] \(cacheSafeMode.actionText(language: settings.uiLanguage))")
+        }
 
         setRuntimeState(.starting(host: host, port: port), for: model.id)
+        let outputGeneration = UUID()
+        managedServerOutputGenerations[model.id] = outputGeneration
+        managedServerRuntimeFaults[model.id] = nil
 
         do {
             let launchResult = try serverLifecycleCoordinator.start(
                 profileID: model.id,
                 request: request,
-                outputHandler: { [weak self] line in
+                outputHandler: {
+                    [weak self, modelID = model.id, backend = model.resolvedBackend, host, port, outputGeneration]
+                    line in
                     guard let self else { return }
                     Task { @MainActor [self, line] in
-                        self.appendLog(line)
+                        self.handleManagedServerOutput(
+                            line,
+                            modelID: modelID,
+                            backend: backend,
+                            host: host,
+                            port: port,
+                            generation: outputGeneration
+                        )
                     }
                 },
                 terminationHandler: { [weak self, modelID = model.id] status in
@@ -6043,11 +6864,22 @@ final class AppViewModel: ObservableObject {
             appendLog("[\(logPrefix)] pid: \(launchResult.processIdentifier)")
             startMemoryMonitoring(processIdentifier: launchResult.processIdentifier, model: model)
             setRunningModelID(model.id, logPrefix: logPrefix)
-            setRuntimeState(.loading(
-                host: host,
-                port: port,
-                processIdentifier: launchResult.processIdentifier
-            ), for: model.id)
+            if managedServerRuntimeFaults[model.id] != nil {
+                setRuntimeState(
+                    degradedRuntimeState(
+                        host: host,
+                        port: port,
+                        processIdentifier: launchResult.processIdentifier
+                    ),
+                    for: model.id
+                )
+            } else {
+                setRuntimeState(.loading(
+                    host: host,
+                    port: port,
+                    processIdentifier: launchResult.processIdentifier
+                ), for: model.id)
+            }
 
             let ready = await waitForReadyAfterStart(
                 host: host,
@@ -6064,10 +6896,91 @@ final class AppViewModel: ObservableObject {
 
             return ready
         } catch {
+            if managedServerOutputGenerations[model.id] == outputGeneration {
+                managedServerOutputGenerations[model.id] = nil
+                managedServerRuntimeFaults[model.id] = nil
+            }
             setRuntimeState(.error(message: error.localizedDescription), for: model.id)
             appendLog("[\(logPrefix)] failed: \(error.localizedDescription)")
             return false
         }
+    }
+
+    private func handleManagedServerOutput(
+        _ line: String,
+        modelID: ModelConfig.ID,
+        backend: InferenceBackend,
+        host: String,
+        port: Int,
+        generation: UUID
+    ) {
+        guard managedServerOutputGenerations[modelID] == generation else {
+            return
+        }
+
+        appendLog(line)
+        guard managedServerRuntimeFaults[modelID] == nil,
+              let fault = managedServerRuntimeFaultDetector.detect(
+                  line: line,
+                  backend: backend
+              ) else {
+            return
+        }
+
+        managedServerRuntimeFaults[modelID] = fault
+        let processIdentifier = serverLifecycleCoordinator.processIdentifier(for: modelID)
+        setRuntimeState(
+            degradedRuntimeState(
+                host: host,
+                port: port,
+                processIdentifier: processIdentifier
+            ),
+            for: modelID
+        )
+        appendLog(
+            "[runtime-health] managed mlx-lm generation worker stopped unexpectedly. "
+                + "The process was left running so logs can be inspected; stop or restart the model to recover."
+        )
+        appendRuntimeEvent(
+            category: "Runtime Health",
+            message: "Managed mlx-lm generation worker stopped for \(modelID). Restart is recommended."
+        )
+    }
+
+    private func degradedRuntimeState(
+        host: String,
+        port: Int,
+        processIdentifier: Int32?
+    ) -> ModelRuntimeState {
+        .degraded(
+            host: host,
+            port: port,
+            processIdentifier: processIdentifier,
+            message: Self.localizedText(
+                language: settings.uiLanguage,
+                english: "The managed mlx-lm generation worker stopped unexpectedly. Stop or restart the model to recover.",
+                japanese: "管理中のmlx-lm生成ワーカーが予期せず停止しました。復旧するにはモデルを停止または再起動してください。"
+            )
+        )
+    }
+
+    private func degradedRuntimeStateToPreserve(
+        modelID: ModelConfig.ID?,
+        host: String,
+        port: Int
+    ) -> ModelRuntimeState? {
+        let currentState = modelID.flatMap { runtimeStatesByModelID[$0] } ?? runtimeState
+        if currentState.isDegraded {
+            return currentState
+        }
+        guard let modelID, managedServerRuntimeFaults[modelID] != nil else {
+            return nil
+        }
+        return degradedRuntimeState(
+            host: host,
+            port: port,
+            processIdentifier: serverLifecycleCoordinator.processIdentifier(for: modelID)
+        )
     }
 
     private func managedEndpointConflict(
@@ -6133,9 +7046,8 @@ final class AppViewModel: ObservableObject {
             let restoredEntries = huggingFaceDownloadRetryStore.restore(
                 from: HuggingFaceDownloadRetrySnapshot(records: limitedRecords)
             )
-            huggingFaceDownloadQueue = restoredEntries
             primaryHuggingFaceDownloadID = restoredEntries.first?.id
-            refreshAggregateHuggingFaceDownloadStatus()
+            replaceHuggingFaceDownloadQueue(restoredEntries)
 
             if !restoredEntries.isEmpty {
                 appendLog("[hf] restored \(restoredEntries.count) retryable download(s) from the previous session.")
@@ -6192,10 +7104,17 @@ final class AppViewModel: ObservableObject {
         targetModelID: ModelConfig.ID?,
         previousRuntimeState: ModelRuntimeState
     ) {
+        let degradedState = degradedRuntimeStateToPreserve(
+            modelID: targetModelID,
+            host: fallbackHost,
+            port: fallbackPort
+        )
         switch result {
         case let .ready(url, statusCode):
             let state: ModelRuntimeState
-            if previousRuntimeState.isAdoptedExternalServer {
+            if let degradedState {
+                state = degradedState
+            } else if previousRuntimeState.isAdoptedExternalServer {
                 state = .adoptedExternalServer(
                     host: fallbackHost,
                     port: fallbackPort,
@@ -6220,6 +7139,9 @@ final class AppViewModel: ObservableObject {
             }
             setRuntimeState(state, forOptionalModelID: targetModelID)
             appendLog("[ready] ready: \(url.absoluteString) returned HTTP \(statusCode)")
+            if degradedState != nil {
+                appendLog("[runtime-health] /v1/models still responds, but the managed generation worker remains degraded.")
+            }
         case let .notReady(url, statusCode):
             setReadyFailureState(
                 host: fallbackHost,
@@ -6267,7 +7189,14 @@ final class AppViewModel: ObservableObject {
         previousRuntimeState: ModelRuntimeState
     ) {
         let state: ModelRuntimeState
-        if previousRuntimeState.isAdoptedExternalServer {
+        if let degradedState = degradedRuntimeStateToPreserve(
+            modelID: targetModelID,
+            host: host,
+            port: port
+        ) {
+            state = degradedState
+            appendLog("[runtime-health] failed ready check did not replace the degraded state.")
+        } else if previousRuntimeState.isAdoptedExternalServer {
             state = .adoptedExternalServer(
                 host: host,
                 port: port,
@@ -6334,15 +7263,31 @@ final class AppViewModel: ObservableObject {
         case .readyResponseIgnored:
             appendLog("[ready] ready response ignored because managed process is no longer running.")
         case let .ready(url, statusCode):
-            setRuntimeState(.ready(
-                host: host,
-                port: port,
-                processIdentifier: processIdentifier
-            ), for: modelID)
+            if managedServerRuntimeFaults[modelID] != nil {
+                setRuntimeState(
+                    degradedRuntimeState(
+                        host: host,
+                        port: port,
+                        processIdentifier: processIdentifier
+                    ),
+                    for: modelID
+                )
+                appendLog("[runtime-health] /v1/models responded after a generation-worker failure; degraded state was preserved.")
+            } else {
+                setRuntimeState(.ready(
+                    host: host,
+                    port: port,
+                    processIdentifier: processIdentifier
+                ), for: modelID)
+            }
             appendLog("[ready] ready after start: \(url.absoluteString) returned HTTP \(statusCode)")
         case let .notReady(attempt, url, statusCode):
             appendLog("[ready] attempt \(attempt) not ready: \(url.absoluteString) returned HTTP \(statusCode)")
         case let .invalidInput(message):
+            guard managedServerRuntimeFaults[modelID] == nil else {
+                appendLog("[runtime-health] invalid ready-check input did not replace the degraded state.")
+                return
+            }
             setRuntimeState(.readyCheckFailed(host: host, port: port, message: message), for: modelID)
             appendLog("[ready] ready check failed: \(message)")
         case let .failed(attempt, url, message):
@@ -6350,9 +7295,17 @@ final class AppViewModel: ObservableObject {
         case let .timedOut(attempt, url):
             appendLog("[ready] attempt \(attempt) timed out: \(url.absoluteString)")
         case .cancelled:
+            guard managedServerRuntimeFaults[modelID] == nil else {
+                appendLog("[runtime-health] cancelled ready wait did not replace the degraded state.")
+                return
+            }
             setRuntimeState(.unknown(message: "Ready wait was cancelled."), for: modelID)
             appendLog("[ready] wait cancelled.")
         case .exhausted:
+            guard managedServerRuntimeFaults[modelID] == nil else {
+                appendLog("[runtime-health] exhausted ready wait did not replace the degraded state.")
+                return
+            }
             let message = "Ready check did not succeed after launch."
             setRuntimeState(.unknown(message: message), for: modelID)
             appendLog("[ready] \(message)")
@@ -6462,7 +7415,8 @@ final class AppViewModel: ObservableObject {
         case let .adoptedExternalServer(host, port, _, _):
             return (host, port)
         case let .loading(host, port, _),
-             let .ready(host, port, _):
+             let .ready(host, port, _),
+             let .degraded(host, port, _, _):
             return (host, port)
         case let .portCheckFailed(host, port, _),
              let .readyCheckFailed(host, port, _):
@@ -6480,14 +7434,28 @@ final class AppViewModel: ObservableObject {
             return
         }
 
+        cancelDiagnostics(reason: "the selected model changed")
+
         invalidatePortCheckCache()
 
-        if let oldValue,
-           runtimeStatesByModelID[oldValue]?.isExternalServerContext == true {
-            runtimeStatesByModelID[oldValue] = .stopped
+        let clearedExternalContext = oldValue.map {
+            runtimeStatesByModelID[$0]?.isExternalServerContext == true
+        } ?? false
+        if let oldValue, clearedExternalContext {
+            var nextState = runtimeViewState
+            nextState.clearExternalRuntimeContext(
+                for: oldValue,
+                selectedModelID: selectedModelID,
+                runningProfileIDs: serverLifecycleCoordinator.runningProfileIDs,
+                orderedModelIDs: models.map(\.id)
+            )
+            if nextState != runtimeViewState {
+                runtimeViewState = nextState
+            }
             appendLog("[model] external server context cleared after model selection changed.")
+        } else {
+            projectSelectedRuntimeState()
         }
-        projectSelectedRuntimeState()
 
         guard let selectedModel else {
             appendLog("[model] selected model cleared.")
@@ -6547,23 +7515,40 @@ final class AppViewModel: ObservableObject {
     }
 
     private func setRunningModelID(_ modelID: ModelConfig.ID, logPrefix: String) {
-        runningModelIDs.insert(modelID)
-        managedServerStartedAtByModelID[modelID] = Date()
-        refreshRunningProjection()
+        var nextState = runtimeViewState
+        nextState.markRunning(
+            modelID: modelID,
+            startedAt: Date(),
+            runningProfileIDs: serverLifecycleCoordinator.runningProfileIDs,
+            selectedModelID: selectedModelID,
+            orderedModelIDs: models.map(\.id)
+        )
+        if nextState != runtimeViewState {
+            runtimeViewState = nextState
+        }
         invalidatePortCheckCache()
         appendLog("[\(logPrefix)] running modelID: \(modelID)")
         logRestartRequiredIfNeeded()
     }
 
     private func clearRunningModel(modelID: ModelConfig.ID, logPrefix: String) {
+        managedServerOutputGenerations[modelID] = nil
+        managedServerRuntimeFaults[modelID] = nil
         guard runningModelIDs.contains(modelID)
             || managedServerStartedAtByModelID[modelID] != nil else {
             return
         }
 
-        runningModelIDs.remove(modelID)
-        managedServerStartedAtByModelID[modelID] = nil
-        refreshRunningProjection()
+        var nextState = runtimeViewState
+        nextState.clearRunning(
+            modelID: modelID,
+            runningProfileIDs: serverLifecycleCoordinator.runningProfileIDs,
+            selectedModelID: selectedModelID,
+            orderedModelIDs: models.map(\.id)
+        )
+        if nextState != runtimeViewState {
+            runtimeViewState = nextState
+        }
         invalidatePortCheckCache()
         appendLog("[\(logPrefix)] running model cleared: \(modelID)")
     }
@@ -6630,10 +7615,20 @@ final class AppViewModel: ObservableObject {
         modelMemoryMonitoringCoordinator.stop(profileID: modelID)
 
         if resetUsage {
-            memoryUsageByModelID[modelID] = nil
-            memoryBreakdownByModelID[modelID] = nil
-            refreshAggregateMemoryProjection()
+            setMonitoredModelMemory(nil, for: modelID)
         }
+    }
+
+    private func setMonitoredModelMemory(
+        _ snapshot: MemoryBreakdownSnapshot?,
+        for modelID: ModelConfig.ID
+    ) {
+        var nextState = monitoringViewState
+        nextState.setModelMemory(snapshot, for: modelID)
+        guard nextState != monitoringViewState else {
+            return
+        }
+        monitoringViewState = nextState
     }
 
     private func handleMemoryMonitorResult(
@@ -6642,53 +7637,26 @@ final class AppViewModel: ObservableObject {
         processIdentifier: Int32
     ) -> Bool {
         guard serverLifecycleCoordinator.processIdentifier(for: modelID) == processIdentifier else {
-            memoryUsageByModelID[modelID] = nil
-            memoryBreakdownByModelID[modelID] = nil
-            refreshAggregateMemoryProjection()
+            setMonitoredModelMemory(nil, for: modelID)
             appendLog("[memory] monitoring stopped because managed pid changed for \(modelID).")
             return false
         }
 
         switch result {
         case let .usage(snapshot):
-            memoryUsageByModelID[modelID] = snapshot.managedProcessGigabytes
-            memoryBreakdownByModelID[modelID] = snapshot
-            refreshAggregateMemoryProjection()
-            appendMemoryHistorySample(from: snapshot)
+            setMonitoredModelMemory(snapshot, for: modelID)
             return true
         case let .notRunning(processIdentifier):
-            memoryUsageByModelID[modelID] = nil
-            memoryBreakdownByModelID[modelID] = nil
-            refreshAggregateMemoryProjection()
+            setMonitoredModelMemory(nil, for: modelID)
             appendLog("[memory] warning: managed pid \(processIdentifier) is no longer reporting RSS.")
             return false
         case let .invalidInput(message):
-            memoryUsageByModelID[modelID] = nil
-            memoryBreakdownByModelID[modelID] = nil
-            refreshAggregateMemoryProjection()
+            setMonitoredModelMemory(nil, for: modelID)
             appendLog("[memory] warning: \(message)")
             return false
         case let .failed(processIdentifier, message):
             appendLog("[memory] warning: failed to read RSS for pid \(processIdentifier): \(message)")
             return true
-        }
-    }
-
-    private func appendMemoryHistorySample(from snapshot: MemoryBreakdownSnapshot) {
-        guard snapshot.system.totalGigabytes > 0,
-              let usedGigabytes = snapshot.system.usedGigabytes else {
-            return
-        }
-
-        let sample = MemoryHistorySample(
-            usedFraction: min(max(usedGigabytes / snapshot.system.totalGigabytes, 0), 1),
-            managedProcessFraction: min(max(snapshot.managedProcessGigabytes / snapshot.system.totalGigabytes, 0), 1),
-            timestamp: snapshot.updatedAt
-        )
-
-        memoryHistory.append(sample)
-        if memoryHistory.count > 60 {
-            memoryHistory.removeFirst(memoryHistory.count - 60)
         }
     }
 
@@ -6713,28 +7681,32 @@ final class AppViewModel: ObservableObject {
     }
 
     func applySystemUsageSample(_ sample: SystemUsageMonitorSample) {
-        cpuUsagePercent = sample.cpuPercent
-        gpuUsagePercent = sample.gpuPercent
-        systemMemorySnapshot = sample.systemMemorySnapshot
-        updateRuntimeMemoryProtection(using: sample.systemMemorySnapshot)
-        appendSystemMemoryHistory(sample.systemMemorySnapshot)
-        appendSystemUsageHistory(
-            cpuPercent: sample.cpuPercent,
-            gpuPercent: sample.gpuPercent
-        )
-    }
-
-    private func updateRuntimeMemoryProtection(using snapshot: SystemMemorySnapshot) {
         let assessment = RuntimeMemoryHeadroomAdvisor.assess(
             environment: RuntimeMemoryHeadroomEnvironment(
-                totalMemoryGigabytes: snapshot.totalGigabytes,
-                availableMemoryGigabytes: snapshot.availableGigabytes
+                totalMemoryGigabytes: sample.systemMemorySnapshot.totalGigabytes,
+                availableMemoryGigabytes: sample.systemMemorySnapshot.availableGigabytes
             )
         )
         let previousState = runtimeMemoryProtectionState
-        let nextState = runtimeMemoryEmergencyGuard.observe(assessment)
-        runtimeMemoryProtectionState = nextState
+        let nextProtectionState = runtimeMemoryEmergencyGuard.observe(assessment)
+        var nextState = monitoringViewState
+        nextState.applySystemUsage(
+            sample,
+            protectionState: nextProtectionState
+        )
+        monitoringViewState = nextState
+        logRuntimeMemoryProtectionTransition(
+            from: previousState,
+            to: nextProtectionState,
+            assessment: assessment
+        )
+    }
 
+    private func logRuntimeMemoryProtectionTransition(
+        from previousState: RuntimeMemoryProtectionState,
+        to nextState: RuntimeMemoryProtectionState,
+        assessment: RuntimeMemoryHeadroomAssessment
+    ) {
         guard previousState.level != nextState.level else {
             return
         }
@@ -6750,24 +7722,6 @@ final class AppViewModel: ObservableObject {
             appendLog("[memory-guard] runtime memory caution: \(assessment.detail(language: settings.uiLanguage))")
         case .emergency:
             appendLog("[memory-guard] runtime memory emergency engaged: \(assessment.detail(language: settings.uiLanguage)) Managed Start and Restart are blocked. Running servers are not stopped automatically.")
-        }
-    }
-
-    private func appendSystemMemoryHistory(_ snapshot: SystemMemorySnapshot) {
-        guard let usedGigabytes = snapshot.usedGigabytes,
-              snapshot.totalGigabytes > 0 else {
-            return
-        }
-
-        memoryHistory.append(
-            MemoryHistorySample(
-                usedFraction: min(max(usedGigabytes / snapshot.totalGigabytes, 0), 1),
-                managedProcessFraction: memoryBreakdown.map { memoryFraction($0.managedProcessGigabytes) } ?? 0,
-                timestamp: Date()
-            )
-        )
-        if memoryHistory.count > 60 {
-            memoryHistory.removeFirst(memoryHistory.count - 60)
         }
     }
 
@@ -6810,19 +7764,6 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    private func appendSystemUsageHistory(cpuPercent: Double?, gpuPercent: Double?) {
-        let sample = SystemUsageHistorySample(
-            cpuFraction: min(max((cpuPercent ?? 0) / 100, 0), 1),
-            gpuFraction: gpuPercent.map { min(max($0 / 100, 0), 1) },
-            timestamp: Date()
-        )
-
-        systemUsageHistory.append(sample)
-        if systemUsageHistory.count > 60 {
-            systemUsageHistory.removeFirst(systemUsageHistory.count - 60)
-        }
-    }
-
     private func appendRuntimeEvent(category: String, message: String) {
         runtimeEvents.insert(RuntimeEvent(category: category, message: message), at: 0)
         if runtimeEvents.count > 30 {
@@ -6831,42 +7772,14 @@ final class AppViewModel: ObservableObject {
     }
 
     private func appendLog(_ line: String) {
-        logBuffer.append(line)
-        syncLogText()
+        appendLogs([line])
     }
 
-    private func syncLogText() {
-        let currentText = logBuffer.text
-        let currentEntries = logBuffer.entries
-        refreshLogDerivedState(for: currentEntries)
-        logText = currentText
-        logEntries = currentEntries
-    }
-
-    private func refreshLogDerivedState() {
-        refreshLogDerivedState(for: logEntries)
-    }
-
-    private func refreshLogDerivedState(for entries: [LogEntry]) {
-        logCategoryFilterOptionsCache = Self.makeLogCategoryFilterOptions(from: entries)
-        visibleLogEntriesCache = Self.visibleLogEntries(from: entries, filter: logCategoryFilter)
-        latestImportantLogEntryCache = Self.findLatestImportantLogEntry(in: entries)
-    }
-
-    private static func makeLogCategoryFilterOptions(from entries: [LogEntry]) -> [String] {
-        ["All"] + Array(Set(entries.map(\.category))).sorted()
-    }
-
-    private static func visibleLogEntries(from entries: [LogEntry], filter: String) -> [LogEntry] {
-        filter == "All" ? entries : entries.filter { $0.category == filter }
-    }
-
-    private static func findLatestImportantLogEntry(in entries: [LogEntry]) -> LogEntry? {
-        entries.reversed().first { entry in
-            entry.message.localizedCaseInsensitiveContains("failed")
-                || entry.message.localizedCaseInsensitiveContains("warning")
-                || entry.category.localizedCaseInsensitiveContains("error")
+    private func appendLogs(_ lines: [String]) {
+        guard !lines.isEmpty else {
+            return
         }
+        logViewState = logStateCoordinator.append(contentsOf: lines)
     }
 
     private func diagnosticsSummaryCopyText() -> String {

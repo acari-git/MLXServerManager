@@ -1,4 +1,5 @@
 import Darwin
+import Foundation
 import XCTest
 @testable import MLXServerManager
 
@@ -34,16 +35,18 @@ final class ModelMemoryMonitoringCoordinatorTests: XCTestCase {
     }
 
     func testHandlerCanStopMonitoringWithoutSleeping() async {
-        var monitorCallCount = 0
-        var sleepIntervals: [UInt64] = []
+        let monitorCallCount = ThreadSafeBox(0)
+        let sleepIntervals = ThreadSafeBox<[UInt64]>([])
         let receivedResult = expectation(description: "Received memory result")
         let coordinator = ModelMemoryMonitoringCoordinator(
             intervalNanoseconds: 25,
             monitorOperation: { processIdentifier, _, _ in
-                monitorCallCount += 1
+                monitorCallCount.withValue { $0 += 1 }
                 return .notRunning(processIdentifier: processIdentifier)
             },
-            sleepOperation: { sleepIntervals.append($0) }
+            sleepOperation: { interval in
+                sleepIntervals.withValue { $0.append(interval) }
+            }
         )
 
         coordinator.start(
@@ -62,31 +65,35 @@ final class ModelMemoryMonitoringCoordinatorTests: XCTestCase {
         await fulfillment(of: [receivedResult], timeout: 1)
         await Task.yield()
 
-        XCTAssertEqual(monitorCallCount, 1)
-        XCTAssertTrue(sleepIntervals.isEmpty)
+        XCTAssertEqual(monitorCallCount.snapshot, 1)
+        XCTAssertTrue(sleepIntervals.snapshot.isEmpty)
         XCTAssertFalse(coordinator.isMonitoring(profileID: "profile"))
     }
 
     func testMonitoringForwardsEstimateAndUsesConfiguredInterval() async {
-        var observedProcessIdentifiers: [Int32] = []
-        var observedEstimateGigabytes: [Double?] = []
-        var observedEstimateSources: [String?] = []
-        var results: [MemoryBreakdownMonitorResult] = [
-            .usage(Self.snapshot(processIdentifier: 202)),
-            .notRunning(processIdentifier: 202)
-        ]
-        var sleepIntervals: [UInt64] = []
+        let records = ThreadSafeBox(
+            MemoryMonitoringRecords(
+                results: [
+                    .usage(Self.snapshot(processIdentifier: 202)),
+                    .notRunning(processIdentifier: 202)
+                ]
+            )
+        )
         let receivedResults = expectation(description: "Received both memory results")
         receivedResults.expectedFulfillmentCount = 2
         let coordinator = ModelMemoryMonitoringCoordinator(
             intervalNanoseconds: 50,
             monitorOperation: { processIdentifier, estimateGigabytes, estimateSource in
-                observedProcessIdentifiers.append(processIdentifier)
-                observedEstimateGigabytes.append(estimateGigabytes)
-                observedEstimateSources.append(estimateSource)
-                return results.removeFirst()
+                records.withValue { records in
+                    records.processIdentifiers.append(processIdentifier)
+                    records.estimateGigabytes.append(estimateGigabytes)
+                    records.estimateSources.append(estimateSource)
+                    return records.results.removeFirst()
+                }
             },
-            sleepOperation: { sleepIntervals.append($0) }
+            sleepOperation: { interval in
+                records.withValue { $0.sleepIntervals.append(interval) }
+            }
         )
 
         coordinator.start(
@@ -105,10 +112,11 @@ final class ModelMemoryMonitoringCoordinatorTests: XCTestCase {
         await fulfillment(of: [receivedResults], timeout: 1)
         await Task.yield()
 
-        XCTAssertEqual(observedProcessIdentifiers, [202, 202])
-        XCTAssertEqual(observedEstimateGigabytes.compactMap { $0 }, [18.5, 18.5])
-        XCTAssertEqual(observedEstimateSources.compactMap { $0 }, ["~/Models/model", "~/Models/model"])
-        XCTAssertEqual(sleepIntervals, [50])
+        let snapshot = records.snapshot
+        XCTAssertEqual(snapshot.processIdentifiers, [202, 202])
+        XCTAssertEqual(snapshot.estimateGigabytes.compactMap { $0 }, [18.5, 18.5])
+        XCTAssertEqual(snapshot.estimateSources.compactMap { $0 }, ["~/Models/model", "~/Models/model"])
+        XCTAssertEqual(snapshot.sleepIntervals, [50])
         XCTAssertFalse(coordinator.isMonitoring(profileID: "profile"))
     }
 
@@ -156,13 +164,13 @@ final class ModelMemoryMonitoringCoordinatorTests: XCTestCase {
     }
 
     func testStopSuppressesResultThatFinishesAfterCancellation() async {
-        var continuation: CheckedContinuation<MemoryBreakdownMonitorResult, Never>?
+        let continuation = ThreadSafeBox<CheckedContinuation<MemoryBreakdownMonitorResult, Never>?>(nil)
         var handledResultCount = 0
         let operationStarted = expectation(description: "Memory operation started")
         let coordinator = ModelMemoryMonitoringCoordinator(
             monitorOperation: { _, _, _ in
                 await withCheckedContinuation { pendingContinuation in
-                    continuation = pendingContinuation
+                    continuation.withValue { $0 = pendingContinuation }
                     operationStarted.fulfill()
                 }
             }
@@ -180,8 +188,11 @@ final class ModelMemoryMonitoringCoordinatorTests: XCTestCase {
 
         await fulfillment(of: [operationStarted], timeout: 1)
         coordinator.stop(profileID: "profile")
-        continuation?.resume(returning: .usage(Self.snapshot(processIdentifier: 101)))
-        continuation = nil
+        let pendingContinuation = continuation.withValue { value in
+            defer { value = nil }
+            return value
+        }
+        pendingContinuation?.resume(returning: .usage(Self.snapshot(processIdentifier: 101)))
         await Task.yield()
         await Task.yield()
 
@@ -244,5 +255,35 @@ final class ModelMemoryMonitoringCoordinatorTests: XCTestCase {
             modelEstimateSource: "~/Models/model",
             updatedAt: Date(timeIntervalSince1970: 1)
         )
+    }
+}
+
+private struct MemoryMonitoringRecords {
+    var processIdentifiers: [Int32] = []
+    var estimateGigabytes: [Double?] = []
+    var estimateSources: [String?] = []
+    var results: [MemoryBreakdownMonitorResult]
+    var sleepIntervals: [UInt64] = []
+}
+
+private final class ThreadSafeBox<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Value
+
+    init(_ value: Value) {
+        self.value = value
+    }
+
+    var snapshot: Value {
+        lock.lock()
+        defer { lock.unlock() }
+        return value
+    }
+
+    @discardableResult
+    func withValue<Result>(_ operation: (inout Value) -> Result) -> Result {
+        lock.lock()
+        defer { lock.unlock() }
+        return operation(&value)
     }
 }

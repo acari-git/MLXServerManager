@@ -1,6 +1,6 @@
 import Foundation
 
-enum HuggingFaceModelCompatibility: Equatable {
+nonisolated enum HuggingFaceModelCompatibility: Equatable, Sendable {
     case supported(label: String)
     case unsupported(reason: String)
 
@@ -28,7 +28,7 @@ enum HuggingFaceModelCompatibility: Equatable {
     }
 }
 
-struct HuggingFaceDownloadCompatibilityPolicy: Equatable {
+nonisolated struct HuggingFaceDownloadCompatibilityPolicy: Equatable, Sendable {
     let requiredTag: String
     let displayName: String
 
@@ -46,7 +46,7 @@ struct HuggingFaceDownloadCompatibilityPolicy: Equatable {
     }
 }
 
-struct HuggingFaceSearchResult: Identifiable, Equatable {
+nonisolated struct HuggingFaceSearchResult: Identifiable, Equatable, Sendable {
     static let compatibilityPolicy: HuggingFaceDownloadCompatibilityPolicy = .mlx
 
     let id: String
@@ -112,7 +112,7 @@ struct HuggingFaceSearchResult: Identifiable, Equatable {
     }
 }
 
-struct HuggingFaceSearchResponseItem: Decodable {
+nonisolated struct HuggingFaceSearchResponseItem: Decodable, Sendable {
     let id: String
     let downloads: Int?
     let likes: Int?

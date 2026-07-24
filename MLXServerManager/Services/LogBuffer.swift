@@ -1,6 +1,6 @@
 import Foundation
 
-struct LogBuffer {
+nonisolated struct LogBuffer {
     let maximumCount: Int
     private(set) var entries: [LogEntry]
     private(set) var text: String
@@ -17,14 +17,26 @@ struct LogBuffer {
     }
 
     mutating func append(_ line: String) {
-        entries.append(LogEntry(line: line))
+        append(contentsOf: [line])
+    }
+
+    mutating func append(contentsOf lines: [String]) {
+        guard !lines.isEmpty else {
+            return
+        }
+
+        entries.append(contentsOf: lines.map { LogEntry(line: $0) })
         if entries.count > maximumCount {
             trimIfNeeded()
             text = Self.joinedText(from: entries)
-        } else if text.isEmpty {
-            text = line
+            return
+        }
+
+        let appendedText = lines.joined(separator: "\n")
+        if text.isEmpty {
+            text = appendedText
         } else {
-            text += "\n\(line)"
+            text += "\n\(appendedText)"
         }
     }
 

@@ -66,13 +66,14 @@ final class ModelOperationsSafetyTests: XCTestCase {
 
     func testSafetySummaryIncludesImplementedRowsOnly() {
         let viewModel = AppViewModel(settingsStore: SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)"))
+        viewModel.settings.uiLanguage = .english
         let keys = viewModel.selectedModelSafetyRows.map(\.0)
 
-        XCTAssertTrue(keys.contains("Executable"))
-        XCTAssertTrue(keys.contains("Model"))
-        XCTAssertTrue(keys.contains("Server port"))
-        XCTAssertTrue(keys.contains("Duplicate"))
-        XCTAssertTrue(keys.contains("Runtime edit"))
+        XCTAssertTrue(keys.contains("Executable file"))
+        XCTAssertTrue(keys.contains("Model validation"))
+        XCTAssertTrue(keys.contains("Port / IP address"))
+        XCTAssertTrue(keys.contains("Duplicate check"))
+        XCTAssertTrue(keys.contains("Runtime edit safety"))
         XCTAssertTrue(viewModel.copyableSafetySummary.contains("Model Operations Safety"))
     }
 
@@ -86,6 +87,7 @@ final class ModelOperationsSafetyTests: XCTestCase {
 
     func testTroubleshootingSummaryIncludesRecoveryAndSafety() {
         let viewModel = AppViewModel(settingsStore: SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)"))
+        viewModel.settings.uiLanguage = .english
 
         XCTAssertTrue(viewModel.copyableTroubleshootingSummary.contains("MLX Server Manager Troubleshooting Summary"))
         XCTAssertTrue(viewModel.copyableTroubleshootingSummary.contains("Recovery:"))

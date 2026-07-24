@@ -353,7 +353,10 @@ struct DownloadsSurfaceView: View {
             if let entry = viewModel.latestHuggingFaceDownloadEntry {
                 HStack(spacing: 8) {
                     progressMetricPill(title: t("Files", "ファイル"), value: entry.fileProgressText)
-                    progressMetricPill(title: t("Total", "全体"), value: entry.capacityProgressText)
+                    progressMetricPill(
+                        title: t("Total", "全体"),
+                        value: entry.localizedCapacityProgressText(language: viewModel.settings.uiLanguage)
+                    )
                     if let speed = entry.speedBytesPerSecond, speed > 0 {
                         progressMetricPill(title: t("Speed", "速度"), value: "\(ByteCountFormatter.string(fromByteCount: speed, countStyle: .file))/s")
                     }
@@ -492,7 +495,7 @@ struct DownloadsSurfaceView: View {
                 ProgressView(value: entry.phase == .completed ? 1 : 0)
                     .progressViewStyle(.linear)
             }
-            Text(entry.progressText)
+            Text(entry.localizedProgressText(language: viewModel.settings.uiLanguage))
                 .font(.caption2.monospaced())
                 .foregroundStyle(.secondary)
         }

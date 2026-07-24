@@ -11,6 +11,7 @@ nonisolated enum ModelStartPreflightIssue: Equatable {
     case missingModelPath(path: String)
     case incompleteModelDirectory(path: String, issue: LocalModelIntegrityIssue)
     case uninspectableModelDirectory(path: String, message: String)
+    case unsupportedLaunchOptions(flags: [String])
     case managedEndpointConflict(
         host: String,
         port: Int,
@@ -41,6 +42,11 @@ nonisolated enum ModelStartPreflightIssue: Equatable {
                 english: "Local model files could not be inspected",
                 japanese: "ローカルモデルファイルを確認できません"
             )
+        case let .unsupportedLaunchOptions(flags):
+            return strings.text(
+                english: "Unsupported mlx-lm options: \(flags.joined(separator: ", "))",
+                japanese: "mlx-lm未対応の起動オプション: \(flags.joined(separator: ", "))"
+            )
         case let .managedEndpointConflict(_, _, modelDisplayName, processIdentifier):
             return strings.text(
                 english: "Server port: Used by loaded model \(modelDisplayName) (pid \(processIdentifier))",
@@ -69,6 +75,12 @@ nonisolated enum ModelStartPreflightIssue: Equatable {
             return strings.text(
                 english: "Local model files could not be inspected at \(ModelAvailabilityPathFormatter.compact(path: path)): \(message)",
                 japanese: "\(ModelAvailabilityPathFormatter.compact(path: path)) のローカルモデルファイルを確認できません: \(message)"
+            )
+        case let .unsupportedLaunchOptions(flags):
+            let optionList = flags.joined(separator: ", ")
+            return strings.text(
+                english: "This mlx-lm executable does not support the configured launch options: \(optionList). Clear them in Advanced Launch Options or update mlx-lm.",
+                japanese: "このmlx-lm実行ファイルは設定済みの起動オプション \(optionList) に対応していません。詳細起動オプションから削除するか、mlx-lmを更新してください。"
             )
         case let .managedEndpointConflict(host, port, modelDisplayName, processIdentifier):
             return strings.text(

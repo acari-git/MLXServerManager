@@ -148,7 +148,7 @@ struct IntegratedWorkspaceView: View {
             AppSymbol.ready
         case .starting, .loading, .stopping, .checkingPort, .checkingReady:
             AppSymbol.refresh
-        case .portBusy, .portCheckFailed, .readyCheckFailed, .error, .unknown:
+        case .degraded, .portBusy, .portCheckFailed, .readyCheckFailed, .error, .unknown:
             AppSymbol.error
         case .stopped, .portAvailable:
             "circle"
@@ -161,7 +161,7 @@ struct IntegratedWorkspaceView: View {
             .green
         case .starting, .loading, .stopping, .checkingPort, .checkingReady:
             activeAccentColor
-        case .portBusy, .portCheckFailed, .readyCheckFailed, .error, .unknown:
+        case .degraded, .portBusy, .portCheckFailed, .readyCheckFailed, .error, .unknown:
             .orange
         case .stopped, .portAvailable:
             .secondary
@@ -1112,6 +1112,9 @@ struct IntegratedWorkspaceView: View {
         if row.isTransitioning {
             return .orange
         }
+        if row.isDegraded {
+            return .red
+        }
         if row.isLoaded {
             return .green
         }
@@ -1128,6 +1131,9 @@ struct IntegratedWorkspaceView: View {
         let isTransitioning = viewModel.isModelTransitioning(model)
         if isTransitioning {
             return .orange
+        }
+        if viewModel.isModelDegraded(model) {
+            return .red
         }
         if viewModel.isModelLoaded(model) {
             return .green
@@ -1237,17 +1243,21 @@ struct IntegratedWorkspaceView: View {
         let isInteractive = !row.isTransitioning && row.canUseStatusAction
         let isHovered = hoveredStatusModelID == model.id
         let statusText = isHovered ? row.hoveredStatusText : row.normalStatusText
-        let foregroundColor: Color = row.isLoaded || row.isPortBusy
+        let foregroundColor: Color = row.isLoaded || row.isDegraded || row.isPortBusy
             ? .white
             : (row.isTransitioning ? .orange : .accentColor)
-        let backgroundColor: Color = row.isLoaded
+        let backgroundColor: Color = row.isDegraded
+            ? .red
+            : (row.isLoaded
             ? .green
             : (row.isPortBusy
                ? .red
-               : (row.isTransitioning ? Color.orange.opacity(0.18) : Color.accentColor.opacity(isHovered ? 0.18 : 0.10)))
-        let systemImage = row.isLoaded
+               : (row.isTransitioning ? Color.orange.opacity(0.18) : Color.accentColor.opacity(isHovered ? 0.18 : 0.10))))
+        let systemImage = row.isDegraded
+            ? "exclamationmark.triangle.fill"
+            : (row.isLoaded
             ? (isHovered ? "stop.fill" : "checkmark")
-            : (row.isPortBusy ? "exclamationmark" : (isHovered ? "play.fill" : "power"))
+            : (row.isPortBusy ? "exclamationmark" : (isHovered ? "play.fill" : "power")))
 
         return Button {
             guard isInteractive else { return }
@@ -1259,7 +1269,7 @@ struct IntegratedWorkspaceView: View {
                 isBusy: row.isTransitioning,
                 foregroundColor: foregroundColor,
                 backgroundColor: backgroundColor,
-                borderColor: foregroundColor.opacity(row.isLoaded || row.isPortBusy ? 0.20 : 0.28)
+                borderColor: foregroundColor.opacity(row.isLoaded || row.isDegraded || row.isPortBusy ? 0.20 : 0.28)
             )
         }
         .buttonStyle(.plain)
@@ -1276,20 +1286,25 @@ struct IntegratedWorkspaceView: View {
         let canUseAction = viewModel.canUseStatusAction(for: model)
         let isInteractive = !isTransitioning && canUseAction
         let isLoaded = viewModel.isModelLoaded(model)
+        let isDegraded = viewModel.isModelDegraded(model)
         let isPortBusy = viewModel.isModelPortBusy(for: model)
         let isHovered = hoveredStatusModelID == model.id
         let statusText = viewModel.interactiveStatusText(for: model, isHovered: isHovered, isPortBusy: isPortBusy)
-        let foregroundColor: Color = isLoaded || isPortBusy
+        let foregroundColor: Color = isLoaded || isDegraded || isPortBusy
             ? .white
             : (isTransitioning ? .orange : .accentColor)
-        let backgroundColor: Color = isLoaded
+        let backgroundColor: Color = isDegraded
+            ? .red
+            : (isLoaded
             ? .green
             : (isPortBusy
                ? .red
-               : (isTransitioning ? Color.orange.opacity(0.18) : Color.accentColor.opacity(isHovered ? 0.18 : 0.10)))
-        let systemImage = isLoaded
+               : (isTransitioning ? Color.orange.opacity(0.18) : Color.accentColor.opacity(isHovered ? 0.18 : 0.10))))
+        let systemImage = isDegraded
+            ? "exclamationmark.triangle.fill"
+            : (isLoaded
             ? (isHovered ? "stop.fill" : "checkmark")
-            : (isPortBusy ? "exclamationmark" : (isHovered ? "play.fill" : "power"))
+            : (isPortBusy ? "exclamationmark" : (isHovered ? "play.fill" : "power")))
 
         return Button {
             guard isInteractive else { return }
@@ -1301,7 +1316,7 @@ struct IntegratedWorkspaceView: View {
                 isBusy: isTransitioning,
                 foregroundColor: foregroundColor,
                 backgroundColor: backgroundColor,
-                borderColor: foregroundColor.opacity(isLoaded || isPortBusy ? 0.20 : 0.28)
+                borderColor: foregroundColor.opacity(isLoaded || isDegraded || isPortBusy ? 0.20 : 0.28)
             )
         }
         .buttonStyle(.plain)
@@ -1783,7 +1798,7 @@ struct IntegratedWorkspaceView: View {
                     Label(t("Not scored", "スコア未算出"), systemImage: "exclamationmark.triangle")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.orange)
-                    Text(result.message)
+                    Text(result.localizedMessage(language: viewModel.settings.uiLanguage))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -2419,7 +2434,10 @@ struct IntegratedWorkspaceView: View {
             Divider()
 
             HStack {
-                Label("\(t("Overall status", "全体ステータス")): \(viewModel.runtimeState.title)", systemImage: overallStatusSymbol)
+                Label(
+                    "\(t("Overall status", "全体ステータス")): \(viewModel.runtimeState.localizedTitle(language: viewModel.settings.uiLanguage))",
+                    systemImage: overallStatusSymbol
+                )
                     .foregroundStyle(overallStatusColor)
                 Spacer()
             }

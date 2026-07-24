@@ -18,10 +18,13 @@ final class LocalizationPairTests: XCTestCase {
             !allowedSameText.contains($0) && $0.english == $0.japanese
         }
 
-        XCTAssertTrue(duplicatePairs.isEmpty, "AppTextKey entries should not reuse identical English and Japanese text unless explicitly allowed: \(duplicatePairs)")
+        XCTAssertTrue(
+            duplicatePairs.isEmpty,
+            "AppTextKey entries should not reuse identical English and Japanese text unless explicitly allowed: \(duplicatePairs)"
+        )
     }
 
-    func testInlineLocalizationPairsUseBothEnglishAndJapaneseArguments() throws {
+    func testInlineLocalizationPairsAreCompleteAndDistinct() throws {
         let root = try Self.projectRoot()
         let files = try Self.swiftFiles(in: root.appendingPathComponent("MLXServerManager"))
         let findings = try files.flatMap { try Self.scanInlinePairs($0, root: root) }
@@ -29,8 +32,24 @@ final class LocalizationPairTests: XCTestCase {
 
         XCTAssertTrue(
             invalid.isEmpty,
-            "Inline localization calls must include non-empty English and Japanese values.\n"
-                + invalid.map { $0.description }.joined(separator: "\n")
+            "Inline localization calls must include non-empty, distinct English and Japanese values.\n"
+                + invalid.map(\.description).joined(separator: "\n")
+        )
+    }
+
+    func testInlineJapaneseValuesContainJapaneseTextUnlessExplicitlyAllowed() throws {
+        let root = try Self.projectRoot()
+        let files = try Self.swiftFiles(in: root.appendingPathComponent("MLXServerManager"))
+        let findings = try files.flatMap { try Self.scanInlinePairs($0, root: root) }
+        let suspicious = findings.filter { finding in
+            !Self.allowedTechnicalOnlyJapaneseValues.contains(finding.japanese)
+                && !finding.japanese.unicodeScalars.contains(where: Self.isJapaneseScalar)
+        }
+
+        XCTAssertTrue(
+            suspicious.isEmpty,
+            "Japanese localization values should contain Japanese text unless the value is an explicitly allowed technical label.\n"
+                + suspicious.map(\.description).joined(separator: "\n")
         )
     }
 
@@ -41,8 +60,12 @@ final class LocalizationPairTests: XCTestCase {
         let japanese: String
 
         var isValid: Bool {
-            !english.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                && !japanese.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            let trimmedEnglish = english.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedJapanese = japanese.trimmingCharacters(in: .whitespacesAndNewlines)
+            return !trimmedEnglish.isEmpty
+                && !trimmedJapanese.isEmpty
+                && (trimmedEnglish != trimmedJapanese
+                    || LocalizationPairTests.allowedTechnicalOnlyJapaneseValues.contains(trimmedJapanese))
         }
 
         var description: String {
@@ -50,40 +73,68 @@ final class LocalizationPairTests: XCTestCase {
         }
     }
 
+    private static let allowedTechnicalOnlyJapaneseValues: Set<String> = [
+        "Agent Readiness"
+    ]
+
+    private static func isJapaneseScalar(_ scalar: UnicodeScalar) -> Bool {
+        switch scalar.value {
+        case 0x3040...0x30FF, 0x3400...0x4DBF, 0x4E00...0x9FFF, 0xF900...0xFAFF:
+            return true
+        default:
+            return false
+        }
+    }
+
     private static func projectRoot() throws -> URL {
-        var dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-        while dir.path != "/" {
-            if FileManager.default.fileExists(atPath: dir.appendingPathComponent("MLXServerManager.xcodeproj").path) { return dir }
-            dir.deleteLastPathComponent()
+        var directory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        while directory.path != "/" {
+            if FileManager.default.fileExists(
+                atPath: directory.appendingPathComponent("MLXServerManager.xcodeproj").path
+            ) {
+                return directory
+            }
+            directory.deleteLastPathComponent()
         }
         throw NSError(domain: "LocalizationPairTests", code: 1)
     }
 
     private static func swiftFiles(in directory: URL) throws -> [URL] {
-        guard let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: nil) else { return [] }
-        return enumerator.compactMap { ($0 as? URL).flatMap { $0.pathExtension == "swift" ? $0 : nil } }
+        guard let enumerator = FileManager.default.enumerator(
+            at: directory,
+            includingPropertiesForKeys: nil
+        ) else {
+            return []
+        }
+        return enumerator.compactMap {
+            ($0 as? URL).flatMap { $0.pathExtension == "swift" ? $0 : nil }
+        }
     }
 
     private static func scanInlinePairs(_ url: URL, root: URL) throws -> [InlineFinding] {
         let text = try String(contentsOf: url, encoding: .utf8)
         let file = url.path.replacingOccurrences(of: root.path + "/", with: "")
-        let pattern = #"(?:localizedText|text)\(language:\s*[^,]+,\s*english:\s*\"((?:[^\"\\]|\\.)*)\",\s*japanese:\s*\"((?:[^\"\\]|\\.)*)\""#
-        let regex = try NSRegularExpression(pattern: pattern)
-        var findings: [InlineFinding] = []
+        let pattern = #"(?:localizedText|text)\(\s*(?:language:\s*[^,]+,\s*)?english:\s*\"((?:[^\"\\]|\\.)*)\"\s*,\s*japanese:\s*\"((?:[^\"\\]|\\.)*)\""#
+        let expression = try NSRegularExpression(pattern: pattern)
+        let fullRange = NSRange(text.startIndex..<text.endIndex, in: text)
 
-        for (index, line) in text.components(separatedBy: .newlines).enumerated() {
-            let nsRange = NSRange(line.startIndex..<line.endIndex, in: line)
-            for match in regex.matches(in: line, range: nsRange) {
-                guard let englishRange = Range(match.range(at: 1), in: line),
-                      let japaneseRange = Range(match.range(at: 2), in: line) else { continue }
-                findings.append(InlineFinding(
-                    file: file,
-                    line: index + 1,
-                    english: String(line[englishRange]),
-                    japanese: String(line[japaneseRange])
-                ))
+        return expression.matches(in: text, range: fullRange).compactMap { match in
+            guard let englishRange = Range(match.range(at: 1), in: text),
+                  let japaneseRange = Range(match.range(at: 2), in: text),
+                  let matchRange = Range(match.range, in: text) else {
+                return nil
             }
+            let line = text[..<matchRange.lowerBound].reduce(into: 1) { count, character in
+                if character == "\n" {
+                    count += 1
+                }
+            }
+            return InlineFinding(
+                file: file,
+                line: line,
+                english: String(text[englishRange]),
+                japanese: String(text[japaneseRange])
+            )
         }
-        return findings
     }
 }

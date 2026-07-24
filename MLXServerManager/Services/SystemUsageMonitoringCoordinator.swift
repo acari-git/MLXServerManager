@@ -1,6 +1,6 @@
 import Foundation
 
-struct SystemUsageMonitorSample: Equatable, Sendable {
+nonisolated struct SystemUsageMonitorSample: Equatable, Sendable {
     let cpuPercent: Double?
     let gpuPercent: Double?
     let systemMemorySnapshot: SystemMemorySnapshot

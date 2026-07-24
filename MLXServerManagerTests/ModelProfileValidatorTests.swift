@@ -137,7 +137,9 @@ final class ModelProfileValidatorTests: XCTestCase {
             ("--model other/model", "--model"),
             ("--host 0.0.0.0", "--host"),
             ("--port 9000", "--port"),
-            ("--port=9000", "--port")
+            ("--port=9000", "--port"),
+            ("--prompt-cache-size 99", "--prompt-cache-size"),
+            ("--prompt-cache-bytes=999999999", "--prompt-cache-bytes")
         ]
 
         for (rawExtraArgs, forbiddenFlag) in mlxCases {
@@ -149,10 +151,17 @@ final class ModelProfileValidatorTests: XCTestCase {
             )
         }
 
-        for rawExtraArgs in ["--host 0.0.0.0", "--port=9000"] {
+        let rapidCases = [
+            ("--host 0.0.0.0", "--host"),
+            ("--port=9000", "--port"),
+            ("--prefix-cache-size 99", "--prefix-cache-size"),
+            ("--cache-memory-mb=99999", "--cache-memory-mb"),
+            ("--cache-memory-percent 0.9", "--cache-memory-percent")
+        ]
+
+        for (rawExtraArgs, forbiddenFlag) in rapidCases {
             var options = AdvancedLaunchOptions.empty
             options.rawExtraArgs = rawExtraArgs
-            let forbiddenFlag = rawExtraArgs.hasPrefix("--host") ? "--host" : "--port"
             XCTAssertEqual(
                 invalidMessage(from: validator.validateAdvancedLaunchOptions(options, backend: .rapidMLX)),
                 "Raw Extra Args must not override the managed argument \(forbiddenFlag)."

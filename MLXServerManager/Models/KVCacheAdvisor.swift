@@ -115,6 +115,63 @@ nonisolated struct KVCacheAssessment: Equatable {
     }
 }
 
+nonisolated struct KVCacheSafeModeResult: Equatable {
+    let advancedLaunchOptions: AdvancedLaunchOptions?
+    let recommendation: KVCacheRecommendation
+    let adjustedEntryLimit: Bool
+    let adjustedByteLimit: Bool
+
+    var didAdjust: Bool {
+        adjustedEntryLimit || adjustedByteLimit
+    }
+
+    func actionText(language: AppLanguage) -> String {
+        let entryLimit = recommendation.entryLimit
+        let byteLimit = recommendation.byteLimitText
+        if language.resolved == .english {
+            return "Runtime KV cache safe mode applied \(entryLimit) entries / \(byteLimit). The saved profile was not changed."
+        }
+        return "実行時KVキャッシュ安全モードとして\(entryLimit)件 / \(byteLimit)を適用しました。保存済みプロファイルは変更していません。"
+    }
+}
+
+nonisolated enum KVCacheSafeMode {
+    static func apply(
+        options: AdvancedLaunchOptions?,
+        environment: KVCacheEnvironment,
+        backend: InferenceBackend
+    ) -> KVCacheSafeModeResult {
+        _ = backend
+        let recommendation = KVCacheAdvisor.recommendedConfiguration(environment: environment)
+        var resolvedOptions = options?.normalized() ?? .empty
+        var adjustedEntryLimit = false
+        var adjustedByteLimit = false
+
+        if let configuredEntryText = resolvedOptions.promptCacheSize {
+            if let configuredEntryLimit = Int(configuredEntryText), configuredEntryLimit > 0,
+               configuredEntryLimit > recommendation.entryLimit {
+                resolvedOptions.promptCacheSize = String(recommendation.entryLimit)
+                adjustedEntryLimit = true
+            }
+        }
+
+        if let configuredByteText = resolvedOptions.promptCacheBytes {
+            if let configuredByteLimit = UInt64(configuredByteText), configuredByteLimit > 0,
+               configuredByteLimit > recommendation.byteLimit {
+                resolvedOptions.promptCacheBytes = String(recommendation.byteLimit)
+                adjustedByteLimit = true
+            }
+        }
+
+        return KVCacheSafeModeResult(
+            advancedLaunchOptions: resolvedOptions.normalized(),
+            recommendation: recommendation,
+            adjustedEntryLimit: adjustedEntryLimit,
+            adjustedByteLimit: adjustedByteLimit
+        )
+    }
+}
+
 nonisolated enum KVCacheAdvisor {
     static let mlxLMDefaultEntryLimit = 10
     static let rapidMLXDefaultEntryLimit = 100

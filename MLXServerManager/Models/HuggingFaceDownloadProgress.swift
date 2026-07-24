@@ -1,6 +1,6 @@
 import Foundation
 
-struct HuggingFaceFilePreviewIdentity: Equatable, Sendable {
+nonisolated struct HuggingFaceFilePreviewIdentity: Equatable, Sendable {
     let repositoryID: String
     let revision: String
 

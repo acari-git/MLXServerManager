@@ -147,9 +147,21 @@ nonisolated enum ManagedLaunchArgumentPolicy {
     private static func forbiddenFlags(for backend: InferenceBackend) -> [String] {
         switch backend {
         case .mlxLM:
-            ["--model", "--host", "--port"]
+            [
+                "--model",
+                "--host",
+                "--port",
+                "--prompt-cache-size",
+                "--prompt-cache-bytes"
+            ]
         case .rapidMLX:
-            ["--host", "--port"]
+            [
+                "--host",
+                "--port",
+                "--prefix-cache-size",
+                "--cache-memory-mb",
+                "--cache-memory-percent"
+            ]
         }
     }
 }

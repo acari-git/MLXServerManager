@@ -1,21 +1,30 @@
 import Foundation
 
 struct SetupDiagnostics {
+    typealias RunOperation = @MainActor (
+        _ settings: AppSettings,
+        _ selectedModel: ModelConfig?,
+        _ managedProcessIdentifier: Int32?
+    ) async -> [DiagnosticsResult]
+
     private let settingsStore: SettingsStore
     private let portChecker: PortChecker
     private let readyChecker: ReadyChecker
     private let fileManager: FileManager
+    private let runOperation: RunOperation?
 
     init(
         settingsStore: SettingsStore = SettingsStore(),
         portChecker: PortChecker = PortChecker(),
         readyChecker: ReadyChecker = ReadyChecker(),
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        runOperation: RunOperation? = nil
     ) {
         self.settingsStore = settingsStore
         self.portChecker = portChecker
         self.readyChecker = readyChecker
         self.fileManager = fileManager
+        self.runOperation = runOperation
     }
 
     func run(
@@ -23,6 +32,10 @@ struct SetupDiagnostics {
         selectedModel: ModelConfig?,
         managedProcessIdentifier: Int32?
     ) async -> [DiagnosticsResult] {
+        if let runOperation {
+            return await runOperation(settings, selectedModel, managedProcessIdentifier)
+        }
+
         let endpoint = endpoint(settings: settings, selectedModel: selectedModel)
         var results: [DiagnosticsResult] = []
 

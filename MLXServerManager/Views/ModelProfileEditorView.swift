@@ -349,6 +349,14 @@ struct ModelProfileEditorView: View {
         )
     }
 
+    private var kvCacheSafeModeResult: KVCacheSafeModeResult {
+        KVCacheSafeMode.apply(
+            options: draft.advancedLaunchOptions,
+            environment: kvCacheEnvironment,
+            backend: draft.backend
+        )
+    }
+
     private var advancedDefaultsDescription: String {
         switch draft.backend {
         case .mlxLM:
@@ -374,6 +382,20 @@ struct ModelProfileEditorView: View {
                 Text(assessment.recommendationText(language: language))
                     .font(.caption)
                     .fixedSize(horizontal: false, vertical: true)
+
+                if kvCacheSafeModeResult.didAdjust {
+                    Label(
+                        t("Runtime safe mode", "実行時安全モード"),
+                        systemImage: "shield.lefthalf.filled"
+                    )
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                    Text(kvCacheSafeModeResult.actionText(language: language))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 HStack(spacing: 10) {
                     Button {
@@ -551,7 +573,7 @@ struct ModelProfileEditorView: View {
             host: host,
             port: port,
             enableThinking: draft.enableThinking,
-            advancedLaunchOptions: draft.advancedLaunchOptions.normalized()
+            advancedLaunchOptions: kvCacheSafeModeResult.advancedLaunchOptions
         )
     }
 }

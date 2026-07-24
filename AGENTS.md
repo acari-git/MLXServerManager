@@ -1,38 +1,61 @@
 # Agent Instructions
 
-This repository contains a macOS SwiftUI app named MLX Server Manager.
+This repository contains MLX Server Manager, a macOS SwiftUI control surface for local OpenAI-compatible inference servers.
 
-## Product Direction
+## Authoritative Scope
 
-The app manages `mlx_lm.server` directly. It is not a chat app, and it must not route inference through LM Studio, Ollama, llama.cpp, or another backend.
+Read `docs/stable_scope.md` before making product-scope decisions. It defines the current stable surface. Older version-specific planning documents are historical and must not override it.
 
-Version 0.1 supports Direct Mode only. The inference path must remain:
+The current app supports app-managed `mlx_lm.server` and Rapid-MLX processes, multiple model profiles, explicit Hugging Face search/download workflows, diagnostics, benchmarks, Test Chat, Hermes Agent configuration, and explicitly adopted external OpenAI-compatible endpoints.
+
+Direct Mode is mandatory:
 
 ```text
-client -> mlx_lm.server
+OpenAI-compatible client -> selected managed backend or adopted external endpoint
 ```
 
-The app may launch, stop, monitor, and display connection details for the server. It must not insert a proxy into the request path in v0.1.
+MLX Server Manager must not insert a proxy, router, request rewriter, or traffic-inspection layer into that path.
 
 ## Engineering Rules
 
-- Do not put `Process` launch, termination, pipe handling, port probing, or polling logic directly inside SwiftUI views.
 - Keep SwiftUI views focused on rendering state and sending user intents.
-- Put process control behind services or controllers that can be tested without UI.
+- Put process launch, termination, pipe handling, port probing, filesystem mutation, polling, and network operations behind testable services or coordinators.
+- Preserve explicit process ownership. Stop, Restart, and force termination may affect only processes launched and owned by this app.
+- Do not use `pkill`, `killall`, or `pgrep` in production Swift code.
+- Keep long-running asynchronous work cancellable and protect replacement requests from stale completion.
+- Keep related user-facing state coherent. Prefer one Equatable view state over multiple independently published fields when values change together.
 - Do not hardcode user-specific absolute paths.
-- Do not commit `.venv`, `models`, `logs`, `.env`, `HF_TOKEN`, or model files.
-- Preserve the ability to add App Intents, LAN Web UI, Proxy mode, and automatic unload later.
+- Keep English and Japanese user-facing text paired. Raw logs, model IDs, endpoints, command output, and technical identifiers may remain untranslated when translation would change their meaning.
+- Preserve Direct Mode performance. Background work must not contend unnecessarily with active model generation.
 
-## v0.1 Feature Boundary
+## Safety and Privacy
 
-Implement only:
+- No silent model generation, download, server start, external-process adoption, file deletion, or network exposure.
+- Test Chat, Benchmark, Agent Readiness, diagnostics, downloads, profile replacement, cache deletion, and Hermes Agent writes require explicit user actions.
+- Never delete local model folders through profile deletion.
+- Validate and narrowly scope any Hugging Face cache deletion.
+- Never persist or export secrets in profile JSON, logs, diagnostics summaries, or copied troubleshooting text.
+- Do not add telemetry, analytics, crash uploads, external log sending, or cloud logging.
 
-- Start / Stop / Restart
-- Ready checks
-- Port conflict checks
-- Settings persistence
-- Memory usage display
-- OpenAI-compatible connection config copy
-- Log display and Clear Logs
+## Repository Hygiene
 
-Do not add chat UI or alternate inference backend support unless the product scope changes explicitly.
+Do not commit runtime settings, model profiles, model files, Hugging Face cache content, logs, secrets, virtual environments, app bundles, zip archives, dSYM files, DerivedData, or build artifacts. In particular, keep these outside Git:
+
+- `settings.json`, `models.json`
+- `.env`, `HF_TOKEN`, token/key files
+- `.venv`, `models`, `logs`
+- `*.safetensors`, `*.gguf`, `*.bin`, `*.onnx`, `*.mlx`
+- `*.app`, `*.zip`, `*.dSYM`, `build`, `DerivedData`
+
+## Verification
+
+For code changes, run the narrowest relevant tests first, then the full test suite. Before handoff, verify:
+
+- Debug tests pass.
+- Release build succeeds.
+- Static analysis succeeds.
+- Swift strict-concurrency build has no new warnings.
+- `git diff --check` passes.
+- English and Japanese localization guardrails pass.
+
+Do not commit, tag, push, publish a release, delete files, or perform another destructive or externally visible action unless the user explicitly requests it.

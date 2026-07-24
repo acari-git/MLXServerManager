@@ -2,7 +2,7 @@
 
 ## Overview
 
-MLX Server Manager is a local macOS control surface for `mlx_lm.server` and related OpenAI-compatible local endpoints. Its purpose is to make `mlx-lm` easier to operate without becoming part of the inference request path.
+MLX Server Manager is a local macOS control surface for explicit, profile-selected OpenAI-compatible local servers, including `mlx_lm.server` and Rapid-MLX. Its purpose is to make local MLX servers easier to operate without becoming part of the inference request path.
 
 The current Direct Mode path remains:
 
@@ -66,8 +66,8 @@ OpenAI-compatible client -> mlx_lm.server or adopted external server -> MLX mode
 Current boundaries:
 
 - No inference proxy.
-- No Chat UI.
-- No multi-backend routing.
+- No general-purpose or persistent conversation workspace; Test Chat is an explicit diagnostic request surface.
+- No hidden or automatic multi-backend routing; each profile selects its backend explicitly.
 - No hidden request rewriting.
 - No automatic external process ownership changes.
 - Stop and Restart apply only to app-managed processes.
@@ -96,13 +96,13 @@ Convenience is welcome when it makes local `mlx-lm` safer or easier without maki
 Current releases do not include:
 
 - inference proxy,
-- Chat UI,
-- multi-backend router,
+- general-purpose or persistent chat workspace,
+- hidden or automatic multi-backend router,
 - automatic model deletion,
 - automatic server start after import or download workflows,
 - hidden background downloads,
 - external process takeover,
-- model deletion or cache cleanup,
+- direct model-directory deletion or unconfirmed cache cleanup,
 - replacement for dedicated package managers or Hugging Face tooling.
 
 Explicit Hugging Face search and download are accepted convenience features only when user-triggered, visible, and outside the inference path.
@@ -111,7 +111,7 @@ Explicit Hugging Face search and download are accepted convenience features only
 
 Future candidates can be considered if they preserve performance, safety, and Direct Mode boundaries:
 
-- future full app layout refresh planning after v5.0.0 finalized Dashboard UI Refresh v1, v5.1.0 clarified the stable follow-up boundary, v5.2.0 documented a candidate v6.x direction in [Full App Layout Refresh Design](full_app_layout_refresh.md), v5.3.0 detailed the first candidate App Shell / Sidebar Foundation step in [App Shell / Sidebar Foundation Design](app_shell_sidebar_foundation.md), v5.4.0 detailed the candidate Profiles / Model List Surface in [Profiles / Model List Surface Design](profiles_model_list_surface.md), v5.5.0 detailed the candidate Detail Inspector Foundation in [Detail Inspector Foundation Design](detail_inspector_foundation.md), v5.6.0 detailed the candidate Logs Panel Refresh in [Logs Panel Refresh Design](logs_panel_refresh.md), v5.7.0 detailed the candidate Client Setup Surface in [Client Setup Surface Design](client_setup_surface.md), v5.8.0 detailed the candidate Metrics / System Context in [Metrics / System Context Design](metrics_system_context.md), and v5.9.0 consolidated readiness criteria in [v6 Implementation Readiness Review](v6_implementation_readiness.md),
+- runtime health, capability detection, and failure-recovery polish,
 - deeper local cache awareness,
 - full model-card browsing boundaries,
 - profile templates,
@@ -119,11 +119,11 @@ Future candidates can be considered if they preserve performance, safety, and Di
 - connection settings polish,
 - optional speed test polish.
 
-Each candidate should define what it changes, what it refuses to change, and how it avoids interfering with active `mlx_lm.server` generation.
+Each candidate should define what it changes, what it refuses to change, and how it avoids interfering with active managed generation.
 
 Import conflict handling should follow the same rule. v3.3.0 implements Rename for profile-name conflicts as an explicit metadata operation. v3.4.0 implements Replace only for one unambiguous existing profile target, with explicit confirmation. v3.5.0 adds deterministic fixtures and service-level tests for the current import/export schema and conflict behavior. v4.0.0 treats Import / Export as stable within this metadata-only boundary. Replace remains metadata-only and must not start servers, call readiness endpoints, alter external process ownership, or interfere with active generation.
 
-Dashboard refresh work should follow the same principle. v4.1.0 defined the dashboard information architecture. v4.2.0 through v4.9.0 added the display-oriented dashboard pieces in small behavior-preserving steps: Current Target, Server State, Logs / Diagnostics guidance, Profiles / Import Export guidance, Next Steps guidance, scan-order grouping, and Client Setup guidance. v5.0.0 finalizes Dashboard UI Refresh v1 as the stable overview for Next Steps, Current Target, Server State, Client Setup, Diagnostics & Logs, and Profiles / Import Export. v5.1.0 keeps Dashboard v1 stable and separates future full-layout work from the current dashboard surface. v5.2.0 documents a possible future v6.x Full App Layout Refresh without implementing it. v5.3.0 narrows that into an App Shell / Sidebar Foundation design for a possible future v6.0.0 implementation. v5.4.0 narrows the next stage into a Profiles / Model List Surface design for a possible future v6.1.0 implementation. v5.5.0 narrows the following stage into a Detail Inspector Foundation design for a possible future v6.2.0 implementation. v5.6.0 narrows the following stage into a Logs Panel Refresh design for a possible future v6.3.0 implementation. v5.7.0 narrows the following stage into a Client Setup Surface design for a possible future v6.4.0 implementation. v5.8.0 narrows the following stage into a Metrics / System Context design for a possible future v6.5.0 implementation. v5.9.0 consolidates the readiness review and recommends starting future app-code work with a narrow v6.0.0 App Shell / Sidebar Foundation only. These steps do not change server lifecycle behavior, Direct Mode, import/export behavior, import/export schema, selected profile behavior, current target behavior, onboarding persistence, API key/token persistence, generated client config persistence, automatic client configuration behavior, new network behavior, request logging/tracing behavior, inference traffic inspection behavior, metrics persistence, external process metrics collection, external process ownership, external log capture behavior, telemetry behavior, background monitoring behavior, model download behavior, model deletion behavior, model scanning, or cache cleanup. Future broader app layout work should be staged separately from Dashboard v1.
+Historical release-planning documents remain useful records of how the current workspace evolved, but they are not authoritative for present scope. Current product and engineering decisions must follow [Stable Scope](stable_scope.md), this document, and `AGENTS.md`.
 
 ## Model Download Position
 
@@ -138,7 +138,7 @@ Current download boundaries:
 - Hugging Face token handling must remain outside app persistence unless a future release defines explicit safe storage,
 - downloaded model metadata must not be confused with profile import/export metadata.
 
-Model deletion and Hugging Face cache cleanup remain separate, higher-risk areas and are not part of the current scope.
+Direct model-directory deletion remains outside the current scope. Matching Hugging Face cache cleanup is available only as an explicit, confirmed option during profile deletion, with path and source safety checks; it is never triggered by import, download, or server lifecycle automation.
 
 ## Safety and Privacy Boundaries
 

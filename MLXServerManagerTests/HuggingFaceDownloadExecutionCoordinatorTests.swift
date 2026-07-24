@@ -39,6 +39,45 @@ final class HuggingFaceDownloadExecutionCoordinatorTests: XCTestCase {
         await fulfillment(of: [completed], timeout: 1)
     }
 
+    func testCompletionIsDeliveredAfterAllOutputLines() async {
+        let manager = ControlledHuggingFaceDownloadManager()
+        let started = expectation(description: "Download started")
+        let completed = expectation(description: "Download completed")
+        manager.onStart = { started.fulfill() }
+        let coordinator = makeCoordinator()
+        var events: [String] = []
+
+        XCTAssertTrue(
+            coordinator.start(
+                id: UUID(),
+                manager: manager,
+                request: makeRequest(destinationPath: "/tmp/model-a"),
+                expectedFiles: [],
+                totalBytes: nil,
+                outputHandler: { line in
+                    events.append("output:\(line)")
+                },
+                progressHandler: { _ in },
+                completionHandler: { _ in
+                    events.append("completion")
+                    completed.fulfill()
+                }
+            )
+        )
+
+        await fulfillment(of: [started], timeout: 1)
+        manager.emit("[hf:stdout] first")
+        manager.emit("[hf:stderr] final")
+        manager.succeed(destinationPath: "/tmp/model-a")
+        await fulfillment(of: [completed], timeout: 1)
+
+        XCTAssertEqual(events, [
+            "output:[hf:stdout] first",
+            "output:[hf:stderr] final",
+            "completion"
+        ])
+    }
+
     func testCancellationBeforeExecutionStartsDoesNotCallDownload() async {
         let manager = ControlledHuggingFaceDownloadManager()
         let completed = expectation(description: "Cancellation completed")
@@ -282,12 +321,14 @@ private final class ControlledHuggingFaceDownloadManager: HuggingFaceModelDownlo
     private(set) var downloadCallCount = 0
     private(set) var cancelCallCount = 0
     private var continuation: CheckedContinuation<HuggingFaceDownloadResult, Error>?
+    private var outputHandler: (@Sendable (String) -> Void)?
 
     func download(
         request: HuggingFaceDownloadRequest,
         outputHandler: @escaping @Sendable (String) -> Void
     ) async throws -> HuggingFaceDownloadResult {
         downloadCallCount += 1
+        self.outputHandler = outputHandler
         onStart?()
         return try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
@@ -296,6 +337,10 @@ private final class ControlledHuggingFaceDownloadManager: HuggingFaceModelDownlo
 
     func cancel() {
         cancelCallCount += 1
+    }
+
+    func emit(_ line: String) {
+        outputHandler?(line)
     }
 
     func succeed(destinationPath: String) {
@@ -307,10 +352,12 @@ private final class ControlledHuggingFaceDownloadManager: HuggingFaceModelDownlo
             )
         )
         continuation = nil
+        outputHandler = nil
     }
 
     func fail(with error: HuggingFaceDownloadError) {
         continuation?.resume(throwing: error)
         continuation = nil
+        outputHandler = nil
     }
 }

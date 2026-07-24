@@ -89,7 +89,7 @@ final class InternalServiceRegressionTests: XCTestCase {
             port: 8080,
             enableThinking: false,
             advancedLaunchOptions: AdvancedLaunchOptions(
-                rawExtraArgs: "--model other/model --host=0.0.0.0 --port 9000 --safe-flag value"
+                rawExtraArgs: "--model other/model --host=0.0.0.0 --port 9000 --prompt-cache-size 99 --prompt-cache-bytes=999999999 --safe-flag value"
             )
         )
 
@@ -111,7 +111,7 @@ final class InternalServiceRegressionTests: XCTestCase {
             port: 8088,
             enableThinking: true,
             advancedLaunchOptions: AdvancedLaunchOptions(
-                rawExtraArgs: "--host 0.0.0.0 --port=9000 --model alternate-model --safe-flag"
+                rawExtraArgs: "--host 0.0.0.0 --port=9000 --prefix-cache-size 99 --cache-memory-mb=99999 --cache-memory-percent 0.9 --model alternate-model --safe-flag"
             )
         )
 

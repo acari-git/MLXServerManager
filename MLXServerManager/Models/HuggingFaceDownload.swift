@@ -91,17 +91,37 @@ nonisolated enum HuggingFaceModelReferenceError: LocalizedError, Equatable {
     case unsupportedRepositoryType
 
     var errorDescription: String? {
+        localizedDescription(language: .english)
+    }
+
+    func localizedDescription(language: AppLanguage) -> String {
+        let strings = AppLocalization(language: language)
         switch self {
         case .emptyInput:
-            "Enter a Hugging Face model ID or model URL."
+            return strings.text(
+                english: "Enter a Hugging Face model ID or model URL.",
+                japanese: "Hugging FaceのModel IDまたはモデルURLを入力してください。"
+            )
         case .invalidURL:
-            "Enter a valid huggingface.co model URL."
+            return strings.text(
+                english: "Enter a valid huggingface.co model URL.",
+                japanese: "有効なhuggingface.coのモデルURLを入力してください。"
+            )
         case .missingRepository:
-            "The URL does not include an owner and model name."
+            return strings.text(
+                english: "The URL does not include an owner and model name.",
+                japanese: "URLにオーナー名とモデル名が含まれていません。"
+            )
         case .invalidRepositoryID:
-            "Use a model ID such as owner/model-name."
+            return strings.text(
+                english: "Use a model ID such as owner/model-name.",
+                japanese: "owner/model-name形式のModel IDを使用してください。"
+            )
         case .unsupportedRepositoryType:
-            "Only Hugging Face model repositories are supported in this release."
+            return strings.text(
+                english: "Only Hugging Face model repositories are supported in this release.",
+                japanese: "このリリースではHugging Faceのモデルリポジトリのみ対応しています。"
+            )
         }
     }
 }
@@ -147,6 +167,59 @@ nonisolated struct HuggingFaceDownloadPreview: Equatable {
     let message: String
     let canDownload: Bool
 
+    func localizedMessage(language: AppLanguage) -> String {
+        guard language.resolved == .japanese else {
+            return message
+        }
+        let translations: [String: String] = [
+            "Save directory is not a local path.": "保存先がローカルパスではありません。",
+            "Ready to download.": "ダウンロードできます。",
+            "Ready to resume or update existing destination.": "既存の保存先を再開または更新できます。",
+            "Cannot download because the destination path is a file.": "保存先パスがファイルのためダウンロードできません。",
+            "Enter a Hugging Face model ID or model URL.": "Hugging FaceのModel IDまたはモデルURLを入力してください。",
+            "Enter a valid huggingface.co model URL.": "有効なhuggingface.coのモデルURLを入力してください。",
+            "The URL does not include an owner and model name.": "URLにオーナー名とモデル名が含まれていません。",
+            "Use a model ID such as owner/model-name.": "owner/model-name形式のModel IDを使用してください。",
+            "Only Hugging Face model repositories are supported in this release.": "このリリースではHugging Faceのモデルリポジトリのみ対応しています。"
+        ]
+        if let translated = translations[message] {
+            return translated
+        }
+        if message.hasPrefix("The destination folder belongs to ") {
+            return message
+                .replacingOccurrences(of: "The destination folder belongs to ", with: "保存先フォルダは")
+                .replacingOccurrences(of: ". Choose another save folder to avoid mixing model files.", with: "に属しています。モデルファイルの混在を避けるため、別の保存フォルダを選択してください。")
+        }
+        if message.hasPrefix("The destination folder uses unsupported MLX Server Manager download metadata version ") {
+            return message.replacingOccurrences(
+                of: "The destination folder uses unsupported MLX Server Manager download metadata version ",
+                with: "保存先フォルダでは未対応のMLX Server Managerダウンロードメタデータバージョンが使用されています: "
+            )
+        }
+        let genericTranslations: [String: String] = [
+            "The destination path is an existing file.": "保存先パスは既存のファイルです。",
+            "The destination folder already contains files, but its Hugging Face source cannot be verified. Choose another save folder to avoid mixing model files.": "保存先フォルダには既存ファイルがありますが、Hugging Faceの取得元を確認できません。モデルファイルの混在を避けるため、別の保存フォルダを選択してください。",
+            "The destination folder contains unreadable MLX Server Manager download metadata. Choose another save folder to avoid mixing model files.": "保存先フォルダのMLX Server Managerダウンロードメタデータを読み取れません。モデルファイルの混在を避けるため、別の保存フォルダを選択してください。"
+        ]
+        return genericTranslations[message] ?? message
+    }
+
+    func localizedDestinationNote(language: AppLanguage) -> String {
+        guard language.resolved == .japanese else {
+            return destinationNote
+        }
+        let translations: [String: String] = [
+            "No local destination.": "ローカル保存先がありません。",
+            "Destination will be created.": "保存先フォルダを作成します。",
+            "Destination is empty and will be assigned to this model.": "保存先は空です。このモデル用として使用します。",
+            "Destination source matches. Download will update or resume this folder.": "保存先の取得元が一致しています。このフォルダを更新または再開します。",
+            "Destination already exists. Download will update or reuse this folder.": "保存先はすでに存在します。このフォルダを更新または再利用します。",
+            "Destination is an existing file. Choose another save folder.": "保存先は既存ファイルです。別の保存フォルダを選択してください。",
+            "No destination until a valid model ID or URL is entered.": "有効なModel IDまたはURLを入力するまで保存先は作成されません。"
+        ]
+        return translations[destinationNote] ?? localizedMessage(language: language)
+    }
+
     static func make(draft: HuggingFaceDownloadDraft) -> HuggingFaceDownloadPreview {
         switch HuggingFaceModelReference.parse(draft.source) {
         case let .success(reference):
@@ -188,7 +261,7 @@ nonisolated struct HuggingFaceDownloadPreview: Equatable {
     }
 }
 
-nonisolated enum HuggingFaceDownloadPhase: String, Codable, Equatable {
+nonisolated enum HuggingFaceDownloadPhase: String, Codable, Equatable, Sendable {
     case waiting
     case preparing
     case downloading
@@ -231,7 +304,7 @@ nonisolated enum HuggingFaceDownloadPhase: String, Codable, Equatable {
     }
 }
 
-nonisolated struct HuggingFaceDownloadQueueEntry: Codable, Identifiable, Equatable {
+nonisolated struct HuggingFaceDownloadQueueEntry: Codable, Identifiable, Equatable, Sendable {
     let id: UUID
     let repositoryID: String
     let destinationPath: String
@@ -264,9 +337,17 @@ nonisolated struct HuggingFaceDownloadQueueEntry: Codable, Identifiable, Equatab
     }
 
     var capacityProgressText: String {
+        localizedCapacityProgressText(language: .english)
+    }
+
+    func localizedCapacityProgressText(language: AppLanguage) -> String {
         guard let progressFraction else {
             if let downloadedBytes {
-                return "\(ByteCountFormatter.string(fromByteCount: downloadedBytes, countStyle: .file)) downloaded"
+                let size = ByteCountFormatter.string(fromByteCount: downloadedBytes, countStyle: .file)
+                return AppLocalization(language: language).text(
+                    english: "\(size) downloaded",
+                    japanese: "\(size) ダウンロード済み"
+                )
             }
             return "-"
         }
@@ -276,12 +357,22 @@ nonisolated struct HuggingFaceDownloadQueueEntry: Codable, Identifiable, Equatab
     }
 
     var progressText: String {
-        let files = fileCount.map { "\(downloadedFileCount ?? 0) / \($0) files" } ?? "files unknown"
-        return "\(files) • \(capacityProgressText)"
+        localizedProgressText(language: .english)
+    }
+
+    func localizedProgressText(language: AppLanguage) -> String {
+        let strings = AppLocalization(language: language)
+        let files = fileCount.map {
+            strings.text(
+                english: "\(downloadedFileCount ?? 0) / \($0) files",
+                japanese: "\(downloadedFileCount ?? 0) / \($0)ファイル"
+            )
+        } ?? strings.text(english: "files unknown", japanese: "ファイル数不明")
+        return "\(files) • \(localizedCapacityProgressText(language: language))"
     }
 }
 
-struct HuggingFaceDownloadStatus: Equatable {
+nonisolated struct HuggingFaceDownloadStatus: Equatable, Sendable {
     var phase: HuggingFaceDownloadPhase
     var message: String
     var repositoryID: String?

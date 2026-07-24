@@ -461,7 +461,7 @@ All changes should be reviewed for:
 - No local personal paths.
 - No model files or runtime settings.
 - No app bundles or build artifacts.
-- No expansion into Chat UI, inference proxy behavior, or request routing between backends.
+- No expansion into a general-purpose or persistent Chat UI, inference proxy behavior, or hidden automatic routing between backends. Explicit Test Chat and profile-selected backends remain within the stable scope.
 
 ## Documentation
 
