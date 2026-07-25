@@ -343,7 +343,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 30.0.0;
+				MARKETING_VERSION = 34.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yoinkun.MLXServerManager;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -375,7 +375,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 30.0.0;
+				MARKETING_VERSION = 34.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yoinkun.MLXServerManager;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;

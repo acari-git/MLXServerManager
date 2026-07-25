@@ -28,7 +28,7 @@ Expected result: no real tokens.
 Run:
 
 ```sh
-git ls-files settings.json models.json '*.safetensors' '*.gguf' '*.bin' '.env' HF_TOKEN models logs .venv '*.app' '*.zip' '*.dSYM'
+git ls-files settings.json models.json session-recovery.json '*.safetensors' '*.gguf' '*.bin' '.env' HF_TOKEN models logs .venv '*.app' '*.zip' '*.dSYM'
 ```
 
 Expected result: empty.

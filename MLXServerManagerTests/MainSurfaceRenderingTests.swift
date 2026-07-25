@@ -81,6 +81,21 @@ final class MainSurfaceRenderingTests: XCTestCase {
         for scenario in scenarios {
             let context = try makeViewModel(language: scenario.language)
             defer { context.cleanup() }
+            let recoveryRecord = SessionRecoveryRecord(
+                sessionID: UUID(),
+                disposition: .active,
+                endpoints: [
+                    SessionRecoveryEndpoint(
+                        profileID: context.viewModel.models[0].id,
+                        displayName: context.viewModel.models[0].displayName,
+                        modelID: context.viewModel.models[0].modelID,
+                        host: context.viewModel.models[0].host,
+                        port: context.viewModel.models[0].serverPort
+                    )
+                ]
+            )
+            var recoveryState = SessionRecoveryViewState.presenting(record: recoveryRecord)
+            recoveryState.complete([recoveryRecord.endpoints[0].id: .available(statusCode: 200)])
 
             let surfaces: [(String, AnyView)] = [
                 (
@@ -103,6 +118,20 @@ final class MainSurfaceRenderingTests: XCTestCase {
                         IntegratedWorkspaceView(
                             viewModel: context.viewModel,
                             selectedDestination: .logs
+                        )
+                        .environment(\.colorScheme, scenario.colorScheme)
+                    )
+                ),
+                (
+                    "session-recovery",
+                    AnyView(
+                        SessionRecoveryView(
+                            state: recoveryState,
+                            models: context.viewModel.models,
+                            language: scenario.language,
+                            onCheck: {},
+                            onAdopt: { _ in },
+                            onDismiss: {}
                         )
                         .environment(\.colorScheme, scenario.colorScheme)
                     )

@@ -226,6 +226,10 @@ final class AppViewModel: ObservableObject {
     var isMiniChatRunning: Bool { miniChatViewState.isRunning }
     @Published var hermesAgentConfigMessage = AppViewModel.defaultHermesAgentConfigMessage(language: .system)
     @Published var runtimeReadinessViewState = RuntimeReadinessViewState.initial()
+    @Published var runtimeSetupAssistantViewState = RuntimeSetupAssistantViewState.initial
+    @Published var runtimeCompatibilityViewState = RuntimeCompatibilityViewState.initial
+    @Published var applicationTerminationPhase: ApplicationTerminationPhase = .idle
+    @Published var sessionRecoveryViewState: SessionRecoveryViewState = .hidden
     @Published var runtimeEvents: [RuntimeEvent] = []
     @Published var operationalHistoryCategoryFilter = OperationalHistoryProjection.allCategories
     @Published var operationalHistorySeverityFilter: OperationalHistorySeverityFilter = .all
@@ -274,6 +278,13 @@ final class AppViewModel: ObservableObject {
     private let mlxLMServerCapabilityProvider: any MLXLMServerCapabilityProviding
     let runtimeReadinessService: any RuntimeReadinessAssessing
     let runtimeReadinessRunCoordinator: LatestRequestCoordinator
+    let runtimeSetupAssistantService: any RuntimeSetupAssisting
+    let runtimeSetupAssistantRunCoordinator: LatestRequestCoordinator
+    let runtimeCompatibilityService: any RuntimeCompatibilityAssessing
+    let runtimeCompatibilityRunCoordinator: LatestRequestCoordinator
+    let applicationTerminationCoordinator: ApplicationTerminationCoordinator
+    let sessionRecoveryStore: SessionRecoveryStore
+    let sessionRecoveryCoordinator: SessionRecoveryCoordinator
     let modelProfileValidator = ModelProfileValidator()
     let localModelIntegrityChecker: any LocalModelIntegrityChecking
     private let modelStartPreflightEvaluator: ModelStartPreflightEvaluator
@@ -397,7 +408,10 @@ final class AppViewModel: ObservableObject {
         agenticBenchmarkService: AgenticBenchmarkService? = nil,
         testChatService: TestChatService? = nil,
         mlxLMServerCapabilityProvider: (any MLXLMServerCapabilityProviding)? = nil,
-        runtimeReadinessService: (any RuntimeReadinessAssessing)? = nil
+        runtimeReadinessService: (any RuntimeReadinessAssessing)? = nil,
+        runtimeSetupAssistantService: (any RuntimeSetupAssisting)? = nil,
+        runtimeCompatibilityService: (any RuntimeCompatibilityAssessing)? = nil,
+        sessionRecoveryStore: SessionRecoveryStore? = nil
     ) {
         self.benchmarkViewState = BenchmarkViewState(
             latestSpeedTestMessage: Self.defaultSpeedTestMessage(language: .system)
@@ -470,6 +484,13 @@ final class AppViewModel: ObservableObject {
             mlxLMCapabilityProvider: resolvedMLXLMServerCapabilityProvider
         )
         self.runtimeReadinessRunCoordinator = LatestRequestCoordinator()
+        self.runtimeSetupAssistantService = runtimeSetupAssistantService ?? RuntimeSetupAssistantService()
+        self.runtimeSetupAssistantRunCoordinator = LatestRequestCoordinator()
+        self.runtimeCompatibilityService = runtimeCompatibilityService ?? RuntimeCompatibilityService()
+        self.runtimeCompatibilityRunCoordinator = LatestRequestCoordinator()
+        self.applicationTerminationCoordinator = ApplicationTerminationCoordinator()
+        self.sessionRecoveryStore = sessionRecoveryStore ?? SessionRecoveryStore()
+        self.sessionRecoveryCoordinator = SessionRecoveryCoordinator()
         let initialLogStateCoordinator = LogStateCoordinator(initialLines: Self.initialLogLines)
         self.logStateCoordinator = initialLogStateCoordinator
         self.logViewState = initialLogStateCoordinator.state
@@ -487,6 +508,7 @@ final class AppViewModel: ObservableObject {
         selectedModelID = models.first?.id
         resetModelAvailabilityForCurrentSelection()
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
+            beginSessionRecoveryTracking()
             loadSystemHardwareInfo()
             startSystemUsageMonitoring()
             startAutoUnloadMonitoring()
@@ -2919,6 +2941,7 @@ final class AppViewModel: ObservableObject {
         }
         invalidatePortCheckCache()
         appendLog("[\(logPrefix)] running modelID: \(modelID)")
+        updateSessionRecoveryTracking()
         logRestartRequiredIfNeeded()
     }
 
@@ -2941,6 +2964,7 @@ final class AppViewModel: ObservableObject {
         }
         invalidatePortCheckCache()
         appendLog("[\(logPrefix)] running model cleared: \(modelID)")
+        updateSessionRecoveryTracking()
     }
 
     private func handleUnexpectedProcessTermination(modelID: ModelConfig.ID, status: Int32) {

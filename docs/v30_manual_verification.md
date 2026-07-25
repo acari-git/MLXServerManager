@@ -74,11 +74,11 @@ Automated policy coverage verifies that Border Beam animation:
 - reduces bloom intensity when Reduce Transparency is enabled,
 - appears only for explicit active operational states.
 
-A visual check using the actual macOS accessibility toggles remains required before publishing the binary.
+A visual check using the actual macOS accessibility toggles was not completed before publication and remains a post-release verification item.
 
 ## Public-Safety Inspection
 
-The changed and untracked release-candidate files were checked for:
+The v30 release files were checked for:
 
 - Hugging Face, OpenAI, and GitHub token patterns,
 - tracked settings or model profile files,

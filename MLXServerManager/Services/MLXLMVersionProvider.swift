@@ -1,6 +1,6 @@
 import Foundation
 
-struct MLXLMVersionProvider {
+nonisolated struct MLXLMVersionProvider {
     var fileManager: FileManager = .default
     var timeout: TimeInterval = 2
 

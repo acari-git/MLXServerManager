@@ -14,9 +14,16 @@ struct SettingsPanelView: View {
     @Binding var appearance: String
     let settingsDirectoryPath: String
     let runtimeReadinessState: RuntimeReadinessViewState
+    let runtimeSetupAssistantState: RuntimeSetupAssistantViewState
+    let runtimeCompatibilityState: RuntimeCompatibilityViewState
     let hasUnsavedChanges: Bool
     let onRefreshRuntimeReadiness: () -> Void
     let onCancelRuntimeReadiness: () -> Void
+    let onDiscoverRuntimeCandidates: () -> Void
+    let onCancelRuntimeCandidateDiscovery: () -> Void
+    let onApplyRuntimeCandidate: (RuntimeSetupCandidate) -> Void
+    let onRefreshRuntimeCompatibility: () -> Void
+    let onCancelRuntimeCompatibility: () -> Void
     let onDiscard: () -> Void
     let onSave: () -> Void
 
@@ -114,6 +121,10 @@ struct SettingsPanelView: View {
                 )
 
                 runtimeReadinessSection
+
+                runtimeSetupAssistantSection
+
+                runtimeCompatibilitySection
 
                 settingsSection(
                     title: t("Downloads", "ダウンロード"),
@@ -285,6 +296,203 @@ struct SettingsPanelView: View {
         case .ready: .green
         case .warning: .orange
         case .unavailable: .red
+        }
+    }
+
+    private var runtimeSetupAssistantSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                if runtimeSetupAssistantState.didSearch && runtimeSetupAssistantState.candidates.isEmpty {
+                    Text(t(
+                        "No executable candidates were found in the configured path, PATH, Homebrew locations, or the limited user-environment locations.",
+                        "設定済みパス、PATH、Homebrewの場所、限定したユーザー環境の場所に実行ファイル候補は見つかりませんでした。"
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+
+                ForEach(runtimeSetupAssistantState.candidates) { candidate in
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "terminal")
+                            .foregroundStyle(Color.accentColor)
+                            .frame(width: 18)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(candidate.backend.localizedTitle(language: language))
+                                .font(.callout.weight(.semibold))
+                            Text(candidate.executablePath)
+                                .font(.caption.monospaced())
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .textSelection(.enabled)
+                            Text([
+                                candidate.localizedSource(language: language),
+                                candidate.version ?? t("Version unavailable", "バージョン不明")
+                            ].joined(separator: " • "))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        }
+
+                        Spacer(minLength: 8)
+
+                        Button(t("Use path", "このパスを使用")) {
+                            onApplyRuntimeCandidate(candidate)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    if runtimeSetupAssistantState.isSearching {
+                        Button(t("Cancel search", "検索を中止")) {
+                            onCancelRuntimeCandidateDiscovery()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    Button {
+                        onDiscoverRuntimeCandidates()
+                    } label: {
+                        Label(
+                            runtimeSetupAssistantState.isSearching
+                                ? t("Searching runtimes", "ランタイムを検索中")
+                                : t("Find runtime candidates", "ランタイム候補を検索"),
+                            systemImage: "magnifyingglass"
+                        )
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(runtimeSetupAssistantState.isSearching)
+
+                    Spacer(minLength: 0)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(t("Runtime setup assistant", "ランタイム設定アシスタント"))
+                    .font(.headline)
+                Text(t(
+                    "Finds executable candidates without installing software or changing Settings automatically.",
+                    "ソフトウェアをインストールせず、設定を自動変更せずに実行ファイル候補を探します。"
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityIdentifier("settings-runtime-setup-assistant")
+    }
+
+    private var runtimeCompatibilitySection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 14) {
+                if runtimeCompatibilityState.didCheck {
+                    ForEach(runtimeCompatibilityState.reports) { report in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(report.backend.localizedTitle(language: language))
+                                    .font(.callout.weight(.semibold))
+                                Spacer()
+                                Text(report.version ?? t("Version unavailable", "バージョン不明"))
+                                    .font(.caption.monospaced())
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            if report.executablePath.isEmpty {
+                                Text(t(
+                                    "Configure an executable path before checking compatibility.",
+                                    "互換性を確認する前に実行ファイルパスを設定してください。"
+                                ))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            } else {
+                                LazyVGrid(
+                                    columns: [GridItem(.flexible()), GridItem(.flexible())],
+                                    alignment: .leading,
+                                    spacing: 8
+                                ) {
+                                    ForEach(report.features) { result in
+                                        HStack(spacing: 6) {
+                                            Image(systemName: compatibilitySymbol(result.support))
+                                                .foregroundStyle(compatibilityColor(result.support))
+                                            VStack(alignment: .leading, spacing: 1) {
+                                                Text(result.feature.localizedTitle(language: language))
+                                                    .font(.caption)
+                                                Text(result.support.localizedTitle(language: language))
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if report.id != runtimeCompatibilityState.reports.last?.id {
+                            Divider()
+                        }
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    if runtimeCompatibilityState.isChecking {
+                        Button(t("Cancel inspection", "確認を中止")) {
+                            onCancelRuntimeCompatibility()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    Button {
+                        onRefreshRuntimeCompatibility()
+                    } label: {
+                        Label(
+                            runtimeCompatibilityState.isChecking
+                                ? t("Inspecting compatibility", "互換性を確認中")
+                                : t("Inspect compatibility", "互換性を確認"),
+                            systemImage: "tablecells"
+                        )
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(runtimeCompatibilityState.isChecking)
+
+                    Spacer(minLength: 0)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(t("Runtime compatibility matrix", "ランタイム互換性マトリクス"))
+                    .font(.headline)
+                Text(t(
+                    "Reports only flags detected from the configured executable. Unknown support remains unknown.",
+                    "設定済み実行ファイルから検出したフラグだけを表示します。不明な対応状況は不明のまま扱います。"
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityIdentifier("settings-runtime-compatibility")
+    }
+
+    private func compatibilitySymbol(_ support: RuntimeCompatibilitySupport) -> String {
+        switch support {
+        case .supported: "checkmark.circle.fill"
+        case .partial: "circle.lefthalf.filled"
+        case .unsupported: "xmark.circle"
+        case .unknown: "questionmark.circle"
+        }
+    }
+
+    private func compatibilityColor(_ support: RuntimeCompatibilitySupport) -> Color {
+        switch support {
+        case .supported: .green
+        case .partial: .orange
+        case .unsupported: .secondary
+        case .unknown: .secondary
         }
     }
 

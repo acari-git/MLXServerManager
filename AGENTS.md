@@ -41,7 +41,7 @@ MLX Server Manager must not insert a proxy, router, request rewriter, or traffic
 
 Do not commit runtime settings, model profiles, model files, Hugging Face cache content, logs, secrets, virtual environments, app bundles, zip archives, dSYM files, DerivedData, or build artifacts. In particular, keep these outside Git:
 
-- `settings.json`, `models.json`
+- `settings.json`, `models.json`, `session-recovery.json`
 - `.env`, `HF_TOKEN`, token/key files
 - `.venv`, `models`, `logs`
 - `*.safetensors`, `*.gguf`, `*.bin`, `*.onnx`, `*.mlx`

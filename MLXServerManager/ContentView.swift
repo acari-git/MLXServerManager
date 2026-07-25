@@ -18,6 +18,44 @@ struct ContentView: View {
         strings.text(english: english, japanese: japanese)
     }
 
+    private var terminationPromptBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.applicationTerminationPhase.isPrompting },
+            set: { isPresented in
+                if !isPresented, viewModel.applicationTerminationPhase.isPrompting {
+                    viewModel.cancelApplicationTerminationRequested()
+                }
+            }
+        )
+    }
+
+    private var terminationFailureBinding: Binding<Bool> {
+        Binding(
+            get: {
+                if case .failed = viewModel.applicationTerminationPhase { return true }
+                return false
+            },
+            set: { isPresented in
+                if !isPresented { viewModel.dismissApplicationTerminationFailure() }
+            }
+        )
+    }
+
+    private var terminationTargetCount: Int {
+        if case let .prompting(targets) = viewModel.applicationTerminationPhase {
+            return targets.count
+        }
+        return 0
+    }
+
+    private var terminationFailureMessage: String {
+        guard case let .failed(failures) = viewModel.applicationTerminationPhase else {
+            return ""
+        }
+        return failures.map { "\($0.target.displayName) (\($0.target.endpoint)): \($0.message)" }
+            .joined(separator: "\n")
+    }
+
     var body: some View {
         IntegratedWorkspaceView(viewModel: viewModel)
             .frame(minWidth: 0, minHeight: IntegratedWorkspaceView.baseMinimumHeight)
@@ -44,6 +82,52 @@ struct ContentView: View {
             }
             .animation(.spring(response: 0.30, dampingFraction: 0.88), value: viewModel.profileDeletionUndoState?.id)
             .animation(.spring(response: 0.30, dampingFraction: 0.88), value: viewModel.profileDeletionMessage)
+            .overlay {
+                if case let .stopping(completed, total) = viewModel.applicationTerminationPhase {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text(t(
+                            "Stopping managed servers before quitting (\(completed)/\(total))",
+                            "終了前に管理サーバーを停止しています（\(completed)/\(total)）"
+                        ))
+                        .font(.callout.weight(.medium))
+                    }
+                    .padding(20)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .shadow(radius: 12)
+                    .accessibilityIdentifier("application-termination-progress")
+                }
+            }
+        .confirmationDialog(
+            t("Managed servers are running", "管理サーバーが実行中です"),
+            isPresented: terminationPromptBinding,
+            titleVisibility: .visible
+        ) {
+            Button(t("Stop all and quit", "すべて停止して終了"), role: .destructive) {
+                viewModel.stopAllManagedServersAndQuitRequested()
+            }
+            Button(t("Leave servers running and quit", "サーバーを残して終了")) {
+                viewModel.leaveManagedServersRunningAndQuitRequested()
+            }
+            Button(strings.text(.cancel), role: .cancel) {
+                viewModel.cancelApplicationTerminationRequested()
+            }
+        } message: {
+            Text(t(
+                "\(terminationTargetCount) app-managed server(s) are running. External servers are never stopped by this action.",
+                "アプリ管理のサーバーが\(terminationTargetCount)件実行中です。この操作で外部サーバーを停止することはありません。"
+            ))
+        }
+        .alert(
+            t("Some managed servers did not stop", "停止できなかった管理サーバーがあります"),
+            isPresented: terminationFailureBinding
+        ) {
+            Button(t("Close", "閉じる")) {
+                viewModel.dismissApplicationTerminationFailure()
+            }
+        } message: {
+            Text(terminationFailureMessage)
+        }
         .confirmationDialog(
             t("Delete Model Profile?", "モデルプロファイルを削除しますか？"),
             isPresented: $viewModel.isDeleteProfileConfirmationPresented,
@@ -137,6 +221,19 @@ struct ContentView: View {
             )
             .padding(20)
             .frame(minWidth: 620, minHeight: 520)
+        }
+        .sheet(isPresented: Binding(
+            get: { viewModel.sessionRecoveryViewState.isPresented },
+            set: { if !$0 { viewModel.dismissSessionRecoveryRequested() } }
+        )) {
+            SessionRecoveryView(
+                state: viewModel.sessionRecoveryViewState,
+                models: viewModel.models,
+                language: viewModel.settings.uiLanguage,
+                onCheck: viewModel.checkSessionRecoveryEndpointsRequested,
+                onAdopt: viewModel.adoptSessionRecoveryCandidateRequested,
+                onDismiss: viewModel.dismissSessionRecoveryRequested
+            )
         }
         .sheet(isPresented: $viewModel.isImportPreviewPresented) {
             if let result = viewModel.importPreviewResult {

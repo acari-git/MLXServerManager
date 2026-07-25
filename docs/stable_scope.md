@@ -1,6 +1,6 @@
 # Stable Scope
 
-This document defines the implemented release-candidate scope for MLX Server Manager v30.0.0. The latest published binary remains v25.0.0 until the v30 asset is packaged and released. Older version-specific planning documents describe historical boundaries; this file records the current product surface and Direct Mode rules.
+This document defines the current development scope for MLX Server Manager v34.0.0. The latest published binary is v30.0.0. Older version-specific planning documents describe historical boundaries; this file records the current product surface and Direct Mode rules.
 
 MLX Server Manager is a Direct Mode control surface for app-managed `mlx_lm.server` and Rapid-MLX processes, plus explicitly adopted external OpenAI-compatible endpoints:
 
@@ -20,6 +20,7 @@ The app may launch, stop, monitor, diagnose, and document connection settings fo
 - Stop only app-owned processes, escalating from terminate to interrupt and then force kill only when an owned process does not exit.
 - Restart through Stop, port-release wait, and Start.
 - Optionally auto-unload a managed profile after its configured idle interval.
+- On application quit, explicitly stop all app-owned managed servers, leave them running, or cancel termination.
 - Detect and adopt an external compatible endpoint as connection context without taking process ownership.
 
 ### Health and Diagnostics
@@ -27,6 +28,8 @@ The app may launch, stop, monitor, diagnose, and document connection settings fo
 - Port availability check.
 - Ready check via `GET /v1/models`.
 - Runtime and setup diagnostics for executable path, host, port, storage paths, model path, endpoint state, and readiness.
+- Explicit runtime candidate discovery without software installation or automatic settings changes.
+- Runtime compatibility inspection from detected command flags and version output.
 - Diagnostics, benchmark, and Agent Readiness summaries with copy actions.
 
 ### Settings and Profiles
@@ -59,6 +62,14 @@ The app may launch, stop, monitor, diagnose, and document connection settings fo
 - Benchmark provides Quick, Standard, and Detailed local generation measurements and current-Mac use-case scores.
 - Agent Readiness uses deterministic virtual-tool tasks without Docker or real tool execution.
 - Diagnostic generation calls are explicit and never proxy traffic for another client.
+
+### Session Recovery
+
+- Record app-owned managed endpoint metadata in a local session-recovery file while the app is running.
+- Distinguish clean shutdown, intentional leave-running shutdown, and an interrupted prior session.
+- Re-check prior endpoints explicitly through `GET /v1/models`.
+- Adopt a confirmed remaining endpoint only as external connection context.
+- Never restore process ownership or terminate a recovered endpoint based on the prior-session record.
 
 ### Hermes Agent Integration
 
@@ -98,6 +109,7 @@ The app may launch, stop, monitor, diagnose, and document connection settings fo
 - No silent model generation. Test Chat, Benchmark, and Agent Readiness run only from explicit user actions.
 - No `pkill`, `killall`, or `pgrep` in Swift code.
 - No external `mlx_lm.server` process termination.
+- Session Recovery never restores process ownership from persisted metadata.
 - No local model-folder deletion.
 - No broad Hugging Face cache browsing or cleanup.
 - No committed runtime settings, model files, secrets, app bundles, zip files, dSYM files, or build artifacts.

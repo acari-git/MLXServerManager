@@ -22,7 +22,9 @@ This document lists the current known limitations for MLX Server Manager. Older 
 - Users must provide a working executable path in Settings for every backend they use.
 - Users must provide model files, download models explicitly, or use an existing Hugging Face cache.
 - The app does not replace Python, Homebrew, Hugging Face CLI, or backend environment setup.
-- The app does not verify MLX model compatibility beyond conservative metadata, path, and preflight checks.
+- Runtime Setup Assistant searches only configured, PATH, Homebrew, and a limited set of user-environment locations. It does not install, update, or repair a runtime.
+- Runtime Compatibility Matrix reports detected command flags and version output; it does not guarantee that every model or option combination will execute successfully.
+- The app does not verify MLX model compatibility beyond conservative metadata, path, preflight, and detected runtime-option checks.
 
 ## Model Search, Download, and Profiles
 
@@ -58,7 +60,9 @@ This document lists the current known limitations for MLX Server Manager. Older 
 - App-managed profiles can run concurrently when each uses a distinct available endpoint.
 - Lifecycle, PID, runtime state, and memory measurements are tracked per managed profile.
 - Runtime-affecting edits remain locked while that profile is running.
-- Quit exits the app directly rather than running the managed Stop workflow. Use each model's Stop action first when an explicit, observed shutdown is required.
+- Quit prompts when app-owned managed servers are running. Users can stop all and quit, leave servers running and quit, or cancel.
+- Stop-all-on-quit waits for each owned process and its port release. If any stop fails, application termination is cancelled and the failed targets remain visible.
+- Leaving servers running intentionally does not transfer ownership to a future app session.
 
 ## Readiness, Benchmarks, and Inference
 
@@ -80,6 +84,8 @@ This document lists the current known limitations for MLX Server Manager. Older 
 ## Data and Logs
 
 - `settings.json` and `models.json` are local runtime files.
+- `session-recovery.json` stores only prior session disposition and managed profile endpoint metadata. It does not store prompts, responses, tokens, credentials, or process ownership authority.
+- Session Recovery can re-check a recorded endpoint and adopt it as external connection context, but it cannot prove the process is the same process previously launched by the app.
 - Runtime settings and model profiles are not part of Git or release assets.
 - Logs are kept in memory with a bounded buffer.
 - Persistent file logging is not implemented.

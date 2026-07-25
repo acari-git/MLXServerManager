@@ -68,7 +68,11 @@ final class AppViewModelAsyncOwnershipTests: XCTestCase {
             "huggingFaceOutputStateCoordinator",
             "managedModelOutputCoordinator",
             "modelSizeEstimationCoordinator",
-            "runtimeReadinessRunCoordinator"
+            "runtimeReadinessRunCoordinator",
+            "runtimeSetupAssistantRunCoordinator",
+            "runtimeCompatibilityRunCoordinator",
+            "applicationTerminationCoordinator",
+            "sessionRecoveryCoordinator"
         ]
         let missing = requiredProperties.filter { !source.contains($0) }
 

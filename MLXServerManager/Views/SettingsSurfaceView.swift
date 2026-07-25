@@ -23,6 +23,8 @@ struct SettingsSurfaceView: View {
             appearance: $draftSettings.uiAppearance,
             settingsDirectoryPath: viewModel.settingsDirectoryPath,
             runtimeReadinessState: viewModel.runtimeReadinessViewState,
+            runtimeSetupAssistantState: viewModel.runtimeSetupAssistantViewState,
+            runtimeCompatibilityState: viewModel.runtimeCompatibilityViewState,
             hasUnsavedChanges: hasUnsavedChanges,
             onRefreshRuntimeReadiness: {
                 viewModel.refreshRuntimeReadinessRequested(settings: draftSettings)
@@ -30,6 +32,15 @@ struct SettingsSurfaceView: View {
             onCancelRuntimeReadiness: {
                 viewModel.cancelRuntimeReadinessRequested(settings: draftSettings)
             },
+            onDiscoverRuntimeCandidates: {
+                viewModel.discoverRuntimeCandidatesRequested(settings: draftSettings)
+            },
+            onCancelRuntimeCandidateDiscovery: viewModel.cancelRuntimeCandidateDiscoveryRequested,
+            onApplyRuntimeCandidate: applyRuntimeCandidate,
+            onRefreshRuntimeCompatibility: {
+                viewModel.refreshRuntimeCompatibilityRequested(settings: draftSettings)
+            },
+            onCancelRuntimeCompatibility: viewModel.cancelRuntimeCompatibilityRequested,
             onDiscard: discardDraftSettings,
             onSave: saveDraftSettings
         )
@@ -53,6 +64,15 @@ struct SettingsSurfaceView: View {
 
     private func applyLanguagePreview() {
         viewModel.settings.uiLanguage = draftSettings.uiLanguage
+    }
+
+    private func applyRuntimeCandidate(_ candidate: RuntimeSetupCandidate) {
+        switch candidate.backend {
+        case .mlxLM:
+            draftSettings.mlxServerExecutablePath = candidate.executablePath
+        case .rapidMLX:
+            draftSettings.rapidMLXExecutablePath = candidate.executablePath
+        }
     }
 
     private func saveDraftSettings() {

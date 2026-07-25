@@ -153,7 +153,7 @@ Do not download the source archive if you want the app binary. Use the named `ML
 
 ## Current GUI Direction
 
-v30.0.0 completes the current architecture and operations refinement. The model list remains the primary operating table, while Settings adds runtime readiness, the profile editor adds explicit launch templates, Downloads adds local discovery controls, and Logs adds a separate Operational History. Kinetic feedback is limited to active operations and respects reduced-motion and reduced-transparency settings. Language and theme remain available from the bottom-left Settings menu.
+The current development tree targets v34.0.0 while v30.0.0 remains the latest published app release. It adds safe quit handling for app-owned servers, an explicit Runtime Setup Assistant, a flag-based Runtime Compatibility Matrix, and Session Recovery that treats remaining endpoints as external connection candidates without restoring process ownership. The model list remains the primary operating table, and Direct Mode remains unchanged.
 
 You must provide your own supported backend environment and executable. You can register existing model files, search Hugging Face and choose a result, or use Downloads to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: clients connect directly to the selected endpoint, and MLX Server Manager never proxies client traffic. Test Chat, Benchmark, and Agent Readiness generation requests occur only when the user explicitly runs those diagnostics.
 
@@ -263,7 +263,7 @@ For Hermes Agent and similar clients, see [docs/hermes_agent_connection.md](docs
 
 ## Current Feature Set
 
-As of v30.0.0, MLX Server Manager includes:
+As of the v34.0.0 development tree, MLX Server Manager includes:
 
 - Independent Start, Stop, and Restart for app-managed `mlx_lm.server` and Rapid-MLX processes.
 - Multiple concurrently managed models, each with its own process, endpoint, runtime state, and memory measurement.
@@ -274,6 +274,10 @@ As of v30.0.0, MLX Server Manager includes:
 - Port availability check.
 - Ready check via `GET /v1/models`.
 - Explicit runtime readiness checks for configured `mlx_lm.server` and Rapid-MLX executable paths without starting a server.
+- Safe application termination choices when app-owned managed servers are running: stop all and quit, leave running and quit, or cancel.
+- Runtime Setup Assistant candidate discovery across the configured path, PATH, Homebrew locations, and a limited set of user virtual-environment paths without installing software or saving automatically.
+- Runtime Compatibility Matrix based on detected `--help` flags and `--version` output, with unknown support kept explicitly unknown.
+- Session Recovery for endpoints recorded by an interrupted or intentionally preserved prior session, with explicit readiness checks and external-context adoption only.
 - Settings save and restore.
 - Model profile add, edit, delete, and selection.
 - Explicit Minimal, Balanced, Memory Saver, and Throughput templates that modify only managed launch-tuning fields.
