@@ -11,7 +11,7 @@ nonisolated enum ModelStartPreflightIssue: Equatable {
     case missingModelPath(path: String)
     case incompleteModelDirectory(path: String, issue: LocalModelIntegrityIssue)
     case uninspectableModelDirectory(path: String, message: String)
-    case unsupportedLaunchOptions(flags: [String])
+    case unsupportedLaunchOptions(backend: InferenceBackend, flags: [String])
     case managedEndpointConflict(
         host: String,
         port: Int,
@@ -42,10 +42,10 @@ nonisolated enum ModelStartPreflightIssue: Equatable {
                 english: "Local model files could not be inspected",
                 japanese: "ローカルモデルファイルを確認できません"
             )
-        case let .unsupportedLaunchOptions(flags):
+        case let .unsupportedLaunchOptions(backend, flags):
             return strings.text(
-                english: "Unsupported mlx-lm options: \(flags.joined(separator: ", "))",
-                japanese: "mlx-lm未対応の起動オプション: \(flags.joined(separator: ", "))"
+                english: "Unsupported \(backend.localizedTitle(language: .english)) options: \(flags.joined(separator: ", "))",
+                japanese: "\(backend.localizedTitle(language: .japanese))未対応の起動オプション: \(flags.joined(separator: ", "))"
             )
         case let .managedEndpointConflict(_, _, modelDisplayName, processIdentifier):
             return strings.text(
@@ -76,11 +76,11 @@ nonisolated enum ModelStartPreflightIssue: Equatable {
                 english: "Local model files could not be inspected at \(ModelAvailabilityPathFormatter.compact(path: path)): \(message)",
                 japanese: "\(ModelAvailabilityPathFormatter.compact(path: path)) のローカルモデルファイルを確認できません: \(message)"
             )
-        case let .unsupportedLaunchOptions(flags):
+        case let .unsupportedLaunchOptions(backend, flags):
             let optionList = flags.joined(separator: ", ")
             return strings.text(
-                english: "This mlx-lm executable does not support the configured launch options: \(optionList). Clear them in Advanced Launch Options or update mlx-lm.",
-                japanese: "このmlx-lm実行ファイルは設定済みの起動オプション \(optionList) に対応していません。詳細起動オプションから削除するか、mlx-lmを更新してください。"
+                english: "This \(backend.localizedTitle(language: .english)) executable does not support the configured launch options: \(optionList). Clear them in Advanced Launch Options or update the runtime.",
+                japanese: "この\(backend.localizedTitle(language: .japanese))実行ファイルは設定済みの起動オプション \(optionList) に対応していません。詳細起動オプションから削除するか、ランタイムを更新してください。"
             )
         case let .managedEndpointConflict(host, port, modelDisplayName, processIdentifier):
             return strings.text(

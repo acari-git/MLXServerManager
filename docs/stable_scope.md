@@ -1,6 +1,6 @@
 # Stable Scope
 
-This document defines the published stable scope for MLX Server Manager v34.0.0. The latest published binary is v34.0.0. Older version-specific planning documents describe historical boundaries; this file records the current product surface and Direct Mode rules.
+This document defines the current development scope for MLX Server Manager v40.0.0. The latest published binary remains v34.0.0 until a separate release workflow is explicitly requested. Older version-specific planning documents describe historical boundaries; this file records the current product surface and Direct Mode rules.
 
 MLX Server Manager is a Direct Mode control surface for app-managed `mlx_lm.server` and Rapid-MLX processes, plus explicitly adopted external OpenAI-compatible endpoints:
 
@@ -30,11 +30,17 @@ The app may launch, stop, monitor, diagnose, and document connection settings fo
 - Runtime and setup diagnostics for executable path, host, port, storage paths, model path, endpoint state, and readiness.
 - Explicit runtime candidate discovery without software installation or automatic settings changes.
 - Runtime compatibility inspection from detected command flags and version output.
+- Capability-aware profile assessment and start preflight for both managed backends, while unknown support remains non-blocking.
+- Structured launch-failure classification from a bounded in-memory output window with redacted copy output.
+- Explicit registered-model health inspection limited to configured local paths.
+- Conservative start resource forecasting based on existing multi-model memory and KV-cache safety models.
+- Benchmark-guided unsaved tuning drafts only when current, comparable, multi-sample evidence exists.
+- Unified non-generating Operational Readiness across runtime, compatibility, model health, endpoint, resources, profile options, recovery, benchmark evidence, and Hermes Agent.
 - Diagnostics, benchmark, and Agent Readiness summaries with copy actions.
 
 ### Settings and Profiles
 
-- Save and restore app settings.
+- Save and restore app settings through a versioned authoritative state with schema-1-to-schema-2 migration and recovery backup repair.
 - Save and restore model profiles.
 - Check configured `mlx_lm.server` and Rapid-MLX executable readiness without starting a server.
 - Apply explicit Minimal, Balanced, Memory Saver, or Throughput templates to managed launch-tuning fields while preserving profile identity and unrelated options.
@@ -107,6 +113,8 @@ The app may launch, stop, monitor, diagnose, and document connection settings fo
 - No proxy in the inference path.
 - No general-purpose Chat UI.
 - No silent model generation. Test Chat, Benchmark, and Agent Readiness run only from explicit user actions.
+- Operational Readiness is explicit and non-generating; it does not start a server, download a model, apply settings, or stop an external process.
+- Capability cleanup, resource guidance, and benchmark tuning modify unsaved drafts only and require explicit Save.
 - No `pkill`, `killall`, or `pgrep` in Swift code.
 - No external `mlx_lm.server` process termination.
 - Session Recovery never restores process ownership from persisted metadata.

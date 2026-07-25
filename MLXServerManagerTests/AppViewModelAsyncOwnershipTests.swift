@@ -71,6 +71,9 @@ final class AppViewModelAsyncOwnershipTests: XCTestCase {
             "runtimeReadinessRunCoordinator",
             "runtimeSetupAssistantRunCoordinator",
             "runtimeCompatibilityRunCoordinator",
+            "registeredModelHealthRunCoordinator",
+            "operationalReadinessRunCoordinator",
+            "launchFailureDiagnosticCoordinator",
             "applicationTerminationCoordinator",
             "sessionRecoveryCoordinator"
         ]

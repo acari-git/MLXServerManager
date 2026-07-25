@@ -5,6 +5,7 @@ struct ModelProfileEditorView: View {
     @State private var advancedOptionsStatus: String?
     @State private var selectedProfileTemplate: ModelProfileTemplate = .balanced
     @State private var validationShakeTrigger = 0
+    @State private var draftBeforeTuning: ModelProfileDraft?
 
     let title: String
     let saveButtonTitle: String
@@ -13,6 +14,9 @@ struct ModelProfileEditorView: View {
     let runtimeFieldsLocked: Bool
     let kvCacheEnvironment: KVCacheEnvironment
     let language: AppLanguage
+    var compatibilityAssessment: ProfileCompatibilityAssessment? = nil
+    var resourceForecast: StartResourceForecast? = nil
+    var benchmarkTuningRecommendation: BenchmarkProfileTuningRecommendation? = nil
     var portSuggestionMessage: String? = nil
     var onSuggestPort: (() -> Void)? = nil
     var onEndpointInputChanged: (() -> Void)? = nil
@@ -191,6 +195,12 @@ struct ModelProfileEditorView: View {
 
             profileTemplateSection
 
+            compatibilitySection
+
+            resourceForecastSection
+
+            benchmarkTuningSection
+
             KineticDisclosureSection(
                 label: {
                     Text(t("Advanced Launch Options", "詳細起動オプション"))
@@ -342,6 +352,179 @@ struct ModelProfileEditorView: View {
             .disabled(runtimeFieldsLocked)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var compatibilitySection: some View {
+        if let assessment = compatibilityAssessment {
+            GroupBox {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        Image(systemName: compatibilitySymbol(assessment.level))
+                            .foregroundStyle(compatibilityColor(assessment.level))
+                        Text(assessment.level.localizedTitle(language: language))
+                            .font(.callout.weight(.semibold))
+                    }
+                    Text(assessment.localizedDetail(language: language))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if !assessment.requestedFlags.isEmpty {
+                        Text(assessment.requestedFlags.joined(separator: "  "))
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.tertiary)
+                            .textSelection(.enabled)
+                    }
+
+                    if assessment.canClearUnsupportedOptions {
+                        Button {
+                            draft = RuntimeProfileCompatibilityAdvisor.clearingUnsupportedOptions(
+                                in: draft,
+                                flags: assessment.unsupportedFlags
+                            )
+                            advancedOptionsStatus = t(
+                                "Unsupported options were removed from this unsaved draft.",
+                                "未対応オプションを未保存の編集案から解除しました。"
+                            )
+                        } label: {
+                            Label(t("Clear Unsupported Options", "未対応オプションを解除"), systemImage: "eraser")
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(runtimeFieldsLocked)
+                    }
+                }
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } label: {
+                Text(t("Runtime Compatibility", "ランタイム互換性"))
+            }
+            .accessibilityIdentifier("profile-runtime-compatibility")
+        }
+    }
+
+    @ViewBuilder
+    private var resourceForecastSection: some View {
+        if let forecast = resourceForecast {
+            GroupBox {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        Image(systemName: resourceSymbol(forecast.assessment.level))
+                            .foregroundStyle(resourceColor(forecast.assessment.level))
+                        Text(forecast.localizedTitle(language: language))
+                            .font(.callout.weight(.semibold))
+                    }
+                    Text(forecast.localizedDetail(language: language))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if forecast.didAdjustOptions || forecast.recommendedTemplate != nil {
+                        Button {
+                            draftBeforeTuning = draft
+                            draft.advancedLaunchOptions = forecast.suggestedOptions
+                            if let template = forecast.recommendedTemplate {
+                                draft = template.applying(to: draft)
+                            }
+                            advancedOptionsStatus = t(
+                                "Resource-safe values were applied to this unsaved draft.",
+                                "リソース安全性を考慮した値を未保存の編集案へ反映しました。"
+                            )
+                        } label: {
+                            Label(t("Apply Safe Draft", "安全設定案を反映"), systemImage: "shield.lefthalf.filled")
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(runtimeFieldsLocked)
+                    }
+                }
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } label: {
+                Text(t("Start Resource Forecast", "起動リソース予測"))
+            }
+            .accessibilityIdentifier("profile-resource-forecast")
+        }
+    }
+
+    @ViewBuilder
+    private var benchmarkTuningSection: some View {
+        if let recommendation = benchmarkTuningRecommendation {
+            GroupBox {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(recommendation.useCase.localizedTitle(language: language))
+                        .font(.callout.weight(.semibold))
+                    Text(recommendation.localizedReason(language: language))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: 10) {
+                        Button {
+                            draftBeforeTuning = draft
+                            draft = recommendation.template.applying(to: draft)
+                            advancedOptionsStatus = t(
+                                "Benchmark-guided template applied to this unsaved draft.",
+                                "ベンチマークに基づくテンプレートを未保存の編集案へ反映しました。"
+                            )
+                        } label: {
+                            Label(t("Apply Recommendation", "推奨設定を反映"), systemImage: "chart.bar.xaxis")
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(runtimeFieldsLocked)
+
+                        if let previous = draftBeforeTuning {
+                            Button {
+                                draft = previous
+                                draftBeforeTuning = nil
+                                advancedOptionsStatus = t("Draft change undone.", "編集案の変更を元に戻しました。")
+                            } label: {
+                                Label(t("Undo", "元に戻す"), systemImage: "arrow.uturn.backward")
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                }
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } label: {
+                Text(t("Benchmark-Guided Tuning", "ベンチマークに基づく調整"))
+            }
+            .accessibilityIdentifier("profile-benchmark-tuning")
+        }
+    }
+
+    private func compatibilitySymbol(_ level: ProfileCompatibilityLevel) -> String {
+        switch level {
+        case .compatible: "checkmark.circle.fill"
+        case .blocked: "xmark.octagon.fill"
+        case .unknown: "questionmark.circle"
+        }
+    }
+
+    private func compatibilityColor(_ level: ProfileCompatibilityLevel) -> Color {
+        switch level {
+        case .compatible: .green
+        case .blocked: .red
+        case .unknown: .secondary
+        }
+    }
+
+    private func resourceSymbol(_ level: MultiModelMemoryRiskLevel) -> String {
+        switch level {
+        case .safe: "checkmark.circle.fill"
+        case .caution: "exclamationmark.triangle.fill"
+        case .critical: "xmark.octagon.fill"
+        case .unavailable: "questionmark.circle"
+        }
+    }
+
+    private func resourceColor(_ level: MultiModelMemoryRiskLevel) -> Color {
+        switch level {
+        case .safe: .green
+        case .caution: .orange
+        case .critical: .red
+        case .unavailable: .secondary
+        }
     }
 
     private var profileTemplateSection: some View {

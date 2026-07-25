@@ -153,9 +153,11 @@ Do not download the source archive if you want the app binary. Use the named `ML
 
 ## Current GUI Direction
 
-v34.0.0 is the latest published app release. It adds safe quit handling for app-owned servers, an explicit Runtime Setup Assistant, a flag-based Runtime Compatibility Matrix, and Session Recovery that treats remaining endpoints as external connection candidates without restoring process ownership. The model list remains the primary operating table, and Direct Mode remains unchanged.
+The current development tree targets v40.0.0 while v34.0.0 remains the latest published app release. v35 through v40 connect runtime compatibility to profile editing and start preflight, add structured launch-failure diagnosis, registered-model health inspection, conservative resource forecasting, benchmark-guided unsaved tuning drafts, and a unified Operational Readiness report. The model list remains the primary operating table, and Direct Mode remains unchanged.
 
 You must provide your own supported backend environment and executable. You can register existing model files, search Hugging Face and choose a result, or use Downloads to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: clients connect directly to the selected endpoint, and MLX Server Manager never proxies client traffic. Test Chat, Benchmark, and Agent Readiness generation requests occur only when the user explicitly runs those diagnostics.
+
+See [docs/v35_v40_implementation.md](docs/v35_v40_implementation.md) for the v35–v40 implementation boundaries and [docs/v40_release_candidate_readiness.md](docs/v40_release_candidate_readiness.md) for the current verification record.
 
 See [docs/distribution.md](docs/distribution.md) for release asset and Gatekeeper details, [docs/known_limitations.md](docs/known_limitations.md) for the full stable-scope boundary, and [docs/v23_0_integrated_gui_refresh.md](docs/v23_0_integrated_gui_refresh.md) for the v23.0.0 GUI refresh note.
 
@@ -263,7 +265,7 @@ For Hermes Agent and similar clients, see [docs/hermes_agent_connection.md](docs
 
 ## Current Feature Set
 
-As of v34.0.0, MLX Server Manager includes:
+As of the v40.0.0 development tree, MLX Server Manager includes:
 
 - Independent Start, Stop, and Restart for app-managed `mlx_lm.server` and Rapid-MLX processes.
 - Multiple concurrently managed models, each with its own process, endpoint, runtime state, and memory measurement.
@@ -278,6 +280,13 @@ As of v34.0.0, MLX Server Manager includes:
 - Runtime Setup Assistant candidate discovery across the configured path, PATH, Homebrew locations, and a limited set of user virtual-environment paths without installing software or saving automatically.
 - Runtime Compatibility Matrix based on detected `--help` flags and `--version` output, with unknown support kept explicitly unknown.
 - Session Recovery for endpoints recorded by an interrupted or intentionally preserved prior session, with explicit readiness checks and external-context adoption only.
+- Capability-aware profile editing that marks known unsupported runtime flags, preserves unknown support as unknown, and places explicit cleanup changes into an unsaved draft.
+- Structured launch-failure diagnosis using a bounded in-memory runtime-output window with copy-safe evidence and no persistent inference logs.
+- Registered Model Health inspection limited to registered local paths, including config, tokenizer, weight, shard, size, modification-date, and shared-path checks.
+- Conservative Start Resource Forecast based on existing multi-model memory and KV-cache safety models, with reviewable unsaved draft suggestions only.
+- Benchmark-guided profile tuning that requires current comparable multi-sample results and never applies a recommendation automatically.
+- Unified Operational Readiness for runtime, compatibility, model health, endpoint, resources, profile options, Session Recovery, benchmark evidence, and Hermes Agent.
+- Versioned authoritative settings-state migration from schema 1 to schema 2 with atomic current-state and backup repair.
 - Settings save and restore.
 - Model profile add, edit, delete, and selection.
 - Explicit Minimal, Balanced, Memory Saver, and Throughput templates that modify only managed launch-tuning fields.

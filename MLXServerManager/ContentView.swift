@@ -189,6 +189,12 @@ struct ContentView: View {
                 runtimeFieldsLocked: viewModel.isProfileEditorRuntimeLocked,
                 kvCacheEnvironment: viewModel.profileEditorKVCacheEnvironment,
                 language: viewModel.settings.uiLanguage,
+                compatibilityAssessment: viewModel.profileCompatibilityAssessment(for: viewModel.profileEditorDraft),
+                resourceForecast: viewModel.startResourceForecast(for: viewModel.profileEditorDraft),
+                benchmarkTuningRecommendation: viewModel.benchmarkTuningRecommendation(
+                    for: viewModel.profileEditorDraft,
+                    useCase: .coding
+                ),
                 portSuggestionMessage: viewModel.profileEditorPortSuggestionMessage,
                 onSuggestPort: viewModel.suggestAvailablePortForProfileEditor,
                 onEndpointInputChanged: viewModel.profileEditorEndpointInputChanged,
@@ -212,6 +218,9 @@ struct ContentView: View {
                 runtimeFieldsLocked: false,
                 kvCacheEnvironment: viewModel.addProfileKVCacheEnvironment,
                 language: viewModel.settings.uiLanguage,
+                compatibilityAssessment: viewModel.profileCompatibilityAssessment(for: viewModel.addProfileDraft),
+                resourceForecast: viewModel.startResourceForecast(for: viewModel.addProfileDraft),
+                benchmarkTuningRecommendation: nil,
                 portSuggestionMessage: viewModel.addProfilePortSuggestionMessage,
                 onSuggestPort: viewModel.suggestAvailablePortForAddProfile,
                 onEndpointInputChanged: viewModel.addProfileEndpointInputChanged,
@@ -221,6 +230,22 @@ struct ContentView: View {
             )
             .padding(20)
             .frame(minWidth: 620, minHeight: 520)
+        }
+        .sheet(isPresented: Binding(
+            get: { viewModel.operationalReadinessViewState.isPresented },
+            set: { if !$0 { viewModel.dismissOperationalReadinessRequested() } }
+        )) {
+            OperationalReadinessView(
+                state: viewModel.operationalReadinessViewState,
+                language: viewModel.settings.uiLanguage,
+                onRefresh: viewModel.refreshOperationalReadinessRequested,
+                onCancel: viewModel.cancelOperationalReadinessRequested,
+                onCopy: viewModel.copyOperationalReadinessRequested,
+                onReviewUnsupportedOptions: viewModel.reviewUnsupportedProfileOptionsRequested,
+                onReviewResourceForecast: viewModel.reviewResourceForecastRequested,
+                onReviewTuning: viewModel.reviewBenchmarkTuningRequested,
+                onDismiss: viewModel.dismissOperationalReadinessRequested
+            )
         }
         .sheet(isPresented: Binding(
             get: { viewModel.sessionRecoveryViewState.isPresented },

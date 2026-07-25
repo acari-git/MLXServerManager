@@ -25,6 +25,7 @@ struct SettingsSurfaceView: View {
             runtimeReadinessState: viewModel.runtimeReadinessViewState,
             runtimeSetupAssistantState: viewModel.runtimeSetupAssistantViewState,
             runtimeCompatibilityState: viewModel.runtimeCompatibilityViewState,
+            registeredModelHealthState: viewModel.registeredModelHealthViewState,
             hasUnsavedChanges: hasUnsavedChanges,
             onRefreshRuntimeReadiness: {
                 viewModel.refreshRuntimeReadinessRequested(settings: draftSettings)
@@ -41,6 +42,9 @@ struct SettingsSurfaceView: View {
                 viewModel.refreshRuntimeCompatibilityRequested(settings: draftSettings)
             },
             onCancelRuntimeCompatibility: viewModel.cancelRuntimeCompatibilityRequested,
+            onRefreshRegisteredModelHealth: viewModel.refreshRegisteredModelHealthRequested,
+            onCancelRegisteredModelHealth: viewModel.cancelRegisteredModelHealthRequested,
+            onOpenOperationalReadiness: viewModel.openOperationalReadinessRequested,
             onDiscard: discardDraftSettings,
             onSave: saveDraftSettings
         )

@@ -8,10 +8,8 @@ final class MLXLMServerCapabilityFlowTests: XCTestCase {
         let fixture = try makeFixture()
         defer { fixture.remove() }
         let processManager = CapabilityCapturingProcessManager()
-        let capabilityProvider = StubMLXLMServerCapabilityProvider(
-            result: .available(MLXLMServerCapabilities(
-                supportedFlags: ["--model", "--host", "--port"]
-            ))
+        let capabilityProvider = StubRuntimeOptionCapabilityProvider(
+            result: .available(flags: ["--model", "--host", "--port"])
         )
         let viewModel = makeViewModel(
             fixture: fixture,
@@ -27,7 +25,7 @@ final class MLXLMServerCapabilityFlowTests: XCTestCase {
 
         XCTAssertNil(processManager.capturedRequest)
         XCTAssertTrue(viewModel.logText.contains("--temp"))
-        XCTAssertTrue(viewModel.logText.contains("update mlx-lm"))
+        XCTAssertTrue(viewModel.logText.contains("update the runtime"))
         let requestCount = await capabilityProvider.requestCount()
         XCTAssertEqual(requestCount, 1)
     }
@@ -36,7 +34,7 @@ final class MLXLMServerCapabilityFlowTests: XCTestCase {
         let fixture = try makeFixture()
         defer { fixture.remove() }
         let processManager = CapabilityCapturingProcessManager()
-        let capabilityProvider = StubMLXLMServerCapabilityProvider(result: .unavailable)
+        let capabilityProvider = StubRuntimeOptionCapabilityProvider(result: .unavailable)
         let viewModel = makeViewModel(
             fixture: fixture,
             processManager: processManager,
@@ -64,7 +62,7 @@ final class MLXLMServerCapabilityFlowTests: XCTestCase {
     private func makeViewModel(
         fixture: CapabilityFlowFixture,
         processManager: CapabilityCapturingProcessManager,
-        capabilityProvider: StubMLXLMServerCapabilityProvider
+        capabilityProvider: StubRuntimeOptionCapabilityProvider
     ) -> AppViewModel {
         AppViewModel(
             settingsStore: fixture.store,
@@ -77,7 +75,7 @@ final class MLXLMServerCapabilityFlowTests: XCTestCase {
                 )
             },
             localModelIntegrityChecker: CapabilityAlwaysReadyIntegrityChecker(),
-            mlxLMServerCapabilityProvider: capabilityProvider
+            runtimeOptionCapabilityProvider: capabilityProvider
         )
     }
 
@@ -150,15 +148,15 @@ private struct CapabilityFlowFixture {
     }
 }
 
-private actor StubMLXLMServerCapabilityProvider: MLXLMServerCapabilityProviding {
-    private let result: MLXLMServerCapabilityProbeResult
+private actor StubRuntimeOptionCapabilityProvider: RuntimeOptionCapabilityProviding {
+    private let result: RuntimeOptionCapabilityProbeResult
     private var count = 0
 
-    init(result: MLXLMServerCapabilityProbeResult) {
+    init(result: RuntimeOptionCapabilityProbeResult) {
         self.result = result
     }
 
-    func capabilities(executablePath: String) async -> MLXLMServerCapabilityProbeResult {
+    func capabilities(executablePath: String) async -> RuntimeOptionCapabilityProbeResult {
         count += 1
         return result
     }

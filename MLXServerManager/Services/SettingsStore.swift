@@ -21,7 +21,7 @@ nonisolated struct SettingsSaveOutcome: Equatable {
 }
 
 private nonisolated struct PersistedSettingsSnapshot: Codable {
-    static let currentSchemaVersion = 1
+    static let currentSchemaVersion = 2
 
     let schemaVersion: Int
     let settings: AppSettings
@@ -32,6 +32,21 @@ private nonisolated struct PersistedSettingsSnapshot: Codable {
         self.settings = settings
         self.models = models
     }
+}
+
+private nonisolated struct PersistedSettingsSnapshotV1: Codable {
+    let schemaVersion: Int
+    let settings: AppSettings
+    let models: [ModelConfig]
+}
+
+private nonisolated struct PersistedSettingsSchemaEnvelope: Codable {
+    let schemaVersion: Int
+}
+
+private nonisolated struct DecodedPersistedSettingsSnapshot {
+    let snapshot: PersistedSettingsSnapshot
+    let sourceSchemaVersion: Int
 }
 
 nonisolated enum SettingsStoreError: LocalizedError {
@@ -336,9 +351,15 @@ nonisolated struct SettingsStore {
 
         if stateExists {
             do {
+                let decoded = try decodePersistedSnapshot(at: stateURL)
+                let migrationNotice = migratePersistedSnapshotIfNeeded(
+                    decoded,
+                    stateURL: stateURL,
+                    backupURL: backupURL
+                )
                 return LoadedPersistedSettingsSnapshot(
-                    snapshot: try decodePersistedSnapshot(at: stateURL),
-                    recoveryNotice: nil
+                    snapshot: decoded.snapshot,
+                    recoveryNotice: migrationNotice
                 )
             } catch let error as SettingsStoreError {
                 throw error
@@ -350,13 +371,51 @@ nonisolated struct SettingsStore {
         return try recoverPersistedSnapshot(from: backupURL, repairing: stateURL)
     }
 
-    private func decodePersistedSnapshot(at url: URL) throws -> PersistedSettingsSnapshot {
+    private func decodePersistedSnapshot(at url: URL) throws -> DecodedPersistedSettingsSnapshot {
         let data = try Data(contentsOf: url)
-        let snapshot = try decoder.decode(PersistedSettingsSnapshot.self, from: data)
-        guard snapshot.schemaVersion == PersistedSettingsSnapshot.currentSchemaVersion else {
-            throw SettingsStoreError.unsupportedStateSchemaVersion(snapshot.schemaVersion)
+        let envelope = try decoder.decode(PersistedSettingsSchemaEnvelope.self, from: data)
+
+        switch envelope.schemaVersion {
+        case 1:
+            let legacy = try decoder.decode(PersistedSettingsSnapshotV1.self, from: data)
+            return DecodedPersistedSettingsSnapshot(
+                snapshot: PersistedSettingsSnapshot(
+                    settings: legacy.settings,
+                    models: legacy.models
+                ),
+                sourceSchemaVersion: 1
+            )
+        case PersistedSettingsSnapshot.currentSchemaVersion:
+            return DecodedPersistedSettingsSnapshot(
+                snapshot: try decoder.decode(PersistedSettingsSnapshot.self, from: data),
+                sourceSchemaVersion: PersistedSettingsSnapshot.currentSchemaVersion
+            )
+        default:
+            throw SettingsStoreError.unsupportedStateSchemaVersion(envelope.schemaVersion)
         }
-        return snapshot
+    }
+
+    private func migratePersistedSnapshotIfNeeded(
+        _ decoded: DecodedPersistedSettingsSnapshot,
+        stateURL: URL,
+        backupURL: URL
+    ) -> String? {
+        guard decoded.sourceSchemaVersion < PersistedSettingsSnapshot.currentSchemaVersion else {
+            return nil
+        }
+
+        do {
+            let data = try encoder.encode(decoded.snapshot)
+            try data.write(to: stateURL, options: [.atomic])
+            do {
+                try data.write(to: backupURL, options: [.atomic])
+                return "Migrated settings-state.json from schema \(decoded.sourceSchemaVersion) to \(PersistedSettingsSnapshot.currentSchemaVersion)."
+            } catch {
+                return "Migrated settings-state.json from schema \(decoded.sourceSchemaVersion) to \(PersistedSettingsSnapshot.currentSchemaVersion), but the recovery backup could not be updated: \(error.localizedDescription)"
+            }
+        } catch {
+            return "Loaded settings schema \(decoded.sourceSchemaVersion), but automatic migration to schema \(PersistedSettingsSnapshot.currentSchemaVersion) could not be saved: \(error.localizedDescription)"
+        }
     }
 
     private func recoverPersistedSnapshot(
@@ -367,26 +426,35 @@ nonisolated struct SettingsStore {
             throw SettingsStoreError.authoritativeStateCorrupted
         }
 
-        let snapshot: PersistedSettingsSnapshot
+        let decoded: DecodedPersistedSettingsSnapshot
         do {
-            snapshot = try decodePersistedSnapshot(at: backupURL)
+            decoded = try decodePersistedSnapshot(at: backupURL)
         } catch let error as SettingsStoreError {
             throw error
         } catch {
             throw SettingsStoreError.authoritativeStateCorrupted
         }
 
-        let repairNotice: String
+        var notices: [String] = []
         do {
-            try save(snapshot, to: stateURL)
-            repairNotice = "Recovered settings-state.json from settings-state.backup.json."
+            try save(decoded.snapshot, to: stateURL)
+            notices.append("Recovered settings-state.json from settings-state.backup.json.")
         } catch {
-            repairNotice = "Loaded settings-state.backup.json, but settings-state.json could not be repaired: \(error.localizedDescription)"
+            notices.append("Loaded settings-state.backup.json, but settings-state.json could not be repaired: \(error.localizedDescription)")
+        }
+
+        if decoded.sourceSchemaVersion < PersistedSettingsSnapshot.currentSchemaVersion {
+            do {
+                try save(decoded.snapshot, to: backupURL)
+                notices.append("Migrated the recovery backup from schema \(decoded.sourceSchemaVersion) to \(PersistedSettingsSnapshot.currentSchemaVersion).")
+            } catch {
+                notices.append("Loaded schema \(decoded.sourceSchemaVersion), but the recovery backup could not be migrated: \(error.localizedDescription)")
+            }
         }
 
         return LoadedPersistedSettingsSnapshot(
-            snapshot: snapshot,
-            recoveryNotice: repairNotice
+            snapshot: decoded.snapshot,
+            recoveryNotice: notices.joined(separator: " ")
         )
     }
 

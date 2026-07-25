@@ -325,6 +325,12 @@ struct LogsSurfaceView: View {
             return t("Runtime Compatibility", "ランタイム互換性")
         case "Session Recovery":
             return t("Session Recovery", "セッション復旧")
+        case "Model Health":
+            return t("Model Health", "モデル健全性")
+        case "Operational Readiness":
+            return t("Operational Readiness", "運用準備状態")
+        case "Launch Diagnosis":
+            return t("Launch Diagnosis", "起動診断")
         case "Profile":
             return t("Profile", "プロファイル")
         case "Download":

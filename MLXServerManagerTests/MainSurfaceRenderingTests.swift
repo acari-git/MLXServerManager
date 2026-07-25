@@ -96,6 +96,35 @@ final class MainSurfaceRenderingTests: XCTestCase {
             )
             var recoveryState = SessionRecoveryViewState.presenting(record: recoveryRecord)
             recoveryState.complete([recoveryRecord.endpoints[0].id: .available(statusCode: 200)])
+            let readinessReport = OperationalReadinessProjector.makeReport(
+                selectedModel: context.viewModel.models[0],
+                runtimeReadiness: RuntimeReadinessReport(
+                    backend: context.viewModel.models[0].resolvedBackend,
+                    executablePath: "/usr/local/bin/runtime",
+                    issue: .ready(supportedFlagCount: 8),
+                    checkedAt: Date()
+                ),
+                compatibility: ProfileCompatibilityAssessment(
+                    backend: context.viewModel.models[0].resolvedBackend,
+                    level: .compatible,
+                    requestedFlags: [],
+                    unsupportedFlags: [],
+                    checkedAt: Date()
+                ),
+                healthReports: [],
+                portCheckResult: .available(
+                    host: context.viewModel.models[0].host,
+                    port: context.viewModel.models[0].serverPort
+                ),
+                selectedEndpointIsActive: false,
+                resourceForecast: nil,
+                sessionRecoveryCandidateCount: 0,
+                tuningRecommendations: [],
+                hermesConfigPath: "~/.hermes/config.yaml",
+                launchFailureDiagnosis: nil
+            )
+            var readinessState = OperationalReadinessViewState.hidden
+            readinessState.complete(readinessReport)
 
             let surfaces: [(String, AnyView)] = [
                 (
@@ -131,6 +160,23 @@ final class MainSurfaceRenderingTests: XCTestCase {
                             language: scenario.language,
                             onCheck: {},
                             onAdopt: { _ in },
+                            onDismiss: {}
+                        )
+                        .environment(\.colorScheme, scenario.colorScheme)
+                    )
+                ),
+                (
+                    "operational-readiness",
+                    AnyView(
+                        OperationalReadinessView(
+                            state: readinessState,
+                            language: scenario.language,
+                            onRefresh: {},
+                            onCancel: {},
+                            onCopy: {},
+                            onReviewUnsupportedOptions: {},
+                            onReviewResourceForecast: {},
+                            onReviewTuning: { _ in },
                             onDismiss: {}
                         )
                         .environment(\.colorScheme, scenario.colorScheme)

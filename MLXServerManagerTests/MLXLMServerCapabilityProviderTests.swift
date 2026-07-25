@@ -176,10 +176,11 @@ final class MLXLMServerCapabilityProviderTests: XCTestCase {
 
     func testUnsupportedOptionIssueExplainsHowToRecover() {
         let issue = ModelStartPreflightIssue.unsupportedLaunchOptions(
+            backend: .mlxLM,
             flags: ["--allowed-origins"]
         )
 
-        XCTAssertTrue(issue.launchMessage(language: .english).contains("update mlx-lm"))
-        XCTAssertTrue(issue.launchMessage(language: .japanese).contains("mlx-lmを更新"))
+        XCTAssertTrue(issue.launchMessage(language: .english).contains("update the runtime"))
+        XCTAssertTrue(issue.launchMessage(language: .japanese).contains("ランタイムを更新"))
     }
 }

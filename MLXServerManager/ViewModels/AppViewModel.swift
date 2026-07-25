@@ -228,6 +228,9 @@ final class AppViewModel: ObservableObject {
     @Published var runtimeReadinessViewState = RuntimeReadinessViewState.initial()
     @Published var runtimeSetupAssistantViewState = RuntimeSetupAssistantViewState.initial
     @Published var runtimeCompatibilityViewState = RuntimeCompatibilityViewState.initial
+    @Published var registeredModelHealthViewState = RegisteredModelHealthViewState.initial
+    @Published var operationalReadinessViewState: OperationalReadinessViewState = .hidden
+    @Published var launchFailureDiagnosesByModelID: [ModelConfig.ID: LaunchFailureDiagnosis] = [:]
     @Published var applicationTerminationPhase: ApplicationTerminationPhase = .idle
     @Published var sessionRecoveryViewState: SessionRecoveryViewState = .hidden
     @Published var runtimeEvents: [RuntimeEvent] = []
@@ -282,6 +285,11 @@ final class AppViewModel: ObservableObject {
     let runtimeSetupAssistantRunCoordinator: LatestRequestCoordinator
     let runtimeCompatibilityService: any RuntimeCompatibilityAssessing
     let runtimeCompatibilityRunCoordinator: LatestRequestCoordinator
+    let runtimeOptionCapabilityProvider: any RuntimeOptionCapabilityProviding
+    let registeredModelHealthService: any RegisteredModelHealthAssessing
+    let registeredModelHealthRunCoordinator: LatestRequestCoordinator
+    let operationalReadinessRunCoordinator: LatestRequestCoordinator
+    let launchFailureDiagnosticCoordinator: LaunchFailureDiagnosticCoordinator
     let applicationTerminationCoordinator: ApplicationTerminationCoordinator
     let sessionRecoveryStore: SessionRecoveryStore
     let sessionRecoveryCoordinator: SessionRecoveryCoordinator
@@ -411,6 +419,8 @@ final class AppViewModel: ObservableObject {
         runtimeReadinessService: (any RuntimeReadinessAssessing)? = nil,
         runtimeSetupAssistantService: (any RuntimeSetupAssisting)? = nil,
         runtimeCompatibilityService: (any RuntimeCompatibilityAssessing)? = nil,
+        runtimeOptionCapabilityProvider: (any RuntimeOptionCapabilityProviding)? = nil,
+        registeredModelHealthService: (any RegisteredModelHealthAssessing)? = nil,
         sessionRecoveryStore: SessionRecoveryStore? = nil
     ) {
         self.benchmarkViewState = BenchmarkViewState(
@@ -488,6 +498,12 @@ final class AppViewModel: ObservableObject {
         self.runtimeSetupAssistantRunCoordinator = LatestRequestCoordinator()
         self.runtimeCompatibilityService = runtimeCompatibilityService ?? RuntimeCompatibilityService()
         self.runtimeCompatibilityRunCoordinator = LatestRequestCoordinator()
+        self.runtimeOptionCapabilityProvider = runtimeOptionCapabilityProvider ?? RuntimeOptionCapabilityProvider()
+        self.registeredModelHealthService = registeredModelHealthService
+            ?? RegisteredModelHealthService(integrityChecker: resolvedLocalModelIntegrityChecker)
+        self.registeredModelHealthRunCoordinator = LatestRequestCoordinator()
+        self.operationalReadinessRunCoordinator = LatestRequestCoordinator()
+        self.launchFailureDiagnosticCoordinator = LaunchFailureDiagnosticCoordinator()
         self.applicationTerminationCoordinator = ApplicationTerminationCoordinator()
         self.sessionRecoveryStore = sessionRecoveryStore ?? SessionRecoveryStore()
         self.sessionRecoveryCoordinator = SessionRecoveryCoordinator()
@@ -712,24 +728,27 @@ final class AppViewModel: ObservableObject {
         )
     }
 
-    private func mlxLMCapabilityPreflightIssue(
+    private func runtimeCapabilityPreflightIssue(
         for request: ModelLaunchRequest,
         logPrefix: String
     ) async -> ModelStartPreflightIssue? {
-        let requestedFlags = MLXLMServerCapabilities.requestedOptionalFlags(for: request)
+        let requestedFlags = RuntimeProfileCompatibilityAdvisor.requestedOptionalFlags(for: request)
         guard !requestedFlags.isEmpty else {
             return nil
         }
 
-        switch await mlxLMServerCapabilityProvider.capabilities(executablePath: request.executablePath) {
-        case let .available(capabilities):
-            let unsupportedFlags = capabilities.unsupportedFlags(from: requestedFlags)
+        switch await runtimeOptionCapabilityProvider.capabilities(executablePath: request.executablePath) {
+        case let .available(flags):
+            let unsupportedFlags = requestedFlags.filter { !flags.contains($0) }
             guard !unsupportedFlags.isEmpty else {
                 return nil
             }
-            return .unsupportedLaunchOptions(flags: unsupportedFlags)
+            return .unsupportedLaunchOptions(
+                backend: request.backend,
+                flags: unsupportedFlags
+            )
         case .unavailable:
-            appendLog("[\(logPrefix)] mlx-lm option capability check was unavailable; continuing without blocking launch.")
+            appendLog("[\(logPrefix)] runtime option capability check was unavailable; continuing without blocking launch.")
             return nil
         }
     }
@@ -1007,6 +1026,10 @@ final class AppViewModel: ObservableObject {
     }
 
     private var runtimeRecoveryIssue: RecoveryIssue {
+        if let selectedModelID,
+           let diagnosis = launchFailureDiagnosesByModelID[selectedModelID] {
+            return recoveryIssue(from: diagnosis)
+        }
         switch runtimeState {
         case let .error(message):
             return recoveryIssue(from: message, relatedLogLine: latestImportantLogEntry?.line)
@@ -2255,7 +2278,7 @@ final class AppViewModel: ObservableObject {
             advancedLaunchOptions: cacheSafeMode.advancedLaunchOptions
         )
 
-        if let issue = await mlxLMCapabilityPreflightIssue(for: request, logPrefix: logPrefix) {
+        if let issue = await runtimeCapabilityPreflightIssue(for: request, logPrefix: logPrefix) {
             let message = issue.launchMessage(language: settings.uiLanguage)
             setRuntimeState(.error(message: message), for: model.id)
             appendLog("[\(logPrefix)] preflight failed: \(message)")
@@ -2303,6 +2326,8 @@ final class AppViewModel: ObservableObject {
         }
 
         setRuntimeState(.starting(host: host, port: port), for: model.id)
+        launchFailureDiagnosticCoordinator.begin(modelID: model.id)
+        launchFailureDiagnosesByModelID[model.id] = nil
         let outputHandler = managedModelOutputCoordinator.begin(
             modelID: model.id,
             backend: model.resolvedBackend
@@ -2359,8 +2384,12 @@ final class AppViewModel: ObservableObject {
             )
             if ready {
                 appendLog("[\(logPrefix)] ready check succeeded for pid \(launchResult.processIdentifier).")
+                launchFailureDiagnosticCoordinator.clear(modelID: model.id)
+                launchFailureDiagnosesByModelID[model.id] = nil
             } else {
+                let message = "Ready check did not complete successfully after launch."
                 appendLog("[\(logPrefix)] ready check did not complete successfully for pid \(launchResult.processIdentifier).")
+                recordLaunchFailureDiagnosis(for: model, fallbackMessage: message)
             }
 
             return ready
@@ -2368,6 +2397,7 @@ final class AppViewModel: ObservableObject {
             managedModelOutputCoordinator.invalidate(model.id)
             setRuntimeState(.error(message: error.localizedDescription), for: model.id)
             appendLog("[\(logPrefix)] failed: \(error.localizedDescription)")
+            recordLaunchFailureDiagnosis(for: model, fallbackMessage: error.localizedDescription)
             return false
         }
     }
@@ -2379,6 +2409,7 @@ final class AppViewModel: ObservableObject {
         port: Int,
         detectedFault: ManagedServerRuntimeFault?
     ) {
+        launchFailureDiagnosticCoordinator.append(line, modelID: modelID)
         appendLog(line)
         guard detectedFault != nil else {
             return
@@ -2983,7 +3014,11 @@ final class AppViewModel: ObservableObject {
         if status == 0 {
             setRuntimeState(.stopped, for: modelID)
         } else {
-            setRuntimeState(.error(message: "Managed server exited with status \(status)."), for: modelID)
+            let message = "Managed server exited with status \(status)."
+            setRuntimeState(.error(message: message), for: modelID)
+            if let model = models.first(where: { $0.id == modelID }) {
+                recordLaunchFailureDiagnosis(for: model, fallbackMessage: message)
+            }
         }
     }
 

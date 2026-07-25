@@ -16,6 +16,7 @@ struct SettingsPanelView: View {
     let runtimeReadinessState: RuntimeReadinessViewState
     let runtimeSetupAssistantState: RuntimeSetupAssistantViewState
     let runtimeCompatibilityState: RuntimeCompatibilityViewState
+    let registeredModelHealthState: RegisteredModelHealthViewState
     let hasUnsavedChanges: Bool
     let onRefreshRuntimeReadiness: () -> Void
     let onCancelRuntimeReadiness: () -> Void
@@ -24,6 +25,9 @@ struct SettingsPanelView: View {
     let onApplyRuntimeCandidate: (RuntimeSetupCandidate) -> Void
     let onRefreshRuntimeCompatibility: () -> Void
     let onCancelRuntimeCompatibility: () -> Void
+    let onRefreshRegisteredModelHealth: () -> Void
+    let onCancelRegisteredModelHealth: () -> Void
+    let onOpenOperationalReadiness: () -> Void
     let onDiscard: () -> Void
     let onSave: () -> Void
 
@@ -125,6 +129,10 @@ struct SettingsPanelView: View {
                 runtimeSetupAssistantSection
 
                 runtimeCompatibilitySection
+
+                registeredModelHealthSection
+
+                operationalReadinessSection
 
                 settingsSection(
                     title: t("Downloads", "ダウンロード"),
@@ -493,6 +501,125 @@ struct SettingsPanelView: View {
         case .partial: .orange
         case .unsupported: .secondary
         case .unknown: .secondary
+        }
+    }
+
+    private var registeredModelHealthSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                if registeredModelHealthState.didCheck {
+                    ForEach(registeredModelHealthState.reports) { report in
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: modelHealthSymbol(report.status))
+                                .foregroundStyle(modelHealthColor(report.status))
+                                .frame(width: 18)
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack {
+                                    Text(report.displayName)
+                                        .font(.callout.weight(.semibold))
+                                    Text(report.status.localizedTitle(language: language))
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(modelHealthColor(report.status))
+                                }
+                                Text(report.localizedDetail(language: language))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        if report.id != registeredModelHealthState.reports.last?.id {
+                            Divider()
+                        }
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    if registeredModelHealthState.isChecking {
+                        Button(t("Cancel inspection", "確認を中止"), action: onCancelRegisteredModelHealth)
+                            .buttonStyle(.bordered)
+                    }
+                    Button {
+                        onRefreshRegisteredModelHealth()
+                    } label: {
+                        Label(
+                            registeredModelHealthState.isChecking
+                                ? t("Checking model health", "モデル健全性を確認中")
+                                : t("Check registered models", "登録済みモデルを確認"),
+                            systemImage: "externaldrive.badge.checkmark"
+                        )
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(registeredModelHealthState.isChecking)
+                    Spacer(minLength: 0)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(t("Registered model health", "登録済みモデルの健全性"))
+                    .font(.headline)
+                Text(t(
+                    "Checks only registered local paths. It does not scan unrelated folders, delete models, or browse the full Hugging Face cache.",
+                    "登録済みローカルパスだけを確認します。無関係なフォルダの走査、モデル削除、Hugging Faceキャッシュ全体の閲覧は行いません。"
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityIdentifier("settings-registered-model-health")
+    }
+
+    private var operationalReadinessSection: some View {
+        GroupBox {
+            HStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(t(
+                        "Review runtime, compatibility, selected model health, endpoint, resource forecast, benchmark evidence, Session Recovery, and Hermes Agent in one report.",
+                        "ランタイム、互換性、選択モデルの健全性、接続先、リソース予測、ベンチマーク根拠、セッション復旧、Hermes Agentを一つのレポートで確認します。"
+                    ))
+                    .font(.callout)
+                    Text(t(
+                        "The inspection does not generate text, start a server, download a model, or change settings.",
+                        "この確認では文章生成、サーバー起動、モデルダウンロード、設定変更を行いません。"
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 12)
+                Button {
+                    onOpenOperationalReadiness()
+                } label: {
+                    Label(t("Open Readiness", "運用準備状態を開く"), systemImage: "checklist.checked")
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 12)
+        } label: {
+            Text(t("Unified operational readiness", "統合運用準備状態"))
+                .font(.headline)
+        }
+        .accessibilityIdentifier("settings-operational-readiness")
+    }
+
+    private func modelHealthSymbol(_ status: RegisteredModelHealthStatus) -> String {
+        switch status {
+        case .ready: "checkmark.circle.fill"
+        case .incomplete, .missing: "xmark.circle.fill"
+        case .externalIdentifier: "link.circle"
+        case .duplicatePath: "square.on.square"
+        case .uninspectable: "questionmark.circle"
+        }
+    }
+
+    private func modelHealthColor(_ status: RegisteredModelHealthStatus) -> Color {
+        switch status {
+        case .ready, .externalIdentifier: .green
+        case .duplicatePath, .uninspectable: .orange
+        case .incomplete, .missing: .red
         }
     }
 
