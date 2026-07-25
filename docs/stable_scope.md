@@ -1,6 +1,6 @@
 # Stable Scope
 
-This document defines the current stable scope for MLX Server Manager as of v25.0.0. Older version-specific planning documents describe historical boundaries; this file records the implemented product surface and current Direct Mode rules.
+This document defines the implemented release-candidate scope for MLX Server Manager v30.0.0. The latest published binary remains v25.0.0 until the v30 asset is packaged and released. Older version-specific planning documents describe historical boundaries; this file records the current product surface and Direct Mode rules.
 
 MLX Server Manager is a Direct Mode control surface for app-managed `mlx_lm.server` and Rapid-MLX processes, plus explicitly adopted external OpenAI-compatible endpoints:
 
@@ -33,6 +33,8 @@ The app may launch, stop, monitor, diagnose, and document connection settings fo
 
 - Save and restore app settings.
 - Save and restore model profiles.
+- Check configured `mlx_lm.server` and Rapid-MLX executable readiness without starting a server.
+- Apply explicit Minimal, Balanced, Memory Saver, or Throughput templates to managed launch-tuning fields while preserving profile identity and unrelated options.
 - Add, edit, reorder, import, export, and delete model profiles.
 - Validate model ID, host, and port.
 - Prevent deletion of the last profile.
@@ -43,6 +45,8 @@ The app may launch, stop, monitor, diagnose, and document connection settings fo
 ### Model Discovery and Download
 
 - Search Hugging Face through the lightweight discovery surface.
+- Sort already-fetched discovery results by recommendation, downloads, likes, recent update, or name.
+- Filter already-fetched results by verified MLX tag and minimum download count without sending another request.
 - Download by model ID or URL using configured local tooling.
 - Show queue state and parsed progress, and support retry, cancel, form restore, and URL copy.
 - Optionally add and select a successfully downloaded model profile.
@@ -65,13 +69,16 @@ The app may launch, stop, monitor, diagnose, and document connection settings fo
 ### UI Surfaces
 
 - Integrated SwiftUI workspace with navigation, model table, Test Chat, logs, settings, downloads, and model inspector.
+- Restrained Kinetic Border Beam feedback only while explicit lifecycle transitions, Test Chat requests, or downloads are active, with reduced-motion and reduced-transparency handling.
 - Menu bar quick actions.
 - Copy Base URL, Model ID, OpenAI-compatible JSON, Hermes Agent values, `curl /v1/models`, and example `curl /v1/chat/completions`.
 
 ### Logs
 
-- Bounded log buffer.
+- Bounded detailed log buffer.
 - Readable log categories and levels.
+- Separate memory-only Operational History bounded to the newest 100 events.
+- Operational History category and severity filters, model/endpoint context, copy, and clear actions.
 - Clear Logs.
 - Copy Logs.
 

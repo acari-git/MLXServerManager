@@ -5,24 +5,42 @@ struct LogsSurfaceView: View {
     private let controlWidth: CGFloat = 360
 
     let entries: [LogEntry]
+    let operationalEvents: [RuntimeEvent]
+    let operationalHistoryCategories: [String]
+    @Binding var operationalHistoryCategoryFilter: String
+    @Binding var operationalHistorySeverityFilter: OperationalHistorySeverityFilter
     let targetSummary: ConnectionTargetSummary
     let runningModelText: String
     let language: AppLanguage
+    let onCopyOperationalHistory: () -> Void
+    let onClearOperationalHistory: () -> Void
     let onCopy: () -> Void
     let onClear: () -> Void
 
     init(
         entries: [LogEntry],
+        operationalEvents: [RuntimeEvent],
+        operationalHistoryCategories: [String],
+        operationalHistoryCategoryFilter: Binding<String>,
+        operationalHistorySeverityFilter: Binding<OperationalHistorySeverityFilter>,
         targetSummary: ConnectionTargetSummary,
         runningModelText: String,
         language: AppLanguage = .system,
+        onCopyOperationalHistory: @escaping () -> Void,
+        onClearOperationalHistory: @escaping () -> Void,
         onCopy: @escaping () -> Void,
         onClear: @escaping () -> Void
     ) {
         self.entries = entries
+        self.operationalEvents = operationalEvents
+        self.operationalHistoryCategories = operationalHistoryCategories
+        self._operationalHistoryCategoryFilter = operationalHistoryCategoryFilter
+        self._operationalHistorySeverityFilter = operationalHistorySeverityFilter
         self.targetSummary = targetSummary
         self.runningModelText = runningModelText
         self.language = language
+        self.onCopyOperationalHistory = onCopyOperationalHistory
+        self.onClearOperationalHistory = onClearOperationalHistory
         self.onCopy = onCopy
         self.onClear = onClear
     }
@@ -41,6 +59,7 @@ struct LogsSurfaceView: View {
                 header
                 controlsSection
                 contextSection
+                operationalHistorySection
                 logSection
             }
             .padding(.top, 12)
@@ -172,6 +191,162 @@ struct LogsSurfaceView: View {
             entry.line.localizedCaseInsensitiveContains("failed")
                 || entry.line.localizedCaseInsensitiveContains("warning")
                 || entry.line.localizedCaseInsensitiveContains("error")
+        }
+    }
+
+    private var operationalHistorySection: some View {
+        section(
+            title: t("Operational History", "操作履歴"),
+            subtitle: t(
+                "A bounded, in-memory record of explicit operations in this app session. It is not written to disk or transmitted.",
+                "このアプリセッションで行った明示的な操作を、件数制限付きでメモリ内に保持します。ディスク保存や外部送信は行いません。"
+            )
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    Picker(t("Category", "カテゴリ"), selection: $operationalHistoryCategoryFilter) {
+                        ForEach(operationalHistoryCategories, id: \.self) { category in
+                            Text(localizedOperationalCategory(category))
+                                .tag(category)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 190, alignment: .leading)
+
+                    Picker(t("Severity", "重要度"), selection: $operationalHistorySeverityFilter) {
+                        ForEach(OperationalHistorySeverityFilter.allCases) { severity in
+                            Text(severity.localizedTitle(language: language))
+                                .tag(severity)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 170, alignment: .leading)
+
+                    Spacer(minLength: 0)
+
+                    metricPill(value: String(operationalEvents.count), label: t("events", "件"))
+                }
+
+                HStack(spacing: 10) {
+                    Button(t("Copy history", "履歴をコピー")) {
+                        onCopyOperationalHistory()
+                    }
+                    .disabled(operationalEvents.isEmpty)
+
+                    Button(t("Clear history", "履歴をクリア")) {
+                        onClearOperationalHistory()
+                    }
+                    .disabled(operationalEvents.isEmpty)
+
+                    Spacer(minLength: 0)
+                }
+
+                if operationalEvents.isEmpty {
+                    ContentUnavailableView {
+                        Label(t("No matching events", "一致する操作履歴がありません"), systemImage: "clock.arrow.circlepath")
+                    } description: {
+                        Text(t(
+                            "Run an explicit operation or change the filters.",
+                            "明示的な操作を実行するか、フィルターを変更してください。"
+                        ))
+                    }
+                    .frame(minHeight: 120)
+                } else {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(operationalEvents.prefix(40)) { event in
+                            operationalHistoryRow(event)
+                            if event.id != operationalEvents.prefix(40).last?.id {
+                                Divider()
+                            }
+                        }
+                    }
+                }
+            }
+            .accessibilityIdentifier("logs-operational-history")
+        }
+    }
+
+    private func operationalHistoryRow(_ event: RuntimeEvent) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: operationalHistorySymbol(event.severity))
+                .foregroundStyle(operationalHistoryColor(event.severity))
+                .frame(width: 18, alignment: .center)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(localizedOperationalCategory(event.category))
+                        .font(.caption.weight(.semibold))
+                    Text(event.severity.localizedTitle(language: language))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(operationalHistoryColor(event.severity))
+                    Spacer(minLength: 8)
+                    Text(event.timestamp, style: .time)
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.tertiary)
+                }
+
+                Text(event.localizedMessage(language: language))
+                    .font(.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                let context = [event.modelID, event.endpoint].compactMap { $0 }
+                if !context.isEmpty {
+                    Text(context.joined(separator: " · "))
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                }
+            }
+        }
+        .padding(.vertical, 9)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func localizedOperationalCategory(_ category: String) -> String {
+        switch category {
+        case OperationalHistoryProjection.allCategories:
+            return t("All categories", "すべてのカテゴリ")
+        case "Lifecycle":
+            return t("Lifecycle", "ライフサイクル")
+        case "Port":
+            return t("Port", "ポート")
+        case "Ready":
+            return t("Ready", "準備確認")
+        case "Runtime":
+            return t("Runtime", "ランタイム")
+        case "Runtime Health":
+            return t("Runtime Health", "ランタイム状態")
+        case "Profile":
+            return t("Profile", "プロファイル")
+        case "Download":
+            return t("Download", "ダウンロード")
+        case "Benchmark":
+            return t("Benchmark", "ベンチマーク")
+        case "General":
+            return t("General", "一般")
+        default:
+            return category
+        }
+    }
+
+    private func operationalHistorySymbol(_ severity: RuntimeEventSeverity) -> String {
+        switch severity {
+        case .info: "info.circle"
+        case .success: "checkmark.circle.fill"
+        case .warning: "exclamationmark.triangle.fill"
+        case .failure: "xmark.octagon.fill"
+        }
+    }
+
+    private func operationalHistoryColor(_ severity: RuntimeEventSeverity) -> Color {
+        switch severity {
+        case .info: .secondary
+        case .success: .green
+        case .warning: .orange
+        case .failure: .red
         }
     }
 

@@ -107,7 +107,7 @@ MLXServerManager-v25.0.0-unsigned.zip
 
 On the GitHub Release page, use the file listed under **Assets** with this exact name. Do not use **Source code (zip)** or **Source code (tar.gz)** when you want the app.
 
-`v25.0.0` is the latest app-code release.
+`v25.0.0` is the latest published app-code release. The current development tree targets `v30.0.0`; do not use a v30 asset name until that asset has been packaged and published.
 
 Verify the checksum before opening the app:
 
@@ -153,7 +153,7 @@ Do not download the source archive if you want the app binary. Use the named `ML
 
 ## Current GUI Direction
 
-v23.0.0 completes the current integrated GUI refresh. The model list remains the primary operating table, while Downloads, Logs, Settings, and the right-side Operations Inspector now use clearer command-center, empty-state, and quick-settings patterns. Language and theme are available from the bottom-left Settings menu.
+v30.0.0 completes the current release-candidate refinement. The model list remains the primary operating table, while Settings adds runtime readiness, the profile editor adds explicit launch templates, Downloads adds local discovery controls, and Logs adds a separate Operational History. Kinetic feedback is limited to active operations and respects reduced-motion and reduced-transparency settings. Language and theme remain available from the bottom-left Settings menu.
 
 You must provide your own supported backend environment and executable. You can register existing model files, search Hugging Face and choose a result, or use Downloads to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: clients connect directly to the selected endpoint, and MLX Server Manager never proxies client traffic. Test Chat, Benchmark, and Agent Readiness generation requests occur only when the user explicitly runs those diagnostics.
 
@@ -263,7 +263,7 @@ For Hermes Agent and similar clients, see [docs/hermes_agent_connection.md](docs
 
 ## Current Feature Set
 
-As of v25.0.0, MLX Server Manager includes:
+As of the v30.0.0 development tree, MLX Server Manager includes:
 
 - Independent Start, Stop, and Restart for app-managed `mlx_lm.server` and Rapid-MLX processes.
 - Multiple concurrently managed models, each with its own process, endpoint, runtime state, and memory measurement.
@@ -273,8 +273,10 @@ As of v25.0.0, MLX Server Manager includes:
 - Managed-process-only Stop and Restart behavior.
 - Port availability check.
 - Ready check via `GET /v1/models`.
+- Explicit runtime readiness checks for configured `mlx_lm.server` and Rapid-MLX executable paths without starting a server.
 - Settings save and restore.
 - Model profile add, edit, delete, and selection.
+- Explicit Minimal, Balanced, Memory Saver, and Throughput templates that modify only managed launch-tuning fields.
 - Export Profiles for model profile metadata backup.
 - Import selected valid model profiles from JSON metadata.
 - Import Preview validation for schema v1 profile export documents.
@@ -310,6 +312,8 @@ As of v25.0.0, MLX Server Manager includes:
 - Lightweight Onboarding Guidance panel for first-run setup and connection state hints.
 - Menu bar quick actions.
 - Logs readability improvements.
+- Separate memory-only Operational History with category and severity filters, model/endpoint context, copy, and clear actions.
+- Restrained active-operation Border Beam feedback with reduced-motion and reduced-transparency handling.
 - Copy Logs.
 - Setup Diagnostics summary.
 - Copy Diagnostics Summary.
@@ -323,6 +327,7 @@ As of v25.0.0, MLX Server Manager includes:
   - Copy `curl /v1/models` readiness check
   - Copy OpenAI-compatible chat example text
 - Hugging Face search as a lightweight model discovery surface.
+- Local sorting by recommendation, downloads, likes, recent update, or name, plus MLX-tag and minimum-download filtering without another network request.
 - Explicit Hugging Face download by model ID or URL through local tooling.
 - Download queue status, progress parsing, retry, cancel, restore form, and URL copy actions.
 - Optional auto-add of downloaded models to the model profile list.

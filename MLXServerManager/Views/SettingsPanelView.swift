@@ -13,7 +13,10 @@ struct SettingsPanelView: View {
     @Binding var language: AppLanguage
     @Binding var appearance: String
     let settingsDirectoryPath: String
+    let runtimeReadinessState: RuntimeReadinessViewState
     let hasUnsavedChanges: Bool
+    let onRefreshRuntimeReadiness: () -> Void
+    let onCancelRuntimeReadiness: () -> Void
     let onDiscard: () -> Void
     let onSave: () -> Void
 
@@ -110,6 +113,8 @@ struct SettingsPanelView: View {
                     ]
                 )
 
+                runtimeReadinessSection
+
                 settingsSection(
                     title: t("Downloads", "ダウンロード"),
                     subtitle: t("Defaults for Hugging Face model downloads. The download screen uses these values automatically.", "Hugging Faceモデルダウンロードの既定値です。ダウンロード画面ではこの値を自動的に使います。"),
@@ -168,6 +173,119 @@ struct SettingsPanelView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.bottom, 4)
+    }
+
+    private var runtimeReadinessSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 14) {
+                ForEach(runtimeReadinessState.reports) { report in
+                    runtimeReadinessRow(report)
+
+                    if report.id != runtimeReadinessState.reports.last?.id {
+                        Divider()
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    if runtimeReadinessState.isChecking {
+                        Button(t("Cancel check", "確認を中止")) {
+                            onCancelRuntimeReadiness()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    Button {
+                        onRefreshRuntimeReadiness()
+                    } label: {
+                        Label(
+                            runtimeReadinessState.isChecking
+                                ? t("Checking runtimes", "ランタイムを確認中")
+                                : t("Check runtimes", "ランタイムを確認"),
+                            systemImage: runtimeReadinessState.isChecking ? "hourglass" : "checkmark.shield"
+                        )
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(runtimeReadinessState.isChecking)
+
+                    Spacer(minLength: 0)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(t("Runtime readiness", "ランタイム準備状態"))
+                    .font(.headline)
+                Text(t(
+                    "Checks configured executables without starting a model server.",
+                    "モデルサーバーを起動せず、設定済みの実行ファイルを確認します。"
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .groupBoxStyle(.automatic)
+        .accessibilityIdentifier("settings-runtime-readiness")
+    }
+
+    private func runtimeReadinessRow(_ report: RuntimeReadinessReport) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: runtimeReadinessSymbol(report.status))
+                .foregroundStyle(runtimeReadinessColor(report.status))
+                .frame(width: 18, alignment: .center)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(report.backend.localizedTitle(language: language))
+                        .font(.callout.weight(.semibold))
+                    Text(report.status.localizedTitle(language: language))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(runtimeReadinessColor(report.status))
+                }
+
+                Text(report.issue.localizedDetail(
+                    backend: report.backend,
+                    executablePath: report.executablePath,
+                    language: language
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+                if !report.executablePath.isEmpty {
+                    Text(report.executablePath)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func runtimeReadinessSymbol(_ status: RuntimeReadinessStatus) -> String {
+        switch status {
+        case .notChecked: "questionmark.circle"
+        case .checking: "hourglass"
+        case .ready: "checkmark.circle.fill"
+        case .warning: "exclamationmark.triangle.fill"
+        case .unavailable: "xmark.circle.fill"
+        }
+    }
+
+    private func runtimeReadinessColor(_ status: RuntimeReadinessStatus) -> Color {
+        switch status {
+        case .notChecked: .secondary
+        case .checking: .accentColor
+        case .ready: .green
+        case .warning: .orange
+        case .unavailable: .red
+        }
     }
 
     private var settingsSaveFooter: some View {

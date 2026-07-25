@@ -7,6 +7,7 @@ struct DownloadsSurfaceView: View {
 
     private let contentWidth: CGFloat = 760
     private let controlWidth: CGFloat = 300
+    private let minimumDownloadOptions = [0, 100, 1_000, 10_000, 100_000]
 
     private var strings: AppLocalization {
         AppLocalization(language: viewModel.settings.uiLanguage)
@@ -138,15 +139,11 @@ struct DownloadsSurfaceView: View {
                     .disabled(viewModel.isHuggingFaceSearching || viewModel.huggingFaceDownloadDraft.source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
 
-                HStack(spacing: 10) {
-                    Toggle(t("Show MLX-tagged results only", "MLXタグ付きのみ表示"), isOn: $viewModel.showOnlyMLXLikelySearchResults)
-                        .toggleStyle(.checkbox)
-                        .disabled(viewModel.huggingFaceSearchResults.isEmpty)
-                    Spacer()
-                    Text(t("Download requires a verified MLX tag.", "ダウンロードにはMLXタグ確認が必要です。"))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
+                discoveryControls
+
+                Text(viewModel.huggingFaceDiscoverySummary)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
 
                 Text(viewModel.huggingFaceSearchMessage)
                     .font(.caption)
@@ -168,6 +165,67 @@ struct DownloadsSurfaceView: View {
         }
     }
 
+    private var discoveryControls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 14) {
+                Toggle(
+                    t("Show MLX-tagged results only", "MLXタグ付きのみ表示"),
+                    isOn: $viewModel.showOnlyMLXLikelySearchResults
+                )
+                .toggleStyle(.checkbox)
+                .disabled(viewModel.huggingFaceSearchResults.isEmpty)
+
+                Spacer(minLength: 8)
+
+                Text(t("Sort", "並べ替え"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Picker(t("Sort", "並べ替え"), selection: $viewModel.huggingFaceDiscoverySort) {
+                    ForEach(HuggingFaceDiscoverySort.allCases) { sort in
+                        Text(sort.localizedTitle(language: viewModel.settings.uiLanguage))
+                            .tag(sort)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: 170)
+                .disabled(viewModel.huggingFaceSearchResults.isEmpty)
+            }
+
+            HStack(spacing: 10) {
+                Text(t("Minimum downloads", "最小ダウンロード数"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Picker(
+                    t("Minimum downloads", "最小ダウンロード数"),
+                    selection: $viewModel.huggingFaceMinimumDownloads
+                ) {
+                    ForEach(minimumDownloadOptions, id: \.self) { count in
+                        Text(count == 0 ? t("Any", "指定なし") : count.formatted())
+                            .tag(count)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .disabled(viewModel.huggingFaceSearchResults.isEmpty)
+
+                Spacer(minLength: 0)
+            }
+
+            Label(
+                t(
+                    "Changing these controls filters the current results only. Search remains explicit.",
+                    "これらの操作は現在の検索結果だけを絞り込みます。検索は引き続き明示操作です。"
+                ),
+                systemImage: "line.3.horizontal.decrease.circle"
+            )
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+        .accessibilityIdentifier("hugging-face-discovery-controls")
+    }
+
     private func searchResultRow(_ result: HuggingFaceSearchResult) -> some View {
         Button {
             viewModel.selectHuggingFaceSearchResult(result)
@@ -187,10 +245,10 @@ struct DownloadsSurfaceView: View {
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(result.isSupportedForDownload ? Color.green : Color.red)
                     }
-                    Text(result.qualitySummary)
+                    Text(result.discoveryReason(language: viewModel.settings.uiLanguage))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .lineLimit(2)
                     Text(result.selectionMessage(language: viewModel.settings.uiLanguage))
                         .font(.caption2)
                         .foregroundStyle(result.isSupportedForDownload ? Color.secondary : Color.red)
@@ -373,6 +431,31 @@ struct DownloadsSurfaceView: View {
                     .font(.caption)
                     .foregroundStyle(.green)
             }
+        }
+        .padding(14)
+        .background(
+            Color(nsColor: .controlBackgroundColor).opacity(0.26),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.22), lineWidth: 1)
+        )
+        .kineticBorderBeam(
+            isActive: isTransferActive,
+            palette: .accent,
+            cornerRadius: 14,
+            duration: 2.6,
+            strength: 0.84
+        )
+    }
+
+    private var isTransferActive: Bool {
+        switch viewModel.huggingFaceDownloadStatus.phase {
+        case .preparing, .downloading, .finalizing:
+            true
+        case .waiting, .completed, .failed, .cancelled:
+            false
         }
     }
 

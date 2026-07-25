@@ -1,0 +1,20 @@
+import Foundation
+
+nonisolated enum ReadyCheckRequestKey: Hashable, Sendable {
+    case profile(String)
+    case defaultEndpoint
+}
+
+typealias MiniChatRunCoordinator = LatestRequestCoordinator
+typealias ProfileDeletionUndoRunCoordinator = LatestRequestCoordinator
+typealias ProfileDeletionCacheRunCoordinator = LatestRequestCoordinator
+typealias SystemHardwareInfoRunCoordinator = LatestRequestCoordinator
+typealias BenchmarkRunCoordinator = LatestRequestCoordinator
+typealias AgenticBenchmarkRunCoordinator = LatestRequestCoordinator
+typealias ReadyCheckRunCoordinator = LatestKeyedRequestCoordinator<ReadyCheckRequestKey>
+typealias ModelStartPreparationCoordinator = LatestKeyedRequestCoordinator<ModelConfig.ID>
+typealias ManagedStartRunCoordinator = LatestKeyedRequestCoordinator<ModelConfig.ID>
+typealias LifecycleRunCoordinator = LatestKeyedRequestCoordinator<ModelConfig.ID>
+typealias ModelSizeEstimationCoordinator = SharedKeyedTaskCoordinator<String, Double?>
+typealias HuggingFaceOutputFlushCoordinator = DelayedKeyedActionCoordinator<UUID>
+typealias ManagedModelOutputCoordinator = ManagedServerOutputCoordinator

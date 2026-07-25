@@ -765,7 +765,20 @@ struct IntegratedWorkspaceView: View {
         case .settings:
             SettingsSurfaceView(viewModel: viewModel)
         case .logs:
-            EmptyView()
+            LogsSurfaceView(
+                entries: viewModel.visibleLogEntries,
+                operationalEvents: viewModel.visibleOperationalHistoryEvents,
+                operationalHistoryCategories: viewModel.operationalHistoryCategories,
+                operationalHistoryCategoryFilter: $viewModel.operationalHistoryCategoryFilter,
+                operationalHistorySeverityFilter: $viewModel.operationalHistorySeverityFilter,
+                targetSummary: viewModel.connectionTargetSummary,
+                runningModelText: viewModel.runningModelText,
+                language: viewModel.settings.uiLanguage,
+                onCopyOperationalHistory: viewModel.copyOperationalHistoryRequested,
+                onClearOperationalHistory: viewModel.clearOperationalHistoryRequested,
+                onCopy: viewModel.copyLogsRequested,
+                onClear: viewModel.clearLogsRequested
+            )
         }
     }
 
@@ -994,12 +1007,30 @@ struct IntegratedWorkspaceView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(isSelected ? Color.accentColor.opacity(0.16) : Color(nsColor: .controlBackgroundColor).opacity(0.55))
+                    .fill(isSelected ? Color.accentColor.opacity(0.13) : Color(nsColor: .controlBackgroundColor).opacity(0.55))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(isSelected ? Color.accentColor.opacity(0.38) : Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 1)
+                    .stroke(isSelected ? Color.accentColor.opacity(0.58) : Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 1)
             )
+            .kineticBorderBeam(
+                isActive: row.isTransitioning,
+                palette: row.isDegraded ? .danger : .warning,
+                cornerRadius: 12,
+                duration: 1.9,
+                strength: 0.88
+            )
+            .overlay(alignment: .leading) {
+                if isSelected {
+                    Capsule(style: .continuous)
+                        .fill(Color.accentColor.opacity(row.isTransitioning ? 0.95 : 0.78))
+                        .frame(width: 3)
+                        .padding(.vertical, 9)
+                        .padding(.leading, 4)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
             .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
         return Group {
@@ -1411,6 +1442,13 @@ struct IntegratedWorkspaceView: View {
         }
         .padding(12)
         .background(inspectorCardBackground)
+        .kineticBorderBeam(
+            isActive: viewModel.isModelTransitioning(model),
+            palette: viewModel.isModelDegraded(model) ? .danger : .warning,
+            cornerRadius: 12,
+            duration: 2.1,
+            strength: 0.76
+        )
     }
 
     private func modelInspectorHeaderSubtitle(for model: ModelConfig) -> String {
@@ -2328,8 +2366,19 @@ struct IntegratedWorkspaceView: View {
         .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+                .stroke(
+                    isMiniChatInputFocused ? Color.accentColor.opacity(0.62) : Color.secondary.opacity(0.18),
+                    lineWidth: isMiniChatInputFocused ? 1.2 : 1
+                )
         )
+        .kineticBorderBeam(
+            isActive: viewModel.isMiniChatRunning,
+            palette: .accent,
+            cornerRadius: 18,
+            duration: 2.4,
+            strength: 0.82
+        )
+        .animation(.easeInOut(duration: 0.18), value: isMiniChatInputFocused)
     }
 
     private func miniChatBubble(_ message: MiniChatTranscriptMessage) -> some View {

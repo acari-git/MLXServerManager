@@ -22,7 +22,14 @@ struct SettingsSurfaceView: View {
             language: $draftSettings.uiLanguage,
             appearance: $draftSettings.uiAppearance,
             settingsDirectoryPath: viewModel.settingsDirectoryPath,
+            runtimeReadinessState: viewModel.runtimeReadinessViewState,
             hasUnsavedChanges: hasUnsavedChanges,
+            onRefreshRuntimeReadiness: {
+                viewModel.refreshRuntimeReadinessRequested(settings: draftSettings)
+            },
+            onCancelRuntimeReadiness: {
+                viewModel.cancelRuntimeReadinessRequested(settings: draftSettings)
+            },
             onDiscard: discardDraftSettings,
             onSave: saveDraftSettings
         )

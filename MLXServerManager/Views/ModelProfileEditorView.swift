@@ -3,6 +3,7 @@ import SwiftUI
 struct ModelProfileEditorView: View {
     @Binding var draft: ModelProfileDraft
     @State private var advancedOptionsStatus: String?
+    @State private var selectedProfileTemplate: ModelProfileTemplate = .balanced
     @State private var validationShakeTrigger = 0
 
     let title: String
@@ -188,6 +189,8 @@ struct ModelProfileEditorView: View {
                 }
             }
 
+            profileTemplateSection
+
             KineticDisclosureSection(
                 label: {
                     Text(t("Advanced Launch Options", "詳細起動オプション"))
@@ -339,6 +342,75 @@ struct ModelProfileEditorView: View {
             .disabled(runtimeFieldsLocked)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var profileTemplateSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .center, spacing: 12) {
+                    Picker(t("Template", "テンプレート"), selection: $selectedProfileTemplate) {
+                        ForEach(ModelProfileTemplate.allCases) { template in
+                            Text(template.localizedTitle(language: language))
+                                .tag(template)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 190, alignment: .leading)
+
+                    Button {
+                        draft = selectedProfileTemplate.applying(to: draft)
+                        advancedOptionsStatus = t(
+                            "Applied \(selectedProfileTemplate.localizedTitle(language: .english)) template.",
+                            "\(selectedProfileTemplate.localizedTitle(language: .japanese))テンプレートを適用しました。"
+                        )
+                    } label: {
+                        Label(t("Apply Template", "テンプレートを適用"), systemImage: "wand.and.stars")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(runtimeFieldsLocked)
+
+                    Spacer(minLength: 0)
+                }
+
+                Text(selectedProfileTemplate.localizedDetail(language: language))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(selectedProfileTemplate.localizedSettingsSummary(
+                    backend: draft.backend,
+                    language: language
+                ))
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+
+                Label(
+                    t(
+                        "Templates change only managed performance fields. Model identity, endpoint, notes, sampling, CORS, chat-template, and raw arguments are preserved.",
+                        "テンプレートが変更するのは管理対象の性能項目だけです。モデル情報、接続先、メモ、サンプリング、CORS、チャットテンプレート、Raw引数は保持されます。"
+                    ),
+                    systemImage: "lock.shield"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(t("Profile Template", "プロファイルテンプレート"))
+                    .font(.headline)
+                Text(t(
+                    "Apply a deterministic starting point before reviewing Advanced Launch Options.",
+                    "詳細起動オプションを確認する前に、決定的な初期値を適用します。"
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .groupBoxStyle(.automatic)
+        .accessibilityIdentifier("profile-template-section")
     }
 
     private var kvCacheAssessment: KVCacheAssessment {
