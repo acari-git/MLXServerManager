@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document records the implementation state for the v31.0.0 through v34.0.0 development series. The latest published release remains v30.0.0.
+This document records the implementation and publication state for the v31.0.0 through v34.0.0 release series. The latest published release is v34.0.0.
 
 Direct Mode remains unchanged:
 
@@ -84,6 +84,12 @@ Rapid-MLX remains unconfigured in the inspected local Settings and therefore rem
 - Review compatibility results against real runtime `--help` output.
 - Verify Japanese/English and light/dark layouts on a real app window.
 
-## Release Boundary
+## Published Release
 
-The app target version is `34.0.0`, but no commit, tag, push, asset, or GitHub Release is authorized by implementation completion alone.
+- Tag: `v34.0.0`
+- Title: `MLX Server Manager v34.0.0`
+- Asset: `MLXServerManager-v34.0.0-unsigned.zip`
+- Pre-release: No
+- SHA-256: `8627cb55bd948bd234fe2d3cc79b1b7d42720f5177bdf3e0f98a6ea6414aa827`
+
+The uploaded asset was downloaded again from GitHub Releases. Its checksum matched, its only root entry was `MLXServerManager.app`, and no settings, profiles, session-recovery file, model data, cache, log, credential, dSYM, DerivedData, `__MACOSX`, or AppleDouble entry was present.

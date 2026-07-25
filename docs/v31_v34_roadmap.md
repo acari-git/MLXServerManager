@@ -83,8 +83,14 @@ Implemented:
 7. Strict-concurrency build.
 8. `git diff --check` and repository safety checks.
 
-## Release Boundary
+## Release Status
 
-The development version is `34.0.0`. The latest published release remains `v30.0.0` until a separate release workflow is explicitly requested.
+`v34.0.0` was published with the verified asset `MLXServerManager-v34.0.0-unsigned.zip`.
 
-Do not commit, tag, push, package, or publish this work without explicit authorization.
+SHA-256:
+
+```text
+8627cb55bd948bd234fe2d3cc79b1b7d42720f5177bdf3e0f98a6ea6414aa827
+```
+
+The public asset is an ad-hoc-signed, non-notarized local-use app zip.
