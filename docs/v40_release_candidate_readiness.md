@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document records the implementation and verification state for v35.0.0 through v40.0.0. The development tree is versioned as v40.0.0. The latest published release remains v34.0.0 until a separate commit, tag, push, asset, and GitHub Release workflow is explicitly requested.
+This document records the implementation, verification, packaging, and publication state for v35.0.0 through v40.0.0. MLX Server Manager v40.0.0 is the latest published release.
 
 Direct Mode remains unchanged:
 
@@ -109,13 +109,22 @@ These checks require local runtime and model combinations and do not alter the c
 
 ## Release State
 
-Not performed:
+Completed on July 25, 2026:
 
-- commit;
-- tag;
-- push;
-- unsigned zip asset;
-- checksum publication;
-- GitHub Release.
+- release commit `97cac64095cf293d355a8da9f80e46e29163146d`;
+- annotated tag `v40.0.0` targeting the release commit;
+- `main` and the tag pushed to origin;
+- GitHub Release published as `MLX Server Manager v40.0.0`;
+- latest-release status confirmed;
+- published asset downloaded again and reverified.
 
-The latest published binary remains `MLXServerManager-v34.0.0-unsigned.zip`.
+Release asset:
+
+- Name: `MLXServerManager-v40.0.0-unsigned.zip`
+- Size: 3,412,411 bytes
+- SHA-256: `ce141f0da069fc6182efae52a08739118d98744c4d0e877ddc06c4b09eaee6e6`
+- Signing: ad-hoc
+- Developer ID: not signed
+- Notarization: not notarized
+
+The re-downloaded asset matched the local SHA-256, contained only the `MLXServerManager.app` root, and contained no forbidden runtime data or AppleDouble metadata.

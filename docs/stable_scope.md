@@ -1,6 +1,6 @@
 # Stable Scope
 
-This document defines the current development scope for MLX Server Manager v40.0.0. The latest published binary remains v34.0.0 until a separate release workflow is explicitly requested. Older version-specific planning documents describe historical boundaries; this file records the current product surface and Direct Mode rules.
+This document defines the current stable scope for MLX Server Manager v40.0.0. The latest published binary is v40.0.0. Older version-specific planning documents describe historical boundaries; this file records the current product surface and Direct Mode rules.
 
 MLX Server Manager is a Direct Mode control surface for app-managed `mlx_lm.server` and Rapid-MLX processes, plus explicitly adopted external OpenAI-compatible endpoints:
 
