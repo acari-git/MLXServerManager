@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document records the implemented v27.0.0 through v30.0.0 product work layered on the v26 architecture and Kinetic UX stabilization. The stable version marker remains unchanged until release work is explicitly requested.
+This document records the implemented v27.0.0 through v30.0.0 product work layered on the v26 architecture and Kinetic UX stabilization, plus the verification completed for the v30.0.0 release.
 
 Direct Mode remains:
 
@@ -99,7 +99,7 @@ Primary tests:
 
 ## Automated Verification
 
-Verified for the v30.0.0 development tree:
+Verified for v30.0.0:
 
 - 508 unit and integration tests passed with 0 failures and 0 skipped,
 - localization guards passed,
@@ -121,7 +121,7 @@ Completed local evidence:
 - the Debug app remained alive through a short launch smoke check without an initialization crash,
 - public-safety checks found no token patterns, forbidden tracked runtime files, personal paths, or build artifacts.
 
-Manual checks still required before publishing the binary:
+Known follow-up checks after the initial unsigned release:
 
 - ready-state verification with a real Rapid-MLX installation,
 - template review with representative 30B-class and smaller workloads,
@@ -134,21 +134,17 @@ See `docs/v30_manual_verification.md` for the evidence record.
 
 ## Release Boundary
 
-Implementation readiness does not itself authorize a release. Only when explicitly requested:
+The user explicitly authorized the v30.0.0 release workflow.
 
-Completed in the development tree:
+Completed before publication:
 
 - changed the app target `MARKETING_VERSION` to `30.0.0`,
-- updated `docs/stable_scope.md` with the v30 release-candidate surface,
-- updated README development-facing scope while retaining the published v25 asset and checksum,
-- prepared `docs/v30_release_notes_draft.md`.
+- updated `docs/stable_scope.md` and README for v30.0.0,
+- built `MLXServerManager-v30.0.0-unsigned.zip`,
+- verified that the archive contains only `MLXServerManager.app` entries,
+- verified the extracted app version and launch behavior,
+- calculated SHA-256 `5b11b5b2418a612a783c7cd8eedb24e4de9cc6b0387575212f731a0792e98383`,
+- prepared the final release notes,
+- committed and tagged the release source.
 
-Still separately authorized release steps:
-
-- update screenshots when safe release images are available,
-- build and package the unsigned v30 app asset,
-- calculate and insert the final checksum,
-- commit,
-- tag,
-- push,
-- create the GitHub Release.
+Screenshots remain unchanged because no newly captured images were available that could be confirmed free of private paths, model details, or runtime logs.

@@ -1,13 +1,12 @@
-# v30.0.0 Release Notes Draft
+# MLX Server Manager v30.0.0
 
-## Release Settings
+Release asset: `MLXServerManager-v30.0.0-unsigned.zip`
 
-- Tag: `v30.0.0`
-- Title: `MLX Server Manager v30.0.0`
-- Asset: `MLXServerManager-v30.0.0-unsigned.zip`
-- Pre-release: No
+SHA-256:
 
-Do not publish this draft or reference the asset as available until the binary has been built, packaged, checksum-verified, and uploaded.
+```text
+5b11b5b2418a612a783c7cd8eedb24e4de9cc6b0387575212f731a0792e98383
+```
 
 ## Summary
 
@@ -71,4 +70,4 @@ See `docs/v30_manual_verification.md` for the local verification record and rema
 
 ## Distribution Notice
 
-This release is planned as an unsigned, non-notarized local-use macOS app zip. Verify the final SHA-256 checksum and zip contents before opening the app. The checksum must be inserted only after the final release asset is created.
+This release is an unsigned, non-notarized local-use macOS app zip. Verify the published SHA-256 checksum and zip contents before opening the app. The archive contains `MLXServerManager.app` and does not bundle runtime settings, model profiles, model files, caches, logs, or credentials.

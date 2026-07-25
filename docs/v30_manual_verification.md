@@ -4,7 +4,7 @@ Date: 2026-07-25 (Asia/Tokyo)
 
 ## Boundary
 
-This record covers local release-candidate verification only. It does not authorize a commit, tag, push, binary upload, or GitHub Release.
+This record covers the local verification completed before publishing the v30.0.0 unsigned GitHub Release asset.
 
 Direct Mode remains:
 
@@ -98,6 +98,21 @@ No findings were returned.
 - English/Japanese and light/dark rendering smoke tests: passed.
 - `git diff --check`: passed after the version, documentation, and ignore-rule updates.
 
+## Release Asset Verification
+
+The final unsigned asset was built and verified locally:
+
+- asset: `MLXServerManager-v30.0.0-unsigned.zip`,
+- size: approximately 2.9 MB,
+- SHA-256: `5b11b5b2418a612a783c7cd8eedb24e4de9cc6b0387575212f731a0792e98383`,
+- archive root: `MLXServerManager.app` only,
+- archive entry count: 7,
+- extracted app version: 30.0.0,
+- extracted build number: 1,
+- signature: ad hoc/linker-signed, not Developer ID signed,
+- no settings, profiles, model files, caches, logs, DerivedData, dSYM, AppleDouble metadata, or credentials were found,
+- the extracted app executable remained alive for more than six seconds with no stderr output.
+
 ## Remaining Manual Checks
 
 The following checks still require direct human observation or unavailable runtime software:
@@ -110,4 +125,4 @@ The following checks still require direct human observation or unavailable runti
 - Reduce Motion and Reduce Transparency visual behavior in System Settings,
 - CPU and GPU impact while multiple active Border Beam surfaces are simultaneously visible.
 
-These items do not invalidate the implemented code or automated verification, but they remain release checklist items before publishing the unsigned v30 binary.
+These items do not invalidate the implemented code or packaged asset. They remain known follow-up verification items for future maintenance.
