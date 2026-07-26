@@ -47,6 +47,28 @@ Do not commit runtime settings, model profiles, model files, Hugging Face cache 
 - `*.safetensors`, `*.gguf`, `*.bin`, `*.onnx`, `*.mlx`
 - `*.app`, `*.zip`, `*.dSYM`, `build`, `DerivedData`
 
+## Agent skills
+
+Use installed Agent Skills automatically when the current task clearly matches a skill description. Read the matching `SKILL.md` before acting, and follow repository instructions when they conflict with a generic skill workflow.
+
+### Issue tracker
+
+Issues and PRDs are tracked in GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the default Matt Pocock triage vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This is a single-context repository. See `docs/agents/domain.md`.
+
+For implementation work, prefer the relevant discipline automatically: `diagnosing-bugs` for difficult defects, `tdd` for testable behavior changes, `codebase-design` for module boundaries, `code-review` before handoff, and `domain-modeling` when terminology or architectural decisions need clarification.
+
+Use `hallmark` when creating, auditing, or redesigning application UI. Use `kigen-design-system` when defining or importing design tokens, themes, semantic colors, typography, spacing, radius, Figma handoff, or mapping Kigen exports into SwiftUI; combine it with `apple-design` or `emil-design-eng` when platform behavior or interaction polish is in scope. Use `commit-archaeologist` before risky rewrites where Git history can explain intent, and use `scope-creep-detector` when reviewing whether a change exceeded its stated purpose. Use `advisor-orchestrator-worker` only for work that genuinely requires parallel decomposition. Use `thinking-out-loud` only when the user explicitly starts an exploratory voice-style dump or asks to think aloud.
+
+The `code-review-graph` skills (`build-graph`, `explore-codebase`, `debug-issue`, `refactor-safely`, `review-changes`, `review-delta`, and `review-pr`) require their MCP tools. Invoke them only when those tools are available in the current session; otherwise use the repository-native inspection and review workflow without claiming graph analysis was performed. User-invoked orchestration skills remain opt-in unless the user explicitly requests that workflow.
+
 ## Verification
 
 For code changes, run the narrowest relevant tests first, then the full test suite. Before handoff, verify:

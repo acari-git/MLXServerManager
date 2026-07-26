@@ -74,6 +74,7 @@ extension AppViewModel {
                 english: "Hermes Agent config file selected.",
                 japanese: "Hermes Agent設定ファイルを選択しました。"
             )
+            inspectHermesAgentConfigRequested()
             appendLog("[hermes] config path set to \(ModelAvailabilityPathFormatter.compact(path: url.path)).")
         }
     }
@@ -95,12 +96,22 @@ extension AppViewModel {
 
     func restoreHermesAgentConfigBackupRequested() {
         do {
-            let restoredBackupURL = try hermesAgentConfigService.restoreLatestBackup(configPath: hermesAgentConfigPathText)
+            guard let backup = selectedHermesAgentBackup else {
+                throw HermesAgentConfigServiceError.backupNotFound(hermesAgentConfigPathText)
+            }
+            let restoredBackupURL = try hermesAgentConfigService.restoreBackup(
+                backup,
+                configPath: hermesAgentConfigPathText
+            )
             hermesAgentConfigMessage = Self.localizedText(
                 language: settings.uiLanguage,
                 english: "Restored latest Hermes Agent backup: \(ModelAvailabilityPathFormatter.compact(path: restoredBackupURL.path))",
                 japanese: "最新のHermes Agentバックアップを復元しました: \(ModelAvailabilityPathFormatter.compact(path: restoredBackupURL.path))"
             )
+            hermesAgentConfigInspection = try? hermesAgentConfigService.inspect(
+                configPath: hermesAgentConfigPathText
+            )
+            refreshHermesAgentBackups()
             appendLog("[hermes] restored latest backup: \(ModelAvailabilityPathFormatter.compact(path: restoredBackupURL.path)).")
         } catch {
             hermesAgentConfigMessage = Self.localizedText(

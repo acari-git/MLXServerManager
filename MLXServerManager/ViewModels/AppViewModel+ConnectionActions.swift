@@ -1,4 +1,6 @@
+import AppKit
 import Foundation
+import UniformTypeIdentifiers
 
 extension AppViewModel {
     func copyBaseURL() {
@@ -29,6 +31,177 @@ extension AppViewModel {
     func copyHermesAgentConfig() {
         copyToPasteboard(hermesAgentConfigText)
         appendLog("[ui] Copied Hermes Agent connection config.")
+    }
+
+    func selectHermesAgentMessage(_ message: HermesAgentSessionMessage) {
+        selectedHermesAgentMessageID = message.id
+    }
+
+    func copyHermesAgentMessageContent(_ message: HermesAgentSessionMessage) {
+        copyToPasteboard(hermesAgentTranscriptContent(message))
+        appendLog("[hermes] copied transcript content for message \(message.id).")
+    }
+
+    func copyHermesAgentMessageDetails(_ message: HermesAgentSessionMessage) {
+        copyToPasteboard(hermesAgentTranscriptCopyText(message))
+        appendLog("[hermes] copied transcript details for message \(message.id).")
+    }
+
+    func exportHermesAgentTranscriptRequested() {
+        guard let session = selectedHermesAgentSession else {
+            hermesAgentTranscriptExportMessage = Self.localizedText(language: settings.uiLanguage, english: "No Hermes Agent session is selected.", japanese: "Hermes Agentセッションが選択されていません。")
+            return
+        }
+        guard !sortedHermesAgentSessionMessages.isEmpty else {
+            hermesAgentTranscriptExportMessage = Self.localizedText(language: settings.uiLanguage, english: "No transcript items match the current filters.", japanese: "現在のフィルターに該当するトランスクリプトがありません。")
+            return
+        }
+
+        let panel = NSSavePanel()
+        panel.title = Self.localizedText(language: settings.uiLanguage, english: "Export Hermes Agent Transcript", japanese: "Hermes Agentトランスクリプトを書き出し")
+        let safeTitle = (session.title?.isEmpty == false ? session.title! : session.id)
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+        panel.nameFieldStringValue = "\(safeTitle).\(hermesAgentTranscriptExportFormat.fileExtension)"
+        panel.canCreateDirectories = true
+        let markdownType = UTType(filenameExtension: "md") ?? .plainText
+        panel.allowedContentTypes = hermesAgentTranscriptExportFormat == .markdown ? [markdownType] : [.plainText]
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            hermesAgentTranscriptExportMessage = Self.localizedText(language: settings.uiLanguage, english: "Transcript export cancelled.", japanese: "トランスクリプトの書き出しをキャンセルしました。")
+            return
+        }
+
+        do {
+            let text = hermesAgentTranscriptExportText(format: hermesAgentTranscriptExportFormat)
+            try text.write(to: url, atomically: true, encoding: .utf8)
+            hermesAgentTranscriptExportMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Exported \(sortedHermesAgentSessionMessages.count) transcript item(s) to \(url.lastPathComponent).",
+                japanese: "トランスクリプト\(sortedHermesAgentSessionMessages.count)件を\(url.lastPathComponent)へ書き出しました。"
+            )
+            appendLog("[hermes] exported filtered transcript to \(url.path).")
+        } catch {
+            hermesAgentTranscriptExportMessage = Self.localizedText(language: settings.uiLanguage, english: "Transcript export failed: \(error.localizedDescription)", japanese: "トランスクリプトの書き出しに失敗しました: \(error.localizedDescription)")
+            appendLog("[hermes] transcript export failed: \(error.localizedDescription)")
+        }
+    }
+
+    func refreshHermesAgentSessions() {
+        do {
+            hermesAgentSessions = try hermesAgentConfigService.listSessions(
+                configPath: hermesAgentConfigPathText
+            )
+            if !hermesAgentSessions.contains(where: { $0.id == selectedHermesAgentSessionID }) {
+                selectedHermesAgentSessionID = hermesAgentSessions.first?.id
+            }
+            refreshSelectedHermesAgentTranscript()
+            hermesAgentSessionMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Loaded \(hermesAgentSessions.count) recent Hermes Agent session(s).",
+                japanese: "最近のHermes Agentセッションを\(hermesAgentSessions.count)件読み込みました。"
+            )
+            appendLog("[hermes] loaded \(hermesAgentSessions.count) recent session summaries from state.db.")
+        } catch {
+            hermesAgentSessions = []
+            selectedHermesAgentSessionID = nil
+            hermesAgentSessionMessages = []
+            hermesAgentSessionMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Could not load Hermes Agent sessions: \(error.localizedDescription)",
+                japanese: "Hermes Agentセッションを読み込めませんでした: \(error.localizedDescription)"
+            )
+            appendLog("[hermes] session list failed: \(error.localizedDescription)")
+        }
+    }
+
+    func refreshSelectedHermesAgentTranscript() {
+        resetHermesAgentTranscriptDisplayLimit()
+        selectedHermesAgentMessageID = nil
+        guard let session = selectedHermesAgentSession else {
+            hermesAgentSessionMessages = []
+            return
+        }
+        do {
+            hermesAgentSessionMessages = try hermesAgentConfigService.listSessionMessages(
+                configPath: hermesAgentConfigPathText,
+                sessionID: session.id
+            )
+            hermesAgentSessionMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Loaded \(hermesAgentSessionMessages.count) transcript item(s).",
+                japanese: "トランスクリプトを\(hermesAgentSessionMessages.count)件読み込みました。"
+            )
+            appendLog("[hermes] loaded \(hermesAgentSessionMessages.count) transcript item(s) for \(session.id).")
+        } catch {
+            hermesAgentSessionMessages = []
+            selectedHermesAgentMessageID = nil
+            hermesAgentSessionMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Could not load Hermes Agent transcript: \(error.localizedDescription)",
+                japanese: "Hermes Agentトランスクリプトを読み込めませんでした: \(error.localizedDescription)"
+            )
+            appendLog("[hermes] transcript load failed: \(error.localizedDescription)")
+        }
+    }
+
+    func refreshHermesAgentBackups() {
+        let backups = (try? hermesAgentConfigService.listBackups(
+            configPath: hermesAgentConfigPathText
+        )) ?? []
+        hermesAgentConfigBackups = backups
+        if !backups.contains(where: { $0.id == selectedHermesAgentBackupID }) {
+            selectedHermesAgentBackupID = backups.first?.id
+        }
+    }
+
+    @discardableResult
+    func inspectHermesAgentConfigRequested() -> Bool {
+        do {
+            hermesAgentConfigInspection = try hermesAgentConfigService.inspect(
+                configPath: hermesAgentConfigPathText
+            )
+            hermesAgentConfigMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Read the current Hermes Agent model connection values.",
+                japanese: "現在のHermes Agentモデル接続値を読み取りました。"
+            )
+            refreshHermesAgentBackups()
+            appendLog("[hermes] inspected configured model connection and backup history.")
+            return true
+        } catch {
+            hermesAgentConfigInspection = nil
+            refreshHermesAgentBackups()
+            hermesAgentConfigMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "Could not inspect Hermes Agent config: \(error.localizedDescription)",
+                japanese: "Hermes Agent設定を確認できませんでした: \(error.localizedDescription)"
+            )
+            appendLog("[hermes] inspection failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    @discardableResult
+    func selectHermesAgentMatchingModelRequested() -> Bool {
+        guard let matchingModel = hermesAgentMatchingModel else {
+            hermesAgentConfigMessage = Self.localizedText(
+                language: settings.uiLanguage,
+                english: "No registered profile matches the model in the Hermes Agent config.",
+                japanese: "Hermes Agent設定のモデルに一致する登録済みプロファイルがありません。"
+            )
+            appendLog("[hermes] no registered profile matched the inspected model.")
+            return false
+        }
+
+        selectedModelID = matchingModel.id
+        hermesAgentConfigMessage = Self.localizedText(
+            language: settings.uiLanguage,
+            english: "Selected the profile referenced by the Hermes Agent config.",
+            japanese: "Hermes Agent設定で参照されているプロファイルを選択しました。"
+        )
+        appendLog("[hermes] selected matching profile \(matchingModel.id).")
+        return true
     }
 
     @discardableResult
@@ -70,6 +243,10 @@ extension AppViewModel {
                 )
                 appendLog("[hermes] config already matched selected model connection.")
             }
+            hermesAgentConfigInspection = try? hermesAgentConfigService.inspect(
+                configPath: hermesAgentConfigPathText
+            )
+            refreshHermesAgentBackups()
             return true
         } catch {
             hermesAgentConfigMessage = Self.localizedText(

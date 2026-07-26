@@ -10,6 +10,8 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.hermesConfigPath, "~/.hermes/config.yaml")
         XCTAssertEqual(settings.benchmarkPreset, .standard)
         XCTAssertEqual(settings.rapidMLXExecutablePath, "")
+        XCTAssertTrue(settings.launchPlans.isEmpty)
+        XCTAssertTrue(settings.resourceCalibrationRecords.isEmpty)
     }
 
     func testDecodingLegacySettingsFillsChromePreferences() throws {
@@ -29,6 +31,8 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.hermesConfigPath, "~/.hermes/config.yaml")
         XCTAssertEqual(settings.benchmarkPreset, .standard)
         XCTAssertEqual(settings.rapidMLXExecutablePath, "")
+        XCTAssertTrue(settings.launchPlans.isEmpty)
+        XCTAssertTrue(settings.resourceCalibrationRecords.isEmpty)
     }
 
     func testEncodingRoundTripsChromePreferences() throws {
@@ -502,7 +506,7 @@ final class AppSettingsTests: XCTestCase {
 
         try store.save(settings: .defaults, models: ModelConfig.defaults)
         var json = String(decoding: try Data(contentsOf: store.stateSnapshotFileURL), as: UTF8.self)
-        json = json.replacingOccurrences(of: "\"schemaVersion\" : 2", with: "\"schemaVersion\" : 999")
+        json = json.replacingOccurrences(of: "\"schemaVersion\" : 3", with: "\"schemaVersion\" : 999")
         try Data(json.utf8).write(to: store.stateSnapshotFileURL, options: [.atomic])
 
         XCTAssertThrowsError(try store.load()) { error in
@@ -521,7 +525,7 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: store.stateSnapshotFileURL), futureState)
     }
 
-    func testSettingsStoreMigratesAuthoritativeSchemaOneToSchemaTwo() throws {
+    func testSettingsStoreMigratesAuthoritativeSchemaOneToSchemaThree() throws {
         let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
         defer {
             if let url = try? store.settingsDirectoryURL {
@@ -537,7 +541,7 @@ final class AppSettingsTests: XCTestCase {
             as: UTF8.self
         )
         stateText = stateText.replacingOccurrences(
-            of: "\"schemaVersion\" : 2",
+            of: "\"schemaVersion\" : 3",
             with: "\"schemaVersion\" : 1"
         )
         try Data(stateText.utf8).write(to: store.stateSnapshotFileURL, options: [.atomic])
@@ -555,8 +559,41 @@ final class AppSettingsTests: XCTestCase {
 
         XCTAssertEqual(loaded.settings.defaultPort, 8_123)
         XCTAssertTrue(loaded.recoveryNotice?.contains("Migrated") == true)
-        XCTAssertTrue(migratedState.contains("\"schemaVersion\" : 2"))
-        XCTAssertTrue(migratedBackup.contains("\"schemaVersion\" : 2"))
+        XCTAssertTrue(migratedState.contains("\"schemaVersion\" : 3"))
+        XCTAssertTrue(migratedBackup.contains("\"schemaVersion\" : 3"))
+    }
+
+    func testSettingsStoreMigratesAuthoritativeSchemaTwoToSchemaThree() throws {
+        let store = SettingsStore(appDirectoryName: "MLXServerManagerTests-\(UUID().uuidString)")
+        defer {
+            if let url = try? store.settingsDirectoryURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        var settings = AppSettings.defaults
+        settings.defaultPort = 8_124
+        try store.save(settings: settings, models: ModelConfig.defaults)
+        var stateText = String(
+            decoding: try Data(contentsOf: store.stateSnapshotFileURL),
+            as: UTF8.self
+        )
+        stateText = stateText.replacingOccurrences(
+            of: "\"schemaVersion\" : 3",
+            with: "\"schemaVersion\" : 2"
+        )
+        try Data(stateText.utf8).write(to: store.stateSnapshotFileURL, options: [.atomic])
+        try Data(stateText.utf8).write(to: store.stateSnapshotBackupFileURL, options: [.atomic])
+
+        let loaded = try store.load()
+        let migratedState = String(
+            decoding: try Data(contentsOf: store.stateSnapshotFileURL),
+            as: UTF8.self
+        )
+
+        XCTAssertEqual(loaded.settings.defaultPort, 8_124)
+        XCTAssertTrue(loaded.recoveryNotice?.contains("Migrated") == true)
+        XCTAssertTrue(migratedState.contains("\"schemaVersion\" : 3"))
     }
 
     func testSettingsStorePersistsBenchmarkResultsSeparately() throws {

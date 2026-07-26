@@ -152,6 +152,50 @@ final class MainSurfaceRenderingTests: XCTestCase {
                     )
                 ),
                 (
+                    "launch-plan-editor",
+                    AnyView(
+                        LaunchPlanEditorView(
+                            models: context.viewModel.models,
+                            existingPlan: nil,
+                            language: scenario.language,
+                            onSave: { _ in },
+                            onCancel: {}
+                        )
+                        .environment(\.colorScheme, scenario.colorScheme)
+                    )
+                ),
+                (
+                    "operations-center",
+                    AnyView(
+                        OperationsCenterView(
+                            state: context.viewModel.operationsCenterViewState,
+                            launchPlans: context.viewModel.launchPlans,
+                            models: context.viewModel.models,
+                            language: scenario.language,
+                            onRefresh: {},
+                            onCancel: {},
+                            onRefreshEvidence: {},
+                            onRunStability: {},
+                            onCancelStability: {},
+                            onRecordCalibration: {},
+                            onCreateSelectedPlan: {},
+                            onCreateAllPlan: {},
+                            onDeletePlan: { _ in },
+                            onSavePlan: { _ in },
+                            onSetPlanStepRequired: { _, _, _ in },
+                            onMovePlanStep: { _, _, _ in },
+                            onRunPlan: { _ in },
+                            onCancelPlan: {},
+                            onStopPlanStarted: {},
+                            onRefreshCapacity: { _ in },
+                            onGenerateSupportBundle: {},
+                            onCopySupportBundle: {},
+                            onDismiss: {}
+                        )
+                        .environment(\.colorScheme, scenario.colorScheme)
+                    )
+                ),
+                (
                     "session-recovery",
                     AnyView(
                         SessionRecoveryView(

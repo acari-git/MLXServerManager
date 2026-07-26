@@ -4,6 +4,14 @@ import Combine
 import Foundation
 import UniformTypeIdentifiers
 
+enum HermesAgentTranscriptExportFormat: String, CaseIterable, Identifiable {
+    case markdown
+    case plainText
+
+    var id: String { rawValue }
+    var fileExtension: String { self == .markdown ? "md" : "txt" }
+}
+
 struct ModelProfileImportSelectionUpdate: Equatable {
     let selectedModelID: ModelConfig.ID?
     let preservedThroughReplacement: Bool
@@ -126,6 +134,7 @@ final class AppViewModel: ObservableObject {
         }
     }
     @Published var diagnosticsViewState: DiagnosticsViewState = .notRun
+    @Published var diagnosticsHistory: [DiagnosticsSnapshot] = DiagnosticsHistoryStore.load()
     var diagnosticsResults: [DiagnosticsResult] { diagnosticsViewState.results }
     var diagnosticsDidRun: Bool { diagnosticsViewState.didRun }
     var isDiagnosticsRunning: Bool { diagnosticsViewState.isRunning }
@@ -225,11 +234,28 @@ final class AppViewModel: ObservableObject {
     var miniChatDurationText: String { miniChatViewState.durationText }
     var isMiniChatRunning: Bool { miniChatViewState.isRunning }
     @Published var hermesAgentConfigMessage = AppViewModel.defaultHermesAgentConfigMessage(language: .system)
+    @Published var hermesAgentConfigInspection: HermesAgentConfigInspection?
+    @Published var hermesAgentConfigBackups: [HermesAgentConfigBackup] = []
+    @Published var selectedHermesAgentBackupID: String?
+    @Published var hermesAgentSessions: [HermesAgentSessionSummary] = []
+    @Published var selectedHermesAgentSessionID: String?
+    @Published var hermesAgentSessionMessages: [HermesAgentSessionMessage] = []
+    @Published var hermesAgentTranscriptRoleFilter = "all"
+    @Published var hermesAgentTranscriptSearchText = ""
+    @Published var hermesAgentTranscriptIncludesInactive = false
+    @Published var hermesAgentTranscriptIncludesCompacted = false
+    @Published var hermesAgentTranscriptNewestFirst = false
+    @Published var hermesAgentTranscriptDisplayLimit = 20
+    @Published var hermesAgentTranscriptExportFormat: HermesAgentTranscriptExportFormat = .markdown
+    @Published var hermesAgentTranscriptExportMessage = ""
+    @Published var selectedHermesAgentMessageID: Int?
+    @Published var hermesAgentSessionMessage = AppViewModel.defaultHermesAgentSessionMessage(language: .system)
     @Published var runtimeReadinessViewState = RuntimeReadinessViewState.initial()
     @Published var runtimeSetupAssistantViewState = RuntimeSetupAssistantViewState.initial
     @Published var runtimeCompatibilityViewState = RuntimeCompatibilityViewState.initial
     @Published var registeredModelHealthViewState = RegisteredModelHealthViewState.initial
     @Published var operationalReadinessViewState: OperationalReadinessViewState = .hidden
+    @Published var operationsCenterViewState: OperationsCenterViewState = .hidden
     @Published var launchFailureDiagnosesByModelID: [ModelConfig.ID: LaunchFailureDiagnosis] = [:]
     @Published var applicationTerminationPhase: ApplicationTerminationPhase = .idle
     @Published var sessionRecoveryViewState: SessionRecoveryViewState = .hidden
@@ -289,6 +315,16 @@ final class AppViewModel: ObservableObject {
     let registeredModelHealthService: any RegisteredModelHealthAssessing
     let registeredModelHealthRunCoordinator: LatestRequestCoordinator
     let operationalReadinessRunCoordinator: LatestRequestCoordinator
+    let operationsCenterRunCoordinator: LatestRequestCoordinator
+    let launchStabilityRunCoordinator: LatestRequestCoordinator
+    let launchPlanRunCoordinator: LatestRequestCoordinator
+    let platformCompatibilityService: PlatformCompatibilityService
+    let evidenceFreshnessService: EvidenceFreshnessService
+    let runtimeEnvironmentDoctorService: any RuntimeEnvironmentDoctorAssessing
+    let modelMetadataInspectionService: any ModelMetadataInspecting
+    let capacityPlanningService: CapacityPlanningService
+    let supportBundleService: SupportBundleService
+    let operationsReadyChecker: ReadyChecker
     let launchFailureDiagnosticCoordinator: LaunchFailureDiagnosticCoordinator
     let applicationTerminationCoordinator: ApplicationTerminationCoordinator
     let sessionRecoveryStore: SessionRecoveryStore
@@ -377,6 +413,14 @@ final class AppViewModel: ObservableObject {
         )
     }
 
+    static func defaultHermesAgentSessionMessage(language: AppLanguage) -> String {
+        localizedText(
+            language: language,
+            english: "Load recent Hermes Agent sessions from the local state database.",
+            japanese: "ローカル状態データベースから最近のHermes Agentセッションを読み込みます。"
+        )
+    }
+
     static func defaultHermesAgentConfigMessage(language: AppLanguage) -> String {
         localizedText(
             language: language,
@@ -421,6 +465,12 @@ final class AppViewModel: ObservableObject {
         runtimeCompatibilityService: (any RuntimeCompatibilityAssessing)? = nil,
         runtimeOptionCapabilityProvider: (any RuntimeOptionCapabilityProviding)? = nil,
         registeredModelHealthService: (any RegisteredModelHealthAssessing)? = nil,
+        platformCompatibilityService: PlatformCompatibilityService? = nil,
+        evidenceFreshnessService: EvidenceFreshnessService? = nil,
+        runtimeEnvironmentDoctorService: (any RuntimeEnvironmentDoctorAssessing)? = nil,
+        modelMetadataInspectionService: (any ModelMetadataInspecting)? = nil,
+        capacityPlanningService: CapacityPlanningService? = nil,
+        supportBundleService: SupportBundleService? = nil,
         sessionRecoveryStore: SessionRecoveryStore? = nil
     ) {
         self.benchmarkViewState = BenchmarkViewState(
@@ -503,6 +553,16 @@ final class AppViewModel: ObservableObject {
             ?? RegisteredModelHealthService(integrityChecker: resolvedLocalModelIntegrityChecker)
         self.registeredModelHealthRunCoordinator = LatestRequestCoordinator()
         self.operationalReadinessRunCoordinator = LatestRequestCoordinator()
+        self.operationsCenterRunCoordinator = LatestRequestCoordinator()
+        self.launchStabilityRunCoordinator = LatestRequestCoordinator()
+        self.launchPlanRunCoordinator = LatestRequestCoordinator()
+        self.platformCompatibilityService = platformCompatibilityService ?? PlatformCompatibilityService()
+        self.evidenceFreshnessService = evidenceFreshnessService ?? EvidenceFreshnessService()
+        self.runtimeEnvironmentDoctorService = runtimeEnvironmentDoctorService ?? RuntimeEnvironmentDoctorService()
+        self.modelMetadataInspectionService = modelMetadataInspectionService ?? ModelMetadataInspectionService()
+        self.capacityPlanningService = capacityPlanningService ?? CapacityPlanningService()
+        self.supportBundleService = supportBundleService ?? SupportBundleService()
+        self.operationsReadyChecker = resolvedReadyChecker
         self.launchFailureDiagnosticCoordinator = LaunchFailureDiagnosticCoordinator()
         self.applicationTerminationCoordinator = ApplicationTerminationCoordinator()
         self.sessionRecoveryStore = sessionRecoveryStore ?? SessionRecoveryStore()
@@ -511,6 +571,7 @@ final class AppViewModel: ObservableObject {
         self.logStateCoordinator = initialLogStateCoordinator
         self.logViewState = initialLogStateCoordinator.state
         loadSettings()
+        operationsCenterViewState.calibrationRecords = settings.resourceCalibrationRecords
         loadPersistedHuggingFaceDownloadRetries()
         refreshDefaultUserFacingMessagesForCurrentLanguage()
         huggingFaceDownloadDraft = .defaults(
@@ -2169,7 +2230,13 @@ final class AppViewModel: ObservableObject {
     }
 
     var canApplyHermesAgentConfig: Bool {
-        selectedModel != nil && !hermesAgentConfigPathText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        selectedModel != nil
+            && !hermesAgentConfigPathText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !hermesAgentHasBlockingDiagnostics
+    }
+
+    var hermesAgentHasBlockingDiagnostics: Bool {
+        hermesAgentConfigInspection?.diagnostics.contains(where: \.blocksUpdate) == true
     }
 
     var hermesAgentTargetModelText: String {
@@ -2178,6 +2245,318 @@ final class AppViewModel: ObservableObject {
 
     var hermesAgentTargetBaseURLText: String {
         baseURL
+    }
+
+    var hermesAgentMatchingModel: ModelConfig? {
+        guard let inspection = hermesAgentConfigInspection else {
+            return nil
+        }
+        return models.first { $0.modelID == inspection.connection.modelID }
+    }
+
+    var canSelectHermesAgentMatchingModel: Bool {
+        guard let matchingModel = hermesAgentMatchingModel else {
+            return false
+        }
+        return selectedModelID != matchingModel.id
+    }
+
+    var hermesAgentConfiguredModelText: String {
+        guard let modelID = hermesAgentConfigInspection?.connection.modelID, !modelID.isEmpty else {
+            return "-"
+        }
+        return modelID
+    }
+
+    var hermesAgentConfiguredBaseURLText: String {
+        guard let baseURL = hermesAgentConfigInspection?.connection.baseURL, !baseURL.isEmpty else {
+            return "-"
+        }
+        return baseURL
+    }
+
+    var hermesAgentSessionCountText: String {
+        String(hermesAgentSessions.count)
+    }
+
+    var hermesAgentLatestSessionText: String {
+        guard let session = hermesAgentSessions.first else {
+            return Self.localizedText(language: settings.uiLanguage, english: "No sessions loaded", japanese: "セッション未読込")
+        }
+        let title = session.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (title?.isEmpty == false ? title : nil) ?? session.id
+    }
+
+    var selectedHermesAgentSession: HermesAgentSessionSummary? {
+        guard let selectedHermesAgentSessionID else { return hermesAgentSessions.first }
+        return hermesAgentSessions.first { $0.id == selectedHermesAgentSessionID }
+    }
+
+    var selectedHermesAgentSessionDetailsText: String {
+        guard let session = selectedHermesAgentSession else {
+            return Self.localizedText(language: settings.uiLanguage, english: "No session selected", japanese: "セッション未選択")
+        }
+        let totalTokens = session.inputTokens + session.outputTokens + session.cacheReadTokens + session.cacheWriteTokens + session.reasoningTokens
+        let status: String
+        if session.archived != 0 {
+            status = Self.localizedText(language: settings.uiLanguage, english: "Archived", japanese: "アーカイブ済み")
+        } else if let endedAt = session.endedAt {
+            let reason = session.endReason?.isEmpty == false ? session.endReason! : "-"
+            status = "\(Date(timeIntervalSince1970: endedAt).formatted(date: .abbreviated, time: .standard)) · \(reason)"
+        } else {
+            status = Self.localizedText(language: settings.uiLanguage, english: "Active / no end recorded", japanese: "継続中・終了記録なし")
+        }
+        let cwd = session.cwd?.isEmpty == false ? session.cwd! : "-"
+        return "Messages \(session.messageCount) · Tools \(session.toolCallCount) · Tokens \(totalTokens)\nInput \(session.inputTokens) · Output \(session.outputTokens) · Cache R/W \(session.cacheReadTokens)/\(session.cacheWriteTokens) · Reasoning \(session.reasoningTokens)\nWorkspace \(cwd)\nStatus \(status)"
+    }
+
+    var filteredHermesAgentSessionMessages: [HermesAgentSessionMessage] {
+        let query = hermesAgentTranscriptSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return hermesAgentSessionMessages.filter { message in
+            if !hermesAgentTranscriptIncludesInactive && message.active == 0 { return false }
+            if !hermesAgentTranscriptIncludesCompacted && message.compacted != 0 { return false }
+            if hermesAgentTranscriptRoleFilter != "all" && message.role.lowercased() != hermesAgentTranscriptRoleFilter { return false }
+            if query.isEmpty { return true }
+            let searchable = [message.role, message.content, message.toolName, message.toolCalls, message.finishReason]
+                .compactMap { $0 }
+                .joined(separator: "\n")
+            return searchable.localizedCaseInsensitiveContains(query)
+        }
+    }
+
+    var sortedHermesAgentSessionMessages: [HermesAgentSessionMessage] {
+        filteredHermesAgentSessionMessages.sorted { lhs, rhs in
+            if lhs.timestamp == rhs.timestamp {
+                return hermesAgentTranscriptNewestFirst ? lhs.id > rhs.id : lhs.id < rhs.id
+            }
+            return hermesAgentTranscriptNewestFirst ? lhs.timestamp > rhs.timestamp : lhs.timestamp < rhs.timestamp
+        }
+    }
+
+    var visibleHermesAgentSessionMessages: [HermesAgentSessionMessage] {
+        Array(sortedHermesAgentSessionMessages.prefix(hermesAgentTranscriptDisplayLimit))
+    }
+
+    var canShowMoreHermesAgentTranscript: Bool {
+        visibleHermesAgentSessionMessages.count < sortedHermesAgentSessionMessages.count
+    }
+
+    var hermesAgentTranscriptAvailableRoles: [String] {
+        Array(Set(hermesAgentSessionMessages.map { $0.role.lowercased() })).sorted()
+    }
+
+    var hermesAgentTranscriptSummaryText: String {
+        guard selectedHermesAgentSession != nil else {
+            return Self.localizedText(language: settings.uiLanguage, english: "No session selected", japanese: "セッション未選択")
+        }
+        return Self.localizedText(
+            language: settings.uiLanguage,
+            english: "Showing \(visibleHermesAgentSessionMessages.count) of \(sortedHermesAgentSessionMessages.count) matching item(s) · \(hermesAgentSessionMessages.count) loaded",
+            japanese: "読込\(hermesAgentSessionMessages.count)件・該当\(sortedHermesAgentSessionMessages.count)件中\(visibleHermesAgentSessionMessages.count)件を表示"
+        )
+    }
+
+    func showMoreHermesAgentTranscript() {
+        hermesAgentTranscriptDisplayLimit = min(hermesAgentTranscriptDisplayLimit + 20, max(20, sortedHermesAgentSessionMessages.count))
+    }
+
+    func resetHermesAgentTranscriptDisplayLimit() {
+        hermesAgentTranscriptDisplayLimit = 20
+    }
+
+    var selectedHermesAgentMessage: HermesAgentSessionMessage? {
+        guard let selectedHermesAgentMessageID else { return nil }
+        return hermesAgentSessionMessages.first { $0.id == selectedHermesAgentMessageID }
+    }
+
+    func hermesAgentTranscriptContent(_ message: HermesAgentSessionMessage) -> String {
+        if let content = message.content?.trimmingCharacters(in: .whitespacesAndNewlines), !content.isEmpty {
+            return content
+        }
+        if let toolName = message.toolName, !toolName.isEmpty {
+            return "Tool: \(toolName)"
+        }
+        if let toolCalls = message.toolCalls?.trimmingCharacters(in: .whitespacesAndNewlines), !toolCalls.isEmpty {
+            return toolCalls
+        }
+        return Self.localizedText(language: settings.uiLanguage, english: "No displayable content", japanese: "表示可能な内容なし")
+    }
+
+    func hermesAgentTranscriptMetadata(_ message: HermesAgentSessionMessage) -> String {
+        let tokens = message.tokenCount.map(String.init) ?? "-"
+        let finishReason = message.finishReason?.isEmpty == false ? message.finishReason! : "-"
+        let toolName = message.toolName?.isEmpty == false ? message.toolName! : "-"
+        return "ID \(message.id)\nRole \(message.role)\nTime \(Date(timeIntervalSince1970: message.timestamp).formatted(date: .abbreviated, time: .standard))\nTokens \(tokens)\nFinish reason \(finishReason)\nTool \(toolName)\nActive \(message.active != 0)\nCompacted \(message.compacted != 0)"
+    }
+
+    func hermesAgentTranscriptCopyText(_ message: HermesAgentSessionMessage) -> String {
+        let toolCalls = message.toolCalls?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let extra = toolCalls?.isEmpty == false ? "\n\nTool calls\n\(toolCalls!)" : ""
+        return "\(hermesAgentTranscriptMetadata(message))\n\nContent\n\(hermesAgentTranscriptContent(message))\(extra)"
+    }
+
+    func hermesAgentTranscriptExportText(format: HermesAgentTranscriptExportFormat) -> String {
+        guard let session = selectedHermesAgentSession else { return "" }
+        let title = session.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sessionTitle = title?.isEmpty == false ? title! : session.id
+        let messages = sortedHermesAgentSessionMessages
+
+        switch format {
+        case .markdown:
+            let header = "# \(sessionTitle)\n\n- Session ID: `\(session.id)`\n- Source: \(session.source)\n- Model: \(session.model ?? "-")\n- Exported messages: \(messages.count)\n"
+            let body = messages.map { message in
+                let role = message.role.capitalized
+                let time = Date(timeIntervalSince1970: message.timestamp).formatted(date: .abbreviated, time: .standard)
+                let metadata = [
+                    message.tokenCount.map { "Tokens: \($0)" },
+                    message.finishReason.flatMap { $0.isEmpty ? nil : "Finish reason: \($0)" },
+                    message.toolName.flatMap { $0.isEmpty ? nil : "Tool: \($0)" },
+                    message.active == 0 ? "Inactive" : nil,
+                    message.compacted != 0 ? "Compacted" : nil
+                ].compactMap { $0 }.joined(separator: " · ")
+                let suffix = metadata.isEmpty ? "" : "\n\n_\(metadata)_"
+                let toolCalls = message.toolCalls?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let toolSection = toolCalls?.isEmpty == false ? "\n\n```json\n\(toolCalls!)\n```" : ""
+                return "## \(role) · \(time)\n\n\(hermesAgentTranscriptContent(message))\(toolSection)\(suffix)"
+            }.joined(separator: "\n\n---\n\n")
+            return header + "\n" + body + "\n"
+        case .plainText:
+            let header = "\(sessionTitle)\nSession ID: \(session.id)\nSource: \(session.source)\nModel: \(session.model ?? "-")\nExported messages: \(messages.count)\n"
+            let body = messages.map { message in
+                "[\(Date(timeIntervalSince1970: message.timestamp).formatted(date: .abbreviated, time: .standard))] \(message.role.uppercased())\n\(hermesAgentTranscriptCopyText(message))"
+            }.joined(separator: "\n\n----------------------------------------\n\n")
+            return header + "\n\n" + body + "\n"
+        }
+    }
+
+    var hermesAgentBackupCountText: String {
+        String(hermesAgentConfigBackups.count)
+    }
+
+    var hermesAgentLatestBackupText: String {
+        guard let latest = hermesAgentConfigBackups.first else {
+            return Self.localizedText(language: settings.uiLanguage, english: "No backup", japanese: "バックアップなし")
+        }
+        return ModelAvailabilityPathFormatter.compact(path: latest.url.path)
+    }
+
+    var selectedHermesAgentBackup: HermesAgentConfigBackup? {
+        guard let selectedHermesAgentBackupID else { return hermesAgentConfigBackups.first }
+        return hermesAgentConfigBackups.first { $0.id == selectedHermesAgentBackupID }
+    }
+
+    var selectedHermesAgentBackupSummaryText: String {
+        guard let backup = selectedHermesAgentBackup else {
+            return Self.localizedText(language: settings.uiLanguage, english: "No backup selected", japanese: "バックアップ未選択")
+        }
+        do {
+            let inspection = try hermesAgentConfigService.inspectBackup(backup)
+            let model = inspection.connection.modelID.isEmpty ? "-" : inspection.connection.modelID
+            let url = inspection.connection.baseURL.isEmpty ? "-" : inspection.connection.baseURL
+            return "\(model) · \(url)"
+        } catch {
+            return Self.localizedText(language: settings.uiLanguage, english: "Preview unavailable", japanese: "プレビュー不可")
+        }
+    }
+
+    var hermesAgentDiagnosticsText: String {
+        guard let inspection = hermesAgentConfigInspection else {
+            return Self.localizedText(language: settings.uiLanguage, english: "Not checked", japanese: "未確認")
+        }
+        guard !inspection.diagnostics.isEmpty else {
+            return Self.localizedText(language: settings.uiLanguage, english: "No structural issues", japanese: "構造上の問題なし")
+        }
+        return inspection.diagnostics.map { diagnostic in
+            let location = diagnostic.line.map { "L\($0) " } ?? ""
+            return "\(location)\(diagnostic.message)"
+        }.joined(separator: "\n")
+    }
+
+    var hermesAgentConfigMatchText: String {
+        guard hermesAgentConfigInspection != nil else {
+            return Self.localizedText(language: settings.uiLanguage, english: "Not checked", japanese: "未確認")
+        }
+        return hermesAgentPendingChangeKeys.isEmpty
+            ? Self.localizedText(language: settings.uiLanguage, english: "Matches selected model", japanese: "選択モデルと一致")
+            : Self.localizedText(language: settings.uiLanguage, english: "Differs from selected model", japanese: "選択モデルと不一致")
+    }
+
+    var hermesAgentPendingChangeKeys: [String] {
+        guard let inspection = hermesAgentConfigInspection else {
+            return []
+        }
+        var keys: [String] = []
+        if inspection.connection.modelID != selectedModelIdentifier {
+            keys.append("default")
+        }
+        if inspection.connection.baseURL != baseURL {
+            keys.append("base_url")
+        }
+        if inspection.connection.apiKey != apiKeyPlaceholder {
+            keys.append("api_key")
+        }
+        return keys
+    }
+
+    var hermesAgentPendingChangesText: String {
+        guard hermesAgentConfigInspection != nil else {
+            return Self.localizedText(language: settings.uiLanguage, english: "Run Check to preview changes", japanese: "確認を実行すると変更内容を表示します")
+        }
+        guard !hermesAgentPendingChangeKeys.isEmpty else {
+            return Self.localizedText(language: settings.uiLanguage, english: "No changes", japanese: "変更なし")
+        }
+        return hermesAgentPendingChangeKeys.joined(separator: ", ")
+    }
+
+    var hermesAgentModelChangePreviewText: String {
+        hermesAgentValueChangePreview(
+            current: hermesAgentConfigInspection?.connection.modelID,
+            proposed: selectedModelIdentifier
+        )
+    }
+
+    var hermesAgentBaseURLChangePreviewText: String {
+        hermesAgentValueChangePreview(
+            current: hermesAgentConfigInspection?.connection.baseURL,
+            proposed: baseURL
+        )
+    }
+
+    var hermesAgentAPIKeyChangePreviewText: String {
+        guard let inspection = hermesAgentConfigInspection else {
+            return Self.localizedText(language: settings.uiLanguage, english: "Not checked", japanese: "未確認")
+        }
+        return inspection.connection.apiKey == apiKeyPlaceholder
+            ? Self.localizedText(language: settings.uiLanguage, english: "Unchanged", japanese: "変更なし")
+            : Self.localizedText(language: settings.uiLanguage, english: "Will be updated", japanese: "更新予定")
+    }
+
+    var hermesAgentUnifiedStatusText: String {
+        guard let inspection = hermesAgentConfigInspection else {
+            return Self.localizedText(language: settings.uiLanguage, english: "Check required", japanese: "確認が必要")
+        }
+        if inspection.diagnostics.contains(where: \.blocksUpdate) {
+            return Self.localizedText(language: settings.uiLanguage, english: "Blocked by YAML structure", japanese: "YAML構造エラーにより更新不可")
+        }
+        if !inspection.diagnostics.isEmpty {
+            return Self.localizedText(language: settings.uiLanguage, english: "Repairable issues detected", japanese: "安全に補完可能な問題あり")
+        }
+        if hermesAgentPendingChangeKeys.isEmpty {
+            return Self.localizedText(language: settings.uiLanguage, english: "Synchronized", japanese: "同期済み")
+        }
+        return Self.localizedText(language: settings.uiLanguage, english: "Ready to update", japanese: "更新可能")
+    }
+
+    private func hermesAgentValueChangePreview(current: String?, proposed: String) -> String {
+        guard let current else {
+            return Self.localizedText(language: settings.uiLanguage, english: "Not checked", japanese: "未確認")
+        }
+        let currentValue = current.isEmpty ? "-" : current
+        let proposedValue = proposed.isEmpty ? "-" : proposed
+        guard currentValue != proposedValue else {
+            return Self.localizedText(language: settings.uiLanguage, english: "Unchanged", japanese: "変更なし")
+        }
+        return "\(currentValue) → \(proposedValue)"
     }
 
     var settingsDirectoryPath: String {

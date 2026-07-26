@@ -760,6 +760,45 @@ struct IntegratedWorkspaceView: View {
                 .clipped()
                 .background(Color(nsColor: .windowBackgroundColor))
             }
+        case .workspace:
+            WorkspaceSurfaceView(viewModel: viewModel) { _ in
+                selectedDestination = .models
+            }
+        case .profiles:
+            ProfileLibrarySurfaceView(viewModel: viewModel)
+        case .diagnostics:
+            DiagnosticsSurfaceView(
+                viewModel: viewModel,
+                onOpenSettings: { selectedDestination = .settings },
+                onOpenDashboard: { selectedDestination = .models }
+            )
+        case .automation:
+            AutomationSurfaceView(
+                viewModel: viewModel,
+                onOpenDiagnostics: { selectedDestination = .diagnostics },
+                onOpenSettings: { selectedDestination = .settings }
+            )
+        case .agents:
+            MultiAgentHubView(
+                viewModel: viewModel,
+                onOpenWorkspace: { selectedDestination = .workspace },
+                onOpenSettings: { selectedDestination = .settings }
+            )
+        case .intelligence:
+            IntelligenceCenterView(viewModel: viewModel) { destination in
+                switch destination {
+                case .dashboard: selectedDestination = .models
+                case .profiles: selectedDestination = .profiles
+                case .diagnostics: selectedDestination = .diagnostics
+                case .automation: selectedDestination = .automation
+                case .agents: selectedDestination = .agents
+                case .workspace: selectedDestination = .workspace
+                case .settings: selectedDestination = .settings
+                case .logs: selectedDestination = .logs
+                }
+            }
+        case .platform:
+            PlatformIntegrationView(viewModel: viewModel) { selectedDestination = $0 }
         case .downloads:
             DownloadsSurfaceView(viewModel: viewModel, onOpenModels: { selectedDestination = .models })
         case .settings:
@@ -848,6 +887,16 @@ struct IntegratedWorkspaceView: View {
     private func modelTable(rows: [ModelListRowState], availableWidth: CGFloat, allowsWidthAnimation: Bool = false) -> some View {
         ScrollView(.vertical) {
             LazyVStack(alignment: .leading, spacing: 10) {
+                DashboardOverviewView(
+                    viewModel: viewModel,
+                    rows: rows,
+                    onOpenProfiles: { selectedDestination = .profiles },
+                    onOpenDiagnostics: { selectedDestination = .diagnostics },
+                    onOpenSettings: { selectedDestination = .settings },
+                    onOpenLogs: { selectedDestination = .logs }
+                )
+                .frame(width: max(0, availableWidth - 28), alignment: .leading)
+
                 if availableWidth >= 850 {
                     modelSortHeader(availableWidth: max(0, availableWidth - 28))
                         .frame(width: max(0, availableWidth - 28), alignment: .leading)
@@ -1548,6 +1597,257 @@ struct IntegratedWorkspaceView: View {
                 title: "Base URL",
                 value: viewModel.hermesAgentTargetBaseURLText
             )
+            hermesAgentValueRow(
+                title: t("Configured Model", "設定済みモデル"),
+                value: ModelAvailabilityPathFormatter.compact(path: viewModel.hermesAgentConfiguredModelText)
+            )
+            hermesAgentValueRow(
+                title: t("Configured Base URL", "設定済みBase URL"),
+                value: viewModel.hermesAgentConfiguredBaseURLText
+            )
+            hermesAgentValueRow(
+                title: t("Backup Count", "バックアップ数"),
+                value: viewModel.hermesAgentBackupCountText
+            )
+            hermesAgentValueRow(
+                title: t("Latest Backup", "最新バックアップ"),
+                value: viewModel.hermesAgentLatestBackupText
+            )
+            if !viewModel.hermesAgentConfigBackups.isEmpty {
+                Picker(t("Restore Target", "復元対象"), selection: $viewModel.selectedHermesAgentBackupID) {
+                    ForEach(viewModel.hermesAgentConfigBackups) { backup in
+                        Text(backup.modifiedAt.formatted(date: .abbreviated, time: .standard))
+                            .tag(Optional(backup.id))
+                    }
+                }
+                .pickerStyle(.menu)
+                hermesAgentValueRow(
+                    title: t("Backup Preview", "バックアップ内容"),
+                    value: viewModel.selectedHermesAgentBackupSummaryText
+                )
+            }
+            hermesAgentValueRow(
+                title: t("Hermes Sync", "Hermes同期状態"),
+                value: viewModel.hermesAgentUnifiedStatusText
+            )
+            hermesAgentValueRow(
+                title: t("Model Change", "モデル変更"),
+                value: viewModel.hermesAgentModelChangePreviewText
+            )
+            hermesAgentValueRow(
+                title: t("Base URL Change", "Base URL変更"),
+                value: viewModel.hermesAgentBaseURLChangePreviewText
+            )
+            hermesAgentValueRow(
+                title: t("API Key Change", "APIキー変更"),
+                value: viewModel.hermesAgentAPIKeyChangePreviewText
+            )
+            hermesAgentValueRow(
+                title: t("Pending Keys", "反映予定キー"),
+                value: viewModel.hermesAgentPendingChangesText
+            )
+            hermesAgentValueRow(
+                title: t("YAML Diagnostics", "YAML診断"),
+                value: viewModel.hermesAgentDiagnosticsText
+            )
+
+            Divider()
+            hermesAgentValueRow(
+                title: t("Recent Sessions", "最近のセッション"),
+                value: "\(viewModel.hermesAgentSessionCountText) · \(viewModel.hermesAgentLatestSessionText)"
+            )
+            if !viewModel.hermesAgentSessions.isEmpty {
+                Picker(t("Session", "セッション"), selection: $viewModel.selectedHermesAgentSessionID) {
+                    ForEach(viewModel.hermesAgentSessions) { session in
+                        Text(session.title?.isEmpty == false ? session.title! : session.id)
+                            .tag(Optional(session.id))
+                    }
+                }
+                .pickerStyle(.menu)
+                .onChange(of: viewModel.selectedHermesAgentSessionID) {
+                    viewModel.refreshSelectedHermesAgentTranscript()
+                }
+
+                if let session = viewModel.selectedHermesAgentSession {
+                    hermesAgentValueRow(
+                        title: t("Session Source / Model", "起動元・モデル"),
+                        value: "\(session.source) · \(session.model ?? "-") · \(Date(timeIntervalSince1970: session.startedAt).formatted(date: .abbreviated, time: .standard))"
+                    )
+                    hermesAgentValueRow(
+                        title: t("Session Details", "セッション詳細"),
+                        value: viewModel.selectedHermesAgentSessionDetailsText
+                    )
+                    hermesAgentValueRow(
+                        title: t("Transcript", "トランスクリプト"),
+                        value: viewModel.hermesAgentTranscriptSummaryText
+                    )
+                    TextField(t("Search transcript", "トランスクリプトを検索"), text: $viewModel.hermesAgentTranscriptSearchText)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: viewModel.hermesAgentTranscriptSearchText) {
+                            viewModel.resetHermesAgentTranscriptDisplayLimit()
+                        }
+
+                    Picker(t("Role", "役割"), selection: $viewModel.hermesAgentTranscriptRoleFilter) {
+                        Text(t("All roles", "すべての役割")).tag("all")
+                        ForEach(viewModel.hermesAgentTranscriptAvailableRoles, id: \.self) { role in
+                            Text(role.capitalized).tag(role)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: viewModel.hermesAgentTranscriptRoleFilter) {
+                        viewModel.resetHermesAgentTranscriptDisplayLimit()
+                    }
+
+                    Picker(t("Order", "並び順"), selection: $viewModel.hermesAgentTranscriptNewestFirst) {
+                        Text(t("Oldest first", "古い順")).tag(false)
+                        Text(t("Newest first", "新しい順")).tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: viewModel.hermesAgentTranscriptNewestFirst) {
+                        viewModel.resetHermesAgentTranscriptDisplayLimit()
+                    }
+
+                    Toggle(t("Show inactive messages", "無効化されたメッセージを表示"), isOn: $viewModel.hermesAgentTranscriptIncludesInactive)
+                        .toggleStyle(.switch)
+                        .onChange(of: viewModel.hermesAgentTranscriptIncludesInactive) {
+                            viewModel.resetHermesAgentTranscriptDisplayLimit()
+                        }
+                    Toggle(t("Show compacted messages", "圧縮済みメッセージを表示"), isOn: $viewModel.hermesAgentTranscriptIncludesCompacted)
+                        .toggleStyle(.switch)
+                        .onChange(of: viewModel.hermesAgentTranscriptIncludesCompacted) {
+                            viewModel.resetHermesAgentTranscriptDisplayLimit()
+                        }
+
+                    HStack(spacing: 8) {
+                        Picker(t("Export format", "書き出し形式"), selection: $viewModel.hermesAgentTranscriptExportFormat) {
+                            Text("Markdown").tag(HermesAgentTranscriptExportFormat.markdown)
+                            Text(t("Plain text", "プレーンテキスト")).tag(HermesAgentTranscriptExportFormat.plainText)
+                        }
+                        .pickerStyle(.menu)
+
+                        Button {
+                            viewModel.exportHermesAgentTranscriptRequested()
+                        } label: {
+                            Label(t("Export transcript", "トランスクリプトを書き出し"), systemImage: "square.and.arrow.up")
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(viewModel.sortedHermesAgentSessionMessages.isEmpty)
+                    }
+
+                    if !viewModel.hermesAgentTranscriptExportMessage.isEmpty {
+                        Text(viewModel.hermesAgentTranscriptExportMessage)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    ForEach(viewModel.visibleHermesAgentSessionMessages) { message in
+                        VStack(alignment: .leading, spacing: 5) {
+                            HStack {
+                                Text(message.role.uppercased())
+                                    .font(.caption2.weight(.bold))
+                                Spacer()
+                                Text(Date(timeIntervalSince1970: message.timestamp).formatted(date: .omitted, time: .standard))
+                                    .font(.caption2.monospaced())
+                                    .foregroundStyle(.secondary)
+                            }
+                            Text(viewModel.hermesAgentTranscriptContent(message))
+                                .font(.caption)
+                                .lineLimit(5)
+                                .textSelection(.enabled)
+                            HStack(spacing: 8) {
+                                if let tokenCount = message.tokenCount {
+                                    Text("\(tokenCount) tokens")
+                                }
+                                if message.active == 0 {
+                                    Text(t("Inactive", "無効"))
+                                }
+                                if message.compacted != 0 {
+                                    Text(t("Compacted", "圧縮済み"))
+                                }
+                                Spacer()
+                                Button(t("Details", "詳細")) {
+                                    viewModel.selectHermesAgentMessage(message)
+                                }
+                                .buttonStyle(.borderless)
+                                Button {
+                                    viewModel.copyHermesAgentMessageContent(message)
+                                } label: {
+                                    Image(systemName: "doc.on.doc")
+                                }
+                                .buttonStyle(.borderless)
+                                .help(t("Copy message content", "メッセージ本文をコピー"))
+                            }
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.secondary)
+                        }
+                        .padding(7)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            viewModel.selectedHermesAgentMessageID == message.id
+                                ? Color.accentColor.opacity(0.10)
+                                : Color(nsColor: .textBackgroundColor).opacity(0.35),
+                            in: RoundedRectangle(cornerRadius: 8)
+                        )
+                    }
+
+                    if let message = viewModel.selectedHermesAgentMessage {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(t("Message Details", "メッセージ詳細"))
+                                    .font(.caption.weight(.semibold))
+                                Spacer()
+                                Button(t("Copy content", "本文をコピー")) {
+                                    viewModel.copyHermesAgentMessageContent(message)
+                                }
+                                .buttonStyle(.bordered)
+                                Button(t("Copy all", "全体をコピー")) {
+                                    viewModel.copyHermesAgentMessageDetails(message)
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                            Text(viewModel.hermesAgentTranscriptMetadata(message))
+                                .font(.caption2.monospaced())
+                                .foregroundStyle(.secondary)
+                                .textSelection(.enabled)
+                            ScrollView {
+                                Text(viewModel.hermesAgentTranscriptContent(message))
+                                    .font(.caption)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .textSelection(.enabled)
+                            }
+                            .frame(maxHeight: 240)
+                            if let toolCalls = message.toolCalls, !toolCalls.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Text(t("Tool calls", "ツール呼び出し"))
+                                    .font(.caption2.weight(.semibold))
+                                Text(toolCalls)
+                                    .font(.caption2.monospaced())
+                                    .textSelection(.enabled)
+                            }
+                        }
+                        .padding(9)
+                        .background(Color(nsColor: .controlBackgroundColor).opacity(0.5), in: RoundedRectangle(cornerRadius: 9))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 9)
+                                .stroke(Color.accentColor.opacity(0.25), lineWidth: 1)
+                        )
+                    }
+
+                    if viewModel.canShowMoreHermesAgentTranscript {
+                        Button {
+                            viewModel.showMoreHermesAgentTranscript()
+                        } label: {
+                            Label(t("Show 20 more", "さらに20件表示"), systemImage: "chevron.down.circle")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+            }
+            Text(viewModel.hermesAgentSessionMessage)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "checkmark.circle.fill")
@@ -1603,7 +1903,35 @@ struct IntegratedWorkspaceView: View {
             .controlSize(.small)
             .disabled(!viewModel.canApplyHermesAgentConfig || hermesActionPhase == .working)
 
+            Button {
+                viewModel.refreshHermesAgentSessions()
+            } label: {
+                Label(t("Load Sessions", "セッションを読込"), systemImage: "clock.arrow.circlepath")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+
+            Button {
+                viewModel.selectHermesAgentMatchingModelRequested()
+            } label: {
+                Label(t("Select Profile from Hermes Config", "Hermes設定のプロファイルを選択"), systemImage: "scope")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .disabled(!viewModel.canSelectHermesAgentMatchingModel)
+
             HStack(spacing: 8) {
+                Button {
+                    viewModel.inspectHermesAgentConfigRequested()
+                } label: {
+                    Label(t("Check", "確認"), systemImage: "arrow.triangle.2.circlepath")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
                 Button {
                     viewModel.chooseHermesAgentConfigRequested()
                 } label: {
@@ -1630,6 +1958,7 @@ struct IntegratedWorkspaceView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .disabled(viewModel.selectedHermesAgentBackup == nil)
             }
         }
     }

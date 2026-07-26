@@ -12,6 +12,8 @@ nonisolated struct AppSettings: Codable, Hashable {
     var autoUnloadEnabledByModelID: [String: Bool]
     var autoUnloadMinutesByModelID: [String: Int]
     var benchmarkPreset: BenchmarkPreset
+    var launchPlans: [LaunchPlanDefinition]
+    var resourceCalibrationRecords: [ResourceCalibrationRecord]
     var uiLanguage: AppLanguage
     var uiAppearance: String
 
@@ -27,6 +29,8 @@ nonisolated struct AppSettings: Codable, Hashable {
         autoUnloadEnabledByModelID: [:],
         autoUnloadMinutesByModelID: [:],
         benchmarkPreset: .standard,
+        launchPlans: [],
+        resourceCalibrationRecords: [],
         uiLanguage: .system,
         uiAppearance: "system"
     )
@@ -43,6 +47,8 @@ nonisolated struct AppSettings: Codable, Hashable {
         autoUnloadEnabledByModelID: [String: Bool] = [:],
         autoUnloadMinutesByModelID: [String: Int] = [:],
         benchmarkPreset: BenchmarkPreset = .standard,
+        launchPlans: [LaunchPlanDefinition] = [],
+        resourceCalibrationRecords: [ResourceCalibrationRecord] = [],
         uiLanguage: AppLanguage = .system,
         uiAppearance: String = "system"
     ) {
@@ -57,6 +63,8 @@ nonisolated struct AppSettings: Codable, Hashable {
         self.autoUnloadEnabledByModelID = autoUnloadEnabledByModelID
         self.autoUnloadMinutesByModelID = autoUnloadMinutesByModelID.mapValues { min(max($0, 1), 999) }
         self.benchmarkPreset = benchmarkPreset
+        self.launchPlans = launchPlans
+        self.resourceCalibrationRecords = Array(resourceCalibrationRecords.suffix(100))
         self.uiLanguage = uiLanguage
         self.uiAppearance = uiAppearance
     }
@@ -73,6 +81,8 @@ nonisolated struct AppSettings: Codable, Hashable {
         case autoUnloadEnabledByModelID
         case autoUnloadMinutesByModelID
         case benchmarkPreset
+        case launchPlans
+        case resourceCalibrationRecords
         case uiLanguage
         case uiAppearance
     }
@@ -92,6 +102,11 @@ nonisolated struct AppSettings: Codable, Hashable {
         let decodedAutoUnloadMinutes = try container.decodeIfPresent([String: Int].self, forKey: .autoUnloadMinutesByModelID) ?? [:]
         autoUnloadMinutesByModelID = decodedAutoUnloadMinutes.mapValues { min(max($0, 1), 999) }
         benchmarkPreset = try container.decodeIfPresent(BenchmarkPreset.self, forKey: .benchmarkPreset) ?? .standard
+        launchPlans = try container.decodeIfPresent([LaunchPlanDefinition].self, forKey: .launchPlans) ?? []
+        resourceCalibrationRecords = Array(
+            (try container.decodeIfPresent([ResourceCalibrationRecord].self, forKey: .resourceCalibrationRecords) ?? [])
+                .suffix(100)
+        )
         uiLanguage = try container.decodeIfPresent(AppLanguage.self, forKey: .uiLanguage) ?? .system
         uiAppearance = try container.decodeIfPresent(String.self, forKey: .uiAppearance) ?? "system"
     }

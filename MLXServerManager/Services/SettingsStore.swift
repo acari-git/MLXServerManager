@@ -21,7 +21,7 @@ nonisolated struct SettingsSaveOutcome: Equatable {
 }
 
 private nonisolated struct PersistedSettingsSnapshot: Codable {
-    static let currentSchemaVersion = 2
+    static let currentSchemaVersion = 3
 
     let schemaVersion: Int
     let settings: AppSettings
@@ -35,6 +35,12 @@ private nonisolated struct PersistedSettingsSnapshot: Codable {
 }
 
 private nonisolated struct PersistedSettingsSnapshotV1: Codable {
+    let schemaVersion: Int
+    let settings: AppSettings
+    let models: [ModelConfig]
+}
+
+private nonisolated struct PersistedSettingsSnapshotV2: Codable {
     let schemaVersion: Int
     let settings: AppSettings
     let models: [ModelConfig]
@@ -384,6 +390,15 @@ nonisolated struct SettingsStore {
                     models: legacy.models
                 ),
                 sourceSchemaVersion: 1
+            )
+        case 2:
+            let legacy = try decoder.decode(PersistedSettingsSnapshotV2.self, from: data)
+            return DecodedPersistedSettingsSnapshot(
+                snapshot: PersistedSettingsSnapshot(
+                    settings: legacy.settings,
+                    models: legacy.models
+                ),
+                sourceSchemaVersion: 2
             )
         case PersistedSettingsSnapshot.currentSchemaVersion:
             return DecodedPersistedSettingsSnapshot(

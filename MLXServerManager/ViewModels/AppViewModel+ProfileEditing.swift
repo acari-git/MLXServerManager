@@ -50,6 +50,45 @@ extension AppViewModel {
         appendLog("[profile] editing \(selectedModel.modelID)")
     }
 
+    func duplicateProfileRequested(for model: ModelConfig) {
+        profileEditorPortSuggestionEndpointKey = nil
+        updateProfileEditorViewState { $0.dismiss() }
+        addProfilePortSuggestionEndpointKey = nil
+
+        let usedPorts = Set(models.filter { $0.host == model.host }.map(\.serverPort))
+        var suggestedPort = min(model.serverPort + 1, 65_535)
+        while usedPorts.contains(suggestedPort), suggestedPort < 65_535 {
+            suggestedPort += 1
+        }
+        let draft = ProfileLibrary.duplicateDraft(from: model, suggestedPort: suggestedPort)
+        updateAddProfileViewState { state in
+            state.present(draft: draft)
+        }
+        appendLog("[profile] duplicating \(model.modelID) as a new draft on port \(suggestedPort).")
+    }
+
+    func composeProfileRequested(models sourceModels: [ModelConfig], selection: ProfileCompositionSelection) {
+        guard let runtime = sourceModels.first(where: { $0.id == selection.runtimeModelID }) else { return }
+        profileEditorPortSuggestionEndpointKey = nil
+        updateProfileEditorViewState { $0.dismiss() }
+        addProfilePortSuggestionEndpointKey = nil
+
+        let usedPorts = Set(models.filter { $0.host == runtime.host }.map(\.serverPort))
+        var suggestedPort = min(runtime.serverPort + 1, 65_535)
+        while usedPorts.contains(suggestedPort), suggestedPort < 65_535 {
+            suggestedPort += 1
+        }
+        guard let draft = ProfileLibrary.composedDraft(
+            models: sourceModels,
+            selection: selection,
+            suggestedPort: suggestedPort
+        ) else { return }
+        updateAddProfileViewState { state in
+            state.present(draft: draft)
+        }
+        appendLog("[profile] composed a new draft from \(sourceModels.count) compared profiles on port \(suggestedPort).")
+    }
+
     func cancelProfileEditing() {
         profileEditorPortSuggestionEndpointKey = nil
         updateProfileEditorViewState { $0.dismiss() }

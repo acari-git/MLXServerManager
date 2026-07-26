@@ -152,6 +152,9 @@ extension AppViewModel {
             autoUnloadEnabledByModelID = nextSettings.autoUnloadEnabledByModelID
             autoUnloadMinutesByModelID = nextSettings.autoUnloadMinutesByModelID
             models = nextModels
+            let validProfileIDs = Set(nextModels.map(\.id))
+            ProfileLibraryMetadataStore.reconcile(validModelIDs: validProfileIDs)
+            ProfileLibraryRecentStore.reconcile(validModelIDs: validProfileIDs)
 
             let shouldSelectFallback = selectedModelID == deletedModel.id
                 || selectedModelID.map { selectedID in
@@ -508,6 +511,18 @@ extension AppViewModel {
                 autoUnloadEnabledByModelID = nextSettings.autoUnloadEnabledByModelID
                 autoUnloadMinutesByModelID = nextSettings.autoUnloadMinutesByModelID
                 models = nextModels
+                let validProfileIDs = Set(nextModels.map(\.id))
+                let renamedProfileID = existingModel.id == updatedModel.id
+                    ? nil
+                    : (old: existingModel.id, new: updatedModel.id)
+                ProfileLibraryMetadataStore.reconcile(
+                    validModelIDs: validProfileIDs,
+                    renamedModelID: renamedProfileID
+                )
+                ProfileLibraryRecentStore.reconcile(
+                    validModelIDs: validProfileIDs,
+                    renamedModelID: renamedProfileID
+                )
                 selectedModelID = updatedModel.id
                 profileEditorPortSuggestionEndpointKey = nil
                 updateProfileEditorViewState { $0.dismiss() }

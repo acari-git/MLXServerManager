@@ -1,6 +1,6 @@
 # Stable Scope
 
-This document defines the current stable scope for MLX Server Manager v40.0.0. The latest published binary is v40.0.0. Older version-specific planning documents describe historical boundaries; this file records the current product surface and Direct Mode rules.
+This document defines the current development scope for MLX Server Manager v50.0.0. The latest published binary remains v40.0.0 until a separate release workflow is explicitly requested. Older version-specific planning documents describe historical boundaries; this file records the current product surface and Direct Mode rules.
 
 MLX Server Manager is a Direct Mode control surface for app-managed `mlx_lm.server` and Rapid-MLX processes, plus explicitly adopted external OpenAI-compatible endpoints:
 
@@ -37,10 +37,26 @@ The app may launch, stop, monitor, diagnose, and document connection settings fo
 - Benchmark-guided unsaved tuning drafts only when current, comparable, multi-sample evidence exists.
 - Unified non-generating Operational Readiness across runtime, compatibility, model health, endpoint, resources, profile options, recovery, benchmark evidence, and Hermes Agent.
 - Diagnostics, benchmark, and Agent Readiness summaries with copy actions.
+- Explicit evidence-freshness comparison for runtime, profile, model, endpoint, memory, benchmark, and Hermes Agent inputs.
+- Runtime Environment Doctor for configured executable, permissions, script interpreter, architecture, bounded version/help output, and dependency-import failures without installation or repair.
+- Registered-model metadata inspection for model type, architecture, quantization, context length, vocabulary, tokenizer, chat template, reasoning/tool candidates, weights, and shards without executing model code.
+- Explicit short post-launch stability verification for an app-owned selected server using PID continuity and repeated `GET /v1/models` checks without generation.
+- Bounded local resource-calibration snapshots that record prediction, observed managed memory, and compatible benchmark aggregates without changing profile settings.
+
+### Operations Center and Launch Plans
+
+- Unified Operations Center covering platform baseline, Operational Readiness, evidence freshness, Runtime Doctor, model metadata, post-launch stability, resource calibration, Launch Plans, capacity assessment, and redacted support output.
+- Save named Launch Plan definitions with ordered profile steps and per-step required or optional state.
+- Validate Launch Plans before execution for duplicate profiles, missing required profiles, duplicate endpoints, known unsupported options, network-exposure confirmation, and critical memory risk.
+- Start Launch Plan profiles sequentially through the existing managed-start flow and wait for each required profile to become ready.
+- Preserve profiles that were already running before the plan.
+- Stop only app-owned profiles started by the current Launch Plan execution.
+- Assess multi-model plan capacity conservatively from registered model estimates, current managed memory, and current available system memory.
+- Generate and copy a bounded, memory-only, redacted Support Bundle without prompts, responses, credentials, raw environment variables, model files, or full home paths.
 
 ### Settings and Profiles
 
-- Save and restore app settings through a versioned authoritative state with schema-1-to-schema-2 migration and recovery backup repair.
+- Save and restore app settings through a versioned authoritative state with schema-1-and-schema-2-to-schema-3 migration and recovery backup repair.
 - Save and restore model profiles.
 - Check configured `mlx_lm.server` and Rapid-MLX executable readiness without starting a server.
 - Apply explicit Minimal, Balanced, Memory Saver, or Throughput templates to managed launch-tuning fields while preserving profile identity and unrelated options.
@@ -49,7 +65,7 @@ The app may launch, stop, monitor, diagnose, and document connection settings fo
 - Prevent deletion of the last profile.
 - Preserve local model folders during profile deletion.
 - Allow separate deletion of the one matching Hugging Face hub cache only after explicit destructive confirmation and path validation.
-- Store per-profile backend, launch options, automatic-unload settings, and benchmark history.
+- Store per-profile backend, launch options, automatic-unload settings, benchmark history, Launch Plan definitions, and bounded resource-calibration history.
 
 ### Model Discovery and Download
 
@@ -99,13 +115,16 @@ The app may launch, stop, monitor, diagnose, and document connection settings fo
 - Clear Logs.
 - Copy Logs.
 
-### Distribution Documentation
+### Platform and Distribution
 
+- Apple Silicon (`arm64`) application target.
+- Declared minimum deployment target of macOS 15.0 for the v50 development tree.
 - Debug and Release build instructions.
 - Unsigned local-use `.app` zip asset instructions.
 - Zip content verification.
 - Launch-after-unzip verification.
 - Release note template.
+- Read-only release-asset verification for SHA-256, archive root, forbidden entries, app version, minimum macOS, arm64 architecture, and code-signature validity.
 
 ## Stable Safety Rules
 
@@ -113,7 +132,10 @@ The app may launch, stop, monitor, diagnose, and document connection settings fo
 - No proxy in the inference path.
 - No general-purpose Chat UI.
 - No silent model generation. Test Chat, Benchmark, and Agent Readiness run only from explicit user actions.
-- Operational Readiness is explicit and non-generating; it does not start a server, download a model, apply settings, or stop an external process.
+- Operational Readiness and Operations Center checks are explicit and non-generating; they do not install software, start a server, download a model, apply profile settings, adopt an endpoint, or stop an external process.
+- Creating, editing, deleting, or capacity-checking a Launch Plan never starts or stops a server.
+- Launch Plan execution never bypasses network-exposure or critical-memory confirmation and never takes ownership of an external process.
+- Resource calibration records local measurements only after an explicit action and does not tune a profile automatically.
 - Capability cleanup, resource guidance, and benchmark tuning modify unsaved drafts only and require explicit Save.
 - No `pkill`, `killall`, or `pgrep` in Swift code.
 - No external `mlx_lm.server` process termination.

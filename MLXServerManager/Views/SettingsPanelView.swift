@@ -28,6 +28,7 @@ struct SettingsPanelView: View {
     let onRefreshRegisteredModelHealth: () -> Void
     let onCancelRegisteredModelHealth: () -> Void
     let onOpenOperationalReadiness: () -> Void
+    let onOpenOperationsCenter: () -> Void
     let onDiscard: () -> Void
     let onSave: () -> Void
 
@@ -133,6 +134,8 @@ struct SettingsPanelView: View {
                 registeredModelHealthSection
 
                 operationalReadinessSection
+
+                operationsCenterSection
 
                 settingsSection(
                     title: t("Downloads", "ダウンロード"),
@@ -603,6 +606,39 @@ struct SettingsPanelView: View {
                 .font(.headline)
         }
         .accessibilityIdentifier("settings-operational-readiness")
+    }
+
+    private var operationsCenterSection: some View {
+        GroupBox {
+            HStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(t(
+                        "Review platform compatibility, evidence freshness, runtime environment, model metadata, launch stability, resource calibration, launch plans, capacity, and a redacted support bundle.",
+                        "プラットフォーム互換性、確認情報の鮮度、ランタイム環境、モデルメタデータ、起動安定性、リソース実測、起動プラン、容量、マスキング済みSupport Bundleを確認します。"
+                    ))
+                    .font(.callout)
+                    Text(t(
+                        "Checks remain explicit and preserve Direct Mode. Launch plans never take ownership of external processes.",
+                        "確認は明示操作のままでDirect Modeを維持します。起動プランが外部プロセスの所有権を取得することはありません。"
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 12)
+                Button {
+                    onOpenOperationsCenter()
+                } label: {
+                    Label(t("Open Operations Center", "Operations Centerを開く"), systemImage: "command.square")
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 12)
+        } label: {
+            Text(t("Unified operations center", "統合Operations Center"))
+                .font(.headline)
+        }
+        .accessibilityIdentifier("settings-operations-center")
     }
 
     private func modelHealthSymbol(_ status: RegisteredModelHealthStatus) -> String {

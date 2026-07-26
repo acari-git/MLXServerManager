@@ -45,6 +45,7 @@ struct SettingsSurfaceView: View {
             onRefreshRegisteredModelHealth: viewModel.refreshRegisteredModelHealthRequested,
             onCancelRegisteredModelHealth: viewModel.cancelRegisteredModelHealthRequested,
             onOpenOperationalReadiness: viewModel.openOperationalReadinessRequested,
+            onOpenOperationsCenter: viewModel.openOperationsCenterRequested,
             onDiscard: discardDraftSettings,
             onSave: saveDraftSettings
         )

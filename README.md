@@ -153,11 +153,11 @@ Do not download the source archive if you want the app binary. Use the named `ML
 
 ## Current GUI Direction
 
-v40.0.0 is the current published app release. It connects runtime compatibility to profile editing and start preflight, adds structured launch-failure diagnosis, registered-model health inspection, conservative resource forecasting, benchmark-guided unsaved tuning drafts, and a unified Operational Readiness report. The model list remains the primary operating table, and Direct Mode remains unchanged.
+v40.0.0 is the current published app release. The development tree targets v50.0.0 and adds a macOS 15.0 / Apple Silicon platform baseline, evidence-freshness tracking, Runtime Environment Doctor, registered-model metadata inspection, explicit post-launch stability checks, local resource-calibration snapshots, persisted Launch Plans, capacity-aware multi-model planning, a redacted Support Bundle, and a unified Operations Center. The model list remains the primary operating table, and Direct Mode remains unchanged.
 
 You must provide your own supported backend environment and executable. You can register existing model files, search Hugging Face and choose a result, or use Downloads to fetch a model by ID / URL and auto-add it to the model list. The app keeps Direct Mode: clients connect directly to the selected endpoint, and MLX Server Manager never proxies client traffic. Test Chat, Benchmark, and Agent Readiness generation requests occur only when the user explicitly runs those diagnostics.
 
-See [docs/v35_v40_implementation.md](docs/v35_v40_implementation.md) for the v35–v40 implementation boundaries and [docs/v40_release_candidate_readiness.md](docs/v40_release_candidate_readiness.md) for the current verification record.
+See [docs/v35_v40_implementation.md](docs/v35_v40_implementation.md) for the v35–v40 implementation boundaries, [docs/v41_v50_implementation.md](docs/v41_v50_implementation.md) for the v41–v50 development scope, and [docs/v40_release_candidate_readiness.md](docs/v40_release_candidate_readiness.md) for the latest published verification record.
 
 See [docs/distribution.md](docs/distribution.md) for release asset and Gatekeeper details, [docs/known_limitations.md](docs/known_limitations.md) for the full stable-scope boundary, and [docs/v23_0_integrated_gui_refresh.md](docs/v23_0_integrated_gui_refresh.md) for the v23.0.0 GUI refresh note.
 
@@ -265,7 +265,7 @@ For Hermes Agent and similar clients, see [docs/hermes_agent_connection.md](docs
 
 ## Current Feature Set
 
-As of the v40.0.0 development tree, MLX Server Manager includes:
+As of the v50.0.0 development tree, while v40.0.0 remains the latest published binary, MLX Server Manager includes:
 
 - Independent Start, Stop, and Restart for app-managed `mlx_lm.server` and Rapid-MLX processes.
 - Multiple concurrently managed models, each with its own process, endpoint, runtime state, and memory measurement.
@@ -286,7 +286,15 @@ As of the v40.0.0 development tree, MLX Server Manager includes:
 - Conservative Start Resource Forecast based on existing multi-model memory and KV-cache safety models, with reviewable unsaved draft suggestions only.
 - Benchmark-guided profile tuning that requires current comparable multi-sample results and never applies a recommendation automatically.
 - Unified Operational Readiness for runtime, compatibility, model health, endpoint, resources, profile options, Session Recovery, benchmark evidence, and Hermes Agent.
-- Versioned authoritative settings-state migration from schema 1 to schema 2 with atomic current-state and backup repair.
+- Operations Center for platform compatibility, evidence freshness, Runtime Doctor, model metadata, post-launch stability, resource calibration, Launch Plans, capacity assessment, and redacted support output.
+- Explicit persisted Launch Plans with ordered Required / Optional profile steps, sequential app-managed start, existing Start guardrails, and plan-owned stop tracking.
+- Conservative capacity planning for multiple profiles using registered-model estimates, current managed memory, and available system memory.
+- Runtime Environment Doctor with bounded local inspection and no automatic installation or repair.
+- Model Metadata Inspector limited to the selected registered path and no remote-code execution.
+- Short explicit app-owned stability verification using PID continuity and repeated `GET /v1/models` checks without generation.
+- Bounded local resource-calibration snapshots that never tune a profile automatically.
+- Apple Silicon (`arm64`) development target with a declared minimum deployment target of macOS 15.0. Real macOS 15 launch verification remains required before a v50 release claim.
+- Versioned authoritative settings-state migration from schema 1 or schema 2 to schema 3 with atomic current-state and backup repair.
 - Settings save and restore.
 - Model profile add, edit, delete, and selection.
 - Explicit Minimal, Balanced, Memory Saver, and Throughput templates that modify only managed launch-tuning fields.

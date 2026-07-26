@@ -45,6 +45,11 @@ session-recovery.json
 *.onnx
 *.mlx
 
+# Local agent skill bundles
+.agents/mattpocock-skills/
+.agents/external-tools/
+.agents/skills/
+
 # Temporary files
 tmp/
 *.tmp

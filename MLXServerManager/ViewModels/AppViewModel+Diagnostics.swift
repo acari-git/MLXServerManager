@@ -40,6 +40,17 @@ extension AppViewModel {
             self.updateDiagnosticsViewState { state in
                 state.completeRun(with: results)
             }
+            let targetKey = targetModelID ?? "default:\(host):\(port)"
+            let targetName = selectedModel?.displayName ?? "Default endpoint"
+            let snapshot = DiagnosticsSnapshot(
+                targetKey: targetKey,
+                targetName: targetName,
+                results: results
+            )
+            self.diagnosticsHistory = DiagnosticsHistoryStore.record(
+                snapshot,
+                history: self.diagnosticsHistory
+            )
 
             let failedCount = results.filter { $0.status == .fail }.count
             let warningCount = results.filter { $0.status == .warning }.count

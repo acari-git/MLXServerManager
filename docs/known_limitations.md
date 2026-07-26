@@ -4,7 +4,8 @@ This document lists the current known limitations for MLX Server Manager. Older 
 
 ## Distribution
 
-- The documented app asset is an unsigned local-use `.app` zip.
+- The latest published v40.0.0 asset remains an unsigned local-use `.app` zip.
+- The v50 development tree declares macOS 15.0 as its minimum deployment target and builds for Apple Silicon (`arm64`) only. A real macOS 15 device or virtual machine still needs release-candidate launch verification before publication.
 - The app is not notarized.
 - The app is not signed with Developer ID.
 - macOS Gatekeeper may warn when opening the app.
@@ -24,6 +25,7 @@ This document lists the current known limitations for MLX Server Manager. Older 
 - The app does not replace Python, Homebrew, Hugging Face CLI, or backend environment setup.
 - Runtime Setup Assistant searches only configured, PATH, Homebrew, and a limited set of user-environment locations. It does not install, update, or repair a runtime.
 - Runtime Compatibility Matrix reports detected command flags and version output; it does not guarantee that every model or option combination will execute successfully.
+- Runtime Environment Doctor uses bounded local inspection of configured executables. It does not install, update, repair, remove, or activate Python environments and cannot diagnose every shell-wrapper or universal-binary arrangement.
 - Capability-aware profile checks can block only flags known to be absent from a successful help probe. Unknown support remains unknown and may still fail at runtime.
 - The app does not verify MLX model compatibility beyond conservative metadata, path, preflight, detected runtime-option checks, and explicit registered-model health inspection.
 
@@ -54,6 +56,10 @@ This document lists the current known limitations for MLX Server Manager. Older 
 - Recovery actions are guidance and explicit user-triggered shortcuts, not automatic repair.
 - Structured launch diagnosis is pattern-based and can classify a failure as Unknown. It stores only a bounded in-memory evidence window and does not replace the backend's detailed logs.
 - Operational Readiness is a point-in-time explicit report. Results can become stale after settings, model files, runtime executables, ports, memory pressure, or benchmark conditions change.
+- Evidence Freshness compares bounded fingerprints captured by Operations Center. It is not a background file watcher and cannot prove that every runtime dependency or nested model file is unchanged.
+- Model Metadata Inspector reads registered local metadata and weight structure only. A Compatible Candidate result is not a guarantee that a specific runtime/model/options combination will load successfully.
+- Post-Launch Stability performs a short explicit series of PID and `/v1/models` checks. It is not continuous monitoring and does not send generation requests.
+- Resource Calibration records a point-in-time local snapshot. It does not automatically tune profiles, capture every load-time peak, or guarantee future memory and benchmark behavior.
 
 ## Process Management
 
@@ -61,6 +67,8 @@ This document lists the current known limitations for MLX Server Manager. Older 
 - Stop and Restart do not stop external server processes.
 - Adopt External Server is connection context only and does not transfer process ownership.
 - App-managed profiles can run concurrently when each uses a distinct available endpoint.
+- Launch Plans start profiles sequentially through the existing managed-start path. They do not provide inference routing, automatic fallback, background startup, or guaranteed rollback after a required profile fails.
+- Stopping a Launch Plan affects only app-owned profiles started by that plan execution. Profiles already running before the plan remain unchanged.
 - Lifecycle, PID, runtime state, and memory measurements are tracked per managed profile.
 - Runtime-affecting edits remain locked while that profile is running.
 - Quit prompts when app-owned managed servers are running. Users can stop all and quit, leave servers running and quit, or cancel.
@@ -87,12 +95,14 @@ This document lists the current known limitations for MLX Server Manager. Older 
 
 ## Data and Logs
 
-- `settings.json` and `models.json` are local compatibility mirrors. `settings-state.json` is the authoritative versioned state and schema-1 files are migrated to schema 2 when they can be decoded safely.
+- `settings.json` and `models.json` are local compatibility mirrors. `settings-state.json` is the authoritative versioned state and schema-1 and schema-2 files are migrated to schema 3 when they can be decoded safely.
+- Launch Plan definitions and the newest 100 resource-calibration records are stored in local app settings. They are not included in Git or release assets.
 - `session-recovery.json` stores only prior session disposition and managed profile endpoint metadata. It does not store prompts, responses, tokens, credentials, or process ownership authority.
 - Session Recovery can re-check a recorded endpoint and adopt it as external connection context, but it cannot prove the process is the same process previously launched by the app.
 - Runtime settings and model profiles are not part of Git or release assets.
 - Logs are kept in memory with a bounded buffer.
-- Persistent file logging is not implemented. Structured launch-diagnosis evidence and Operational Readiness reports remain memory-only unless the user explicitly copies them.
+- Persistent file logging is not implemented. Structured launch-diagnosis evidence, Operational Readiness reports, and Support Bundles remain memory-only unless the user explicitly copies them.
+- Support Bundle redaction is designed for known secret and home-path patterns, but users should still review copied troubleshooting text before sharing it.
 - Telemetry, analytics, crash reporting, cloud logging, and external log sending are not implemented.
 
 ## Safety Boundaries

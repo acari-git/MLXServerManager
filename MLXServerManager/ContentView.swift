@@ -248,6 +248,36 @@ struct ContentView: View {
             )
         }
         .sheet(isPresented: Binding(
+            get: { viewModel.operationsCenterViewState.isPresented },
+            set: { if !$0 { viewModel.dismissOperationsCenterRequested() } }
+        )) {
+            OperationsCenterView(
+                state: viewModel.operationsCenterViewState,
+                launchPlans: viewModel.launchPlans,
+                models: viewModel.models,
+                language: viewModel.settings.uiLanguage,
+                onRefresh: viewModel.refreshOperationsCenterRequested,
+                onCancel: viewModel.cancelOperationsCenterRequested,
+                onRefreshEvidence: viewModel.refreshOperationsEvidenceFreshness,
+                onRunStability: viewModel.runLaunchStabilityCheckRequested,
+                onCancelStability: viewModel.cancelLaunchStabilityCheckRequested,
+                onRecordCalibration: viewModel.recordResourceCalibrationRequested,
+                onCreateSelectedPlan: viewModel.createLaunchPlanFromSelectedRequested,
+                onCreateAllPlan: viewModel.createLaunchPlanFromAllProfilesRequested,
+                onDeletePlan: viewModel.deleteLaunchPlanRequested,
+                onSavePlan: viewModel.saveLaunchPlanRequested,
+                onSetPlanStepRequired: viewModel.setLaunchPlanStepRequiredRequested,
+                onMovePlanStep: viewModel.moveLaunchPlanStepRequested,
+                onRunPlan: viewModel.runLaunchPlanRequested,
+                onCancelPlan: viewModel.cancelLaunchPlanRequested,
+                onStopPlanStarted: viewModel.stopServersStartedByLaunchPlanRequested,
+                onRefreshCapacity: viewModel.refreshCapacityForLaunchPlanRequested,
+                onGenerateSupportBundle: viewModel.generateSupportBundleRequested,
+                onCopySupportBundle: viewModel.copySupportBundleRequested,
+                onDismiss: viewModel.dismissOperationsCenterRequested
+            )
+        }
+        .sheet(isPresented: Binding(
             get: { viewModel.sessionRecoveryViewState.isPresented },
             set: { if !$0 { viewModel.dismissSessionRecoveryRequested() } }
         )) {
