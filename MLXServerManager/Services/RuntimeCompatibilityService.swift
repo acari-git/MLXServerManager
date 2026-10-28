@@ -51,7 +51,7 @@ actor RuntimeCompatibilityService: RuntimeCompatibilityAssessing {
                 executablePath: executablePath,
                 backend: backend
             )
-            let flags = await probeFlags(executablePath: executablePath)
+            let flags = await probeFlags(executablePath: executablePath, backend: backend)
             reports.append(
                 RuntimeCompatibilityReport(
                     backend: backend,
@@ -66,22 +66,30 @@ actor RuntimeCompatibilityService: RuntimeCompatibilityAssessing {
         return reports
     }
 
-    private func probeFlags(executablePath: String) async -> Set<String>? {
-        guard let result = await ShortLivedProcessRunner.runAsync(
-            executablePath: executablePath,
-            arguments: ["--help"],
-            timeout: timeout
-        ), !result.timedOut, !result.cancelled else {
-            return nil
+    private func probeFlags(executablePath: String, backend: InferenceBackend) async -> Set<String>? {
+        // Rapid-MLX serve-only flags (e.g. --no-thinking) are listed under `serve --help`.
+        var helpInvocations: [[String]] = [["--help"]]
+        if backend == .rapidMLX {
+            helpInvocations.append(["serve", "--help"])
         }
 
-        var data = result.standardOutput
-        data.append(Data("\n".utf8))
-        data.append(result.standardError)
-        guard let output = String(data: data, encoding: .utf8) else {
-            return nil
+        var flags = Set<String>()
+        for arguments in helpInvocations {
+            guard let result = await ShortLivedProcessRunner.runAsync(
+                executablePath: executablePath,
+                arguments: arguments,
+                timeout: timeout
+            ), !result.timedOut, !result.cancelled else {
+                continue
+            }
+            var data = result.standardOutput
+            data.append(Data("\n".utf8))
+            data.append(result.standardError)
+            guard let output = String(data: data, encoding: .utf8) else {
+                continue
+            }
+            flags.formUnion(Self.parseFlags(output))
         }
-        let flags = Self.parseFlags(output)
         return flags.isEmpty ? nil : flags
     }
 

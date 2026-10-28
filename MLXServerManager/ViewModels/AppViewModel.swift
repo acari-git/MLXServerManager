@@ -798,7 +798,10 @@ final class AppViewModel: ObservableObject {
             return nil
         }
 
-        switch await runtimeOptionCapabilityProvider.capabilities(executablePath: request.executablePath) {
+        switch await runtimeOptionCapabilityProvider.capabilities(
+            executablePath: request.executablePath,
+            backend: request.backend
+        ) {
         case let .available(flags):
             let unsupportedFlags = requestedFlags.filter { !flags.contains($0) }
             guard !unsupportedFlags.isEmpty else {
