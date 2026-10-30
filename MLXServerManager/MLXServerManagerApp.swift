@@ -21,6 +21,9 @@ struct MLXServerManagerApp: App {
         }
         .defaultSize(width: 1280, height: 820)
         .windowStyle(.hiddenTitleBar)
+        .commands {
+            AppCommands(viewModel: viewModel)
+        }
 
         MenuBarExtra {
             MenuBarView(viewModel: viewModel)

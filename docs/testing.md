@@ -10,6 +10,8 @@ Target service behavior without launching the full UI:
 - Process service state transitions are testable through protocol boundaries or fakes.
 - Memory monitor handles missing process, running process, and permission failures.
 - Log buffer trims old entries when it exceeds the configured maximum.
+- Keyboard shortcut definitions (`AppCommandShortcut`) keep the `⌘,` binding, localized title, and Settings destination stable.
+- `AppViewModel.openSettingsRequested()` publishes a one-shot workspace destination that is consumed exactly once (`AppCommandShortcutTests`).
 
 ## Manual Tests
 
@@ -110,6 +112,17 @@ Target service behavior without launching the full UI:
 - Confirm Direct Mode is maintained with no Proxy and no Chat UI.
 - Confirm `settings.json`, `models.json`, and model files are not included in Git status or commits.
 - Confirm no user-specific fixed paths are added to Swift code or docs.
+
+## Keyboard Shortcut Manual Tests
+
+- Press `⌘,` with the main window focused and confirm the Settings destination opens.
+- Open the application menu and confirm `Settings…` shows `⌘,`.
+- Switch the language to Japanese and confirm the menu item reads `設定…`.
+- Close the main window (the app keeps running in the menu bar), press `⌘,`, and confirm one main window reopens on Settings.
+- Minimize the main window, press `⌘,`, and confirm it is restored on Settings without a second window.
+- With Settings already visible, press `⌘,` and confirm nothing changes except the window coming forward.
+- Confirm `⌘,` does not start, stop, or restart servers, run diagnostics, or change saved settings.
+- Confirm `⌘,` does not send `/v1/chat/completions` and Direct Mode is unchanged.
 
 ## v0.5 Distribution Build Manual Tests
 

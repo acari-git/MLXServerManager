@@ -400,6 +400,16 @@ struct IntegratedWorkspaceView: View {
             )
         }
         .accessibilityIdentifier("integrated-workspace")
+        .onAppear(perform: applyPendingWorkspaceDestination)
+        .onChange(of: viewModel.pendingWorkspaceDestination) { _, _ in
+            applyPendingWorkspaceDestination()
+        }
+    }
+
+    private func applyPendingWorkspaceDestination() {
+        if let destination = viewModel.consumePendingWorkspaceDestination() {
+            selectedDestination = destination
+        }
     }
 
     private var isModelInspectorToggleHelp: String {
