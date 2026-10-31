@@ -89,6 +89,8 @@ struct DownloadStorageAssessmentCacheEntry {
 @MainActor
 final class AppViewModel: ObservableObject {
     @Published var settings: AppSettings = .defaults
+    /// One-shot navigation request consumed by the main workspace view.
+    @Published var pendingWorkspaceDestination: IntegratedWorkspaceDestination?
     @Published var models: [ModelConfig] = ModelConfig.defaults
     @Published var selectedModelID: ModelConfig.ID? {
         didSet {
@@ -798,7 +800,10 @@ final class AppViewModel: ObservableObject {
             return nil
         }
 
-        switch await runtimeOptionCapabilityProvider.capabilities(executablePath: request.executablePath) {
+        switch await runtimeOptionCapabilityProvider.capabilities(
+            executablePath: request.executablePath,
+            backend: request.backend
+        ) {
         case let .available(flags):
             let unsupportedFlags = requestedFlags.filter { !flags.contains($0) }
             guard !unsupportedFlags.isEmpty else {
